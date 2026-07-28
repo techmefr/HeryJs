@@ -10,6 +10,9 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
+    env:
+      DATABASE_URL: file:./dev.db
+
     steps:
       - uses: actions/checkout@v4
 
@@ -19,6 +22,8 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - run: npx prisma migrate deploy
 
       - run: npm run lint
 

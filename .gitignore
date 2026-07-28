@@ -34,3 +34,5 @@ Thumbs.db
 
 # Prisma (generated client outside node_modules, if applicable)
 prisma/generated/
+prisma/*.db
+prisma/*.db-journal
