@@ -1,4 +1,4 @@
-import { Body, Controller, Inject, Post, UsePipes } from '@nestjs/common';
+import { Body, Controller, Inject, Post } from '@nestjs/common';
 import { ZodValidationPipe } from '../validation/zod-validation.pipe';
 import { AUTH_PROVIDER } from './auth.types';
 import type { AuthProvider } from './auth.types';
@@ -12,14 +12,12 @@ export class AuthController {
   ) {}
 
   @Post('register')
-  @UsePipes(new ZodValidationPipe(registerSchema))
-  register(@Body() body: RegisterInput) {
+  register(@Body(new ZodValidationPipe(registerSchema)) body: RegisterInput) {
     return this.authProvider.register(body.email, body.password);
   }
 
   @Post('login')
-  @UsePipes(new ZodValidationPipe(loginSchema))
-  login(@Body() body: LoginInput) {
+  login(@Body(new ZodValidationPipe(loginSchema)) body: LoginInput) {
     return this.authProvider.login(body.email, body.password);
   }
 }
