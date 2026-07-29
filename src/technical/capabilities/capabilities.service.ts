@@ -5,6 +5,7 @@ import {
   CapabilitySubject,
   PermissionPreset,
 } from './capabilities.types';
+import { resolveCapability } from './resolve-capability';
 
 @Injectable()
 export class CapabilitiesService {
@@ -13,21 +14,6 @@ export class CapabilitiesService {
     subject: CapabilitySubject,
     record: CapabilityRecord,
   ): CapabilityDecision {
-    switch (preset) {
-      case 'none':
-        return { allowed: false };
-      case 'all':
-        return { allowed: true, scope: 'all' };
-      case 'own': {
-        const allowed = record.ownerId === subject.id;
-        return allowed ? { allowed, scope: 'own' } : { allowed };
-      }
-      case 'team': {
-        const allowed =
-          record.teamId !== undefined &&
-          subject.teamIds.includes(record.teamId);
-        return allowed ? { allowed, scope: 'team' } : { allowed };
-      }
-    }
+    return resolveCapability(preset, subject, record);
   }
 }

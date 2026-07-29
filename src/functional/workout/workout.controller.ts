@@ -10,16 +10,31 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import type { Workout } from '@prisma/client';
 import { SessionGuard } from '../../technical/auth/session.guard';
 import type { RequestWithUser } from '../../technical/auth/session.guard';
+import { CapabilitiesGuard } from '../../technical/capabilities/capabilities.guard';
+import {
+  Capability,
+  LoadRecordWith,
+} from '../../technical/capabilities/capability.decorator';
+import { ok } from '../../technical/http/envelope';
 import { ZodValidationPipe } from '../../technical/validation/zod-validation.pipe';
 import { createWorkoutSchema, updateWorkoutSchema } from './workout.dto';
 import type { CreateWorkoutInput, UpdateWorkoutInput } from './workout.dto';
-import { WorkoutPolicy } from './workout.policy';
+import {
+  canCreateWorkout,
+  canDeleteWorkout,
+  canUpdateWorkout,
+  WorkoutPolicy,
+} from './workout.policy';
 import { WorkoutService } from './workout.service';
+import { WORKOUT_RECORD_LOADER } from './workout-record.loader';
+
+type RequestWithWorkout = RequestWithUser & { record: Workout };
 
 @Controller('workouts')
-@UseGuards(SessionGuard)
+@UseGuards(SessionGuard, CapabilitiesGuard)
 export class WorkoutController {
   constructor(
     private readonly workouts: WorkoutService,
@@ -39,53 +54,56 @@ export class WorkoutController {
     });
 
     if (include !== 'capabilities') {
-      return { data: records };
+      return ok(records);
     }
 
     const subject = { id: req.user.id, teamIds: [] };
 
-    return {
-      data: records.map((record) => ({
+    return ok(
+      records.map((record) => ({
         ...record,
         capabilities: this.policy.recordCapabilities(subject, record),
       })),
-      meta: { capabilities: this.policy.metaCapabilities() },
-    };
+      { capabilities: this.policy.metaCapabilities() },
+    );
   }
 
   @Get(':id')
   async findOne(@Param('id') id: string) {
-    return this.workouts.findOneOrFail(id);
+    return ok(await this.workouts.findOneOrFail(id));
   }
 
   @Post()
-  create(
+  @Capability(canCreateWorkout)
+  async create(
     @Req() req: RequestWithUser,
     @Body(new ZodValidationPipe(createWorkoutSchema)) body: CreateWorkoutInput,
   ) {
     const subject = { id: req.user.id, teamIds: [] };
-    return this.workouts.create(subject, body);
+    return ok(await this.workouts.create(subject, body));
   }
 
   @Patch(':id')
-  update(
-    @Req() req: RequestWithUser,
-    @Param('id') id: string,
+  @Capability(canUpdateWorkout)
+  @LoadRecordWith(WORKOUT_RECORD_LOADER)
+  async update(
+    @Req() req: RequestWithWorkout,
     @Body(new ZodValidationPipe(updateWorkoutSchema)) body: UpdateWorkoutInput,
   ) {
-    const subject = { id: req.user.id, teamIds: [] };
-    return this.workouts.update(subject, id, body);
+    return ok(await this.workouts.update(req.record, body));
   }
 
   @Delete(':id')
-  remove(@Req() req: RequestWithUser, @Param('id') id: string) {
-    const subject = { id: req.user.id, teamIds: [] };
-    return this.workouts.softDelete(subject, id);
+  @Capability(canDeleteWorkout)
+  @LoadRecordWith(WORKOUT_RECORD_LOADER)
+  async remove(@Req() req: RequestWithWorkout) {
+    return ok(await this.workouts.softDelete(req.record));
   }
 
   @Post(':id/restore')
-  restore(@Req() req: RequestWithUser, @Param('id') id: string) {
-    const subject = { id: req.user.id, teamIds: [] };
-    return this.workouts.restore(subject, id);
+  @Capability(canUpdateWorkout)
+  @LoadRecordWith(WORKOUT_RECORD_LOADER)
+  async restore(@Req() req: RequestWithWorkout) {
+    return ok(await this.workouts.restore(req.record));
   }
 }

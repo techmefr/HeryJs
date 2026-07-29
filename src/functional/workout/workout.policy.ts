@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { CapabilitiesService } from '../../technical/capabilities/capabilities.service';
+import { resolveCapability } from '../../technical/capabilities/resolve-capability';
+import type { PolicyCheck } from '../../technical/capabilities/capability-check';
 import {
   CapabilityDecision,
   CapabilitySubject,
@@ -8,6 +10,19 @@ import {
 export interface WorkoutRecordLike {
   ownerId: string;
 }
+
+export const canCreateWorkout: PolicyCheck = () => ({
+  allowed: true,
+  scope: 'own',
+});
+
+export const canUpdateWorkout: PolicyCheck<WorkoutRecordLike> = (
+  subject,
+  record,
+) => (record ? resolveCapability('own', subject, record) : { allowed: false });
+
+export const canDeleteWorkout: PolicyCheck<WorkoutRecordLike> =
+  canUpdateWorkout;
 
 @Injectable()
 export class WorkoutPolicy {
@@ -25,7 +40,7 @@ export class WorkoutPolicy {
 
   metaCapabilities(): Record<'create', CapabilityDecision> {
     return {
-      create: { allowed: true, scope: 'own' },
+      create: canCreateWorkout({ id: '', teamIds: [] }),
     };
   }
 }

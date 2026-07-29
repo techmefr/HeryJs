@@ -1,15 +1,10 @@
-import {
-  ForbiddenException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import { Inject, Injectable } from '@nestjs/common';
+import type { Prisma, Workout } from '@prisma/client';
 import { PRISMA_CLIENT } from '../../technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '../../technical/prisma/prisma.client';
+import { RecordNotFoundException } from '../../technical/errors/record-not-found.exception';
 import { CapabilitySubject } from '../../technical/capabilities/capabilities.types';
 import { CreateWorkoutInput, UpdateWorkoutInput } from './workout.dto';
-import { WorkoutPolicy } from './workout.policy';
 
 export interface WorkoutSearchOptions {
   withTrashed?: boolean;
@@ -20,7 +15,6 @@ export interface WorkoutSearchOptions {
 export class WorkoutService {
   constructor(
     @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,
-    private readonly policy: WorkoutPolicy,
   ) {}
 
   async search(options: WorkoutSearchOptions = {}) {
@@ -40,7 +34,7 @@ export class WorkoutService {
     const workout = await this.prisma.workout.findUnique({ where: { id } });
 
     if (!workout || workout.deletedAt) {
-      throw new NotFoundException('Workout not found');
+      throw new RecordNotFoundException('workout');
     }
 
     return workout;
@@ -56,50 +50,20 @@ export class WorkoutService {
     });
   }
 
-  async update(
-    subject: CapabilitySubject,
-    id: string,
-    data: UpdateWorkoutInput,
-  ) {
-    const workout = await this.findOneOrFail(id);
-    const decision = this.policy.recordCapabilities(subject, workout).update;
-
-    if (!decision.allowed) {
-      throw new ForbiddenException({ capability: decision });
-    }
-
-    return this.prisma.workout.update({ where: { id }, data });
+  update(workout: Workout, data: UpdateWorkoutInput) {
+    return this.prisma.workout.update({ where: { id: workout.id }, data });
   }
 
-  async softDelete(subject: CapabilitySubject, id: string) {
-    const workout = await this.findOneOrFail(id);
-    const decision = this.policy.recordCapabilities(subject, workout).delete;
-
-    if (!decision.allowed) {
-      throw new ForbiddenException({ capability: decision });
-    }
-
+  softDelete(workout: Workout) {
     return this.prisma.workout.update({
-      where: { id },
+      where: { id: workout.id },
       data: { deletedAt: new Date() },
     });
   }
 
-  async restore(subject: CapabilitySubject, id: string) {
-    const workout = await this.prisma.workout.findUnique({ where: { id } });
-
-    if (!workout) {
-      throw new NotFoundException('Workout not found');
-    }
-
-    const decision = this.policy.recordCapabilities(subject, workout).update;
-
-    if (!decision.allowed) {
-      throw new ForbiddenException({ capability: decision });
-    }
-
+  restore(workout: Workout) {
     return this.prisma.workout.update({
-      where: { id },
+      where: { id: workout.id },
       data: { deletedAt: null },
     });
   }

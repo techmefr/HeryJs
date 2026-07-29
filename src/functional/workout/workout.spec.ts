@@ -52,7 +52,9 @@ describe('Workout resource (full vertical slice)', () => {
       .send({ title: 'Leg day' })
       .expect(201);
 
-    expect((response.body as { tenantId: string }).tenantId).toBe(TENANT_ID);
+    expect(
+      (response.body as { data: { tenantId: string } }).data.tenantId,
+    ).toBe(TENANT_ID);
   });
 
   it('lists workouts with resolved capabilities via ?include=capabilities', async () => {
@@ -81,7 +83,7 @@ describe('Workout resource (full vertical slice)', () => {
       .send({ title: 'Owned by someone else' })
       .expect(201);
 
-    const workoutId = (created.body as { id: string }).id;
+    const workoutId = (created.body as { data: { id: string } }).data.id;
 
     await request(app.getHttpServer())
       .patch(`/workouts/${workoutId}`)
@@ -99,7 +101,7 @@ describe('Workout resource (full vertical slice)', () => {
       .send({ title: 'To be deleted' })
       .expect(201);
 
-    const workoutId = (created.body as { id: string }).id;
+    const workoutId = (created.body as { data: { id: string } }).data.id;
 
     await request(app.getHttpServer())
       .delete(`/workouts/${workoutId}`)
