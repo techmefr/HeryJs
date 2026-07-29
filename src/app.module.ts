@@ -6,6 +6,7 @@ import { WorkoutModule } from './functional/workout/workout.module';
 import { AuthModule } from './technical/auth/auth.module';
 import { FeatureFlagsModule } from './technical/feature-flags/feature-flags.module';
 import { JobsModule } from './technical/jobs/jobs.module';
+import { NotificationsModule } from './technical/notifications/notifications.module';
 import { SignalModule } from './technical/signal/signal.module';
 import { TenantMiddleware } from './technical/tenancy/tenant.middleware';
 import { DomainExceptionFilter } from './technical/errors/domain-exception.filter';
@@ -15,6 +16,7 @@ import { DomainExceptionFilter } from './technical/errors/domain-exception.filte
     AuthModule,
     FeatureFlagsModule,
     JobsModule,
+    NotificationsModule,
     SignalModule,
     WorkoutModule,
   ],
