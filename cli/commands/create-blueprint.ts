@@ -5,7 +5,16 @@ import * as yaml from 'js-yaml';
 import pc from 'picocolors';
 import prompts from 'prompts';
 import { kebabCase } from '../lib/naming';
-import type { BlueprintField, PermissionPreset } from '../lib/blueprint';
+import type {
+  Blueprint,
+  BlueprintField,
+  PermissionPreset,
+} from '../lib/blueprint';
+
+const DEFAULT_PAGINATION: Blueprint['pagination'] = {
+  limits: [10, 15, 20],
+  default: 15,
+};
 
 async function promptFields(): Promise<BlueprintField[]> {
   const fields: BlueprintField[] = [];
@@ -97,6 +106,65 @@ async function promptPermissions(): Promise<{
   };
 }
 
+function parseCommaList(input: string | undefined): string[] {
+  if (!input) {
+    return [];
+  }
+
+  return input
+    .split(',')
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+}
+
+async function promptPagination(): Promise<Blueprint['pagination']> {
+  const limitsResponse = (await prompts({
+    type: 'text',
+    name: 'limits',
+    message: 'Allowed page sizes (comma-separated)',
+    initial: DEFAULT_PAGINATION.limits.join(','),
+  })) as { limits?: string };
+
+  const limits = parseCommaList(limitsResponse.limits)
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value > 0);
+
+  const defaultResponse = (await prompts({
+    type: 'number',
+    name: 'value',
+    message: 'Default page size',
+    initial: limits[0] ?? DEFAULT_PAGINATION.default,
+  })) as { value?: number };
+
+  return {
+    limits: limits.length > 0 ? limits : DEFAULT_PAGINATION.limits,
+    default: defaultResponse.value ?? DEFAULT_PAGINATION.default,
+  };
+}
+
+async function promptSorts(fieldNames: string[]): Promise<string[]> {
+  const response = (await prompts({
+    type: 'text',
+    name: 'sorts',
+    message: 'Sortable fields (comma-separated)',
+    initial: ['createdAt', ...fieldNames].join(','),
+  })) as { sorts?: string };
+
+  const sorts = parseCommaList(response.sorts);
+  return sorts.length > 0 ? sorts : ['createdAt'];
+}
+
+async function promptFilters(fieldNames: string[]): Promise<string[]> {
+  const response = (await prompts({
+    type: 'text',
+    name: 'filters',
+    message: 'Filterable fields (comma-separated, empty for none)',
+    initial: fieldNames.join(','),
+  })) as { filters?: string };
+
+  return parseCommaList(response.filters);
+}
+
 export function registerCreateBlueprintCommand(program: Command): void {
   program
     .command('create:blueprint <name>')
@@ -136,7 +204,20 @@ export function registerCreateBlueprintCommand(program: Command): void {
           }
         : await promptPermissions();
 
-      writeFileSync(filePath, yaml.dump({ name, fields, permissions }));
+      const fieldNames = fields.map((field) => field.name);
+
+      const pagination = options.yes
+        ? DEFAULT_PAGINATION
+        : await promptPagination();
+
+      const sorts = options.yes ? ['createdAt'] : await promptSorts(fieldNames);
+
+      const filters = options.yes ? [] : await promptFilters(fieldNames);
+
+      writeFileSync(
+        filePath,
+        yaml.dump({ name, fields, permissions, pagination, sorts, filters }),
+      );
       console.log(pc.green(`✔ Created ${filePath}`));
     });
 }

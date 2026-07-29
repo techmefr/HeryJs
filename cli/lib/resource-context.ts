@@ -9,6 +9,9 @@ export interface ResourceContext {
   pluralKebabName: string;
   fields: Blueprint['fields'];
   permissions: Blueprint['permissions'];
+  pagination: Blueprint['pagination'];
+  sorts: Blueprint['sorts'];
+  filters: Blueprint['filters'];
 }
 
 export function buildResourceContext(blueprint: Blueprint): ResourceContext {
@@ -23,5 +26,8 @@ export function buildResourceContext(blueprint: Blueprint): ResourceContext {
     pluralKebabName: pluralize(kebabCase(pascalName)),
     fields: blueprint.fields,
     permissions: blueprint.permissions,
+    pagination: blueprint.pagination,
+    sorts: blueprint.sorts,
+    filters: blueprint.filters,
   };
 }

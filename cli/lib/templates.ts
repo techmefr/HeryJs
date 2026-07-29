@@ -119,6 +119,9 @@ import { Create${ctx.pascalName}Input, Update${ctx.pascalName}Input } from './${
 export interface ${ctx.pascalName}SearchOptions {
   withTrashed?: boolean;
   onlyTrashed?: boolean;
+  sort?: { field: string; direction: 'asc' | 'desc' };
+  filters?: Record<string, string>;
+  limit?: number;
 }
 
 @Injectable()
@@ -128,15 +131,18 @@ export class ${ctx.pascalName}Service {
   ) {}
 
   async search(options: ${ctx.pascalName}SearchOptions = {}) {
-    const where = options.onlyTrashed
+    const trashedWhere = options.onlyTrashed
       ? { deletedAt: { not: null } }
       : options.withTrashed
         ? {}
         : { deletedAt: null };
 
     return this.prisma.${ctx.camelName}.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
+      where: { ...trashedWhere, ...options.filters },
+      orderBy: options.sort
+        ? { [options.sort.field]: options.sort.direction }
+        : { createdAt: 'desc' },
+      take: options.limit,
     });
   }
 
@@ -203,6 +209,7 @@ import {
   LoadRecordWith,
 } from '../../technical/capabilities/capability.decorator';
 import { ok } from '../../technical/http/envelope';
+import { parseListQuery } from '../../technical/http/list-query';
 import { ZodValidationPipe } from '../../technical/validation/zod-validation.pipe';
 import { create${ctx.pascalName}Schema, update${ctx.pascalName}Schema } from './${ctx.kebabName}.dto';
 import type { Create${ctx.pascalName}Input, Update${ctx.pascalName}Input } from './${ctx.kebabName}.dto';
@@ -229,14 +236,17 @@ export class ${ctx.pascalName}Controller {
   @Get()
   async search(
     @Req() req: RequestWithUser,
-    @Query('include') include?: string,
-    @Query('withTrashed') withTrashed?: string,
-    @Query('onlyTrashed') onlyTrashed?: string,
+    @Query() rawQuery: Record<string, string>,
   ) {
-    const records = await this.${ctx.camelName}s.search({
-      withTrashed: withTrashed === 'true',
-      onlyTrashed: onlyTrashed === 'true',
+    const { include } = rawQuery;
+    const query = parseListQuery(rawQuery, {
+      sorts: [${ctx.sorts.map((field) => `'${field}'`).join(', ')}],
+      filters: [${ctx.filters.map((field) => `'${field}'`).join(', ')}],
+      limits: [${ctx.pagination.limits.join(', ')}],
+      defaultLimit: ${ctx.pagination.default},
     });
+
+    const records = await this.${ctx.camelName}s.search(query);
 
     if (include !== 'capabilities') {
       return ok(records.map(to${ctx.pascalName}View));

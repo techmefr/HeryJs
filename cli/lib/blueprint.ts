@@ -21,6 +21,14 @@ export const blueprintSchema = z.object({
       delete: permissionPresetSchema.default('own'),
     })
     .default({ create: 'own', update: 'own', delete: 'own' }),
+  pagination: z
+    .object({
+      limits: z.array(z.number().int().positive()).default([10, 15, 20]),
+      default: z.number().int().positive().default(15),
+    })
+    .default({ limits: [10, 15, 20], default: 15 }),
+  sorts: z.array(z.string()).default(['createdAt']),
+  filters: z.array(z.string()).default([]),
 });
 
 export type PermissionPreset = z.infer<typeof permissionPresetSchema>;
