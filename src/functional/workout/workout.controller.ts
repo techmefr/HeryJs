@@ -19,6 +19,7 @@ import {
   LoadRecordWith,
 } from '../../technical/capabilities/capability.decorator';
 import { ok } from '../../technical/http/envelope';
+import { resourceMessage } from '../../technical/http/resource-messages';
 import { ZodValidationPipe } from '../../technical/validation/zod-validation.pipe';
 import { createWorkoutSchema, updateWorkoutSchema } from './workout.dto';
 import type { CreateWorkoutInput, UpdateWorkoutInput } from './workout.dto';
@@ -80,7 +81,9 @@ export class WorkoutController {
     @Body(new ZodValidationPipe(createWorkoutSchema)) body: CreateWorkoutInput,
   ) {
     const subject = { id: req.user.id, teamIds: [] };
-    return ok(await this.workouts.create(subject, body));
+    return ok(await this.workouts.create(subject, body), [
+      resourceMessage('Workout', 'created'),
+    ]);
   }
 
   @Patch(':id')
@@ -90,20 +93,26 @@ export class WorkoutController {
     @Req() req: RequestWithWorkout,
     @Body(new ZodValidationPipe(updateWorkoutSchema)) body: UpdateWorkoutInput,
   ) {
-    return ok(await this.workouts.update(req.record, body));
+    return ok(await this.workouts.update(req.record, body), [
+      resourceMessage('Workout', 'updated'),
+    ]);
   }
 
   @Delete(':id')
   @Capability(canDeleteWorkout)
   @LoadRecordWith(WORKOUT_RECORD_LOADER)
   async remove(@Req() req: RequestWithWorkout) {
-    return ok(await this.workouts.softDelete(req.record));
+    return ok(await this.workouts.softDelete(req.record), [
+      resourceMessage('Workout', 'deleted'),
+    ]);
   }
 
   @Post(':id/restore')
   @Capability(canUpdateWorkout)
   @LoadRecordWith(WORKOUT_RECORD_LOADER)
   async restore(@Req() req: RequestWithWorkout) {
-    return ok(await this.workouts.restore(req.record));
+    return ok(await this.workouts.restore(req.record), [
+      resourceMessage('Workout', 'restored'),
+    ]);
   }
 }
