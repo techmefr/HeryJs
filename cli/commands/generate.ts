@@ -93,7 +93,7 @@ export function registerGenerateCommand(program: Command): void {
         `  1. Import ${pc.bold(`${ctx.pascalName}Module`)} into src/app.module.ts`,
       );
       console.log(
-        `  2. Run "npm run hery -- migrate --name add_${ctx.kebabName}" to create the migration`,
+        `  2. Run "pnpm hery migrate --name add_${ctx.kebabName}" to create the migration`,
       );
     });
 }

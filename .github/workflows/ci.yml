@@ -16,21 +16,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version-file: '.nvmrc'
+          cache: pnpm
 
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
-      - run: npx prisma migrate deploy
+      - run: pnpm exec prisma migrate deploy
 
-      - run: npm run lint
+      - run: pnpm run lint
 
-      - run: npm run arch:check
+      - run: pnpm run arch:check
 
-      - run: npm run lint:capabilities
+      - run: pnpm run lint:capabilities
 
-      - run: npm test
+      - run: pnpm test
 
-      - run: npm run build
+      - run: pnpm run build
