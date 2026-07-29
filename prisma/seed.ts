@@ -1,6 +1,7 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import type { Prisma } from '@prisma/client';
 import { PrismaClient } from '@prisma/client';
+import { env } from '../src/technical/config/env';
 import { workoutFactory } from '../src/functional/workout/workout.factory';
 
 const DEMO_TENANT_ID = 'demo-tenant';
@@ -8,7 +9,7 @@ const DEMO_EMAIL = 'demo@heryjs.local';
 const DEMO_PASSWORD = 'correct-horse-battery-staple';
 
 async function main() {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+  const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
   const prisma = new PrismaClient({ adapter });
 
   const { betterAuth } = await import('better-auth');
