@@ -88,6 +88,20 @@ model AppNotification {
   @@index([userId])
 }
 
+model AuditLog {
+  id           String   @id @default(cuid())
+  tenantId     String
+  model        String
+  operation    String
+  recordId     String?
+  data         Json
+  hash         String
+  previousHash String?
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId])
+}
+
 model Workout {
   id        String    @id @default(cuid())
   tenantId  String

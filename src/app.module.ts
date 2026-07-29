@@ -3,6 +3,7 @@ import { APP_FILTER } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { WorkoutModule } from './functional/workout/workout.module';
+import { AuditModule } from './technical/audit/audit.module';
 import { AuthModule } from './technical/auth/auth.module';
 import { FeatureFlagsModule } from './technical/feature-flags/feature-flags.module';
 import { JobsModule } from './technical/jobs/jobs.module';
@@ -13,6 +14,7 @@ import { DomainExceptionFilter } from './technical/errors/domain-exception.filte
 
 @Module({
   imports: [
+    AuditModule,
     AuthModule,
     FeatureFlagsModule,
     JobsModule,

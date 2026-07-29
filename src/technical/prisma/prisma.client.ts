@@ -1,5 +1,10 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
+import {
+  AUDITED_MODELS,
+  AUDITED_OPERATIONS,
+  writeAuditLog,
+} from '../audit/audit-log';
 import { env } from '../config/env';
 import { TenantContextStorage } from '../tenancy/tenant-context';
 
@@ -18,9 +23,9 @@ const TENANT_FILTERED_OPERATIONS = new Set([
 
 export function createTenantScopedPrismaClient() {
   const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
-  const client = new PrismaClient({ adapter });
+  const rawClient = new PrismaClient({ adapter });
 
-  return client.$extends({
+  const tenantScopedClient = rawClient.$extends({
     query: {
       $allModels: {
         $allOperations({ model, operation, args, query }) {
@@ -52,6 +57,30 @@ export function createTenantScopedPrismaClient() {
           }
 
           return query(args);
+        },
+      },
+    },
+  });
+
+  return tenantScopedClient.$extends({
+    query: {
+      $allModels: {
+        async $allOperations({ model, operation, args, query }) {
+          const result = await query(args);
+
+          if (AUDITED_MODELS.has(model) && AUDITED_OPERATIONS.has(operation)) {
+            const record = result as { id?: string } | null;
+
+            await writeAuditLog(rawClient, {
+              tenantId: TenantContextStorage.getTenantId(),
+              model,
+              operation,
+              recordId: record?.id ?? null,
+              data: result,
+            });
+          }
+
+          return result;
         },
       },
     },
