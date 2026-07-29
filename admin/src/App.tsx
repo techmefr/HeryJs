@@ -7,6 +7,7 @@ import { Layout } from './layout';
 import { AuditList } from './pages/audit/list';
 import { FeatureFlagsList } from './pages/feature-flags/list';
 import { LoginPage } from './pages/login';
+import { NotificationsList } from './pages/notifications/list';
 import { SeedersList } from './pages/seeders/list';
 
 function Gate({ children }: { children: React.ReactNode }) {
@@ -33,6 +34,7 @@ export function App() {
         resources={[
           { name: 'feature-flags' },
           { name: 'audit-logs' },
+          { name: 'notifications' },
           { name: 'seeders' },
         ]}
         options={{ disableTelemetry: true }}
@@ -51,6 +53,14 @@ export function App() {
             element={
               <Gate>
                 <AuditList />
+              </Gate>
+            }
+          />
+          <Route
+            path="/notifications"
+            element={
+              <Gate>
+                <NotificationsList />
               </Gate>
             }
           />

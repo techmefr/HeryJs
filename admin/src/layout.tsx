@@ -5,6 +5,7 @@ import { NavLink } from 'react-router-dom';
 const NAV_ITEMS = [
   { to: '/feature-flags', label: 'Feature flags' },
   { to: '/audit', label: 'Audit log' },
+  { to: '/notifications', label: 'Notifications' },
   { to: '/seeders', label: 'Seeders' },
 ];
 
