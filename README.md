@@ -22,7 +22,7 @@ HeryJs takes a deliberately different path from typical low-code or model-driven
 - **No re-sync, no proxy layer.** Tools like Amplication or ZenStack keep a live connection between a schema and your running app. HeryJs doesn't. Once a resource exists, evolving it is just... writing NestJS code, the way you always have.
 - **Resolved decisions, not raw rules.** The backend never ships its permission rules to the frontend. It resolves them once, server-side, into plain decisions (`{ allowed, scope }`) attached to the data. The frontend uses them for UX. The backend re-checks everything, every time, regardless of what the frontend thinks it's allowed to do.
 - **Multi-tenancy as a foundation, not an afterthought.** Tenant isolation is resolved once per request and enforced underneath permissions — not bolted on when the app outgrows a single customer.
-- **A structure a machine can also read.** Because every domain follows the same shape (`search`, `mutate`, `live`, `jobs`, `events`, `policies`), both a human and a coding agent know exactly where to look. No exploration tax.
+- **A structure a machine can also read.** Because every domain follows the same shape (`search`, `mutate`, `signal`, `jobs`, `events`, `policies`), both a human and a coding agent know exactly where to look. No exploration tax.
 
 This is a bet, not a certainty: that developers — and the agents increasingly writing code alongside them — prefer owning plain, predictable code over depending on a platform's lifecycle. Everything else follows from that bet.
 
