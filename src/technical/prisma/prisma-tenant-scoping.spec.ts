@@ -24,7 +24,6 @@ describe('tenant-scoped Prisma client (real database)', () => {
     const owner = await rawClient.user.create({
       data: {
         email: `owner-${randomUUID()}@example.test`,
-        passwordHash: 'irrelevant-for-this-spike',
       },
     });
     ownerId = owner.id;

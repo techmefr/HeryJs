@@ -12,6 +12,7 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://heryjs:heryjs@localhost:5432/heryjs
+      BETTER_AUTH_URL: http://localhost:3000
 
     services:
       postgres:
