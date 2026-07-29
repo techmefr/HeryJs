@@ -14,6 +14,10 @@ export function patchTenantScopedModels(
     throw new Error(`Could not find TENANT_SCOPED_MODELS in ${filePath}`);
   }
 
+  if (source.includes(`'${pascalName}'`, start)) {
+    return;
+  }
+
   const end = source.indexOf(']', start);
   const before = source.slice(0, end);
   const after = source.slice(end);
@@ -27,6 +31,11 @@ export function patchPrismaSchema(
   ctx: ResourceContext,
 ): void {
   const source = readFileSync(filePath, 'utf8');
+
+  if (source.includes(`model ${ctx.pascalName} {`)) {
+    return;
+  }
+
   const userModelStart = source.indexOf('model User {');
 
   if (userModelStart === -1) {
