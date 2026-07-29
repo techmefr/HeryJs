@@ -19,7 +19,9 @@ export function AuditList() {
   }, []);
 
   if (!entries) {
-    return <p className="text-neutral-400">Loading...</p>;
+    return (
+      <p className="text-neutral-500 dark:text-neutral-400">Loading...</p>
+    );
   }
 
   return (
@@ -27,21 +29,23 @@ export function AuditList() {
       <div className="mb-6 flex items-center gap-3">
         <h1 className="text-xl font-semibold">Audit log</h1>
         {chainValid === null ? null : chainValid ? (
-          <span className="rounded-full bg-emerald-950 px-3 py-1 text-xs text-emerald-400">
+          <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
             Chain valid
           </span>
         ) : (
-          <span className="rounded-full bg-red-950 px-3 py-1 text-xs text-red-400">
+          <span className="rounded-full bg-red-100 px-3 py-1 text-xs text-red-700 dark:bg-red-950 dark:text-red-400">
             Chain tampered
           </span>
         )}
       </div>
       {entries.length === 0 ? (
-        <p className="text-neutral-400">No audit entries yet.</p>
+        <p className="text-neutral-500 dark:text-neutral-400">
+          No audit entries yet.
+        </p>
       ) : (
-        <div className="overflow-x-auto rounded border border-neutral-800">
+        <div className="overflow-x-auto rounded border border-neutral-200 dark:border-neutral-800">
           <table className="w-full text-left text-sm">
-            <thead className="bg-neutral-900 text-neutral-400">
+            <thead className="bg-neutral-100 text-neutral-500 dark:bg-neutral-900 dark:text-neutral-400">
               <tr>
                 <th className="px-4 py-2 font-medium">When</th>
                 <th className="px-4 py-2 font-medium">Model</th>
@@ -51,8 +55,11 @@ export function AuditList() {
             </thead>
             <tbody>
               {entries.map((entry) => (
-                <tr key={entry.id} className="border-t border-neutral-800">
-                  <td className="px-4 py-2 text-neutral-400">
+                <tr
+                  key={entry.id}
+                  className="border-t border-neutral-200 dark:border-neutral-800"
+                >
+                  <td className="px-4 py-2 text-neutral-500 dark:text-neutral-400">
                     {new Date(entry.createdAt).toLocaleString()}
                   </td>
                   <td className="px-4 py-2 font-mono">{entry.model}</td>

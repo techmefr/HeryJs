@@ -7,6 +7,7 @@ import { Layout } from './layout';
 import { AuditList } from './pages/audit/list';
 import { FeatureFlagsList } from './pages/feature-flags/list';
 import { LoginPage } from './pages/login';
+import { NotFoundPage } from './pages/not-found';
 import { NotificationsList } from './pages/notifications/list';
 import { SeedersList } from './pages/seeders/list';
 
@@ -14,7 +15,11 @@ function Gate({ children }: { children: React.ReactNode }) {
   const { data, isLoading } = useIsAuthenticated();
 
   if (isLoading) {
-    return <p className="p-8 text-neutral-400">Loading...</p>;
+    return (
+      <p className="p-8 text-neutral-500 dark:text-neutral-400">
+        Loading...
+      </p>
+    );
   }
 
   if (!data?.authenticated) {
@@ -72,7 +77,8 @@ export function App() {
               </Gate>
             }
           />
-          <Route path="*" element={<Navigate to="/feature-flags" replace />} />
+          <Route path="/" element={<Navigate to="/feature-flags" replace />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Refine>
     </HashRouter>

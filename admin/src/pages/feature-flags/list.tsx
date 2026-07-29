@@ -75,7 +75,7 @@ function FlagRow({ flag }: { flag: FeatureFlag }) {
   }
 
   return (
-    <tr className="border-b border-neutral-800">
+    <tr className="border-b border-neutral-200 dark:border-neutral-800">
       <td className="py-3 pr-4 font-mono text-sm">{flag.key}</td>
       <td className="py-3">
         <div className="flex items-center gap-2">
@@ -89,7 +89,7 @@ function FlagRow({ flag }: { flag: FeatureFlag }) {
                 apply(kind);
               }
             }}
-            className="rounded border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm outline-none focus:border-orange-500"
+            className="rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-orange-500 dark:border-neutral-700 dark:bg-neutral-800"
           >
             <option value="invisible">Invisible</option>
             <option value="everyone">Tout le monde</option>
@@ -102,7 +102,7 @@ function FlagRow({ flag }: { flag: FeatureFlag }) {
                 value={customTenantId}
                 placeholder="tenant id"
                 onChange={(event) => setCustomTenantId(event.target.value)}
-                className="rounded border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm outline-none focus:border-orange-500"
+                className="rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm outline-none focus:border-orange-500 dark:border-neutral-700 dark:bg-neutral-800"
               />
               <button
                 type="button"
@@ -124,7 +124,9 @@ export function FeatureFlagsList() {
   const { result, query } = useList<FeatureFlag>({ resource: 'feature-flags' });
 
   if (query.isLoading) {
-    return <p className="text-neutral-400">Loading...</p>;
+    return (
+      <p className="text-neutral-500 dark:text-neutral-400">Loading...</p>
+    );
   }
 
   return (
@@ -133,7 +135,7 @@ export function FeatureFlagsList() {
       {result?.data.length ? (
         <table className="w-full max-w-2xl border-collapse">
           <thead>
-            <tr className="border-b border-neutral-700 text-left text-xs uppercase text-neutral-500">
+            <tr className="border-b border-neutral-300 text-left text-xs uppercase text-neutral-500 dark:border-neutral-700">
               <th className="pb-2 pr-4 font-medium">Key</th>
               <th className="pb-2 font-medium">Visible for</th>
             </tr>

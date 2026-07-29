@@ -46,7 +46,9 @@ export function SeedersList() {
   }
 
   if (!seeders) {
-    return <p className="text-neutral-400">Loading...</p>;
+    return (
+      <p className="text-neutral-500 dark:text-neutral-400">Loading...</p>
+    );
   }
 
   return (
@@ -59,7 +61,7 @@ export function SeedersList() {
           return (
             <div
               key={seeder.name}
-              className="flex items-center justify-between rounded border border-neutral-800 bg-neutral-900 px-4 py-3"
+              className="flex items-center justify-between rounded border border-neutral-200 bg-neutral-50 px-4 py-3 dark:border-neutral-800 dark:bg-neutral-900"
             >
               <div>
                 <p className="font-mono text-sm">{seeder.name}</p>
@@ -85,7 +87,7 @@ export function SeedersList() {
                       [seeder.name]: Number(event.target.value),
                     }))
                   }
-                  className="w-20 rounded border border-neutral-700 bg-neutral-950 px-2 py-1.5 text-sm text-neutral-100"
+                  className="w-20 rounded border border-neutral-300 bg-white px-2 py-1.5 text-sm text-neutral-900 dark:border-neutral-700 dark:bg-neutral-950 dark:text-neutral-100"
                 />
                 <button
                   type="button"
