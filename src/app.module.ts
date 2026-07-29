@@ -4,13 +4,20 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { WorkoutModule } from './functional/workout/workout.module';
 import { AuthModule } from './technical/auth/auth.module';
+import { FeatureFlagsModule } from './technical/feature-flags/feature-flags.module';
 import { JobsModule } from './technical/jobs/jobs.module';
 import { SignalModule } from './technical/signal/signal.module';
 import { TenantMiddleware } from './technical/tenancy/tenant.middleware';
 import { DomainExceptionFilter } from './technical/errors/domain-exception.filter';
 
 @Module({
-  imports: [AuthModule, JobsModule, SignalModule, WorkoutModule],
+  imports: [
+    AuthModule,
+    FeatureFlagsModule,
+    JobsModule,
+    SignalModule,
+    WorkoutModule,
+  ],
   controllers: [AppController],
   providers: [
     AppService,

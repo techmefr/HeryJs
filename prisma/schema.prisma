@@ -63,6 +63,17 @@ model Verification {
   updatedAt  DateTime @updatedAt
 }
 
+model FeatureFlag {
+  id        String   @id @default(cuid())
+  key       String
+  tenantId  String?
+  enabled   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([key, tenantId])
+}
+
 model Workout {
   id        String    @id @default(cuid())
   tenantId  String
