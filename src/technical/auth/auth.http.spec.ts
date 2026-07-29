@@ -56,7 +56,8 @@ describe('auth over a real HTTP round trip', () => {
       .send({ email, password })
       .expect(201);
 
-    const token = (loginResponse.body as { token: string }).token;
+    const token = (loginResponse.body as { data: { token: string } }).data
+      .token;
     expect(token).toEqual(expect.any(String));
 
     await request(app.getHttpServer())

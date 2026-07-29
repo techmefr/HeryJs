@@ -21,7 +21,7 @@ async function registerAndLogin(app: INestApplication<App>) {
     .send({ email, password })
     .expect(201);
 
-  return (login.body as { token: string }).token;
+  return (login.body as { data: { token: string } }).data.token;
 }
 
 describe('Workout resource (full vertical slice)', () => {
