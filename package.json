@@ -19,7 +19,8 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "arch:check": "depcruise src --config .dependency-cruiser.cjs"
+    "arch:check": "depcruise src --config .dependency-cruiser.cjs",
+    "lint:capabilities": "ts-node scripts/check-capability-decorator.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

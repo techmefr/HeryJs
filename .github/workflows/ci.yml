@@ -29,6 +29,8 @@ jobs:
 
       - run: npm run arch:check
 
+      - run: npm run lint:capabilities
+
       - run: npm test
 
       - run: npm run build
