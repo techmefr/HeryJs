@@ -115,6 +115,8 @@ import { PRISMA_CLIENT } from '../../technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '../../technical/prisma/prisma.client';
 import { RecordNotFoundException } from '../../technical/errors/record-not-found.exception';
 import { CapabilitySubject } from '../../technical/capabilities/capabilities.types';
+import { SignalService } from '../../technical/signal/signal.service';
+import { TenantContextStorage } from '../../technical/tenancy/tenant-context';
 import { Create${ctx.pascalName}Input, Update${ctx.pascalName}Input } from './${ctx.kebabName}.dto';
 
 export interface ${ctx.pascalName}SearchOptions {
@@ -125,11 +127,20 @@ export interface ${ctx.pascalName}SearchOptions {
   limit?: number;
 }
 
+export const ${ctx.pascalName.toUpperCase()}_SIGNAL_CHANNEL = '${ctx.camelName}';
+
 @Injectable()
 export class ${ctx.pascalName}Service {
   constructor(
     @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,
+    private readonly signal: SignalService,
   ) {}
+
+  private notify() {
+    this.signal.publish(
+      \`\${TenantContextStorage.getTenantId()}:\${${ctx.pascalName.toUpperCase()}_SIGNAL_CHANNEL}\`,
+    );
+  }
 
   async search(options: ${ctx.pascalName}SearchOptions = {}) {
     const trashedWhere = options.onlyTrashed
@@ -157,32 +168,40 @@ export class ${ctx.pascalName}Service {
     return record;
   }
 
-  create(subject: CapabilitySubject, data: Create${ctx.pascalName}Input) {
-    return this.prisma.${ctx.camelName}.create({
+  async create(subject: CapabilitySubject, data: Create${ctx.pascalName}Input) {
+    const record = await this.prisma.${ctx.camelName}.create({
       // tenantId is injected by the tenant-scoping Prisma extension, invisible to callers by design.
       data: {
         ...data,
         ownerId: subject.id,
       } as unknown as Prisma.${ctx.pascalName}CreateInput,
     });
+    this.notify();
+    return record;
   }
 
-  update(record: ${ctx.pascalName}, data: Update${ctx.pascalName}Input) {
-    return this.prisma.${ctx.camelName}.update({ where: { id: record.id }, data });
+  async update(record: ${ctx.pascalName}, data: Update${ctx.pascalName}Input) {
+    const updated = await this.prisma.${ctx.camelName}.update({ where: { id: record.id }, data });
+    this.notify();
+    return updated;
   }
 
-  softDelete(record: ${ctx.pascalName}) {
-    return this.prisma.${ctx.camelName}.update({
+  async softDelete(record: ${ctx.pascalName}) {
+    const updated = await this.prisma.${ctx.camelName}.update({
       where: { id: record.id },
       data: { deletedAt: new Date() },
     });
+    this.notify();
+    return updated;
   }
 
-  restore(record: ${ctx.pascalName}) {
-    return this.prisma.${ctx.camelName}.update({
+  async restore(record: ${ctx.pascalName}) {
+    const updated = await this.prisma.${ctx.camelName}.update({
       where: { id: record.id },
       data: { deletedAt: null },
     });
+    this.notify();
+    return updated;
   }
 }
 `;
@@ -220,7 +239,10 @@ import {
   canUpdate${ctx.pascalName},
   ${ctx.pascalName}Policy,
 } from './${ctx.kebabName}.policy';
-import { ${ctx.pascalName}Service } from './${ctx.kebabName}.service';
+import {
+  ${ctx.pascalName.toUpperCase()}_SIGNAL_CHANNEL,
+  ${ctx.pascalName}Service,
+} from './${ctx.kebabName}.service';
 import { ${ctx.pascalName.toUpperCase()}_RECORD_LOADER } from './${ctx.kebabName}-record.loader';
 import { to${ctx.pascalName}View } from './${ctx.kebabName}.view';
 
@@ -250,7 +272,9 @@ export class ${ctx.pascalName}Controller {
     const records = await this.${ctx.camelName}s.search(query);
 
     if (include !== 'capabilities') {
-      return ok(records.map(to${ctx.pascalName}View));
+      return ok(records.map(to${ctx.pascalName}View), {
+        channels: [${ctx.pascalName.toUpperCase()}_SIGNAL_CHANNEL],
+      });
     }
 
     const subject = { id: req.user.id, teamIds: [] };
@@ -260,7 +284,10 @@ export class ${ctx.pascalName}Controller {
         ...to${ctx.pascalName}View(record),
         capabilities: this.policy.recordCapabilities(subject, record),
       })),
-      { capabilities: this.policy.metaCapabilities(subject) },
+      {
+        capabilities: this.policy.metaCapabilities(subject),
+        channels: [${ctx.pascalName.toUpperCase()}_SIGNAL_CHANNEL],
+      },
     );
   }
 
@@ -311,6 +338,7 @@ export function moduleFile(ctx: ResourceContext): string {
 import { AuthModule } from '../../technical/auth/auth.module';
 import { CapabilitiesService } from '../../technical/capabilities/capabilities.service';
 import { PrismaModule } from '../../technical/prisma/prisma.module';
+import { SignalModule } from '../../technical/signal/signal.module';
 import { ${ctx.pascalName}Controller } from './${ctx.kebabName}.controller';
 import { ${ctx.pascalName}Policy } from './${ctx.kebabName}.policy';
 import { ${ctx.pascalName}Service } from './${ctx.kebabName}.service';
@@ -320,7 +348,7 @@ import {
 } from './${ctx.kebabName}-record.loader';
 
 @Module({
-  imports: [PrismaModule, AuthModule],
+  imports: [PrismaModule, AuthModule, SignalModule],
   controllers: [${ctx.pascalName}Controller],
   providers: [
     ${ctx.pascalName}Service,

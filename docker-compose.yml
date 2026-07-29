@@ -11,5 +11,14 @@ services:
     volumes:
       - heryjs-postgres:/var/lib/postgresql/data
 
+  valkey:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    ports:
+      - '6479:6379'
+    volumes:
+      - heryjs-valkey:/data
+
 volumes:
   heryjs-postgres:
+  heryjs-valkey:

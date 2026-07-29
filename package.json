@@ -27,13 +27,18 @@
     "hery": "ts-node cli/hery.ts"
   },
   "dependencies": {
+    "@bull-board/api": "^8.3.2",
+    "@bull-board/express": "^8.3.2",
+    "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "better-auth": "^1.6.25",
+    "bullmq": "^5.81.2",
     "commander": "^11.1.0",
+    "ioredis": "^5.11.1",
     "js-yaml": "^5.2.2",
     "pg": "^8.22.0",
     "picocolors": "^1.1.1",

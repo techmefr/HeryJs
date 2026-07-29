@@ -3,6 +3,11 @@ import { z } from 'zod';
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   PORT: z.coerce.number().int().positive().default(3000),
+  REDIS_URL: z.string().min(1).default('redis://localhost:6479'),
+  SIGNAL_TOKEN_SECRET: z
+    .string()
+    .min(1)
+    .default('dev-signal-secret-change-in-production'),
 });
 
 function loadEnv() {
