@@ -1,0 +1,75 @@
+import { useEffect, useState } from 'react';
+import { apiFetch } from '../../api-fetch';
+
+interface SeederInfo {
+  name: string;
+  description: string;
+}
+
+type RunState = 'idle' | 'running' | { count: number } | { error: string };
+
+export function SeedersList() {
+  const [seeders, setSeeders] = useState<SeederInfo[] | null>(null);
+  const [runState, setRunState] = useState<Record<string, RunState>>({});
+
+  useEffect(() => {
+    apiFetch('/seeders').then((body) => setSeeders(body.data));
+  }, []);
+
+  async function run(name: string) {
+    setRunState((state) => ({ ...state, [name]: 'running' }));
+    try {
+      const body = await apiFetch(`/seeders/${name}/run`, { method: 'POST' });
+      setRunState((state) => ({ ...state, [name]: { count: body.data.count } }));
+    } catch {
+      setRunState((state) => ({
+        ...state,
+        [name]: { error: 'Failed to run seeder' },
+      }));
+    }
+  }
+
+  if (!seeders) {
+    return <p className="text-neutral-400">Loading...</p>;
+  }
+
+  return (
+    <div>
+      <h1 className="mb-6 text-xl font-semibold">Seeders</h1>
+      <div className="flex max-w-2xl flex-col gap-3">
+        {seeders.map((seeder) => {
+          const state = runState[seeder.name] ?? 'idle';
+          return (
+            <div
+              key={seeder.name}
+              className="flex items-center justify-between rounded border border-neutral-800 bg-neutral-900 px-4 py-3"
+            >
+              <div>
+                <p className="font-mono text-sm">{seeder.name}</p>
+                <p className="text-xs text-neutral-500">{seeder.description}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                {typeof state === 'object' && 'count' in state ? (
+                  <span className="text-xs text-emerald-400">
+                    Created {state.count}
+                  </span>
+                ) : null}
+                {typeof state === 'object' && 'error' in state ? (
+                  <span className="text-xs text-red-400">{state.error}</span>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => run(seeder.name)}
+                  disabled={state === 'running'}
+                  className="rounded bg-orange-600 px-3 py-1.5 text-sm text-white hover:bg-orange-500 disabled:opacity-50"
+                >
+                  {state === 'running' ? 'Running...' : 'Run'}
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

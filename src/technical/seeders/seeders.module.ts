@@ -1,0 +1,24 @@
+import { DynamicModule, Module, Type } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module';
+import { PrismaModule } from '../prisma/prisma.module';
+import { SEEDERS, Seeder } from './seeder.types';
+import { SeedersController } from './seeders.controller';
+
+@Module({})
+export class SeedersModule {
+  static forRoot(seeders: Type<Seeder>[]): DynamicModule {
+    return {
+      module: SeedersModule,
+      imports: [PrismaModule, AuthModule],
+      controllers: [SeedersController],
+      providers: [
+        ...seeders,
+        {
+          provide: SEEDERS,
+          useFactory: (...instances: Seeder[]) => instances,
+          inject: seeders,
+        },
+      ],
+    };
+  }
+}

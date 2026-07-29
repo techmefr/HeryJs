@@ -75,41 +75,46 @@ function FlagRow({ flag }: { flag: FeatureFlag }) {
   }
 
   return (
-    <tr>
-      <td>{flag.key}</td>
-      <td>
-        <select
-          value={selectedKind}
-          onChange={(event) => {
-            const kind = event.target.value as Target['kind'];
-            if (kind === 'other') {
-              setPendingKind('other');
-            } else {
-              apply(kind);
-            }
-          }}
-        >
-          <option value="invisible">Invisible</option>
-          <option value="everyone">Tout le monde</option>
-          <option value="beta">Tenant - beta test</option>
-          <option value="other">Autre</option>
-        </select>
-        {selectedKind === 'other' ? (
-          <span style={{ marginLeft: 8 }}>
-            <input
-              value={customTenantId}
-              placeholder="tenant id"
-              onChange={(event) => setCustomTenantId(event.target.value)}
-            />
-            <button
-              type="button"
-              onClick={() => apply('other', customTenantId)}
-              disabled={!customTenantId}
-            >
-              Set
-            </button>
-          </span>
-        ) : null}
+    <tr className="border-b border-neutral-800">
+      <td className="py-3 pr-4 font-mono text-sm">{flag.key}</td>
+      <td className="py-3">
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedKind}
+            onChange={(event) => {
+              const kind = event.target.value as Target['kind'];
+              if (kind === 'other') {
+                setPendingKind('other');
+              } else {
+                apply(kind);
+              }
+            }}
+            className="rounded border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm outline-none focus:border-orange-500"
+          >
+            <option value="invisible">Invisible</option>
+            <option value="everyone">Tout le monde</option>
+            <option value="beta">Tenant - beta test</option>
+            <option value="other">Autre</option>
+          </select>
+          {selectedKind === 'other' ? (
+            <>
+              <input
+                value={customTenantId}
+                placeholder="tenant id"
+                onChange={(event) => setCustomTenantId(event.target.value)}
+                className="rounded border border-neutral-700 bg-neutral-800 px-2 py-1.5 text-sm outline-none focus:border-orange-500"
+              />
+              <button
+                type="button"
+                onClick={() => apply('other', customTenantId)}
+                disabled={!customTenantId}
+                className="rounded bg-orange-600 px-3 py-1.5 text-sm text-white hover:bg-orange-500 disabled:opacity-50"
+              >
+                Set
+              </button>
+            </>
+          ) : null}
+        </div>
       </td>
     </tr>
   );
@@ -119,23 +124,29 @@ export function FeatureFlagsList() {
   const { result, query } = useList<FeatureFlag>({ resource: 'feature-flags' });
 
   if (query.isLoading) {
-    return <p>Loading...</p>;
+    return <p className="text-neutral-400">Loading...</p>;
   }
 
   return (
-    <div style={{ maxWidth: 720, margin: '40px auto' }}>
-      <h1>Feature flags</h1>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            <th style={{ textAlign: 'left' }}>Key</th>
-            <th style={{ textAlign: 'left' }}>Visible for</th>
-          </tr>
-        </thead>
-        <tbody>
-          {result?.data.map((flag) => <FlagRow key={flag.id} flag={flag} />)}
-        </tbody>
-      </table>
+    <div>
+      <h1 className="mb-6 text-xl font-semibold">Feature flags</h1>
+      {result?.data.length ? (
+        <table className="w-full max-w-2xl border-collapse">
+          <thead>
+            <tr className="border-b border-neutral-700 text-left text-xs uppercase text-neutral-500">
+              <th className="pb-2 pr-4 font-medium">Key</th>
+              <th className="pb-2 font-medium">Visible for</th>
+            </tr>
+          </thead>
+          <tbody>
+            {result.data.map((flag) => (
+              <FlagRow key={flag.id} flag={flag} />
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="text-neutral-500">No feature flags yet.</p>
+      )}
     </div>
   );
 }

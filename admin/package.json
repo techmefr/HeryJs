@@ -11,8 +11,11 @@
   "dependencies": {
     "@casl/ability": "^6.7.3",
     "@refinedev/core": "^5.0.12",
+    "@tailwindcss/vite": "^4.3.3",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.18.1",
+    "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",
