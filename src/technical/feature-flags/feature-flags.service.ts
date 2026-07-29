@@ -33,6 +33,10 @@ export class FeatureFlagsService {
     });
   }
 
+  listAll() {
+    return this.prisma.featureFlag.findMany({ orderBy: { key: 'asc' } });
+  }
+
   async set(key: string, enabled: boolean, tenantId?: string) {
     const existing = await this.prisma.featureFlag.findFirst({
       where: { key, tenantId: tenantId ?? null },

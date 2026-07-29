@@ -1,6 +1,5 @@
 import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import { SessionGuard } from '../auth/session.guard';
-import { TenantContextStorage } from '../tenancy/tenant-context';
 import { ok } from '../http/envelope';
 import { ZodValidationPipe } from '../validation/zod-validation.pipe';
 import { FeatureFlagsService } from './feature-flags.service';
@@ -14,7 +13,7 @@ export class FeatureFlagsController {
 
   @Get()
   async list() {
-    return ok(await this.featureFlags.list(TenantContextStorage.getTenantId()));
+    return ok(await this.featureFlags.listAll());
   }
 
   @Patch(':key')
@@ -22,9 +21,12 @@ export class FeatureFlagsController {
     @Param('key') key: string,
     @Body(new ZodValidationPipe(setFeatureFlagSchema)) body: SetFeatureFlagDto,
   ) {
-    const tenantId =
-      body.scope === 'tenant' ? TenantContextStorage.getTenantId() : undefined;
-
-    return ok(await this.featureFlags.set(key, body.enabled, tenantId));
+    return ok(
+      await this.featureFlags.set(
+        key,
+        body.enabled,
+        body.tenantId ?? undefined,
+      ),
+    );
   }
 }

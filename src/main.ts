@@ -7,6 +7,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   if (process.env.NODE_ENV !== 'production') {
+    app.enableCors();
     mountBullBoard(app);
   }
 
