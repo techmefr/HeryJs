@@ -1,0 +1,80 @@
+/* Bold, high-contrast theme: near-black/white base with a single electric accent. */
+
+:root {
+	--sl-color-accent-low: #003a1f;
+	--sl-color-accent: #00e05e;
+	--sl-color-accent-high: #b6ffd8;
+	--sl-color-white: #ffffff;
+	--sl-color-gray-1: #eef1ee;
+	--sl-color-gray-2: #c4c9c4;
+	--sl-color-gray-3: #8b928b;
+	--sl-color-gray-4: #5a615a;
+	--sl-color-gray-5: #34372f;
+	--sl-color-gray-6: #1c1e1a;
+	--sl-color-black: #0a0b09;
+
+	--sl-font: 'Helvetica Neue', 'Arial', system-ui, sans-serif;
+}
+
+:root[data-theme='light'] {
+	--sl-color-accent-low: #d3ffe7;
+	--sl-color-accent: #00913f;
+	--sl-color-accent-high: #005226;
+	--sl-color-white: #0a0b09;
+	--sl-color-gray-1: #1c1e1a;
+	--sl-color-gray-2: #34372f;
+	--sl-color-gray-3: #5a615a;
+	--sl-color-gray-4: #8b928b;
+	--sl-color-gray-5: #c4c9c4;
+	--sl-color-gray-6: #eef1ee;
+	--sl-color-gray-7: #f7f9f7;
+	--sl-color-black: #ffffff;
+}
+
+h1,
+h2,
+h3 {
+	font-weight: 800;
+	letter-spacing: -0.02em;
+	text-transform: uppercase;
+}
+
+h1 {
+	font-size: 2.75rem;
+	line-height: 1.05;
+}
+
+a {
+	text-underline-offset: 0.2em;
+}
+
+.sl-markdown-content a:not(:where(.not-content *)) {
+	font-weight: 600;
+	text-decoration-thickness: 2px;
+}
+
+.hero h1 {
+	font-size: 3.5rem;
+}
+
+.hero .tagline {
+	font-weight: 500;
+	letter-spacing: -0.01em;
+}
+
+.hero .actions a {
+	border-radius: 999px;
+	border-width: 2px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.02em;
+}
+
+.card {
+	border-width: 2px !important;
+	border-radius: 0.75rem !important;
+}
+
+code {
+	font-weight: 600;
+}
