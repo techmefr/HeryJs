@@ -1,5 +1,6 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
+import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { WorkoutModule } from './functional/workout/workout.module';
@@ -17,6 +18,21 @@ import { DomainExceptionFilter } from './technical/errors/domain-exception.filte
 
 @Module({
   imports: [
+    LoggerModule.forRoot({
+      pinoHttp: {
+        level:
+          process.env.NODE_ENV === 'test'
+            ? 'silent'
+            : process.env.NODE_ENV === 'production'
+              ? 'info'
+              : 'debug',
+        transport:
+          process.env.NODE_ENV === 'production' ||
+          process.env.NODE_ENV === 'test'
+            ? undefined
+            : { target: 'pino-pretty', options: { singleLine: true } },
+      },
+    }),
     AuditModule,
     AuthModule,
     FeatureFlagsModule,
