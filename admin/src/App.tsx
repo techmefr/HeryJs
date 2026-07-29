@@ -4,6 +4,7 @@ import { accessControlProvider } from './access-control-provider';
 import { authProvider } from './auth-provider';
 import { dataProvider } from './data-provider';
 import { Layout } from './layout';
+import { AuditList } from './pages/audit/list';
 import { FeatureFlagsList } from './pages/feature-flags/list';
 import { LoginPage } from './pages/login';
 import { SeedersList } from './pages/seeders/list';
@@ -29,7 +30,11 @@ export function App() {
         dataProvider={dataProvider}
         authProvider={authProvider}
         accessControlProvider={accessControlProvider}
-        resources={[{ name: 'feature-flags' }, { name: 'seeders' }]}
+        resources={[
+          { name: 'feature-flags' },
+          { name: 'audit-logs' },
+          { name: 'seeders' },
+        ]}
         options={{ disableTelemetry: true }}
       >
         <Routes>
@@ -38,6 +43,14 @@ export function App() {
             element={
               <Gate>
                 <FeatureFlagsList />
+              </Gate>
+            }
+          />
+          <Route
+            path="/audit"
+            element={
+              <Gate>
+                <AuditList />
               </Gate>
             }
           />
