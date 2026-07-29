@@ -1,3 +1,4 @@
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import { TenantContextStorage } from '../tenancy/tenant-context';
 
@@ -15,7 +16,8 @@ const TENANT_FILTERED_OPERATIONS = new Set([
 ]);
 
 export function createTenantScopedPrismaClient() {
-  const client = new PrismaClient();
+  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+  const client = new PrismaClient({ adapter });
 
   return client.$extends({
     query: {

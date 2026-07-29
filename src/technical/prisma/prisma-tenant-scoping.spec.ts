@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import { TenantContextStorage } from '../tenancy/tenant-context';
 import {
@@ -7,7 +8,8 @@ import {
 } from './prisma.client';
 
 describe('tenant-scoped Prisma client (real database)', () => {
-  const rawClient = new PrismaClient();
+  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+  const rawClient = new PrismaClient({ adapter });
   let scopedClient: TenantScopedPrismaClient;
 
   const tenantA = `tenant-a-${randomUUID()}`;

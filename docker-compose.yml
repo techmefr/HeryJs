@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: heryjs
+      POSTGRES_PASSWORD: heryjs
+      POSTGRES_DB: heryjs
+    ports:
+      - '5432:5432'
+    volumes:
+      - heryjs-postgres:/var/lib/postgresql/data
+
+volumes:
+  heryjs-postgres:

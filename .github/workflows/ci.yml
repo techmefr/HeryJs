@@ -11,7 +11,22 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DATABASE_URL: file:./dev.db
+      DATABASE_URL: postgresql://heryjs:heryjs@localhost:5432/heryjs
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: heryjs
+          POSTGRES_PASSWORD: heryjs
+          POSTGRES_DB: heryjs
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
