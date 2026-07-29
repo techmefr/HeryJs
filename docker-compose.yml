@@ -19,6 +19,19 @@ services:
     volumes:
       - heryjs-valkey:/data
 
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '443:443'
+      - '80:80'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - heryjs-caddy-data:/data
+
 volumes:
   heryjs-postgres:
   heryjs-valkey:
+  heryjs-caddy-data:
