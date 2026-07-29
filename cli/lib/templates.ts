@@ -1,5 +1,11 @@
 import type { ResourceContext } from './resource-context';
-import { prismaTypeFor, sampleValueFor, zodTypeFor } from './field-types';
+import {
+  fakerValueFor,
+  prismaTypeFor,
+  sampleValueFor,
+  tsTypeFor,
+  zodTypeFor,
+} from './field-types';
 
 function fieldLines(ctx: ResourceContext, indent: string): string {
   return ctx.fields
@@ -445,6 +451,60 @@ describe('${ctx.pascalName} resource', () => {
     expect((response.body as { data: unknown[] }).data).toHaveLength(0);
   });
 });
+`;
+}
+
+export function factoryFile(ctx: ResourceContext): string {
+  const overrideLines = ctx.fields
+    .map((field) => `  ${field.name}?: ${tsTypeFor(field)};`)
+    .join('\n');
+
+  const buildLines = ctx.fields
+    .map(
+      (field) =>
+        `    ${field.name}: overrides.${field.name} ?? ${fakerValueFor(field)},`,
+    )
+    .join('\n');
+
+  return `import { faker } from '@faker-js/faker';
+
+export interface ${ctx.pascalName}FactoryOverrides {
+  ownerId: string;
+  tenantId?: string;
+${overrideLines}
+  trashed?: boolean;
+}
+
+export interface ${ctx.pascalName}FactoryOptions {
+  count?: number;
+}
+
+function build${ctx.pascalName}(overrides: ${ctx.pascalName}FactoryOverrides) {
+  return {
+${buildLines}
+    ownerId: overrides.ownerId,
+    ...(overrides.tenantId ? { tenantId: overrides.tenantId } : {}),
+    deletedAt: overrides.trashed ? new Date() : null,
+  };
+}
+
+export function ${ctx.camelName}Factory(
+  overrides: ${ctx.pascalName}FactoryOverrides,
+): ReturnType<typeof build${ctx.pascalName}>;
+export function ${ctx.camelName}Factory(
+  overrides: ${ctx.pascalName}FactoryOverrides,
+  options: Required<${ctx.pascalName}FactoryOptions>,
+): ReturnType<typeof build${ctx.pascalName}>[];
+export function ${ctx.camelName}Factory(
+  overrides: ${ctx.pascalName}FactoryOverrides,
+  options: ${ctx.pascalName}FactoryOptions = {},
+) {
+  if (options.count === undefined) {
+    return build${ctx.pascalName}(overrides);
+  }
+
+  return Array.from({ length: options.count }, () => build${ctx.pascalName}(overrides));
+}
 `;
 }
 

@@ -12,6 +12,7 @@ import {
 import {
   controllerFile,
   dtoFile,
+  factoryFile,
   moduleFile,
   policyFile,
   recordLoaderFile,
@@ -59,6 +60,7 @@ export function registerGenerateCommand(program: Command): void {
 
       const files: Record<string, string> = {
         [`${ctx.kebabName}.dto.ts`]: dtoFile(ctx),
+        [`${ctx.kebabName}.factory.ts`]: factoryFile(ctx),
         [`${ctx.kebabName}.policy.ts`]: policyFile(ctx),
         [`${ctx.kebabName}-record.loader.ts`]: recordLoaderFile(ctx),
         [`${ctx.kebabName}.service.ts`]: serviceFile(ctx),

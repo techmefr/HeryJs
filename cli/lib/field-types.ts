@@ -36,3 +36,25 @@ export function sampleValueFor(field: BlueprintField): string {
       return 'new Date().toISOString()';
   }
 }
+
+const TS_TYPES: Record<BlueprintField['type'], string> = {
+  string: 'string',
+  int: 'number',
+  boolean: 'boolean',
+  datetime: 'Date',
+};
+
+export function tsTypeFor(field: BlueprintField): string {
+  return TS_TYPES[field.type];
+}
+
+const FAKER_VALUES: Record<BlueprintField['type'], string> = {
+  string: 'faker.lorem.words(3)',
+  int: 'faker.number.int({ min: 1, max: 1000 })',
+  boolean: 'faker.datatype.boolean()',
+  datetime: 'faker.date.recent()',
+};
+
+export function fakerValueFor(field: BlueprintField): string {
+  return FAKER_VALUES[field.type];
+}
