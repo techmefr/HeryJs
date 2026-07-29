@@ -1,18 +1,26 @@
 import { spawnSync } from 'node:child_process';
-import { parseArgv } from '../lib/argv';
+import type { Command } from 'commander';
+import pc from 'picocolors';
 
-export function runMigrate(argv: string[]): void {
-  const { flags } = parseArgv(argv);
-  const migrateArgs = ['prisma', 'migrate', 'dev'];
+export function registerMigrateCommand(program: Command): void {
+  program
+    .command('migrate')
+    .description('Run Prisma migrate dev')
+    .option('--name <name>', 'Migration name')
+    .action((options: { name?: string }) => {
+      const migrateArgs = ['prisma', 'migrate', 'dev'];
 
-  if (typeof flags.name === 'string') {
-    migrateArgs.push('--name', flags.name);
-  }
+      if (options.name) {
+        migrateArgs.push('--name', options.name);
+      }
 
-  const result = spawnSync('npx', migrateArgs, {
-    stdio: 'inherit',
-    shell: process.platform === 'win32',
-  });
+      console.log(pc.cyan(`Running: npx ${migrateArgs.join(' ')}`));
 
-  process.exitCode = result.status ?? 1;
+      const result = spawnSync('npx', migrateArgs, {
+        stdio: 'inherit',
+        shell: process.platform === 'win32',
+      });
+
+      process.exitCode = result.status ?? 1;
+    });
 }

@@ -22,6 +22,7 @@ export const blueprintSchema = z.object({
     .default({ create: 'own', update: 'own', delete: 'own' }),
 });
 
+export type PermissionPreset = z.infer<typeof permissionPresetSchema>;
 export type BlueprintField = z.infer<typeof blueprintFieldSchema>;
 export type Blueprint = z.infer<typeof blueprintSchema>;
 
