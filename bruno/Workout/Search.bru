@@ -1,0 +1,16 @@
+meta {
+  name: Search
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/workouts
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{token}}
+  x-tenant-id: bruno-local
+}

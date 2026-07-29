@@ -1,0 +1,6 @@
+script:pre-request {
+  if (!req.url.includes("/auth/dev-token") && !bru.getVar("token")) {
+    const res = await bru.runRequest("Auth/Dev Token.bru");
+    bru.setVar("token", res.data.data.token);
+  }
+}

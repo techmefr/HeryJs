@@ -1,4 +1,10 @@
-import { Body, Controller, Inject, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Inject,
+  NotFoundException,
+  Post,
+} from '@nestjs/common';
 import { ok } from '../http/envelope';
 import { ZodValidationPipe } from '../validation/zod-validation.pipe';
 import { AUTH_PROVIDER } from './auth.types';
@@ -22,5 +28,14 @@ export class AuthController {
   @Post('login')
   async login(@Body(new ZodValidationPipe(loginSchema)) body: LoginInput) {
     return ok(await this.authProvider.login(body.email, body.password));
+  }
+
+  @Post('dev-token')
+  async devToken() {
+    if (process.env.NODE_ENV === 'production') {
+      throw new NotFoundException();
+    }
+
+    return ok(await this.authProvider.devToken());
   }
 }

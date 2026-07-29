@@ -33,6 +33,18 @@ export class SessionAuthProvider implements AuthProvider {
     }
   }
 
+  async devToken(): Promise<{ user: AuthenticatedUser; token: string }> {
+    const email = 'dev@heryjs.local';
+    const password = 'dev-token-password';
+
+    try {
+      return await this.login(email, password);
+    } catch {
+      await this.register(email, password);
+      return await this.login(email, password);
+    }
+  }
+
   async validateSession(token: string): Promise<AuthenticatedUser | null> {
     const { auth } = await getAuthContext();
     const session = await auth.api.getSession({
