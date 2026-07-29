@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { PRISMA_CLIENT } from '../prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '../prisma/prisma.client';
+import { InvalidCredentialsException } from '../errors/invalid-credentials.exception';
 import { AuthenticatedUser, AuthProvider } from './auth.types';
 import { hashPassword, verifyPassword } from './password';
 
@@ -28,7 +29,7 @@ export class SessionAuthProvider implements AuthProvider {
     const user = await this.prisma.user.findUnique({ where: { email } });
 
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new InvalidCredentialsException();
     }
 
     const session = await this.prisma.session.create({

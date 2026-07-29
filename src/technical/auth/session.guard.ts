@@ -3,11 +3,14 @@ import {
   ExecutionContext,
   Inject,
   Injectable,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { AUTH_PROVIDER } from './auth.types';
 import type { AuthenticatedUser, AuthProvider } from './auth.types';
+import {
+  MissingSessionException,
+  InvalidSessionException,
+} from '../errors/invalid-session.exception';
 
 export type RequestWithUser = Request & { user: AuthenticatedUser };
 
@@ -25,13 +28,13 @@ export class SessionGuard implements CanActivate {
       : undefined;
 
     if (!token) {
-      throw new UnauthorizedException('Missing session token');
+      throw new MissingSessionException();
     }
 
     const user = await this.authProvider.validateSession(token);
 
     if (!user) {
-      throw new UnauthorizedException('Invalid or expired session');
+      throw new InvalidSessionException();
     }
 
     (request as RequestWithUser).user = user;
