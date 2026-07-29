@@ -8,6 +8,7 @@ export const blueprintFieldSchema = z.object({
   name: z.string().regex(/^[a-z][a-zA-Z0-9]*$/),
   type: z.enum(['string', 'int', 'boolean', 'datetime']),
   optional: z.boolean().default(false),
+  hidden: z.boolean().default(false),
 });
 
 export const blueprintSchema = z.object({

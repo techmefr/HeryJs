@@ -44,16 +44,24 @@ async function promptFields(): Promise<BlueprintField[]> {
       initial: false,
     })) as { optional?: boolean };
 
+    const hiddenResponse = (await prompts({
+      type: 'confirm',
+      name: 'hidden',
+      message: 'Hide this field from API responses?',
+      initial: false,
+    })) as { hidden?: boolean };
+
     fields.push({
       name: nameResponse.name,
       type: typeResponse.type ?? 'string',
       optional: optionalResponse.optional ?? false,
+      hidden: hiddenResponse.hidden ?? false,
     });
   }
 
   return fields.length > 0
     ? fields
-    : [{ name: 'title', type: 'string', optional: false }];
+    : [{ name: 'title', type: 'string', optional: false, hidden: false }];
 }
 
 async function promptPermissionFor(
@@ -110,7 +118,14 @@ export function registerCreateBlueprintCommand(program: Command): void {
       }
 
       const fields = options.yes
-        ? [{ name: 'title', type: 'string' as const, optional: false }]
+        ? [
+            {
+              name: 'title',
+              type: 'string' as const,
+              optional: false,
+              hidden: false,
+            },
+          ]
         : await promptFields();
 
       const permissions = options.yes

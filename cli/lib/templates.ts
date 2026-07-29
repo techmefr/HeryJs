@@ -214,6 +214,7 @@ import {
 } from './${ctx.kebabName}.policy';
 import { ${ctx.pascalName}Service } from './${ctx.kebabName}.service';
 import { ${ctx.pascalName.toUpperCase()}_RECORD_LOADER } from './${ctx.kebabName}-record.loader';
+import { to${ctx.pascalName}View } from './${ctx.kebabName}.view';
 
 type RequestWith${ctx.pascalName} = RequestWithUser & { record: ${ctx.pascalName} };
 
@@ -238,14 +239,14 @@ export class ${ctx.pascalName}Controller {
     });
 
     if (include !== 'capabilities') {
-      return ok(records);
+      return ok(records.map(to${ctx.pascalName}View));
     }
 
     const subject = { id: req.user.id, teamIds: [] };
 
     return ok(
       records.map((record) => ({
-        ...record,
+        ...to${ctx.pascalName}View(record),
         capabilities: this.policy.recordCapabilities(subject, record),
       })),
       { capabilities: this.policy.metaCapabilities(subject) },
@@ -254,7 +255,7 @@ export class ${ctx.pascalName}Controller {
 
   @Get(':id')
   async findOne(@Param('id') id: string) {
-    return ok(await this.${ctx.camelName}s.findOneOrFail(id));
+    return ok(to${ctx.pascalName}View(await this.${ctx.camelName}s.findOneOrFail(id)));
   }
 
   @Post()
@@ -264,7 +265,7 @@ export class ${ctx.pascalName}Controller {
     @Body(new ZodValidationPipe(create${ctx.pascalName}Schema)) body: Create${ctx.pascalName}Input,
   ) {
     const subject = { id: req.user.id, teamIds: [] };
-    return ok(await this.${ctx.camelName}s.create(subject, body));
+    return ok(to${ctx.pascalName}View(await this.${ctx.camelName}s.create(subject, body)));
   }
 
   @Patch(':id')
@@ -274,21 +275,21 @@ export class ${ctx.pascalName}Controller {
     @Req() req: RequestWith${ctx.pascalName},
     @Body(new ZodValidationPipe(update${ctx.pascalName}Schema)) body: Update${ctx.pascalName}Input,
   ) {
-    return ok(await this.${ctx.camelName}s.update(req.record, body));
+    return ok(to${ctx.pascalName}View(await this.${ctx.camelName}s.update(req.record, body)));
   }
 
   @Delete(':id')
   @Capability(canDelete${ctx.pascalName})
   @LoadRecordWith(${ctx.pascalName.toUpperCase()}_RECORD_LOADER)
   async remove(@Req() req: RequestWith${ctx.pascalName}) {
-    return ok(await this.${ctx.camelName}s.softDelete(req.record));
+    return ok(to${ctx.pascalName}View(await this.${ctx.camelName}s.softDelete(req.record)));
   }
 
   @Post(':id/restore')
   @Capability(canUpdate${ctx.pascalName})
   @LoadRecordWith(${ctx.pascalName.toUpperCase()}_RECORD_LOADER)
   async restore(@Req() req: RequestWith${ctx.pascalName}) {
-    return ok(await this.${ctx.camelName}s.restore(req.record));
+    return ok(to${ctx.pascalName}View(await this.${ctx.camelName}s.restore(req.record)));
   }
 }
 `;
@@ -322,10 +323,11 @@ export class ${ctx.pascalName}Module {}
 }
 
 export function specFile(ctx: ResourceContext): string {
-  const requiredField = ctx.fields.find((field) => !field.optional);
-  const createBody = requiredField
-    ? `{ ${requiredField.name}: ${sampleValueFor(requiredField)} }`
-    : '{}';
+  const requiredFields = ctx.fields.filter((field) => !field.optional);
+  const createBody =
+    requiredFields.length > 0
+      ? `{ ${requiredFields.map((field) => `${field.name}: ${sampleValueFor(field)}`).join(', ')} }`
+      : '{}';
 
   return `import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
@@ -451,6 +453,34 @@ describe('${ctx.pascalName} resource', () => {
     expect((response.body as { data: unknown[] }).data).toHaveLength(0);
   });
 });
+`;
+}
+
+export function viewFile(ctx: ResourceContext): string {
+  const hiddenFields = ctx.fields.filter((field) => field.hidden);
+
+  if (hiddenFields.length === 0) {
+    return `import type { ${ctx.pascalName} } from '@prisma/client';
+
+export type ${ctx.pascalName}View = ${ctx.pascalName};
+
+export function to${ctx.pascalName}View(record: ${ctx.pascalName}): ${ctx.pascalName}View {
+  return record;
+}
+`;
+  }
+
+  const hiddenNames = hiddenFields.map((field) => field.name).join(', ');
+  const omitUnion = hiddenFields.map((field) => `'${field.name}'`).join(' | ');
+
+  return `import type { ${ctx.pascalName} } from '@prisma/client';
+
+export type ${ctx.pascalName}View = Omit<${ctx.pascalName}, ${omitUnion}>;
+
+export function to${ctx.pascalName}View(record: ${ctx.pascalName}): ${ctx.pascalName}View {
+  const { ${hiddenNames}, ...view } = record;
+  return view;
+}
 `;
 }
 
