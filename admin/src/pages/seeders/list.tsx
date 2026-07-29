@@ -4,6 +4,8 @@ import { apiFetch } from '../../api-fetch';
 interface SeederInfo {
   name: string;
   description: string;
+  defaultCount: number;
+  maxCount: number;
 }
 
 type RunState = 'idle' | 'running' | { count: number } | { error: string };
@@ -11,15 +13,29 @@ type RunState = 'idle' | 'running' | { count: number } | { error: string };
 export function SeedersList() {
   const [seeders, setSeeders] = useState<SeederInfo[] | null>(null);
   const [runState, setRunState] = useState<Record<string, RunState>>({});
+  const [counts, setCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    apiFetch('/seeders').then((body) => setSeeders(body.data));
+    apiFetch('/seeders').then((body) => {
+      setSeeders(body.data);
+      setCounts(
+        Object.fromEntries(
+          (body.data as SeederInfo[]).map((seeder) => [
+            seeder.name,
+            seeder.defaultCount,
+          ]),
+        ),
+      );
+    });
   }, []);
 
   async function run(name: string) {
     setRunState((state) => ({ ...state, [name]: 'running' }));
     try {
-      const body = await apiFetch(`/seeders/${name}/run`, { method: 'POST' });
+      const body = await apiFetch(`/seeders/${name}/run`, {
+        method: 'POST',
+        body: JSON.stringify({ count: counts[name] }),
+      });
       setRunState((state) => ({ ...state, [name]: { count: body.data.count } }));
     } catch {
       setRunState((state) => ({
@@ -39,6 +55,7 @@ export function SeedersList() {
       <div className="flex max-w-2xl flex-col gap-3">
         {seeders.map((seeder) => {
           const state = runState[seeder.name] ?? 'idle';
+          const count = counts[seeder.name] ?? seeder.defaultCount;
           return (
             <div
               key={seeder.name}
@@ -57,6 +74,19 @@ export function SeedersList() {
                 {typeof state === 'object' && 'error' in state ? (
                   <span className="text-xs text-red-400">{state.error}</span>
                 ) : null}
+                <input
+                  type="number"
+                  min={1}
+                  max={seeder.maxCount}
+                  value={count}
+                  onChange={(event) =>
+                    setCounts((state) => ({
+                      ...state,
+                      [seeder.name]: Number(event.target.value),
+                    }))
+                  }
+                  className="w-20 rounded border border-neutral-700 bg-neutral-950 px-2 py-1.5 text-sm text-neutral-100"
+                />
                 <button
                   type="button"
                   onClick={() => run(seeder.name)}

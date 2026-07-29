@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   Inject,
@@ -10,8 +11,12 @@ import {
 } from '@nestjs/common';
 import { SessionGuard } from '../auth/session.guard';
 import type { RequestWithUser } from '../auth/session.guard';
+import { InvalidQueryException } from '../errors/invalid-query.exception';
 import { ok } from '../http/envelope';
 import { TenantContextStorage } from '../tenancy/tenant-context';
+import { ZodValidationPipe } from '../validation/zod-validation.pipe';
+import { runSeederSchema } from './run-seeder.dto';
+import type { RunSeederDto } from './run-seeder.dto';
 import { SEEDERS } from './seeder.types';
 import type { Seeder } from './seeder.types';
 
@@ -23,12 +28,21 @@ export class SeedersController {
   @Get()
   list() {
     return ok(
-      this.seeders.map(({ name, description }) => ({ name, description })),
+      this.seeders.map(({ name, description, defaultCount, maxCount }) => ({
+        name,
+        description,
+        defaultCount,
+        maxCount,
+      })),
     );
   }
 
   @Post(':name/run')
-  async run(@Param('name') name: string, @Req() req: RequestWithUser) {
+  async run(
+    @Param('name') name: string,
+    @Body(new ZodValidationPipe(runSeederSchema)) body: RunSeederDto,
+    @Req() req: RequestWithUser,
+  ) {
     if (process.env.NODE_ENV === 'production') {
       throw new NotFoundException();
     }
@@ -39,10 +53,17 @@ export class SeedersController {
       throw new NotFoundException();
     }
 
-    const result = await seeder.run({
-      tenantId: TenantContextStorage.getTenantId(),
-      ownerId: req.user.id,
-    });
+    if (body.count !== undefined && body.count > seeder.maxCount) {
+      throw new InvalidQueryException('count', [`1..${seeder.maxCount}`]);
+    }
+
+    const result = await seeder.run(
+      {
+        tenantId: TenantContextStorage.getTenantId(),
+        ownerId: req.user.id,
+      },
+      { count: body.count },
+    );
 
     return ok(result);
   }
