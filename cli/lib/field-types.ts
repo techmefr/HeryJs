@@ -19,6 +19,11 @@ export function zodTypeFor(field: BlueprintField): string {
   return field.optional ? `${base}.optional()` : base;
 }
 
+export function zodOutputTypeFor(field: BlueprintField): string {
+  const base = ZOD_TYPES[field.type];
+  return field.optional ? `${base}.nullable()` : base;
+}
+
 export function prismaTypeFor(field: BlueprintField): string {
   const base = PRISMA_TYPES[field.type];
   return field.optional ? `${base}?` : base;

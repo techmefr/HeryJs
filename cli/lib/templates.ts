@@ -4,6 +4,7 @@ import {
   prismaTypeFor,
   sampleValueFor,
   tsTypeFor,
+  zodOutputTypeFor,
   zodTypeFor,
 } from './field-types';
 
@@ -468,28 +469,44 @@ describe('${ctx.pascalName} resource', () => {
 
 export function viewFile(ctx: ResourceContext): string {
   const hiddenFields = ctx.fields.filter((field) => field.hidden);
+  const visibleFields = ctx.fields.filter((field) => !field.hidden);
+
+  const visibleFieldLines = visibleFields
+    .map((field) => `  ${field.name}: ${zodOutputTypeFor(field)},`)
+    .join('\n');
+
+  const schema = `export const ${ctx.camelName}ViewSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  ownerId: z.string(),
+${visibleFieldLines}
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+  deletedAt: z.coerce.date().nullable(),
+});
+export type ${ctx.pascalName}View = z.infer<typeof ${ctx.camelName}ViewSchema>;
+`;
 
   if (hiddenFields.length === 0) {
-    return `import type { ${ctx.pascalName} } from '@prisma/client';
+    return `import { z } from 'zod';
+import type { ${ctx.pascalName} } from '@prisma/client';
 
-export type ${ctx.pascalName}View = ${ctx.pascalName};
-
+${schema}
 export function to${ctx.pascalName}View(record: ${ctx.pascalName}): ${ctx.pascalName}View {
-  return record;
+  return ${ctx.camelName}ViewSchema.parse(record);
 }
 `;
   }
 
   const hiddenNames = hiddenFields.map((field) => field.name).join(', ');
-  const omitUnion = hiddenFields.map((field) => `'${field.name}'`).join(' | ');
 
-  return `import type { ${ctx.pascalName} } from '@prisma/client';
+  return `import { z } from 'zod';
+import type { ${ctx.pascalName} } from '@prisma/client';
 
-export type ${ctx.pascalName}View = Omit<${ctx.pascalName}, ${omitUnion}>;
-
+${schema}
 export function to${ctx.pascalName}View(record: ${ctx.pascalName}): ${ctx.pascalName}View {
   const { ${hiddenNames}, ...view } = record;
-  return view;
+  return ${ctx.camelName}ViewSchema.parse(view);
 }
 `;
 }
