@@ -5,6 +5,24 @@ import type {
   PermissionPreset,
 } from './capabilities.types';
 
+export function resolveCollectionCapability(
+  preset: PermissionPreset,
+  subject: CapabilitySubject,
+): CapabilityDecision {
+  switch (preset) {
+    case 'none':
+      return { allowed: false };
+    case 'team':
+      return subject.teamIds.length > 0
+        ? { allowed: true, scope: 'team' }
+        : { allowed: false };
+    case 'own':
+      return { allowed: true, scope: 'own' };
+    case 'all':
+      return { allowed: true, scope: 'all' };
+  }
+}
+
 export function resolveCapability(
   preset: PermissionPreset,
   subject: CapabilitySubject,
