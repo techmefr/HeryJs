@@ -3,6 +3,7 @@ import type { Prisma, Workout } from '@prisma/client';
 import { PRISMA_CLIENT } from '../../technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '../../technical/prisma/prisma.client';
 import { CapabilitySubject } from '../../technical/capabilities/capabilities.types';
+import { scopeWhereFor } from '../../technical/capabilities/scope-where';
 import { CreateWorkoutInput, UpdateWorkoutInput } from './workout.dto';
 
 export interface WorkoutSearchOptions {
@@ -16,15 +17,17 @@ export class WorkoutService {
     @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,
   ) {}
 
-  async search(options: WorkoutSearchOptions = {}) {
-    const where = options.onlyTrashed
+  async search(subject: CapabilitySubject, options: WorkoutSearchOptions = {}) {
+    const trashedWhere = options.onlyTrashed
       ? { deletedAt: { not: null } }
       : options.withTrashed
         ? {}
         : { deletedAt: null };
 
+    // The scope clause sits in its own AND branch so a declared filter can
+    // never widen it back, whatever the caller passes in the query string.
     return this.prisma.workout.findMany({
-      where,
+      where: { AND: [scopeWhereFor('own', subject), trashedWhere] },
       orderBy: { createdAt: 'desc' },
     });
   }

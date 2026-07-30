@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import * as path from 'node:path';
 import * as ts from 'typescript';
 
-const MUTATING_HTTP_DECORATORS = new Set(['Post', 'Patch', 'Put', 'Delete']);
+const ROUTE_DECORATORS = new Set(['Get', 'Post', 'Patch', 'Put', 'Delete']);
 
 function findControllerFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -34,21 +34,16 @@ function checkFile(filePath: string): string[] {
 
   const visit = (node: ts.Node) => {
     if (ts.isMethodDeclaration(node)) {
-      const decorators = ts.getDecorators?.(node) ?? [];
-      const names = decorators
+      const names = (ts.getDecorators?.(node) ?? [])
         .map(decoratorName)
         .filter((name): name is string => name !== undefined);
 
-      const hasMutatingRoute = names.some((name) =>
-        MUTATING_HTTP_DECORATORS.has(name),
-      );
-      const hasCapability = names.includes('Capability');
+      const hasRoute = names.some((name) => ROUTE_DECORATORS.has(name));
 
-      if (hasMutatingRoute && !hasCapability) {
+      if (hasRoute && !names.includes('Capability')) {
         const { line } = source.getLineAndCharacterOfPosition(node.getStart());
-        const methodName = node.name.getText();
         violations.push(
-          `${filePath}:${line + 1} — "${methodName}" has a mutating route decorator but no @Capability(...)`,
+          `${filePath}:${line + 1} — "${node.name.getText()}" is a route but carries no @Capability(...)`,
         );
       }
     }
@@ -66,11 +61,14 @@ const controllerFiles = findControllerFiles(functionalDir);
 const violations = controllerFiles.flatMap(checkFile);
 
 if (violations.length > 0) {
-  console.error('Missing @Capability(...) on mutating routes:\n');
+  console.error('Routes without @Capability(...):\n');
   violations.forEach((violation) => console.error(`  ${violation}`));
+  console.error(
+    '\nCapabilitiesGuard lets a route through when the metadata is absent, so an\nundecorated read hands out every row the query returns.',
+  );
   process.exit(1);
 }
 
 console.log(
-  `✔ every mutating route carries @Capability(...) (${controllerFiles.length} controllers checked)`,
+  `✔ every route carries @Capability(...) (${controllerFiles.length} controllers checked)`,
 );

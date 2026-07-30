@@ -13,6 +13,7 @@ fields:
     optional: false
     hidden: false
 permissions:
+  view: own
   create: own
   update: own
   delete: own
@@ -29,7 +30,9 @@ Each field has a `type` (`string`, `int`, `boolean`, `datetime`), whether it's `
 
 ## Permissions
 
-One preset per mutating action (`create`, `update`, `delete`), each resolved through the same capabilities engine described in the capabilities guide.
+One preset per action, each resolved through the same capabilities engine described in the capabilities guide.
+
+`view` is the one worth pausing on: it drives the detail route *and* the `where` clause of the collection query, so both answer the same question from a single declaration. There is deliberately no separate `list` preset — two presets could diverge, and a record hidden from one route while handed out by the other is the exact bug this shape exists to make unwriteable. `view: all` with `update: own` gives the common case: everyone in the tenant reads, only the owner edits.
 
 ## Pagination, sorts and filters — the search contract
 

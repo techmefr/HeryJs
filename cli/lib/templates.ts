@@ -61,7 +61,17 @@ export const canDelete${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike
 export const canView${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike> = (
   subject,
   record,
-) => (record ? resolveCapability('${ctx.permissions.update}', subject, record) : { allowed: false });
+) => (record ? resolveCapability('${ctx.permissions.view}', subject, record) : { allowed: false });
+
+// Same preset as canView${ctx.pascalName}: whoever may read one record may ask for the
+// collection, and scopeWhereFor narrows that collection to the very same rows.
+export const canViewAny${ctx.pascalName}: PolicyCheck = (subject) =>
+  resolveCollectionCapability('${ctx.permissions.view}', subject);
+
+// Listing the bin is a moderation move, so it follows the delete preset rather
+// than the read one.
+export const canListTrashed${ctx.pascalName}: PolicyCheck = (subject) =>
+  resolveCollectionCapability('${ctx.permissions.delete}', subject);
 
 @Injectable()
 export class ${ctx.pascalName}Policy {
@@ -144,6 +154,7 @@ import type { Prisma, ${ctx.pascalName} } from '@prisma/client';
 import { PRISMA_CLIENT } from '../../technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '../../technical/prisma/prisma.client';
 import { CapabilitySubject } from '../../technical/capabilities/capabilities.types';
+import { scopeWhereFor } from '../../technical/capabilities/scope-where';
 import { SignalService } from '../../technical/signal/signal.service';
 import { buildTextSearchWhere } from '../../technical/search/text-search';
 import { SEARCH_DRIVER } from '../../technical/search/search-driver';
@@ -197,7 +208,10 @@ export class ${ctx.pascalName}Service {
     await this.searchDriver.index(SEARCH_COLLECTION, record.id, document);
   }
 
-  async search(options: ${ctx.pascalName}SearchOptions = {}) {
+  async search(
+    subject: CapabilitySubject,
+    options: ${ctx.pascalName}SearchOptions = {},
+  ) {
     const trashedWhere = options.onlyTrashed
       ? { deletedAt: { not: null } }
       : options.withTrashed
@@ -218,11 +232,15 @@ export class ${ctx.pascalName}Service {
         : buildTextSearchWhere(options.search, SEARCHABLE_FIELDS)
       : undefined;
 
+    // The scope clause sits in its own AND branch so a declared filter can
+    // never widen it back, whatever the caller passes in the query string.
     return this.prisma.${ctx.camelName}.findMany({
       where: {
-        ...trashedWhere,
-        ...options.filters,
-        ...searchWhere,
+        AND: [
+          scopeWhereFor('${ctx.permissions.view}', subject),
+          trashedWhere,
+          { ...options.filters, ...searchWhere },
+        ],
       },
       orderBy: options.sort
         ? { [options.sort.field]: options.sort.direction }
@@ -294,6 +312,7 @@ import {
   Capability,
   LoadRecordWith,
 } from '../../technical/capabilities/capability.decorator';
+import { CapabilityForbiddenException } from '../../technical/errors/capability-forbidden.exception';
 import { ok } from '../../technical/http/envelope';
 import { parseListQuery } from '../../technical/http/list-query';
 import { ZodValidationPipe } from '../../technical/validation/zod-validation.pipe';
@@ -302,8 +321,10 @@ import type { Create${ctx.pascalName}Input, Update${ctx.pascalName}Input } from 
 import {
   canCreate${ctx.pascalName},
   canDelete${ctx.pascalName},
+  canListTrashed${ctx.pascalName},
   canUpdate${ctx.pascalName},
   canView${ctx.pascalName},
+  canViewAny${ctx.pascalName},
   ${ctx.pascalName}Policy,
 } from './${ctx.kebabName}.policy';
 import {
@@ -327,6 +348,7 @@ export class ${ctx.pascalName}Controller {
   ) {}
 
   @Get()
+  @Capability(canViewAny${ctx.pascalName})
   async search(
     @Req() req: RequestWithUser,
     @Query() rawQuery: Record<string, string>,
@@ -338,16 +360,23 @@ export class ${ctx.pascalName}Controller {
       limits: [${ctx.pagination.limits.join(', ')}],
       defaultLimit: ${ctx.pagination.default},
     });
+    const subject = { id: req.user.id, teamIds: [] };
 
-    const records = await this.${ctx.camelName}s.search(query);
+    if (query.withTrashed || query.onlyTrashed) {
+      const trashedDecision = canListTrashed${ctx.pascalName}(subject);
+
+      if (!trashedDecision.allowed) {
+        throw new CapabilityForbiddenException(trashedDecision);
+      }
+    }
+
+    const records = await this.${ctx.camelName}s.search(subject, query);
 
     if (include !== 'capabilities') {
       return ok(records.map(to${ctx.pascalName}View), {
         channels: [${ctx.pascalName.toUpperCase()}_SIGNAL_CHANNEL],
       });
     }
-
-    const subject = { id: req.user.id, teamIds: [] };
 
     return ok(
       records.map((record) => ({
@@ -483,6 +512,7 @@ import {
   canDelete${ctx.pascalName},
   canUpdate${ctx.pascalName},
   canView${ctx.pascalName},
+  canViewAny${ctx.pascalName},
 } from './${ctx.kebabName}.policy';
 import { ${ctx.pascalName}Service } from './${ctx.kebabName}.service';
 import {
@@ -521,8 +551,14 @@ export class ${ctx.pascalName}Resolver {
   ) {}
 
   @Query(() => [${ctx.pascalName}Type], { name: '${ctx.pluralCamelName}' })
-  search() {
-    return this.${ctx.camelName}s.search();
+  search(@CurrentGqlRequest() req: GqlRequestWithUser) {
+    const subject = { id: req.user.id, teamIds: [] };
+    const decision = canViewAny${ctx.pascalName}(subject);
+    if (!decision.allowed) {
+      throw new CapabilityForbiddenException();
+    }
+
+    return this.${ctx.camelName}s.search(subject);
   }
 
   @Query(() => ${ctx.pascalName}Type, { name: '${ctx.camelName}' })
@@ -612,6 +648,7 @@ import {
   canDelete${ctx.pascalName},
   canUpdate${ctx.pascalName},
   canView${ctx.pascalName},
+  canViewAny${ctx.pascalName},
 } from './${ctx.kebabName}.policy';
 import { ${ctx.pascalName}Service } from './${ctx.kebabName}.service';
 import {
@@ -649,7 +686,12 @@ export class ${ctx.pascalName}McpToolRegistrar implements McpToolRegistrar {
         inputSchema: {},
       },
       async () => {
-        const records = await this.${ctx.camelName}s.search();
+        const decision = canViewAny${ctx.pascalName}(subject);
+        if (!decision.allowed) {
+          return deniedResult();
+        }
+
+        const records = await this.${ctx.camelName}s.search(subject);
         return textResult(records.map(to${ctx.pascalName}View));
       },
     );
@@ -895,6 +937,69 @@ export class ${ctx.pascalName}LiveGateway implements OnGatewayConnection {
 `;
 }
 
+// The collection route and the detail route answer the same question with two
+// different mechanisms, so each preset gets the test that proves they agree.
+function scopeParityTest(ctx: ResourceContext, createBody: string): string {
+  if (ctx.permissions.view === 'own' || ctx.permissions.view === 'team') {
+    return `  it('keeps a record out of the list for anyone who cannot open it directly', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send(${createBody})
+      .expect(201);
+
+    const recordId = (created.body as { data: { id: string } }).data.id;
+
+    await request(app.getHttpServer())
+      .get(\`/${ctx.pluralKebabName}/\${recordId}\`)
+      .set('Authorization', \`Bearer \${strangerToken}\`)
+      .expect(403);
+
+    const list = await request(app.getHttpServer())
+      .get('/${ctx.pluralKebabName}')
+      .set('Authorization', \`Bearer \${strangerToken}\`)
+      .expect(200);
+
+    expect(
+      (list.body as { data: { id: string }[] }).data.map((record) => record.id),
+    ).not.toContain(recordId);
+  });`;
+  }
+
+  if (ctx.permissions.view === 'all') {
+    return `  it('lists a record to anyone who can also open it directly', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send(${createBody})
+      .expect(201);
+
+    const recordId = (created.body as { data: { id: string } }).data.id;
+
+    await request(app.getHttpServer())
+      .get(\`/${ctx.pluralKebabName}/\${recordId}\`)
+      .set('Authorization', \`Bearer \${strangerToken}\`)
+      .expect(200);
+
+    const list = await request(app.getHttpServer())
+      .get('/${ctx.pluralKebabName}')
+      .set('Authorization', \`Bearer \${strangerToken}\`)
+      .expect(200);
+
+    expect(
+      (list.body as { data: { id: string }[] }).data.map((record) => record.id),
+    ).toContain(recordId);
+  });`;
+  }
+
+  return `  it('refuses the collection route outright, matching the view preset', async () => {
+    await request(app.getHttpServer())
+      .get('/${ctx.pluralKebabName}')
+      .set('Authorization', \`Bearer \${strangerToken}\`)
+      .expect(403);
+  });`;
+}
+
 export function specFile(ctx: ResourceContext): string {
   const requiredFields = ctx.fields.filter((field) => !field.optional);
   const createBody =
@@ -994,6 +1099,8 @@ describe('${ctx.pascalName} resource', () => {
       .set('Authorization', \`Bearer \${ownerToken}\`)
       .expect(200);
   });
+
+${scopeParityTest(ctx, createBody)}
 
   it('never lets a different tenant see this tenant records', async () => {
     const outsider = await registerAndLogin(app);

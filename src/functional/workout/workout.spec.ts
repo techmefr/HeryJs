@@ -45,6 +45,54 @@ describe('Workout resource (full vertical slice)', () => {
     ).toBe('default');
   });
 
+  it('keeps a workout out of the list for anyone who cannot open it directly', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/workouts')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ title: 'Private session' })
+      .expect(201);
+
+    const workoutId = (created.body as { data: { id: string } }).data.id;
+
+    await request(app.getHttpServer())
+      .get(`/workouts/${workoutId}`)
+      .set('Authorization', `Bearer ${strangerToken}`)
+      .expect(403);
+
+    const list = await request(app.getHttpServer())
+      .get('/workouts')
+      .set('Authorization', `Bearer ${strangerToken}`)
+      .expect(200);
+
+    expect(
+      (list.body as { data: { id: string }[] }).data.map((record) => record.id),
+    ).not.toContain(workoutId);
+  });
+
+  it('keeps a trashed workout out of the bin of anyone who cannot open it', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/workouts')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ title: 'Session to trash' })
+      .expect(201);
+
+    const workoutId = (created.body as { data: { id: string } }).data.id;
+
+    await request(app.getHttpServer())
+      .delete(`/workouts/${workoutId}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+
+    const bin = await request(app.getHttpServer())
+      .get('/workouts?onlyTrashed=true')
+      .set('Authorization', `Bearer ${strangerToken}`)
+      .expect(200);
+
+    expect(
+      (bin.body as { data: { id: string }[] }).data.map((record) => record.id),
+    ).not.toContain(workoutId);
+  });
+
   it('lists workouts with resolved capabilities via ?include=capabilities', async () => {
     const response = await request(app.getHttpServer())
       .get('/workouts?include=capabilities')

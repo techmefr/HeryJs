@@ -17,6 +17,7 @@ import {
   Capability,
   LoadRecordWith,
 } from '../../technical/capabilities/capability.decorator';
+import { CapabilityForbiddenException } from '../../technical/errors/capability-forbidden.exception';
 import { ok } from '../../technical/http/envelope';
 import { resourceMessage } from '../../technical/http/resource-messages';
 import { ZodValidationPipe } from '../../technical/validation/zod-validation.pipe';
@@ -25,8 +26,10 @@ import type { CreateWorkoutInput, UpdateWorkoutInput } from './workout.dto';
 import {
   canCreateWorkout,
   canDeleteWorkout,
+  canListTrashedWorkout,
   canUpdateWorkout,
   canViewWorkout,
+  canViewAnyWorkout,
   WorkoutPolicy,
 } from './workout.policy';
 import { WorkoutService } from './workout.service';
@@ -46,13 +49,24 @@ export class WorkoutController {
   ) {}
 
   @Get()
+  @Capability(canViewAnyWorkout)
   async search(
     @Req() req: RequestWithUser,
     @Query('include') include?: string,
     @Query('withTrashed') withTrashed?: string,
     @Query('onlyTrashed') onlyTrashed?: string,
   ) {
-    const records = await this.workouts.search({
+    const subject = { id: req.user.id, teamIds: [] };
+
+    if (withTrashed === 'true' || onlyTrashed === 'true') {
+      const trashedDecision = canListTrashedWorkout(subject);
+
+      if (!trashedDecision.allowed) {
+        throw new CapabilityForbiddenException(trashedDecision);
+      }
+    }
+
+    const records = await this.workouts.search(subject, {
       withTrashed: withTrashed === 'true',
       onlyTrashed: onlyTrashed === 'true',
     });
@@ -60,8 +74,6 @@ export class WorkoutController {
     if (include !== 'capabilities') {
       return ok(records);
     }
-
-    const subject = { id: req.user.id, teamIds: [] };
 
     return ok(
       records.map((record) => ({

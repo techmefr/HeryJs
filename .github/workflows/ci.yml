@@ -49,6 +49,10 @@ jobs:
 
       - run: pnpm run lint:capabilities
 
+      - run: pnpm run lint:scope-parity
+
+      - run: pnpm run lint:coverage
+
       - run: pnpm run lint:dev-guard
 
       - run: pnpm test

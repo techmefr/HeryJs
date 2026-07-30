@@ -74,7 +74,7 @@ async function promptFields(): Promise<BlueprintField[]> {
 }
 
 async function promptPermissionFor(
-  action: 'create' | 'update' | 'delete',
+  action: 'view' | 'create' | 'update' | 'delete',
 ): Promise<PermissionPreset> {
   const response = (await prompts({
     type: 'select',
@@ -93,13 +93,18 @@ async function promptPermissionFor(
 }
 
 async function promptPermissions(): Promise<{
+  view: PermissionPreset;
   create: PermissionPreset;
   update: PermissionPreset;
   delete: PermissionPreset;
 }> {
   console.log(pc.cyan('Choose a permission preset for each action:'));
+  console.log(
+    pc.dim('view drives both the detail route and the collection filter.'),
+  );
 
   return {
+    view: await promptPermissionFor('view'),
     create: await promptPermissionFor('create'),
     update: await promptPermissionFor('update'),
     delete: await promptPermissionFor('delete'),
@@ -200,6 +205,10 @@ fields:
 
 permissions:
   # preset: own (creator/owner only) | team (same team) | all (any authenticated user) | none (nobody)
+  # view drives the detail route and the collection filter from the same preset,
+  # so a record can never be hidden from one and exposed by the other.
+  # team requires a "teamId" field declared above.
+  view: own
   create: own
   update: own
   delete: own
@@ -262,6 +271,7 @@ export function registerCreateBlueprintCommand(program: Command): void {
 
         const permissions = options.yes
           ? {
+              view: 'own' as const,
               create: 'own' as const,
               update: 'own' as const,
               delete: 'own' as const,

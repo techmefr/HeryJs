@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { CapabilitiesService } from '../../technical/capabilities/capabilities.service';
-import { resolveCapability } from '../../technical/capabilities/resolve-capability';
+import {
+  resolveCapability,
+  resolveCollectionCapability,
+} from '../../technical/capabilities/resolve-capability';
 import type { PolicyCheck } from '../../technical/capabilities/capability-check';
 import {
   CapabilityDecision,
@@ -25,6 +28,16 @@ export const canDeleteWorkout: PolicyCheck<WorkoutRecordLike> =
   canUpdateWorkout;
 
 export const canViewWorkout: PolicyCheck<WorkoutRecordLike> = canUpdateWorkout;
+
+// Same preset as canViewWorkout: whoever may read one record may ask for the
+// collection, and scopeWhereFor narrows that collection to the very same rows.
+export const canViewAnyWorkout: PolicyCheck = (subject) =>
+  resolveCollectionCapability('own', subject);
+
+// Listing the bin is a moderation move, so it follows the delete preset rather
+// than the read one.
+export const canListTrashedWorkout: PolicyCheck = (subject) =>
+  resolveCollectionCapability('own', subject);
 
 @Injectable()
 export class WorkoutPolicy {

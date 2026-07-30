@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { loadBlueprint } from '../lib/blueprint';
+import { loadBlueprint, warnAboutUnwiredTeamPreset } from '../lib/blueprint';
 import { kebabCase } from '../lib/naming';
 import { buildResourceContext } from '../lib/resource-context';
 import {
@@ -76,6 +76,11 @@ export function registerGenerateCommand(program: Command): void {
 
         const blueprint = loadBlueprint(blueprintPath);
         const ctx = buildResourceContext(blueprint);
+        const unwiredTeamPreset = warnAboutUnwiredTeamPreset(blueprint);
+
+        if (unwiredTeamPreset) {
+          console.log(pc.yellow(`! ${unwiredTeamPreset}`));
+        }
 
         const targetDir = path.join(root, 'src', 'functional', ctx.kebabName);
 
