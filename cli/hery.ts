@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import * as path from 'node:path';
 import { Command } from 'commander';
+import { registerConsoleCommand } from './commands/console';
 import { registerCreateBlueprintCommand } from './commands/create-blueprint';
 import { registerGenerateCommand } from './commands/generate';
 import { registerHostsCommand } from './commands/hosts';
@@ -19,6 +20,7 @@ const program = new Command();
 
 program.name('hery').description('HeryJs conventions CLI');
 
+registerConsoleCommand(program);
 registerCreateBlueprintCommand(program);
 registerGenerateCommand(program);
 registerHostsCommand(program);
