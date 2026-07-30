@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../app.module';
+import { WorkoutModule } from '../../../examples/workout/workout.module';
 import { registerAndLogin } from '../../devtools/testing/register-and-login';
 import type { DescribedController } from './describe.service';
 
@@ -12,7 +13,7 @@ describe('Resource description', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [AppModule, WorkoutModule],
     }).compile();
     app = moduleRef.createNestApplication();
     await app.init();

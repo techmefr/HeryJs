@@ -5,9 +5,10 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { AppModule } from '../../app.module';
-import { env } from '../../technical/config/env';
-import { registerAndLogin } from '../../devtools/testing/register-and-login';
+import { AppModule } from '../../src/app.module';
+import { WorkoutModule } from './workout.module';
+import { env } from '../../src/technical/config/env';
+import { registerAndLogin } from '../../src/devtools/testing/register-and-login';
 
 const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -19,7 +20,7 @@ describe('Workout resource (full vertical slice)', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [AppModule, WorkoutModule],
     }).compile();
     app = moduleRef.createNestApplication();
     await app.init();
@@ -107,6 +108,7 @@ describe('Workout resource (full vertical slice)', () => {
     expect(body.data[0]?.capabilities.update.allowed).toBe(true);
     expect(body.meta).toEqual({
       capabilities: { create: { allowed: true, scope: 'own' } },
+      channels: ['workout'],
     });
   });
 

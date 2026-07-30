@@ -2,27 +2,37 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import type { ResourceContext } from './resource-context';
 import { prismaModelBlock } from './templates';
 
-export function patchTenantScopedModels(
+/**
+ * Adds a model name to one of the `new Set([...])` lists the kernel keeps, so a
+ * generated resource is tenant-scoped and audited without the developer having
+ * to remember two edits in two files.
+ */
+export function patchModelSet(
   filePath: string,
+  setName: string,
   pascalName: string,
 ): void {
   const source = readFileSync(filePath, 'utf8');
-  const marker = 'const TENANT_SCOPED_MODELS = new Set([';
+  const marker = `const ${setName} = new Set([`;
   const start = source.indexOf(marker);
 
   if (start === -1) {
-    throw new Error(`Could not find TENANT_SCOPED_MODELS in ${filePath}`);
-  }
-
-  if (source.includes(`'${pascalName}'`, start)) {
-    return;
+    throw new Error(`Could not find ${setName} in ${filePath}`);
   }
 
   const end = source.indexOf(']', start);
-  const before = source.slice(0, end);
-  const after = source.slice(end);
 
-  const patched = `${before}, '${pascalName}'${after}`;
+  if (end === -1) {
+    throw new Error(`${setName} in ${filePath} is never closed`);
+  }
+
+  if (source.slice(start, end).includes(`'${pascalName}'`)) {
+    return;
+  }
+
+  const separator =
+    source.slice(start + marker.length, end).trim() === '' ? '' : ', ';
+  const patched = `${source.slice(0, end)}${separator}'${pascalName}'${source.slice(end)}`;
   writeFileSync(filePath, patched);
 }
 

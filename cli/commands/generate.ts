@@ -2,13 +2,9 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { loadBlueprint } from '../lib/blueprint';
-import { kebabCase } from '../lib/naming';
+import { loadBlueprint, resolveBlueprintPath } from '../lib/blueprint';
 import { buildResourceContext } from '../lib/resource-context';
-import {
-  patchPrismaSchema,
-  patchTenantScopedModels,
-} from '../lib/schema-patch';
+import { patchModelSet, patchPrismaSchema } from '../lib/schema-patch';
 import {
   controllerFile,
   dtoFile,
@@ -58,11 +54,7 @@ export function registerGenerateCommand(program: Command): void {
         },
       ) => {
         const root = process.cwd();
-        const blueprintPath = path.join(
-          root,
-          'blueprints',
-          `${kebabCase(name)}.yaml`,
-        );
+        const blueprintPath = resolveBlueprintPath(root, name);
 
         if (!existsSync(blueprintPath)) {
           console.error(
@@ -131,10 +123,20 @@ export function registerGenerateCommand(program: Command): void {
           'prisma.client.ts',
         );
 
+        const auditLogPath = path.join(
+          root,
+          'src',
+          'technical',
+          'audit',
+          'audit-log.ts',
+        );
+
         patchPrismaSchema(schemaPath, ctx);
-        patchTenantScopedModels(prismaClientPath, ctx.pascalName);
+        patchModelSet(prismaClientPath, 'TENANT_SCOPED_MODELS', ctx.pascalName);
+        patchModelSet(auditLogPath, 'AUDITED_MODELS', ctx.pascalName);
         console.log(pc.green(`✔ patched ${schemaPath}`));
         console.log(pc.green(`✔ patched ${prismaClientPath}`));
+        console.log(pc.green(`✔ patched ${auditLogPath}`));
 
         console.log('');
         console.log(pc.bold(`Generated ${ctx.pascalName} in ${targetDir}`));

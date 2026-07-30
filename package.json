@@ -16,7 +16,7 @@
     "start:dev": "nest start -b swc --watch",
     "start:debug": "nest start -b swc --debug --watch",
     "start:prod": "node dist/main",
-    "lint": "eslint \"{src,apps,libs,test,cli,scripts,prisma}/**/*.ts\" \"prisma.config.ts\" --fix && pnpm --filter admin lint",
+    "lint": "eslint \"{src,apps,libs,test,cli,scripts,prisma,examples}/**/*.ts\" \"prisma.config.ts\" --fix && pnpm --filter admin lint",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
@@ -31,6 +31,7 @@
     "lint:dev-guard": "pnpm run lint:conventions dev-guard",
     "lint:subject": "pnpm run lint:conventions subject",
     "lint:template-imports": "pnpm run lint:conventions template-imports",
+    "lint:example": "pnpm run lint:conventions example-freshness",
     "hery": "ts-node cli/hery.ts"
   },
   "dependencies": {
@@ -109,7 +110,7 @@
       "json",
       "ts"
     ],
-    "rootDir": "src",
+    "rootDir": ".",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
@@ -117,7 +118,11 @@
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],
-    "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "coverageDirectory": "./coverage",
+    "testEnvironment": "node",
+    "roots": [
+      "<rootDir>/src",
+      "<rootDir>/examples"
+    ]
   }
 }

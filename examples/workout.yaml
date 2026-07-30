@@ -1,0 +1,20 @@
+name: Workout
+
+fields:
+  - name: title
+    type: string
+
+permissions:
+  view: own
+  create: own
+  update: own
+  delete: own
+
+sorts:
+  - createdAt
+
+filters: []
+
+pagination:
+  limits: [10, 15, 20]
+  default: 15

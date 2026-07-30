@@ -6,19 +6,21 @@
  * so one pass reports everything that is wrong.
  */
 import { checkCapabilityDecorator } from './check-capability-decorator';
+import { checkExampleFreshness } from './check-example-freshness';
 import { checkLintCoverage } from './check-lint-coverage';
 import { checkNoInlineDevGuard } from './check-no-inline-dev-guard';
 import { checkScopeParity } from './check-scope-parity';
 import { checkSubjectConstruction } from './check-subject-construction';
 import { checkTemplateImports } from './check-template-imports';
 
-const CHECKS: Array<{ name: string; run: () => boolean }> = [
+const CHECKS: Array<{ name: string; run: () => boolean | Promise<boolean> }> = [
   { name: 'capabilities', run: checkCapabilityDecorator },
   { name: 'scope-parity', run: checkScopeParity },
   { name: 'coverage', run: checkLintCoverage },
   { name: 'dev-guard', run: checkNoInlineDevGuard },
   { name: 'subject', run: checkSubjectConstruction },
   { name: 'template-imports', run: checkTemplateImports },
+  { name: 'example-freshness', run: checkExampleFreshness },
 ];
 
 const requested = process.argv.slice(2);
@@ -37,21 +39,27 @@ const selected =
     ? CHECKS.filter((check) => requested.includes(check.name))
     : CHECKS;
 
-const failed = selected.filter((check) => {
-  try {
-    return !check.run();
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(`✖ ${check.name} could not run: ${message}`);
-    return true;
-  }
-});
+async function main(): Promise<void> {
+  const failed: string[] = [];
 
-if (failed.length > 0) {
-  console.error(
-    `\n${failed.length} of ${selected.length} convention checks failed: ${failed
-      .map((check) => check.name)
-      .join(', ')}`,
-  );
-  process.exit(1);
+  for (const check of selected) {
+    try {
+      if (!(await check.run())) {
+        failed.push(check.name);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`✖ ${check.name} could not run: ${message}`);
+      failed.push(check.name);
+    }
+  }
+
+  if (failed.length > 0) {
+    console.error(
+      `\n${failed.length} of ${selected.length} convention checks failed: ${failed.join(', ')}`,
+    );
+    process.exit(1);
+  }
 }
+
+void main();

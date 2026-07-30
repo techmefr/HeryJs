@@ -207,7 +207,8 @@ permissions:
   # preset: own (creator/owner only) | team (same team) | all (any authenticated user) | none (nobody)
   # view drives the detail route and the collection filter from the same preset,
   # so a record can never be hidden from one and exposed by the other.
-  # team requires a "teamId" field declared above.
+  # team adds the "teamId" column for you: do not declare it above, hery refuses
+  # a blueprint that claims a column the framework decides.
   view: own
   create: own
   update: own

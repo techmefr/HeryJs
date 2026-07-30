@@ -1,23 +1,21 @@
 import { Injectable } from '@nestjs/common';
-import { CapabilitiesService } from '../../technical/capabilities/capabilities.service';
+import { CapabilitiesService } from '../../src/technical/capabilities/capabilities.service';
 import {
   resolveCapability,
   resolveCollectionCapability,
-} from '../../technical/capabilities/resolve-capability';
-import type { PolicyCheck } from '../../technical/capabilities/capability-check';
+} from '../../src/technical/capabilities/resolve-capability';
+import type { PolicyCheck } from '../../src/technical/capabilities/capability-check';
 import {
   CapabilityDecision,
   CapabilitySubject,
-} from '../../technical/capabilities/capabilities.types';
+} from '../../src/technical/capabilities/capabilities.types';
 
 export interface WorkoutRecordLike {
   ownerId: string;
 }
 
-export const canCreateWorkout: PolicyCheck = () => ({
-  allowed: true,
-  scope: 'own',
-});
+export const canCreateWorkout: PolicyCheck = (subject) =>
+  resolveCollectionCapability('own', subject);
 
 export const canUpdateWorkout: PolicyCheck<WorkoutRecordLike> = (
   subject,

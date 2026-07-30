@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
+import * as path from 'node:path';
 import * as yaml from 'js-yaml';
 import { z } from 'zod';
+import { kebabCase } from './naming';
 
 export const permissionPresetSchema = z.enum(['own', 'team', 'all', 'none']);
 
@@ -60,6 +62,22 @@ function assertNoReservedField(
       );
     }
   }
+}
+
+/**
+ * Accepts either a blueprint name, resolved under `blueprints/`, or a path to a
+ * YAML file. A name is the everyday case; a path is what makes a blueprint
+ * usable where it makes sense to keep it, next to what it produced.
+ */
+export function resolveBlueprintPath(root: string, nameOrPath: string): string {
+  const looksLikePath =
+    /\.ya?ml$/.test(nameOrPath) ||
+    nameOrPath.includes('/') ||
+    nameOrPath.includes(path.sep);
+
+  return looksLikePath
+    ? path.resolve(root, nameOrPath)
+    : path.join(root, 'blueprints', `${kebabCase(nameOrPath)}.yaml`);
 }
 
 export function loadBlueprint(filePath: string): Blueprint {

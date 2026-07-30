@@ -1,7 +1,7 @@
 import type { BlueprintField } from './blueprint';
 
 const ZOD_TYPES: Record<BlueprintField['type'], string> = {
-  string: 'z.string()',
+  string: 'z.string().min(1).max(255)',
   int: 'z.number().int()',
   boolean: 'z.boolean()',
   datetime: 'z.coerce.date()',

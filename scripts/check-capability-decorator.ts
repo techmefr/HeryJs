@@ -1,8 +1,23 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import * as path from 'node:path';
 import * as ts from 'typescript';
 
 const ROUTE_DECORATORS = new Set(['Get', 'Post', 'Patch', 'Put', 'Delete']);
+
+// Resources live in src/functional in a real project, and the repo's own example
+// lives in examples/. Both are scanned so the example cannot drift out of the
+// conventions it is supposed to demonstrate.
+const RESOURCE_ROOTS = ['src/functional', 'examples'];
+
+function resourceFilesIn(collect: (dir: string) => string[]): string[] {
+  const repoRoot = path.resolve(__dirname, '..');
+
+  return RESOURCE_ROOTS.flatMap((relative) => {
+    const dir = path.join(repoRoot, relative);
+
+    return existsSync(dir) ? collect(dir) : [];
+  });
+}
 
 function findControllerFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -57,8 +72,16 @@ function checkFile(filePath: string): string[] {
 }
 
 export function checkCapabilityDecorator(): boolean {
-  const functionalDir = path.resolve(__dirname, '..', 'src', 'functional');
-  const controllerFiles = findControllerFiles(functionalDir);
+  const controllerFiles = resourceFilesIn(findControllerFiles);
+
+  if (controllerFiles.length === 0) {
+    console.error(
+      `Found no resource controller under ${RESOURCE_ROOTS.join(' or ')}. This check reports
+success on an empty scan, so an empty scan has to be the failure instead.`,
+    );
+    return false;
+  }
+
   const violations = controllerFiles.flatMap(checkFile);
 
   if (violations.length > 0) {

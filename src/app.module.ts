@@ -3,8 +3,6 @@ import { APP_FILTER } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { WorkoutModule } from './functional/workout/workout.module';
-import { WorkoutSeeder } from './functional/workout/workout.seeder';
 import { AuditModule } from './technical/audit/audit.module';
 import { AuthModule } from './technical/auth/auth.module';
 import { DescribeModule } from './technical/describe/describe.module';
@@ -50,11 +48,10 @@ import { DomainExceptionFilter } from './technical/errors/domain-exception.filte
     MonitoringModule,
     NotificationsModule,
     SchedulerModule,
-    SeedersModule.forRoot([WorkoutSeeder]),
+    SeedersModule.forRoot([]),
     SignalModule,
     StorageModule,
     TeamsModule,
-    WorkoutModule,
   ],
   controllers: [AppController],
   providers: [
