@@ -79,7 +79,7 @@ describe('row-level security on Workout (opt-in, real database)', () => {
       const rows = await tx.workout.findMany({ where: { ownerId } });
 
       expect(rows).toHaveLength(1);
-      expect(rows[0].tenantId).toBe(tenantA);
+      expect(rows[0]?.tenantId).toBe(tenantA);
     });
 
     await restrictedClient.$transaction(async (tx) => {
@@ -88,7 +88,7 @@ describe('row-level security on Workout (opt-in, real database)', () => {
       const rows = await tx.workout.findMany({ where: { ownerId } });
 
       expect(rows).toHaveLength(1);
-      expect(rows[0].tenantId).toBe(tenantB);
+      expect(rows[0]?.tenantId).toBe(tenantB);
     });
   });
 

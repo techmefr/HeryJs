@@ -522,6 +522,7 @@ import {
 import { GqlSessionGuard } from '../../technical/auth/gql-session.guard';
 import type { GqlRequestWithUser } from '../../technical/auth/gql-session.guard';
 import { CurrentGqlRequest } from '../../technical/auth/current-gql-request.decorator';
+import { subjectOf } from '../../technical/capabilities/subject';
 import { CapabilityForbiddenException } from '../../technical/errors/capability-forbidden.exception';
 import { RecordNotFoundException } from '../../technical/errors/record-not-found.exception';
 import {
@@ -805,7 +806,6 @@ import type { ${ctx.pascalName} } from '@prisma/client';
 import type { RequestWithUser } from '../../technical/auth/session.guard';
 import { SessionGuard } from '../../technical/auth/session.guard';
 import { CapabilitiesGuard } from '../../technical/capabilities/capabilities.guard';
-import { subjectOf } from '../../technical/capabilities/subject';
 import {
   Capability,
   LoadRecordWith,

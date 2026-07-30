@@ -33,37 +33,44 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-for (const [relativePath, reason] of ALLOWED_FILES) {
-  if (!existsSync(path.join(root, relativePath))) {
-    throw new Error(
-      `${relativePath} is allowed to build a subject (${reason}) but no longer exists`,
-    );
+export function checkSubjectConstruction(): boolean {
+  for (const [relativePath, reason] of ALLOWED_FILES) {
+    if (!existsSync(path.join(root, relativePath))) {
+      throw new Error(
+        `${relativePath} is allowed to build a subject (${reason}) but no longer exists`,
+      );
+    }
   }
+
+  const scanned = ['src', 'cli'].flatMap((directory) =>
+    sourceFiles(path.join(root, directory)),
+  );
+
+  const violations = scanned.filter((filePath) => {
+    const relativePath = path
+      .relative(root, filePath)
+      .split(path.sep)
+      .join('/');
+
+    return (
+      !ALLOWED_FILES.has(relativePath) &&
+      BANNED_PATTERN.test(readFileSync(filePath, 'utf8'))
+    );
+  });
+
+  if (violations.length > 0) {
+    console.error(
+      'A capability subject must come from subjectOf(user), never from a hand-written literal — every call site writing its own is a place the next field silently stays empty:\n',
+    );
+    violations.forEach((filePath) =>
+      console.error(`  ${path.relative(root, filePath)}`),
+    );
+    return false;
+  }
+
+  console.log(
+    `✔ every capability subject comes from subjectOf (${scanned.length} files checked)`,
+  );
+
+  return true;
 }
-
-const scanned = ['src', 'cli'].flatMap((directory) =>
-  sourceFiles(path.join(root, directory)),
-);
-
-const violations = scanned.filter((filePath) => {
-  const relativePath = path.relative(root, filePath).split(path.sep).join('/');
-
-  return (
-    !ALLOWED_FILES.has(relativePath) &&
-    BANNED_PATTERN.test(readFileSync(filePath, 'utf8'))
-  );
-});
-
-if (violations.length > 0) {
-  console.error(
-    'A capability subject must come from subjectOf(user), never from a hand-written literal — every call site writing its own is a place the next field silently stays empty:\n',
-  );
-  violations.forEach((filePath) =>
-    console.error(`  ${path.relative(root, filePath)}`),
-  );
-  process.exit(1);
-}
-
-console.log(
-  `✔ every capability subject comes from subjectOf (${scanned.length} files checked)`,
-);

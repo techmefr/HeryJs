@@ -56,19 +56,23 @@ function checkFile(filePath: string): string[] {
   return violations;
 }
 
-const functionalDir = path.resolve(__dirname, '..', 'src', 'functional');
-const controllerFiles = findControllerFiles(functionalDir);
-const violations = controllerFiles.flatMap(checkFile);
+export function checkCapabilityDecorator(): boolean {
+  const functionalDir = path.resolve(__dirname, '..', 'src', 'functional');
+  const controllerFiles = findControllerFiles(functionalDir);
+  const violations = controllerFiles.flatMap(checkFile);
 
-if (violations.length > 0) {
-  console.error('Routes without @Capability(...):\n');
-  violations.forEach((violation) => console.error(`  ${violation}`));
-  console.error(
-    '\nCapabilitiesGuard lets a route through when the metadata is absent, so an\nundecorated read hands out every row the query returns.',
+  if (violations.length > 0) {
+    console.error('Routes without @Capability(...):\n');
+    violations.forEach((violation) => console.error(`  ${violation}`));
+    console.error(
+      '\nCapabilitiesGuard lets a route through when the metadata is absent, so an\nundecorated read hands out every row the query returns.',
+    );
+    return false;
+  }
+
+  console.log(
+    `✔ every route carries @Capability(...) (${controllerFiles.length} controllers checked)`,
   );
-  process.exit(1);
-}
 
-console.log(
-  `✔ every route carries @Capability(...) (${controllerFiles.length} controllers checked)`,
-);
+  return true;
+}

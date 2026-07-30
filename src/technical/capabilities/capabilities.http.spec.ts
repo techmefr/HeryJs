@@ -8,6 +8,7 @@ import {
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { RecordNotFoundException } from '../errors/record-not-found.exception';
 import { CapabilitiesService } from './capabilities.service';
 import { CapabilityRecord, CapabilitySubject } from './capabilities.types';
 
@@ -29,6 +30,11 @@ class DemoController {
   @Get(':id')
   read(@Param('id') id: string) {
     const record = RECORDS[id];
+
+    if (!record) {
+      throw new RecordNotFoundException('record');
+    }
+
     const decision = this.capabilities.resolve('own', CURRENT_SUBJECT, record);
 
     if (!decision.allowed) {

@@ -1,11 +1,17 @@
 import { randomUUID } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { TenantContextStorage } from '../tenancy/tenant-context';
 import {
   createTenantScopedPrismaClient,
   TenantScopedPrismaClient,
 } from './prisma.client';
+
+type WorkoutInputWithoutTenantId = Omit<
+  Prisma.WorkoutUncheckedCreateInput,
+  'tenantId'
+>;
 
 describe('tenant-scoped Prisma client (real database)', () => {
   const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
@@ -15,6 +21,16 @@ describe('tenant-scoped Prisma client (real database)', () => {
   const tenantA = `tenant-a-${randomUUID()}`;
   const tenantB = `tenant-b-${randomUUID()}`;
   let ownerId: string;
+
+  /**
+   * The generated Prisma input requires a tenant id, while the point of the
+   * scoping extension is that callers never supply one. Widening happens once
+   * here so every field the tests do pass stays type-checked.
+   */
+  const createWorkout = (data: WorkoutInputWithoutTenantId) =>
+    scopedClient.workout.create({
+      data: data as Prisma.WorkoutUncheckedCreateInput,
+    });
 
   beforeAll(async () => {
     await rawClient.$connect();
@@ -38,26 +54,20 @@ describe('tenant-scoped Prisma client (real database)', () => {
 
   it('injects the current tenant id on create without the caller passing it', async () => {
     await TenantContextStorage.run({ tenantId: tenantA }, async () => {
-      await scopedClient.workout.create({
-        data: { title: 'from tenant A', ownerId },
-      });
+      await createWorkout({ title: 'from tenant A', ownerId });
     });
 
     const stored = await rawClient.workout.findMany({ where: { ownerId } });
     expect(stored).toHaveLength(1);
-    expect(stored[0].tenantId).toBe(tenantA);
+    expect(stored[0]?.tenantId).toBe(tenantA);
   });
 
   it('never lets tenant B read a record created under tenant A', async () => {
     await TenantContextStorage.run({ tenantId: tenantA }, async () => {
-      await scopedClient.workout.create({
-        data: { title: 'still tenant A', ownerId },
-      });
+      await createWorkout({ title: 'still tenant A', ownerId });
     });
     await TenantContextStorage.run({ tenantId: tenantB }, async () => {
-      await scopedClient.workout.create({
-        data: { title: 'tenant B', ownerId },
-      });
+      await createWorkout({ title: 'tenant B', ownerId });
     });
 
     const asTenantA = await TenantContextStorage.run(

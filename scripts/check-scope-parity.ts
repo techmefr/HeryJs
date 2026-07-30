@@ -66,21 +66,25 @@ function checkFile(filePath: string): string[] {
   return violations;
 }
 
-const functionalDir = path.resolve(__dirname, '..', 'src', 'functional');
-const serviceFiles = findServiceFiles(functionalDir);
-const violations = serviceFiles.flatMap(checkFile);
+export function checkScopeParity(): boolean {
+  const functionalDir = path.resolve(__dirname, '..', 'src', 'functional');
+  const serviceFiles = findServiceFiles(functionalDir);
+  const violations = serviceFiles.flatMap(checkFile);
 
-if (violations.length > 0) {
-  console.error(
-    `Collection queries not scoped through ${SCOPE_HELPER}(...):\n`,
+  if (violations.length > 0) {
+    console.error(
+      `Collection queries not scoped through ${SCOPE_HELPER}(...):\n`,
+    );
+    violations.forEach((violation) => console.error(`  ${violation}`));
+    console.error(
+      '\nThe detail route resolves a permission preset against a loaded record; the\ncollection query has to narrow the rows with that same preset. Written apart,\nthe two drift and the list hands out what the detail route refuses.',
+    );
+    return false;
+  }
+
+  console.log(
+    `✔ every collection query derives its scope from a preset (${serviceFiles.length} services checked)`,
   );
-  violations.forEach((violation) => console.error(`  ${violation}`));
-  console.error(
-    '\nThe detail route resolves a permission preset against a loaded record; the\ncollection query has to narrow the rows with that same preset. Written apart,\nthe two drift and the list hands out what the detail route refuses.',
-  );
-  process.exit(1);
+
+  return true;
 }
-
-console.log(
-  `✔ every collection query derives its scope from a preset (${serviceFiles.length} services checked)`,
-);

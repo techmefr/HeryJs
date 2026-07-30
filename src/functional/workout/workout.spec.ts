@@ -104,7 +104,7 @@ describe('Workout resource (full vertical slice)', () => {
       meta: unknown;
     };
     expect(body.data.length).toBeGreaterThan(0);
-    expect(body.data[0].capabilities.update.allowed).toBe(true);
+    expect(body.data[0]?.capabilities.update.allowed).toBe(true);
     expect(body.meta).toEqual({
       capabilities: { create: { allowed: true, scope: 'own' } },
     });

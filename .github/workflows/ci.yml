@@ -45,17 +45,11 @@ jobs:
 
       - run: pnpm run lint
 
+      - run: pnpm run typecheck
+
       - run: pnpm run arch:check
 
-      - run: pnpm run lint:capabilities
-
-      - run: pnpm run lint:scope-parity
-
-      - run: pnpm run lint:coverage
-
-      - run: pnpm run lint:dev-guard
-
-      - run: pnpm run lint:subject
+      - run: pnpm run lint:conventions
 
       - run: pnpm test
 

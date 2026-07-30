@@ -94,59 +94,63 @@ function delegatedRoots(script: string): Set<string> {
   return new Set(names);
 }
 
-const script = lintScript();
-const patterns = lintPatterns(script);
-const globbedRoots = new Set([
-  ...patterns.filter((pattern) => pattern.includes('*')).flatMap(rootsOf),
-  ...delegatedRoots(script),
-]);
-const namedFiles = new Set(
-  patterns.filter((pattern) => !pattern.includes('*')),
-);
-
-const sources = walk(root)
-  .map((file) => path.relative(root, file).split(path.sep).join('/'))
-  .filter(
-    (file) =>
-      LINTED_EXTENSIONS.some((extension) => file.endsWith(extension)) &&
-      !file.endsWith('.d.ts'),
+export function checkLintCoverage(): boolean {
+  const script = lintScript();
+  const patterns = lintPatterns(script);
+  const globbedRoots = new Set([
+    ...patterns.filter((pattern) => pattern.includes('*')).flatMap(rootsOf),
+    ...delegatedRoots(script),
+  ]);
+  const namedFiles = new Set(
+    patterns.filter((pattern) => !pattern.includes('*')),
   );
 
-const uncovered: string[] = [];
-const debt = new Map<string, number>();
+  const sources = walk(root)
+    .map((file) => path.relative(root, file).split(path.sep).join('/'))
+    .filter(
+      (file) =>
+        LINTED_EXTENSIONS.some((extension) => file.endsWith(extension)) &&
+        !file.endsWith('.d.ts'),
+    );
 
-for (const file of sources) {
-  const firstSegment = file.includes('/')
-    ? file.slice(0, file.indexOf('/'))
-    : file;
+  const uncovered: string[] = [];
+  const debt = new Map<string, number>();
 
-  if (UNCOVERED_ROOTS.has(firstSegment)) {
-    debt.set(firstSegment, (debt.get(firstSegment) ?? 0) + 1);
-    continue;
+  for (const file of sources) {
+    const firstSegment = file.includes('/')
+      ? file.slice(0, file.indexOf('/'))
+      : file;
+
+    if (UNCOVERED_ROOTS.has(firstSegment)) {
+      debt.set(firstSegment, (debt.get(firstSegment) ?? 0) + 1);
+      continue;
+    }
+
+    if (!globbedRoots.has(firstSegment) && !namedFiles.has(file)) {
+      uncovered.push(file);
+    }
   }
 
-  if (!globbedRoots.has(firstSegment) && !namedFiles.has(file)) {
-    uncovered.push(file);
+  for (const [rootName, reason] of UNCOVERED_ROOTS) {
+    const count = debt.get(rootName) ?? 0;
+
+    if (count > 0) {
+      console.log(`! ${rootName}: ${count} files unlinted (${reason})`);
+    }
   }
-}
 
-for (const [rootName, reason] of UNCOVERED_ROOTS) {
-  const count = debt.get(rootName) ?? 0;
-
-  if (count > 0) {
-    console.log(`! ${rootName}: ${count} files unlinted (${reason})`);
+  if (uncovered.length > 0) {
+    console.error('\nFiles no linter reaches:\n');
+    uncovered.forEach((file) => console.error(`  ${file}`));
+    console.error(
+      `\nThe lint script matches ${patterns.join(' ')}. A file outside it is never\nchecked, and nothing says so: it just stops being verified the day the\nglob changes.`,
+    );
+    return false;
   }
-}
 
-if (uncovered.length > 0) {
-  console.error('\nFiles no linter reaches:\n');
-  uncovered.forEach((file) => console.error(`  ${file}`));
-  console.error(
-    `\nThe lint script matches ${patterns.join(' ')}. A file outside it is never\nchecked, and nothing says so: it just stops being verified the day the\nglob changes.`,
+  console.log(
+    `✔ every source file is reached by a linter (${sources.length} files checked)`,
   );
-  process.exit(1);
-}
 
-console.log(
-  `✔ every source file is reached by a linter (${sources.length} files checked)`,
-);
+  return true;
+}

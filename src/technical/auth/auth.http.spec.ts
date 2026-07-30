@@ -10,7 +10,8 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AuthModule } from './auth.module';
-import { RequestWithUser, SessionGuard } from './session.guard';
+import { SessionGuard } from './session.guard';
+import type { RequestWithUser } from './session.guard';
 
 @Controller('protected')
 class ProtectedController {
