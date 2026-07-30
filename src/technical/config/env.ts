@@ -8,6 +8,10 @@ const envSchema = z.object({
     .string()
     .min(1)
     .default('dev-signal-secret-change-in-production'),
+  RLS_ENABLED: z
+    .string()
+    .default('false')
+    .transform((value) => value === 'true'),
 });
 
 function loadEnv() {

@@ -56,7 +56,31 @@ export function createTenantScopedPrismaClient() {
             scopedArgs.where = { ...scopedArgs.where, tenantId };
           }
 
-          return query(args);
+          if (!env.RLS_ENABLED) {
+            return query(args);
+          }
+
+          // Row-level security relies on a session-local setting, which only
+          // survives for the lifetime of a single transaction (this also
+          // holds under pgBouncer's transaction pooling mode, since the
+          // whole block below runs on one pooled connection). Every
+          // tenant-scoped operation is wrapped so the setting and the query
+          // it protects always travel together.
+          const delegateName = model.charAt(0).toLowerCase() + model.slice(1);
+          return rawClient.$transaction(async (tx) => {
+            await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
+            const delegates = tx as unknown as Record<
+              string,
+              Record<string, (opArgs: unknown) => unknown>
+            >;
+            const run = delegates[delegateName]?.[operation];
+            if (!run) {
+              throw new Error(
+                `No Prisma delegate for model "${model}" operation "${operation}"`,
+              );
+            }
+            return run(args);
+          });
         },
       },
     },
