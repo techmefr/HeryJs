@@ -165,59 +165,126 @@ async function promptFilters(fieldNames: string[]): Promise<string[]> {
   return parseCommaList(response.filters);
 }
 
+function allOptionsTemplate(name: string): string {
+  return `# Every option the generator understands, laid out and commented so you
+# can see the full menu at once. Trim what you don't need, then run
+# "hery generate ${name}". Policies, controller, and middleware are not
+# blueprint options — they are plain NestJS code the generator writes for
+# you once, and that you own and edit by hand from then on.
+name: ${name}
+
+fields:
+  # type: string | int | boolean | datetime
+  # optional: true if the field can be null
+  # hidden: true to strip the field from every API response (see <name>.view.ts)
+  - name: title
+    type: string
+    optional: false
+    hidden: false
+  # - name: count
+  #   type: int
+  #   optional: false
+  #   hidden: false
+  # - name: isActive
+  #   type: boolean
+  #   optional: false
+  #   hidden: false
+  # - name: scheduledAt
+  #   type: datetime
+  #   optional: true
+  #   hidden: false
+  # - name: internalNote
+  #   type: string
+  #   optional: true
+  #   hidden: true
+
+permissions:
+  # preset: own (creator/owner only) | team (same team) | all (any authenticated user) | none (nobody)
+  create: own
+  update: own
+  delete: own
+
+pagination:
+  limits: [10, 15, 20]
+  default: 15
+
+sorts:
+  - createdAt
+
+filters: []
+`;
+}
+
 export function registerCreateBlueprintCommand(program: Command): void {
   program
     .command('create:blueprint <name>')
     .description('Create a blueprint file for a new resource')
     .option('-y, --yes', 'Skip prompts and use defaults')
-    .action(async (name: string, options: { yes?: boolean }) => {
-      const blueprintsDir = path.resolve(process.cwd(), 'blueprints');
+    .option(
+      '--all-options',
+      'Write a fully commented blueprint listing every available option instead of prompting',
+    )
+    .action(
+      async (
+        name: string,
+        options: { yes?: boolean; allOptions?: boolean },
+      ) => {
+        const blueprintsDir = path.resolve(process.cwd(), 'blueprints');
 
-      if (!existsSync(blueprintsDir)) {
-        mkdirSync(blueprintsDir, { recursive: true });
-      }
+        if (!existsSync(blueprintsDir)) {
+          mkdirSync(blueprintsDir, { recursive: true });
+        }
 
-      const filePath = path.join(blueprintsDir, `${kebabCase(name)}.yaml`);
+        const filePath = path.join(blueprintsDir, `${kebabCase(name)}.yaml`);
 
-      if (existsSync(filePath)) {
-        console.error(pc.red(`Blueprint already exists: ${filePath}`));
-        process.exitCode = 1;
-        return;
-      }
+        if (existsSync(filePath)) {
+          console.error(pc.red(`Blueprint already exists: ${filePath}`));
+          process.exitCode = 1;
+          return;
+        }
 
-      const fields = options.yes
-        ? [
-            {
-              name: 'title',
-              type: 'string' as const,
-              optional: false,
-              hidden: false,
-            },
-          ]
-        : await promptFields();
+        if (options.allOptions) {
+          writeFileSync(filePath, allOptionsTemplate(name));
+          console.log(pc.green(`✔ Created ${filePath}`));
+          return;
+        }
 
-      const permissions = options.yes
-        ? {
-            create: 'own' as const,
-            update: 'own' as const,
-            delete: 'own' as const,
-          }
-        : await promptPermissions();
+        const fields = options.yes
+          ? [
+              {
+                name: 'title',
+                type: 'string' as const,
+                optional: false,
+                hidden: false,
+              },
+            ]
+          : await promptFields();
 
-      const fieldNames = fields.map((field) => field.name);
+        const permissions = options.yes
+          ? {
+              create: 'own' as const,
+              update: 'own' as const,
+              delete: 'own' as const,
+            }
+          : await promptPermissions();
 
-      const pagination = options.yes
-        ? DEFAULT_PAGINATION
-        : await promptPagination();
+        const fieldNames = fields.map((field) => field.name);
 
-      const sorts = options.yes ? ['createdAt'] : await promptSorts(fieldNames);
+        const pagination = options.yes
+          ? DEFAULT_PAGINATION
+          : await promptPagination();
 
-      const filters = options.yes ? [] : await promptFilters(fieldNames);
+        const sorts = options.yes
+          ? ['createdAt']
+          : await promptSorts(fieldNames);
 
-      writeFileSync(
-        filePath,
-        yaml.dump({ name, fields, permissions, pagination, sorts, filters }),
-      );
-      console.log(pc.green(`✔ Created ${filePath}`));
-    });
+        const filters = options.yes ? [] : await promptFilters(fieldNames);
+
+        writeFileSync(
+          filePath,
+          yaml.dump({ name, fields, permissions, pagination, sorts, filters }),
+        );
+        console.log(pc.green(`✔ Created ${filePath}`));
+      },
+    );
 }
