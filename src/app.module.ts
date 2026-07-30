@@ -12,6 +12,7 @@ import { InspectorModule } from './technical/inspector/inspector.module';
 import { JobsModule } from './technical/jobs/jobs.module';
 import { MonitoringModule } from './technical/monitoring/monitoring.module';
 import { NotificationsModule } from './technical/notifications/notifications.module';
+import { SchedulerModule } from './technical/scheduler/scheduler.module';
 import { SeedersModule } from './technical/seeders/seeders.module';
 import { InspectorMiddleware } from './technical/inspector/inspector.middleware';
 import { SignalModule } from './technical/signal/signal.module';
@@ -42,6 +43,7 @@ import { DomainExceptionFilter } from './technical/errors/domain-exception.filte
     JobsModule,
     MonitoringModule,
     NotificationsModule,
+    SchedulerModule,
     SeedersModule.forRoot([WorkoutSeeder]),
     SignalModule,
     WorkoutModule,
