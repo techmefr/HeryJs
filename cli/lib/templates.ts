@@ -134,20 +134,28 @@ export class ${ctx.pascalName}VisibleRecordLoader
 }
 
 export function serviceFile(ctx: ResourceContext): string {
+  const searchableFields = ctx.fields
+    .filter((field) => field.type === 'string')
+    .map((field) => field.name);
+
   return `import { Inject, Injectable } from '@nestjs/common';
 import type { Prisma, ${ctx.pascalName} } from '@prisma/client';
 import { PRISMA_CLIENT } from '../../technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '../../technical/prisma/prisma.client';
 import { CapabilitySubject } from '../../technical/capabilities/capabilities.types';
 import { SignalService } from '../../technical/signal/signal.service';
+import { buildTextSearchWhere } from '../../technical/search/text-search';
 import { TenantContextStorage } from '../../technical/tenancy/tenant-context';
 import { Create${ctx.pascalName}Input, Update${ctx.pascalName}Input } from './${ctx.kebabName}.dto';
+
+const SEARCHABLE_FIELDS = [${searchableFields.map((name) => `'${name}'`).join(', ')}] as const;
 
 export interface ${ctx.pascalName}SearchOptions {
   withTrashed?: boolean;
   onlyTrashed?: boolean;
   sort?: { field: string; direction: 'asc' | 'desc' };
   filters?: Record<string, string>;
+  search?: string;
   limit?: number;
 }
 
@@ -174,7 +182,11 @@ export class ${ctx.pascalName}Service {
         : { deletedAt: null };
 
     return this.prisma.${ctx.camelName}.findMany({
-      where: { ...trashedWhere, ...options.filters },
+      where: {
+        ...trashedWhere,
+        ...options.filters,
+        ...buildTextSearchWhere(options.search, SEARCHABLE_FIELDS),
+      },
       orderBy: options.sort
         ? { [options.sort.field]: options.sort.direction }
         : { createdAt: 'desc' },

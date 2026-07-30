@@ -14,6 +14,7 @@ export interface ParsedListQuery {
   onlyTrashed: boolean;
   sort?: { field: string; direction: 'asc' | 'desc' };
   filters?: Record<string, string>;
+  search?: string;
   limit: number;
 }
 
@@ -58,11 +59,14 @@ export function parseListQuery(
     filters[field] = value;
   }
 
+  const search = query.q?.trim();
+
   return {
     withTrashed: query.withTrashed === 'true',
     onlyTrashed: query.onlyTrashed === 'true',
     sort,
     filters: Object.keys(filters).length > 0 ? filters : undefined,
+    search: search ? search : undefined,
     limit,
   };
 }
