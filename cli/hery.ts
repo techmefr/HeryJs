@@ -5,8 +5,10 @@ import { registerConsoleCommand } from './commands/console';
 import { registerCreateBlueprintCommand } from './commands/create-blueprint';
 import { registerGenerateCommand } from './commands/generate';
 import { registerHostsCommand } from './commands/hosts';
+import { registerInstallCommand } from './commands/install';
 import { registerMcpServeCommand } from './commands/mcp-serve';
 import { registerMigrateCommand } from './commands/migrate';
+import { registerModuleListCommand } from './commands/module-list';
 import { registerModuleMonitoringCommand } from './commands/module-monitoring';
 import { registerUpCommand } from './commands/up';
 
@@ -24,8 +26,10 @@ registerConsoleCommand(program);
 registerCreateBlueprintCommand(program);
 registerGenerateCommand(program);
 registerHostsCommand(program);
+registerInstallCommand(program);
 registerMcpServeCommand(program);
 registerMigrateCommand(program);
+registerModuleListCommand(program);
 registerModuleMonitoringCommand(program);
 registerUpCommand(program);
 
