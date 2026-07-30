@@ -49,6 +49,8 @@ jobs:
 
       - run: pnpm run lint:capabilities
 
+      - run: pnpm run lint:dev-guard
+
       - run: pnpm test
 
       - run: pnpm run build

@@ -1,10 +1,5 @@
-import {
-  Body,
-  Controller,
-  Inject,
-  NotFoundException,
-  Post,
-} from '@nestjs/common';
+import { Body, Controller, Inject, Post, UseGuards } from '@nestjs/common';
+import { DevOnlyGuard } from '../dev-only/dev-only.guard';
 import { ok } from '../http/envelope';
 import { ZodValidationPipe } from '../validation/zod-validation.pipe';
 import { AUTH_PROVIDER } from './auth.types';
@@ -31,11 +26,8 @@ export class AuthController {
   }
 
   @Post('dev-token')
+  @UseGuards(DevOnlyGuard)
   async devToken() {
-    if (process.env.NODE_ENV === 'production') {
-      throw new NotFoundException();
-    }
-
     return ok(await this.authProvider.devToken());
   }
 }

@@ -24,6 +24,7 @@
     "test:e2e": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json",
     "arch:check": "depcruise src --config .dependency-cruiser.cjs",
     "lint:capabilities": "ts-node scripts/check-capability-decorator.ts",
+    "lint:dev-guard": "ts-node scripts/check-no-inline-dev-guard.ts",
     "hery": "ts-node cli/hery.ts"
   },
   "dependencies": {

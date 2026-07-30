@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { SessionGuard } from '../auth/session.guard';
 import type { RequestWithUser } from '../auth/session.guard';
+import { DevOnlyGuard } from '../dev-only/dev-only.guard';
 import { InvalidQueryException } from '../errors/invalid-query.exception';
 import { ok } from '../http/envelope';
 import { TenantContextStorage } from '../tenancy/tenant-context';
@@ -21,7 +22,7 @@ import { SEEDERS } from './seeder.types';
 import type { Seeder } from './seeder.types';
 
 @Controller('seeders')
-@UseGuards(SessionGuard)
+@UseGuards(SessionGuard, DevOnlyGuard)
 export class SeedersController {
   constructor(@Inject(SEEDERS) private readonly seeders: Seeder[]) {}
 
@@ -43,10 +44,6 @@ export class SeedersController {
     @Body(new ZodValidationPipe(runSeederSchema)) body: RunSeederDto,
     @Req() req: RequestWithUser,
   ) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new NotFoundException();
-    }
-
     const seeder = this.seeders.find((candidate) => candidate.name === name);
 
     if (!seeder) {
