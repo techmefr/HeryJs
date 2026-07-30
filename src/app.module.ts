@@ -7,7 +7,6 @@ import { WorkoutModule } from './functional/workout/workout.module';
 import { WorkoutSeeder } from './functional/workout/workout.seeder';
 import { AuditModule } from './technical/audit/audit.module';
 import { AuthModule } from './technical/auth/auth.module';
-import { ElasticsearchSearchModule } from './technical/search/elasticsearch-search.module';
 import { FeatureFlagsModule } from './technical/feature-flags/feature-flags.module';
 import { InspectorModule } from './technical/inspector/inspector.module';
 import { JobsModule } from './technical/jobs/jobs.module';
@@ -39,7 +38,6 @@ import { DomainExceptionFilter } from './technical/errors/domain-exception.filte
     }),
     AuditModule,
     AuthModule,
-    ElasticsearchSearchModule,
     FeatureFlagsModule,
     InspectorModule,
     JobsModule,
