@@ -28,11 +28,25 @@ filters: [title]
 
 Each field has a `type` (`string`, `int`, `boolean`, `datetime`), whether it's `optional`, and whether it's `hidden` — a hidden field is stripped from every API response by the generated `<name>.view.ts`, no matter which endpoint returns the record.
 
+### Reserved fields
+
+Seven names are the generator's to write, and a blueprint declaring one of them is rejected outright:
+
+```
+id  tenantId  ownerId  teamId  createdAt  updatedAt  deletedAt
+```
+
+The reason is narrow and worth stating: declaring one of these would put a **client-writable field on top of a column the framework decides**. A blueprint with an `ownerId` field would generate a DTO accepting it, which is how a caller ends up choosing its own owner — or its own team, or its own tenant. Refusing at load time is cheaper than discovering it in review.
+
+`teamId` in particular is added *for* you, automatically, as soon as any permission preset is `team`.
+
 ## Permissions
 
 One preset per action, each resolved through the same capabilities engine described in the capabilities guide.
 
 `view` is the one worth pausing on: it drives the detail route *and* the `where` clause of the collection query, so both answer the same question from a single declaration. There is deliberately no separate `list` preset — two presets could diverge, and a record hidden from one route while handed out by the other is the exact bug this shape exists to make unwriteable. `view: all` with `update: own` gives the common case: everyone in the tenant reads, only the owner edits.
+
+Choosing `team` anywhere changes the generated resource structurally: the Prisma model gains a `teamId` column and a relation, the create path stamps that column from the session and refuses with a 409 when the caller has no current team, and the view exposes it. See [Teams](/guides/teams/).
 
 ## Pagination, sorts and filters — the search contract
 
@@ -49,6 +63,16 @@ GET /workouts?limit=20&sort=-title&filter[title]=foo
 GET /workouts?limit=999
 → 400 { "error": { "key": "query.invalid", "message": "Invalid value for \"limit\". Allowed: 10, 15, 20." } }
 ```
+
+### The parameters that need no declaration
+
+Three more are understood by every collection route, and none of them appears in the blueprint because none of them names a field:
+
+- `?q=` — free-text search across the resource's string fields. See [Full-text search](/guides/search/).
+- `?withTrashed=true` — include soft-deleted rows alongside live ones.
+- `?onlyTrashed=true` — the bin, and nothing else.
+
+The two trashed parameters are not just filters: asking for either one is checked against `canListTrashed<Name>`, which follows the `delete` preset. Opening the bin is treated as a moderation action rather than a read, so a user who may see a record is not automatically allowed to browse deleted ones. The rows that come back are still narrowed by the view scope — the gate answers "may I look at the bin", the scope answers "which rows I may see in it".
 
 ## Why YAML, not decorators
 

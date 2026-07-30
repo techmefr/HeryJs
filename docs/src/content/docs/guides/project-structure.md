@@ -1,58 +1,86 @@
 ---
 title: Project structure
-description: How a HeryJs project is laid out, and why.
+description: The four layers of a HeryJs project, the import rules between them, and the CI checks that keep them true.
 ---
 
 ```
 src/
-  functional/
+  app.module.ts          the only place the layers are composed
+  functional/            business domains
     workout/
-      workout.dto.ts
-      workout.policy.ts
-      workout-record.loader.ts
-      workout.service.ts
-      workout.controller.ts
-      workout.factory.ts
-      workout.view.ts
-      workout.spec.ts
-  technical/
-    auth/
-    capabilities/
-    tenancy/
-    errors/
-    http/
-    prisma/
-    validation/
-cli/
-  hery.ts
-  commands/
-  lib/
-blueprints/
-  workout.yaml
+  technical/             the kernel — always present
+    auth/  capabilities/  teams/  tenancy/  prisma/  errors/  http/
+    audit/  config/  describe/  dev-only/  feature-flags/  jobs/
+    monitoring/  notifications/  scheduler/  search/  seeders/
+    signal/  validation/
+  modules/               optional — installed by hery install, removable
+    live/  mail/  storage/  stream/
+  devtools/              never ships to production
+    inspector/  testing/
+cli/                     the generator
+  hery.ts  commands/  lib/  modules/
+admin/                   the Astro admin panel (its own workspace)
+blueprints/              one-time generator input
 prisma/
   schema.prisma
-  seed.ts
 ```
 
-## `functional/` — one folder per resource
+Four layers under `src/`, split by **lifecycle rather than by theme**: whether a piece of code is always present, optional, business-specific, or dev-only. Each has one rule about who may import it, and the rules are not documentation — they are dependency-cruiser rules that fail CI.
 
-Every business resource gets its own folder, and every folder follows the same shape. Nothing inside `functional/` imports from another resource's folder directly — cross-resource concerns go through `technical/` instead.
+## `functional/` — one folder per business domain
 
-## `technical/` — shared infrastructure
+Every business resource gets its own folder, and every folder follows the same shape. Nothing inside `functional/` imports from another domain's folder: shared logic belongs in `technical/`, and a value one domain needs from another is passed in by the caller.
 
-Everything a resource needs but doesn't own itself: the capabilities engine, the tenant-scoped Prisma client, the domain exception hierarchy and its global filter, the response envelope, the auth guard.
+That constraint is what makes the layout predictable enough to generate into, and to navigate without an exploration tax — a reader who knows one domain knows all of them.
 
-`technical/` never imports from `functional/`. This is enforced in CI, not just documented — see the architecture linter below.
+## `technical/` — the kernel
+
+Everything a resource needs but does not own itself: the capabilities engine, teams, the tenant-scoped Prisma client, the domain exception hierarchy and its filter, the response envelope, the session guard, the search contract.
+
+The kernel is **never optional**, and that is the property its rules protect. It must not depend on `functional/`, or it would stop being reusable. It must not depend on `modules/`, or it would stop being *removable* — uninstalling a module would break the kernel underneath it.
+
+## `modules/` — the optional layer
+
+Code that arrives through `hery install` and can be taken out again: `live`, `mail`, `storage`, `stream`. Two rules keep "optional" honest.
+
+**No module imports another module.** Otherwise uninstalling one would break the other, and "optional" would only hold for whichever module happened to be last in the dependency order. Shared logic goes to `technical/`.
+
+**Only `src/app.module.ts` composes the kernel and the modules.** Nothing under `technical/` reaches into `modules/`; the wiring lives in exactly one file. This is why every installer finishes by telling you to import its module class into `app.module.ts` yourself rather than patching it for you — the composition point is yours.
+
+## `devtools/` — never ships to production
+
+The request inspector and the test helpers. One rule, and it is absolute: nothing under `technical/`, `functional/` or `modules/` may import from `devtools/` — **except a spec file**, which is the entire reason a `testing/` folder lives in there.
+
+This replaced a grep. "Must not reach production" used to be approximated by a script scanning controllers for a hand-rolled `NODE_ENV === 'production'` check. It is now a structural property: a production import path into a dev tool is a build failure, whatever the code looks like.
+
+`app.module.ts` sits outside that rule's scope on purpose, since it is the file that composes everything.
 
 ## `cli/` — the generator
 
-The `hery` CLI is a separate, self-contained tool that reads a blueprint and writes files into `functional/`. It is not part of the running application; it never ships to production and nothing in `src/` depends on it.
+The `hery` CLI is a separate, self-contained tool that reads a blueprint and writes files into `src/functional/`. It is not part of the running application: it never ships to production, and nothing in `src/` depends on it.
 
-## The architecture linter
+## The checks that hold the line
 
-Two checks run in CI on every push:
+Generated code belongs to you, which means the generator's guarantees expire the moment you edit it. Structural rules and standalone linters stand in for them.
 
-- **dependency-cruiser** rejects any import from `technical/` into `functional/`, and any cross-resource import inside `functional/`.
-- A Jest test (`architecture.spec.ts`) checks that every resource folder contains the files the convention expects.
+`pnpm arch:check` runs dependency-cruiser over `src/`:
 
-Both exist so the structure above stays true after months of hand-editing generated code, not just on day one.
+| Rule | What it forbids |
+|---|---|
+| `no-cross-domain-imports` | one `functional/` domain importing another |
+| `no-infrastructure-to-functional` | `technical/`, `modules/` or `devtools/` importing a business domain |
+| `no-kernel-to-module` | `technical/` importing `modules/` |
+| `no-cross-module-imports` | one module importing another |
+| `no-production-to-devtools` | anything but a spec reaching into `devtools/` |
+| `no-circular` | circular dependencies anywhere |
+
+Alongside them, each its own CI step:
+
+- `pnpm test` includes `src/architecture.spec.ts`, which asserts that every folder in `functional/` carries the conventional files: `.module.ts`, `.controller.ts`, `.service.ts`, `.policy.ts`, `.dto.ts` and `.spec.ts`. A domain without a spec fails the suite.
+- `pnpm lint:capabilities` — every route in a `functional/` controller carries a `@Capability(...)`.
+- `pnpm lint:scope-parity` — every `search()` in a `functional/` service goes through `scopeWhereFor(...)`.
+- `pnpm lint:subject` — every capability subject comes from `subjectOf(user)`.
+- `pnpm lint:dev-guard` — no controller hand-rolls its own production check instead of using `DevOnlyGuard`.
+- `pnpm lint:coverage` — a meta-check that every top-level directory is reached by *some* linter, so a newly added folder cannot quietly escape all of them. Exactly one root is allow-listed (`docs`, which ships its own toolchain), and the script describes that list as recorded debt rather than a licence.
+
+All of this exists so the structure above is still true after months of hand-editing generated code, not just on day one.

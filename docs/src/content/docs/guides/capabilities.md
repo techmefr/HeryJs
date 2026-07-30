@@ -16,12 +16,26 @@ Every permission in a blueprint picks one of four presets:
 
 Resolution happens **in memory**, against a record already fetched for the request — never as a separate query per item. This is what keeps a list endpoint from turning into an N+1 permission check.
 
-The `team` preset resolves against a `teamId` column, so a blueprint that picks it must declare that field — `hery generate` refuses the blueprint otherwise. Be aware that `CapabilitiesGuard` does not resolve team memberships yet: it builds its subject with an empty `teamIds`, so `team` denies every request until you populate it. The generator warns when a blueprint picks it.
+The `team` preset resolves against a `teamId` column, which the generator adds for you as soon as any preset asks for it — a blueprint must *not* declare `teamId` itself, since it is a reserved column the framework decides. Team memberships are resolved from the database on every request, so `team` is fully working; see [Teams](/guides/teams/) for how the perimeter is established.
 
 ## Two levels: collection and record
 
 - **Collection-level** (`resolveCollectionCapability`) answers questions like "can this user create a Workout at all," where there is no specific record to check against yet.
 - **Record-level** (`resolveCapability`) answers "can this user update *this* Workout," given the record.
+
+## The subject
+
+Every decision is taken against a `CapabilitySubject` — the caller reduced to what a preset needs to know:
+
+```ts
+export interface CapabilitySubject {
+  id: string;
+  teamIds: string[];
+  currentTeamId: string | null;
+}
+```
+
+One function builds it, `subjectOf(user)`, and `pnpm lint:subject` fails the build on any hand-written `teamIds:` literal outside the two files allowed to assemble one. That check exists because the alternative was tried: with every call site writing its own literal, `teamIds` stayed hardcoded to `[]` in thirteen places, and the `team` preset therefore denied everyone — a permission model that answered "no" to everything instead of failing loudly.
 
 ## Reading one record and reading a list are the same question
 
@@ -84,11 +98,14 @@ async update(@Req() req: RequestWithWorkout, @Body() body: UpdateWorkoutInput) {
 
 Policy functions are plain functions rather than injected class methods on purpose: a decorator is evaluated at import time, before Nest's dependency injection has run, so anything it references has to already exist independently of the DI container.
 
+Being plain functions has a second payoff. `CapabilitiesGuard` only works for HTTP — it reaches for the request through `switchToHttp()`. A GraphQL resolver, a WebSocket event handler and an MCP tool call cannot use the guard, but they can all call `canUpdateWorkout(subject, record)` directly, which is exactly what they do. One set of rules, several protocols, no second permission model.
+
 ## Enforced in CI
 
-Generated code belongs to you, which means the generator's guarantees stop the moment you edit it. Two scripts built on the TypeScript Compiler API hold the line instead:
+Generated code belongs to you, which means the generator's guarantees stop the moment you edit it. Three scripts hold the line instead:
 
-- `scripts/check-capability-decorator.ts` fails the build if any route under `functional/**/*.controller.ts` — reads included, not just `@Post`/`@Patch`/`@Put`/`@Delete` — is missing a `@Capability(...)`. `CapabilitiesGuard` returns `true` when the metadata is absent, so an undecorated read hands out every row its query returns.
-- `scripts/check-scope-parity.ts` fails the build if a `search()` method under `functional/**/*.service.ts` does not go through `scopeWhereFor(...)`, which is how a collection query silently loses its scope.
+- `pnpm lint:capabilities` fails the build if any route under `functional/**/*.controller.ts` — reads included, not just `@Post`/`@Patch`/`@Put`/`@Delete` — is missing a `@Capability(...)`. `CapabilitiesGuard` returns `true` when the metadata is absent, so an undecorated read hands out every row its query returns.
+- `pnpm lint:scope-parity` fails the build if a `search()` method under `functional/**/*.service.ts` does not go through `scopeWhereFor(...)`, which is how a collection query silently loses its scope.
+- `pnpm lint:subject` fails the build if a capability subject is assembled anywhere but `subjectOf`, which is how a field on the subject silently stays empty.
 
-Forgetting either is a build failure, not a runtime surprise.
+Forgetting any of them is a build failure, not a runtime surprise. Each one exists because the corresponding mistake was made at least once, and none of them is detectable by reading the code that contains it — the bug is always an *absence*.

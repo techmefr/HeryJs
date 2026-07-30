@@ -1,34 +1,22 @@
 ---
 title: The hery CLI
-description: create:blueprint, generate, migrate — the three commands that make up the generator.
+description: Every hery command — generating resources, installing modules, and the tools around them.
 ---
 
 The `hery` CLI is the only thing in this project that reads a blueprint. It is a build-time tool, not a runtime dependency of the generated application.
 
-## `hery create:blueprint <Name>`
-
-Walks through a set of interactive prompts (fields, permissions, pagination limits, sortable fields, filterable fields) and writes a YAML blueprint to `blueprints/<name>.yaml`. Pass `--yes` to skip the prompts and take sensible defaults — useful in scripts or when trying the generator out. Pass `--all-options` instead to skip the prompts and write a fully commented blueprint that lists every field type, every permission preset, and every other option the generator understands (mostly commented out) — a quick way to see the whole menu before trimming it down to what you need.
-
-## `hery generate <Name>`
-
-Reads the blueprint and writes a full resource into `src/functional/<name>/`:
-
-`<name>.dto.ts`, `<name>.policy.ts`, `<name>-record.loader.ts`, `<name>.service.ts`, `<name>.controller.ts`, `<name>.factory.ts`, `<name>.view.ts`, `<name>.spec.ts`
-
-It also patches `prisma/schema.prisma` (adding the new model and its inverse relation on `User`) and `prisma.client.ts` (adding the model to the tenant-scoped set). Running it again on an existing resource without `--force` refuses to overwrite anything.
-
-## `hery migrate --name <migration-name>`
-
-A thin wrapper around `prisma migrate dev`, run after `generate` once the schema has been patched.
-
-## `hery mcp:serve`
-
-Starts a read-only [MCP](https://modelcontextprotocol.io) server over stdio, for editors and agents that want to introspect what actually exists in the project. It exposes two tools:
-
-- `list_resources` — the resources actually generated under `src/functional/`.
-- `describe_resource(name)` — that resource's routes (HTTP method, path, the capability guarding it) and its fields, read straight from the real `*.controller.ts` and `prisma/schema.prisma`.
-
-It never reads a blueprint file. A blueprint is a one-time input to `generate`, not a live source of truth — the generated code is.
+| Command | What it does |
+|---|---|
+| `create:blueprint <Name>` | Writes a blueprint from prompts or defaults. |
+| `generate <Name>` | Writes a full resource from that blueprint. |
+| `migrate --name <name>` | Runs `prisma migrate dev`. |
+| `install [modules...]` | Installs optional modules. |
+| `module:list` | Lists the modules available to install. |
+| `module:monitoring` | Scaffolds Prometheus, Grafana and Loki. |
+| `up` | Checks that local dependencies are ready. |
+| `console` | Boots the app into a REPL. |
+| `hosts` | Adds the local hostname to your hosts file. |
+| `mcp:serve` | A read-only MCP server over stdio. |
 
 ## The order that matters
 
@@ -39,4 +27,70 @@ pnpm hery generate Task
 pnpm hery migrate --name add_task
 ```
 
-After this, `Task` is a normal NestJS module like any other. Nothing re-reads `blueprints/task.yaml` again — editing the resource going forward means editing the generated files directly, the same way you would for hand-written code.
+After this, `Task` is a normal NestJS module like any other. Nothing re-reads `blueprints/task.yaml` again — evolving the resource means editing the generated files directly, the same way you would for hand-written code.
+
+## `hery create:blueprint <Name>`
+
+Walks through interactive prompts (fields, permissions, pagination limits, sortable fields, filterable fields) and writes a YAML blueprint to `blueprints/<name>.yaml`.
+
+- `--yes` skips the prompts and takes sensible defaults — useful in scripts, or when trying the generator out.
+- `--all-options` skips the prompts and writes a fully commented blueprint listing every field type, every permission preset and every other option the generator understands, mostly commented out. A quick way to see the whole menu before trimming it to what you need.
+
+## `hery generate <Name>`
+
+Reads the blueprint and writes nine files into `src/functional/<name>/`. See [What gets generated](/guides/generated-files/) for what each one owns.
+
+It also patches `prisma/schema.prisma` (the new model plus its inverse relation on `User`) and `prisma.client.ts` (adding the model to the tenant-scoped set), then prints the two manual steps it deliberately does not take for you: importing the module into `src/app.module.ts`, and running the migration.
+
+- `--force` overwrites an existing resource directory. Without it, `generate` refuses rather than clobbering code you own.
+- `--graphql`, `--mcp`, `--live`, `--stream` each add one more file, wiring the resource into the corresponding module. They require that module to be installed; the flag does not check.
+
+## `hery migrate --name <migration-name>`
+
+A thin wrapper around `prisma migrate dev`, run after `generate` once the schema has been patched.
+
+## `hery install [modules...]`
+
+Installs optional modules à la carte or, with `--all`, the full package. `hery module:list` prints what is available. See [The module system](/guides/modules/).
+
+```bash
+pnpm hery install storage mail
+pnpm hery install --all
+```
+
+## `hery module:monitoring`
+
+Scaffolds Prometheus, Grafana and Loki as an opt-in local compose stack, wired to scrape the app's `/metrics`. It writes the compose file and a Prometheus config, then prints the command to start them — it does not start anything itself.
+
+Despite the name it is a plain command, not a registry module: it does not appear in `module:list` and `install --all` does not cover it.
+
+## `hery up`
+
+Checks that the things the app needs are actually reachable — Postgres, Valkey, and whether Prisma migrations are up to date — and exits non-zero if any of them is not, with a hint for each:
+
+```
+✔ PostgreSQL (localhost:32768)
+✔ Valkey (localhost:32769)
+✘ Prisma migrations — run "pnpm hery migrate --name <name>"
+```
+
+`--start` brings the compose services up first and then does something more interesting: it reads back the **ports Docker actually assigned** and writes them into `.env`. The compose files publish container ports without fixing a host port, so several projects can run side by side without colliding, and `hery up --start` is what reconciles that with your configuration. It resolves `DATABASE_URL` and `REDIS_URL`, plus `ELASTICSEARCH_URL` or `MEILISEARCH_URL` if the matching search module is installed.
+
+## `hery console`
+
+Boots the real application into a REPL with the DI container and the tenant-scoped Prisma client. `--tenant <id>` picks the tenant the whole session runs inside. See [Developer tooling](/guides/devtools/).
+
+## `hery hosts`
+
+Adds `heryjs.local` (or whatever `HERYJS_DOMAIN` is set to) to your system hosts file, pointing at `127.0.0.1`, so the app is reachable by name instead of by port. It shows the exact line it will add and asks before touching anything, then elevates — sudo on Unix, an admin prompt on Windows. If the entry is already there it says so and does nothing.
+
+## `hery mcp:serve`
+
+Starts a read-only [MCP](https://modelcontextprotocol.io) server over stdio, for editors and agents that want to introspect what exists in the project. Two tools:
+
+- `list_resources` — the resources actually generated under `src/functional/`.
+- `describe_resource(name)` — that resource's routes (HTTP method, path, the capability guarding it) and its fields, read straight from the real `*.controller.ts` and `prisma/schema.prisma`.
+
+It never reads a blueprint file. A blueprint is a one-time input to `generate`, not a live source of truth — the generated code is.
+
+This is the read-only surface, needs no running app and no credentials. For an agent that should be able to *use* the application — with a real session and real capability checks — install the [MCP module](/guides/graphql-and-mcp/) instead.
