@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import * as path from 'node:path';
 
 const root = path.resolve(__dirname, '..');
@@ -14,15 +14,14 @@ const SKIPPED_DIRECTORIES = new Set([
 
 const LINTED_EXTENSIONS = ['.ts', '.tsx'];
 
-// Roots the root eslint run does not reach, each with the reason. This is
-// recorded debt, not a licence: a root only belongs here until it carries a
-// linter of its own, and nothing new should ever be added.
+// Roots no linter reaches at all, each with the reason. This is recorded debt,
+// not a licence: a root only belongs here until it carries a linter of its own,
+// and nothing new should ever be added.
 const UNCOVERED_ROOTS = new Map([
-  ['admin', 'Refine app, no eslint config of its own yet'],
   ['docs', 'Astro workspace, ships its own toolchain'],
 ]);
 
-function lintPatterns(): string[] {
+function lintScript(): string {
   const manifest = JSON.parse(
     readFileSync(path.join(root, 'package.json'), 'utf8'),
   ) as { scripts?: Record<string, string | undefined> };
@@ -32,6 +31,10 @@ function lintPatterns(): string[] {
     throw new Error('No lint script in package.json');
   }
 
+  return script;
+}
+
+function lintPatterns(script: string): string[] {
   const patterns = [...script.matchAll(/"([^"]+)"/g)]
     .map((match) => match[1])
     .filter((pattern): pattern is string => pattern !== undefined);
@@ -71,10 +74,32 @@ function walk(dir: string): string[] {
   });
 }
 
-const patterns = lintPatterns();
-const globbedRoots = new Set(
-  patterns.filter((pattern) => pattern.includes('*')).flatMap(rootsOf),
-);
+// A workspace with its own eslint config is linted by its own run, chained from
+// the root script so there is a single entry point. The delegation is verified
+// rather than trusted: a workspace named here without a config would claim a
+// coverage it does not have.
+function delegatedRoots(script: string): Set<string> {
+  const names = [...script.matchAll(/--filter\s+(\S+)\s+lint/g)]
+    .map((match) => match[1])
+    .filter((name): name is string => name !== undefined);
+
+  for (const name of names) {
+    if (!existsSync(path.join(root, name, 'eslint.config.mjs'))) {
+      throw new Error(
+        `The lint script delegates to ${name}, which has no eslint.config.mjs`,
+      );
+    }
+  }
+
+  return new Set(names);
+}
+
+const script = lintScript();
+const patterns = lintPatterns(script);
+const globbedRoots = new Set([
+  ...patterns.filter((pattern) => pattern.includes('*')).flatMap(rootsOf),
+  ...delegatedRoots(script),
+]);
 const namedFiles = new Set(
   patterns.filter((pattern) => !pattern.includes('*')),
 );
