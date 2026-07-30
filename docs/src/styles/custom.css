@@ -31,17 +31,26 @@
 	--sl-color-black: #ffffff;
 }
 
+/* Uppercase is kept for the hero only: in body copy it shouts, and it mangles
+   the code identifiers that headings legitimately contain. */
 h1,
 h2,
 h3 {
 	font-weight: 800;
 	letter-spacing: -0.02em;
-	text-transform: uppercase;
 }
 
 h1 {
-	font-size: 2.75rem;
-	line-height: 1.05;
+	font-size: 2.25rem;
+	line-height: 1.1;
+}
+
+h2 {
+	font-size: 1.5rem;
+}
+
+h3 {
+	font-size: 1.175rem;
 }
 
 a {
@@ -54,7 +63,8 @@ a {
 }
 
 .hero h1 {
-	font-size: 3.5rem;
+	font-size: 3rem;
+	text-transform: uppercase;
 }
 
 .hero .tagline {
