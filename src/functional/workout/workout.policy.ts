@@ -24,10 +24,15 @@ export const canUpdateWorkout: PolicyCheck<WorkoutRecordLike> = (
   record,
 ) => (record ? resolveCapability('own', subject, record) : { allowed: false });
 
-export const canDeleteWorkout: PolicyCheck<WorkoutRecordLike> =
-  canUpdateWorkout;
+export const canDeleteWorkout: PolicyCheck<WorkoutRecordLike> = (
+  subject,
+  record,
+) => (record ? resolveCapability('own', subject, record) : { allowed: false });
 
-export const canViewWorkout: PolicyCheck<WorkoutRecordLike> = canUpdateWorkout;
+export const canViewWorkout: PolicyCheck<WorkoutRecordLike> = (
+  subject,
+  record,
+) => (record ? resolveCapability('own', subject, record) : { allowed: false });
 
 // Same preset as canViewWorkout: whoever may read one record may ask for the
 // collection, and scopeWhereFor narrows that collection to the very same rows.
