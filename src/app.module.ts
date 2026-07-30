@@ -8,10 +8,12 @@ import { WorkoutSeeder } from './functional/workout/workout.seeder';
 import { AuditModule } from './technical/audit/audit.module';
 import { AuthModule } from './technical/auth/auth.module';
 import { FeatureFlagsModule } from './technical/feature-flags/feature-flags.module';
+import { InspectorModule } from './technical/inspector/inspector.module';
 import { JobsModule } from './technical/jobs/jobs.module';
 import { MonitoringModule } from './technical/monitoring/monitoring.module';
 import { NotificationsModule } from './technical/notifications/notifications.module';
 import { SeedersModule } from './technical/seeders/seeders.module';
+import { InspectorMiddleware } from './technical/inspector/inspector.middleware';
 import { SignalModule } from './technical/signal/signal.module';
 import { TenantMiddleware } from './technical/tenancy/tenant.middleware';
 import { DomainExceptionFilter } from './technical/errors/domain-exception.filter';
@@ -36,6 +38,7 @@ import { DomainExceptionFilter } from './technical/errors/domain-exception.filte
     AuditModule,
     AuthModule,
     FeatureFlagsModule,
+    InspectorModule,
     JobsModule,
     MonitoringModule,
     NotificationsModule,
@@ -52,5 +55,6 @@ import { DomainExceptionFilter } from './technical/errors/domain-exception.filte
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(TenantMiddleware).forRoutes('*');
+    consumer.apply(InspectorMiddleware).forRoutes('*');
   }
 }
