@@ -4,7 +4,7 @@ import * as readline from 'node:readline/promises';
 import type { Command } from 'commander';
 import pc from 'picocolors';
 
-const HOSTNAME = 'heryjs.local';
+const HOSTNAME = process.env.HERYJS_DOMAIN ?? 'heryjs.local';
 const ENTRY = `127.0.0.1 ${HOSTNAME}`;
 
 function hostsFilePath(): string {

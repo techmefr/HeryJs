@@ -1,12 +1,28 @@
 import { connect } from 'node:net';
 import { spawnSync } from 'node:child_process';
+import * as path from 'node:path';
 import type { Command } from 'commander';
 import pc from 'picocolors';
+import { replaceUrlPort, upsertEnvVar } from '../lib/env-file';
 
 interface CheckResult {
   label: string;
   ok: boolean;
   hint?: string;
+}
+
+function resolveComposePort(
+  service: string,
+  containerPort: number,
+): number | undefined {
+  const result = spawnSync(
+    'docker',
+    ['compose', 'port', service, String(containerPort)],
+    { encoding: 'utf-8' },
+  );
+
+  const port = result.stdout?.trim().split(':').pop();
+  return port ? Number(port) : undefined;
 }
 
 function parseHostPort(url: string, fallbackPort: number) {
@@ -63,7 +79,42 @@ export function registerUpCommand(program: Command): void {
     .description(
       'Check that local dependencies (database, Redis, migrations) are ready',
     )
-    .action(async () => {
+    .option(
+      '--start',
+      'start the docker compose services first and resolve their dynamically assigned ports into .env',
+    )
+    .action(async (options: { start?: boolean }) => {
+      if (options.start) {
+        console.log(pc.cyan('starting docker compose services...'));
+        spawnSync('docker', ['compose', 'up', '-d', 'postgres', 'valkey'], {
+          stdio: 'inherit',
+        });
+
+        const envPath = path.resolve(process.cwd(), '.env');
+        const postgresPort = resolveComposePort('postgres', 5432);
+        const valkeyPort = resolveComposePort('valkey', 6379);
+
+        if (postgresPort && process.env.DATABASE_URL) {
+          process.env.DATABASE_URL = replaceUrlPort(
+            process.env.DATABASE_URL,
+            postgresPort,
+          );
+          upsertEnvVar(envPath, 'DATABASE_URL', process.env.DATABASE_URL);
+          console.log(
+            pc.green(`✔ DATABASE_URL resolved to port ${postgresPort}`),
+          );
+        }
+
+        if (valkeyPort && process.env.REDIS_URL) {
+          process.env.REDIS_URL = replaceUrlPort(
+            process.env.REDIS_URL,
+            valkeyPort,
+          );
+          upsertEnvVar(envPath, 'REDIS_URL', process.env.REDIS_URL);
+          console.log(pc.green(`✔ REDIS_URL resolved to port ${valkeyPort}`));
+        }
+      }
+
       const databaseUrl = process.env.DATABASE_URL;
       const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6479';
 
