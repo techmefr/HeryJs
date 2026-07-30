@@ -138,17 +138,20 @@ export function serviceFile(ctx: ResourceContext): string {
     .filter((field) => field.type === 'string')
     .map((field) => field.name);
 
-  return `import { Inject, Injectable } from '@nestjs/common';
+  return `import { Inject, Injectable, Optional } from '@nestjs/common';
 import type { Prisma, ${ctx.pascalName} } from '@prisma/client';
 import { PRISMA_CLIENT } from '../../technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '../../technical/prisma/prisma.client';
 import { CapabilitySubject } from '../../technical/capabilities/capabilities.types';
 import { SignalService } from '../../technical/signal/signal.service';
 import { buildTextSearchWhere } from '../../technical/search/text-search';
+import { SEARCH_DRIVER } from '../../technical/search/search-driver';
+import type { SearchDriver } from '../../technical/search/search-driver';
 import { TenantContextStorage } from '../../technical/tenancy/tenant-context';
 import { Create${ctx.pascalName}Input, Update${ctx.pascalName}Input } from './${ctx.kebabName}.dto';
 
 const SEARCHABLE_FIELDS = [${searchableFields.map((name) => `'${name}'`).join(', ')}] as const;
+const SEARCH_COLLECTION = '${ctx.kebabName}';
 
 export interface ${ctx.pascalName}SearchOptions {
   withTrashed?: boolean;
@@ -166,12 +169,31 @@ export class ${ctx.pascalName}Service {
   constructor(
     @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,
     private readonly signal: SignalService,
+    @Optional()
+    @Inject(SEARCH_DRIVER)
+    private readonly searchDriver?: SearchDriver,
   ) {}
 
   private notify() {
-    this.signal.publish(
+    void this.signal.publish(
       \`\${TenantContextStorage.getTenantId()}:\${${ctx.pascalName.toUpperCase()}_SIGNAL_CHANNEL}\`,
     );
+  }
+
+  private async syncSearchIndex(record: ${ctx.pascalName}) {
+    if (!this.searchDriver) {
+      return;
+    }
+
+    if (record.deletedAt) {
+      await this.searchDriver.remove(SEARCH_COLLECTION, record.id);
+      return;
+    }
+
+    const document = Object.fromEntries(
+      SEARCHABLE_FIELDS.map((field) => [field, record[field]]),
+    );
+    await this.searchDriver.index(SEARCH_COLLECTION, record.id, document);
   }
 
   async search(options: ${ctx.pascalName}SearchOptions = {}) {
@@ -181,11 +203,25 @@ export class ${ctx.pascalName}Service {
         ? {}
         : { deletedAt: null };
 
+    const searchWhere = options.search
+      ? this.searchDriver
+        ? {
+            id: {
+              in: await this.searchDriver.search(
+                SEARCH_COLLECTION,
+                options.search,
+                SEARCHABLE_FIELDS,
+              ),
+            },
+          }
+        : buildTextSearchWhere(options.search, SEARCHABLE_FIELDS)
+      : undefined;
+
     return this.prisma.${ctx.camelName}.findMany({
       where: {
         ...trashedWhere,
         ...options.filters,
-        ...buildTextSearchWhere(options.search, SEARCHABLE_FIELDS),
+        ...searchWhere,
       },
       orderBy: options.sort
         ? { [options.sort.field]: options.sort.direction }
@@ -203,12 +239,14 @@ export class ${ctx.pascalName}Service {
       } as unknown as Prisma.${ctx.pascalName}CreateInput,
     });
     this.notify();
+    await this.syncSearchIndex(record);
     return record;
   }
 
   async update(record: ${ctx.pascalName}, data: Update${ctx.pascalName}Input) {
     const updated = await this.prisma.${ctx.camelName}.update({ where: { id: record.id }, data });
     this.notify();
+    await this.syncSearchIndex(updated);
     return updated;
   }
 
@@ -218,6 +256,7 @@ export class ${ctx.pascalName}Service {
       data: { deletedAt: new Date() },
     });
     this.notify();
+    await this.syncSearchIndex(updated);
     return updated;
   }
 
@@ -227,6 +266,7 @@ export class ${ctx.pascalName}Service {
       data: { deletedAt: null },
     });
     this.notify();
+    await this.syncSearchIndex(updated);
     return updated;
   }
 }

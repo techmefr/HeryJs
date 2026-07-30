@@ -1,5 +1,6 @@
 import { connect } from 'node:net';
 import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import * as path from 'node:path';
 import type { Command } from 'commander';
 import pc from 'picocolors';
@@ -11,18 +12,55 @@ interface CheckResult {
   hint?: string;
 }
 
+const OPTIONAL_COMPOSE_SERVICES = [
+  {
+    composeFile: 'docker-compose.search-elasticsearch.yml',
+    service: 'elasticsearch',
+    containerPort: 9200,
+    envVar: 'ELASTICSEARCH_URL',
+  },
+];
+
 function resolveComposePort(
   service: string,
   containerPort: number,
+  composeFile?: string,
 ): number | undefined {
+  const args = composeFile ? ['compose', '-f', composeFile] : ['compose'];
   const result = spawnSync(
     'docker',
-    ['compose', 'port', service, String(containerPort)],
+    [...args, 'port', service, String(containerPort)],
     { encoding: 'utf-8' },
   );
 
   const port = result.stdout?.trim().split(':').pop();
   return port ? Number(port) : undefined;
+}
+
+function startOptionalComposeServices(envPath: string): void {
+  for (const {
+    composeFile,
+    service,
+    containerPort,
+    envVar,
+  } of OPTIONAL_COMPOSE_SERVICES) {
+    if (!existsSync(composeFile)) {
+      continue;
+    }
+
+    spawnSync('docker', ['compose', '-f', composeFile, 'up', '-d'], {
+      stdio: 'inherit',
+    });
+
+    const port = resolveComposePort(service, containerPort, composeFile);
+
+    if (port) {
+      const url = `http://localhost:${port}`;
+      process.env[envVar] = url;
+      upsertEnvVar(envPath, envVar, url);
+      console.log(pc.green(`✔ ${envVar} resolved to port ${port}`));
+    }
+  }
 }
 
 function parseHostPort(url: string, fallbackPort: number) {
@@ -113,6 +151,8 @@ export function registerUpCommand(program: Command): void {
           upsertEnvVar(envPath, 'REDIS_URL', process.env.REDIS_URL);
           console.log(pc.green(`✔ REDIS_URL resolved to port ${valkeyPort}`));
         }
+
+        startOptionalComposeServices(envPath);
       }
 
       const databaseUrl = process.env.DATABASE_URL;
