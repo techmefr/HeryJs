@@ -1,11 +1,15 @@
 import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../app.module';
+import { env } from '../../technical/config/env';
 
-const TENANT_ID = `tenant-${randomUUID()}`;
+const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
+const prisma = new PrismaClient({ adapter });
 
 async function registerAndLogin(app: INestApplication<App>) {
   const email = `${randomUUID()}@example.test`;
@@ -21,7 +25,10 @@ async function registerAndLogin(app: INestApplication<App>) {
     .send({ email, password })
     .expect(201);
 
-  return (login.body as { data: { token: string } }).data.token;
+  return {
+    email,
+    token: (login.body as { data: { token: string } }).data.token,
+  };
 }
 
 describe('Workout resource (full vertical slice)', () => {
@@ -36,32 +43,31 @@ describe('Workout resource (full vertical slice)', () => {
     app = moduleRef.createNestApplication();
     await app.init();
 
-    ownerToken = await registerAndLogin(app);
-    strangerToken = await registerAndLogin(app);
+    ownerToken = (await registerAndLogin(app)).token;
+    strangerToken = (await registerAndLogin(app)).token;
   });
 
   afterAll(async () => {
     await app.close();
+    await prisma.$disconnect();
   });
 
   it('creates a workout owned by the current user, scoped to the current tenant', async () => {
     const response = await request(app.getHttpServer())
       .post('/workouts')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .set('x-tenant-id', TENANT_ID)
       .send({ title: 'Leg day' })
       .expect(201);
 
     expect(
       (response.body as { data: { tenantId: string } }).data.tenantId,
-    ).toBe(TENANT_ID);
+    ).toBe('default');
   });
 
   it('lists workouts with resolved capabilities via ?include=capabilities', async () => {
     const response = await request(app.getHttpServer())
       .get('/workouts?include=capabilities')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .set('x-tenant-id', TENANT_ID)
       .expect(200);
 
     const body = response.body as {
@@ -79,7 +85,6 @@ describe('Workout resource (full vertical slice)', () => {
     const created = await request(app.getHttpServer())
       .post('/workouts')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .set('x-tenant-id', TENANT_ID)
       .send({ title: 'Owned by someone else' })
       .expect(201);
 
@@ -88,7 +93,6 @@ describe('Workout resource (full vertical slice)', () => {
     await request(app.getHttpServer())
       .patch(`/workouts/${workoutId}`)
       .set('Authorization', `Bearer ${strangerToken}`)
-      .set('x-tenant-id', TENANT_ID)
       .send({ title: 'Hijacked' })
       .expect(403);
   });
@@ -97,7 +101,6 @@ describe('Workout resource (full vertical slice)', () => {
     const created = await request(app.getHttpServer())
       .post('/workouts')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .set('x-tenant-id', TENANT_ID)
       .send({ title: 'To be deleted' })
       .expect(201);
 
@@ -106,37 +109,50 @@ describe('Workout resource (full vertical slice)', () => {
     await request(app.getHttpServer())
       .delete(`/workouts/${workoutId}`)
       .set('Authorization', `Bearer ${ownerToken}`)
-      .set('x-tenant-id', TENANT_ID)
       .expect(200);
 
     await request(app.getHttpServer())
       .get(`/workouts/${workoutId}`)
       .set('Authorization', `Bearer ${ownerToken}`)
-      .set('x-tenant-id', TENANT_ID)
       .expect(404);
 
     await request(app.getHttpServer())
       .post(`/workouts/${workoutId}/restore`)
       .set('Authorization', `Bearer ${ownerToken}`)
-      .set('x-tenant-id', TENANT_ID)
       .expect(201);
 
     await request(app.getHttpServer())
       .get(`/workouts/${workoutId}`)
       .set('Authorization', `Bearer ${ownerToken}`)
-      .set('x-tenant-id', TENANT_ID)
       .expect(200);
   });
 
   it('never lets a different tenant see this tenant workouts', async () => {
-    const otherTenantId = `tenant-${randomUUID()}`;
+    const outsider = await registerAndLogin(app);
+    await prisma.user.update({
+      where: { email: outsider.email },
+      data: { tenantId: `tenant-${randomUUID()}` },
+    });
 
     const response = await request(app.getHttpServer())
       .get('/workouts')
-      .set('Authorization', `Bearer ${ownerToken}`)
-      .set('x-tenant-id', otherTenantId)
+      .set('Authorization', `Bearer ${outsider.token}`)
       .expect(200);
 
     expect((response.body as { data: unknown[] }).data).toHaveLength(0);
+  });
+
+  it('cannot be spoofed into another tenant via a client-supplied header', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/workouts')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .set('x-tenant-id', `tenant-${randomUUID()}`)
+      .expect(200);
+
+    expect(
+      (response.body as { data: Array<{ tenantId: string }> }).data.every(
+        (workout) => workout.tenantId === 'default',
+      ),
+    ).toBe(true);
   });
 });

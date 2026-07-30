@@ -33,6 +33,11 @@ async function main() {
       })
     ).user;
 
+  await prisma.user.update({
+    where: { id: owner.id },
+    data: { tenantId: DEMO_TENANT_ID },
+  });
+
   await prisma.workout.createMany({
     data: workoutFactory(
       { ownerId: owner.id, tenantId: DEMO_TENANT_ID },

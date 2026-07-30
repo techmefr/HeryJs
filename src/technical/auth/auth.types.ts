@@ -1,6 +1,7 @@
 export interface AuthenticatedUser {
   id: string;
   email: string;
+  tenantId: string;
 }
 
 export interface AuthProvider {

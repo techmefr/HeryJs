@@ -2,7 +2,6 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { Prisma, Workout } from '@prisma/client';
 import { PRISMA_CLIENT } from '../../technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '../../technical/prisma/prisma.client';
-import { RecordNotFoundException } from '../../technical/errors/record-not-found.exception';
 import { CapabilitySubject } from '../../technical/capabilities/capabilities.types';
 import { CreateWorkoutInput, UpdateWorkoutInput } from './workout.dto';
 
@@ -28,16 +27,6 @@ export class WorkoutService {
       where,
       orderBy: { createdAt: 'desc' },
     });
-  }
-
-  async findOneOrFail(id: string) {
-    const workout = await this.prisma.workout.findUnique({ where: { id } });
-
-    if (!workout || workout.deletedAt) {
-      throw new RecordNotFoundException('workout');
-    }
-
-    return workout;
   }
 
   create(subject: CapabilitySubject, data: CreateWorkoutInput) {

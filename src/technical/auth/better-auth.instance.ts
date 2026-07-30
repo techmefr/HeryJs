@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { env } from '../config/env';
 
 const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
-const authPrismaClient = new PrismaClient({ adapter });
+export const authPrismaClient = new PrismaClient({ adapter });
 
 async function createAuth() {
   const { betterAuth, APIError } = await import('better-auth');

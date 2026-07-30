@@ -1,7 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { getAuthContext } from './better-auth.instance';
+import { authPrismaClient, getAuthContext } from './better-auth.instance';
 import { InvalidCredentialsException } from '../errors/invalid-credentials.exception';
 import { AuthenticatedUser, AuthProvider } from './auth.types';
+
+async function loadTenantId(userId: string): Promise<string> {
+  const user = await authPrismaClient.user.findUniqueOrThrow({
+    where: { id: userId },
+    select: { tenantId: true },
+  });
+  return user.tenantId;
+}
 
 @Injectable()
 export class SessionAuthProvider implements AuthProvider {
@@ -10,7 +18,8 @@ export class SessionAuthProvider implements AuthProvider {
     const result = await auth.api.signUpEmail({
       body: { email, password, name: email },
     });
-    return { id: result.user.id, email: result.user.email };
+    const tenantId = await loadTenantId(result.user.id);
+    return { id: result.user.id, email: result.user.email, tenantId };
   }
 
   async login(
@@ -21,8 +30,9 @@ export class SessionAuthProvider implements AuthProvider {
 
     try {
       const result = await auth.api.signInEmail({ body: { email, password } });
+      const tenantId = await loadTenantId(result.user.id);
       return {
-        user: { id: result.user.id, email: result.user.email },
+        user: { id: result.user.id, email: result.user.email, tenantId },
         token: result.token,
       };
     } catch (error) {
@@ -55,6 +65,7 @@ export class SessionAuthProvider implements AuthProvider {
       return null;
     }
 
-    return { id: session.user.id, email: session.user.email };
+    const tenantId = await loadTenantId(session.user.id);
+    return { id: session.user.id, email: session.user.email, tenantId };
   }
 }

@@ -24,6 +24,8 @@ export const canUpdateWorkout: PolicyCheck<WorkoutRecordLike> = (
 export const canDeleteWorkout: PolicyCheck<WorkoutRecordLike> =
   canUpdateWorkout;
 
+export const canViewWorkout: PolicyCheck<WorkoutRecordLike> = canUpdateWorkout;
+
 @Injectable()
 export class WorkoutPolicy {
   constructor(private readonly capabilities: CapabilitiesService) {}

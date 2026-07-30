@@ -7,7 +7,9 @@ import { WorkoutPolicy } from './workout.policy';
 import { WorkoutService } from './workout.service';
 import {
   WORKOUT_RECORD_LOADER,
+  WORKOUT_VISIBLE_RECORD_LOADER,
   WorkoutRecordLoader,
+  WorkoutVisibleRecordLoader,
 } from './workout-record.loader';
 
 @Module({
@@ -18,6 +20,10 @@ import {
     WorkoutPolicy,
     CapabilitiesService,
     { provide: WORKOUT_RECORD_LOADER, useClass: WorkoutRecordLoader },
+    {
+      provide: WORKOUT_VISIBLE_RECORD_LOADER,
+      useClass: WorkoutVisibleRecordLoader,
+    },
   ],
 })
 export class WorkoutModule {}

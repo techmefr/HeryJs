@@ -57,6 +57,11 @@ export const canDelete${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike
   record,
 ) => (record ? resolveCapability('${ctx.permissions.delete}', subject, record) : { allowed: false });
 
+export const canView${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike> = (
+  subject,
+  record,
+) => (record ? resolveCapability('${ctx.permissions.update}', subject, record) : { allowed: false });
+
 @Injectable()
 export class ${ctx.pascalName}Policy {
   constructor(private readonly capabilities: CapabilitiesService) {}
@@ -92,7 +97,12 @@ import type { ${ctx.pascalName}RecordLike } from './${ctx.kebabName}.policy';
 export const ${ctx.pascalName.toUpperCase()}_RECORD_LOADER = Symbol(
   '${ctx.pascalName.toUpperCase()}_RECORD_LOADER',
 );
+export const ${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER = Symbol(
+  '${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER',
+);
 
+// Update/delete/restore all need to find a record regardless of its
+// soft-delete state (restore specifically targets trashed rows).
 @Injectable()
 export class ${ctx.pascalName}RecordLoader
   implements RecordLoader<${ctx.pascalName}RecordLike>
@@ -105,6 +115,21 @@ export class ${ctx.pascalName}RecordLoader
     return this.prisma.${ctx.camelName}.findUnique({ where: { id } });
   }
 }
+
+// Plain reads must not resurface a soft-deleted record as if it still existed.
+@Injectable()
+export class ${ctx.pascalName}VisibleRecordLoader
+  implements RecordLoader<${ctx.pascalName}RecordLike>
+{
+  constructor(
+    @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,
+  ) {}
+
+  async load(id: string) {
+    const record = await this.prisma.${ctx.camelName}.findUnique({ where: { id } });
+    return record && !record.deletedAt ? record : null;
+  }
+}
 `;
 }
 
@@ -113,7 +138,6 @@ export function serviceFile(ctx: ResourceContext): string {
 import type { Prisma, ${ctx.pascalName} } from '@prisma/client';
 import { PRISMA_CLIENT } from '../../technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '../../technical/prisma/prisma.client';
-import { RecordNotFoundException } from '../../technical/errors/record-not-found.exception';
 import { CapabilitySubject } from '../../technical/capabilities/capabilities.types';
 import { SignalService } from '../../technical/signal/signal.service';
 import { TenantContextStorage } from '../../technical/tenancy/tenant-context';
@@ -156,16 +180,6 @@ export class ${ctx.pascalName}Service {
         : { createdAt: 'desc' },
       take: options.limit,
     });
-  }
-
-  async findOneOrFail(id: string) {
-    const record = await this.prisma.${ctx.camelName}.findUnique({ where: { id } });
-
-    if (!record || record.deletedAt) {
-      throw new RecordNotFoundException('${ctx.camelName}');
-    }
-
-    return record;
   }
 
   async create(subject: CapabilitySubject, data: Create${ctx.pascalName}Input) {
@@ -213,7 +227,6 @@ export function controllerFile(ctx: ResourceContext): string {
   Controller,
   Delete,
   Get,
-  Param,
   Patch,
   Post,
   Query,
@@ -237,13 +250,17 @@ import {
   canCreate${ctx.pascalName},
   canDelete${ctx.pascalName},
   canUpdate${ctx.pascalName},
+  canView${ctx.pascalName},
   ${ctx.pascalName}Policy,
 } from './${ctx.kebabName}.policy';
 import {
   ${ctx.pascalName.toUpperCase()}_SIGNAL_CHANNEL,
   ${ctx.pascalName}Service,
 } from './${ctx.kebabName}.service';
-import { ${ctx.pascalName.toUpperCase()}_RECORD_LOADER } from './${ctx.kebabName}-record.loader';
+import {
+  ${ctx.pascalName.toUpperCase()}_RECORD_LOADER,
+  ${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER,
+} from './${ctx.kebabName}-record.loader';
 import { to${ctx.pascalName}View } from './${ctx.kebabName}.view';
 
 type RequestWith${ctx.pascalName} = RequestWithUser & { record: ${ctx.pascalName} };
@@ -292,8 +309,10 @@ export class ${ctx.pascalName}Controller {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return ok(to${ctx.pascalName}View(await this.${ctx.camelName}s.findOneOrFail(id)));
+  @Capability(canView${ctx.pascalName})
+  @LoadRecordWith(${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER)
+  findOne(@Req() req: RequestWith${ctx.pascalName}) {
+    return ok(to${ctx.pascalName}View(req.record));
   }
 
   @Post()
@@ -344,7 +363,9 @@ import { ${ctx.pascalName}Policy } from './${ctx.kebabName}.policy';
 import { ${ctx.pascalName}Service } from './${ctx.kebabName}.service';
 import {
   ${ctx.pascalName.toUpperCase()}_RECORD_LOADER,
+  ${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER,
   ${ctx.pascalName}RecordLoader,
+  ${ctx.pascalName}VisibleRecordLoader,
 } from './${ctx.kebabName}-record.loader';
 
 @Module({
@@ -355,6 +376,10 @@ import {
     ${ctx.pascalName}Policy,
     CapabilitiesService,
     { provide: ${ctx.pascalName.toUpperCase()}_RECORD_LOADER, useClass: ${ctx.pascalName}RecordLoader },
+    {
+      provide: ${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER,
+      useClass: ${ctx.pascalName}VisibleRecordLoader,
+    },
   ],
 })
 export class ${ctx.pascalName}Module {}
@@ -371,11 +396,15 @@ export function specFile(ctx: ResourceContext): string {
   return `import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../app.module';
+import { env } from '../../technical/config/env';
 
-const TENANT_ID = \`tenant-\${randomUUID()}\`;
+const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
+const prisma = new PrismaClient({ adapter });
 
 async function registerAndLogin(app: INestApplication<App>) {
   const email = \`\${randomUUID()}@example.test\`;
@@ -391,7 +420,10 @@ async function registerAndLogin(app: INestApplication<App>) {
     .send({ email, password })
     .expect(201);
 
-  return (login.body as { data: { token: string } }).data.token;
+  return {
+    email,
+    token: (login.body as { data: { token: string } }).data.token,
+  };
 }
 
 describe('${ctx.pascalName} resource', () => {
@@ -406,32 +438,31 @@ describe('${ctx.pascalName} resource', () => {
     app = moduleRef.createNestApplication();
     await app.init();
 
-    ownerToken = await registerAndLogin(app);
-    strangerToken = await registerAndLogin(app);
+    ownerToken = (await registerAndLogin(app)).token;
+    strangerToken = (await registerAndLogin(app)).token;
   });
 
   afterAll(async () => {
     await app.close();
+    await prisma.$disconnect();
   });
 
   it('creates a record owned by the current user, scoped to the current tenant', async () => {
     const response = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}')
       .set('Authorization', \`Bearer \${ownerToken}\`)
-      .set('x-tenant-id', TENANT_ID)
       .send(${createBody})
       .expect(201);
 
     expect(
       (response.body as { data: { tenantId: string } }).data.tenantId,
-    ).toBe(TENANT_ID);
+    ).toBe('default');
   });
 
   it('returns a real 403 when someone other than the owner tries to update it', async () => {
     const created = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}')
       .set('Authorization', \`Bearer \${ownerToken}\`)
-      .set('x-tenant-id', TENANT_ID)
       .send(${createBody})
       .expect(201);
 
@@ -440,7 +471,6 @@ describe('${ctx.pascalName} resource', () => {
     await request(app.getHttpServer())
       .patch(\`/${ctx.pluralKebabName}/\${recordId}\`)
       .set('Authorization', \`Bearer \${strangerToken}\`)
-      .set('x-tenant-id', TENANT_ID)
       .send(${createBody})
       .expect(403);
   });
@@ -449,7 +479,6 @@ describe('${ctx.pascalName} resource', () => {
     const created = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}')
       .set('Authorization', \`Bearer \${ownerToken}\`)
-      .set('x-tenant-id', TENANT_ID)
       .send(${createBody})
       .expect(201);
 
@@ -458,35 +487,34 @@ describe('${ctx.pascalName} resource', () => {
     await request(app.getHttpServer())
       .delete(\`/${ctx.pluralKebabName}/\${recordId}\`)
       .set('Authorization', \`Bearer \${ownerToken}\`)
-      .set('x-tenant-id', TENANT_ID)
       .expect(200);
 
     await request(app.getHttpServer())
       .get(\`/${ctx.pluralKebabName}/\${recordId}\`)
       .set('Authorization', \`Bearer \${ownerToken}\`)
-      .set('x-tenant-id', TENANT_ID)
       .expect(404);
 
     await request(app.getHttpServer())
       .post(\`/${ctx.pluralKebabName}/\${recordId}/restore\`)
       .set('Authorization', \`Bearer \${ownerToken}\`)
-      .set('x-tenant-id', TENANT_ID)
       .expect(201);
 
     await request(app.getHttpServer())
       .get(\`/${ctx.pluralKebabName}/\${recordId}\`)
       .set('Authorization', \`Bearer \${ownerToken}\`)
-      .set('x-tenant-id', TENANT_ID)
       .expect(200);
   });
 
   it('never lets a different tenant see this tenant records', async () => {
-    const otherTenantId = \`tenant-\${randomUUID()}\`;
+    const outsider = await registerAndLogin(app);
+    await prisma.user.update({
+      where: { email: outsider.email },
+      data: { tenantId: \`tenant-\${randomUUID()}\` },
+    });
 
     const response = await request(app.getHttpServer())
       .get('/${ctx.pluralKebabName}')
-      .set('Authorization', \`Bearer \${ownerToken}\`)
-      .set('x-tenant-id', otherTenantId)
+      .set('Authorization', \`Bearer \${outsider.token}\`)
       .expect(200);
 
     expect((response.body as { data: unknown[] }).data).toHaveLength(0);

@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  Param,
   Patch,
   Post,
   Query,
@@ -27,10 +26,14 @@ import {
   canCreateWorkout,
   canDeleteWorkout,
   canUpdateWorkout,
+  canViewWorkout,
   WorkoutPolicy,
 } from './workout.policy';
 import { WorkoutService } from './workout.service';
-import { WORKOUT_RECORD_LOADER } from './workout-record.loader';
+import {
+  WORKOUT_RECORD_LOADER,
+  WORKOUT_VISIBLE_RECORD_LOADER,
+} from './workout-record.loader';
 
 type RequestWithWorkout = RequestWithUser & { record: Workout };
 
@@ -70,8 +73,10 @@ export class WorkoutController {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return ok(await this.workouts.findOneOrFail(id));
+  @Capability(canViewWorkout)
+  @LoadRecordWith(WORKOUT_VISIBLE_RECORD_LOADER)
+  findOne(@Req() req: RequestWithWorkout) {
+    return ok(req.record);
   }
 
   @Post()

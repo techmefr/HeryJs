@@ -15,6 +15,7 @@ model User {
   emailVerified Boolean  @default(false)
   name          String?
   image         String?
+  tenantId      String   @default("default")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
