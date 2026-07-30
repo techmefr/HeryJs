@@ -7,29 +7,10 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../app.module';
 import { env } from '../../technical/config/env';
+import { registerAndLogin } from '../../technical/testing/register-and-login';
 
 const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
-
-async function registerAndLogin(app: INestApplication<App>) {
-  const email = `${randomUUID()}@example.test`;
-  const password = 'correct-horse-battery-staple';
-
-  await request(app.getHttpServer())
-    .post('/auth/register')
-    .send({ email, password })
-    .expect(201);
-
-  const login = await request(app.getHttpServer())
-    .post('/auth/login')
-    .send({ email, password })
-    .expect(201);
-
-  return {
-    email,
-    token: (login.body as { data: { token: string } }).data.token,
-  };
-}
 
 describe('Workout resource (full vertical slice)', () => {
   let app: INestApplication<App>;

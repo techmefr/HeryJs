@@ -1,26 +1,9 @@
-import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../app.module';
-
-async function registerAndLogin(app: INestApplication<App>) {
-  const email = `${randomUUID()}@example.test`;
-  const password = 'correct-horse-battery-staple';
-
-  await request(app.getHttpServer())
-    .post('/auth/register')
-    .send({ email, password })
-    .expect(201);
-
-  const login = await request(app.getHttpServer())
-    .post('/auth/login')
-    .send({ email, password })
-    .expect(201);
-
-  return (login.body as { data: { token: string } }).data.token;
-}
+import { registerAndLogin } from '../testing/register-and-login';
 
 describe('dev-only routes are unreachable in production', () => {
   let app: INestApplication<App>;
@@ -34,7 +17,7 @@ describe('dev-only routes are unreachable in production', () => {
     app = moduleRef.createNestApplication();
     await app.init();
 
-    token = await registerAndLogin(app);
+    ({ token } = await registerAndLogin(app));
   });
 
   afterAll(async () => {

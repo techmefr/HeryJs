@@ -1,31 +1,14 @@
-import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../app.module';
+import { registerAndLogin } from '../testing/register-and-login';
 
 interface InspectedRequest {
   method: string;
   path: string;
   status: number;
-}
-
-async function registerAndLogin(app: INestApplication<App>) {
-  const email = `${randomUUID()}@example.test`;
-  const password = 'correct-horse-battery-staple';
-
-  await request(app.getHttpServer())
-    .post('/auth/register')
-    .send({ email, password })
-    .expect(201);
-
-  const login = await request(app.getHttpServer())
-    .post('/auth/login')
-    .send({ email, password })
-    .expect(201);
-
-  return (login.body as { data: { token: string } }).data.token;
 }
 
 describe('request inspector', () => {
@@ -44,7 +27,7 @@ describe('request inspector', () => {
   });
 
   it('records both successful and guard-rejected requests', async () => {
-    const token = await registerAndLogin(app);
+    const { token } = await registerAndLogin(app);
 
     await request(app.getHttpServer())
       .get('/workouts')

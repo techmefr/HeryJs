@@ -1,10 +1,10 @@
-import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../app.module';
+import { registerAndLogin } from '../testing/register-and-login';
 
 interface ScheduledTaskRun {
   name: string;
@@ -30,20 +30,7 @@ describe('scheduler', () => {
     const registry = app.get(SchedulerRegistry);
     await registry.getCronJob('heartbeat').fireOnTick();
 
-    const email = `${randomUUID()}@example.test`;
-    const password = 'correct-horse-battery-staple';
-
-    await request(app.getHttpServer())
-      .post('/auth/register')
-      .send({ email, password })
-      .expect(201);
-
-    const login = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ email, password })
-      .expect(201);
-
-    const token = (login.body as { data: { token: string } }).data.token;
+    const { token } = await registerAndLogin(app);
 
     const response = await request(app.getHttpServer())
       .get('/scheduler/tasks')
