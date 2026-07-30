@@ -2,6 +2,8 @@ export interface AuthenticatedUser {
   id: string;
   email: string;
   tenantId: string;
+  teamIds: string[];
+  currentTeamId: string | null;
 }
 
 export interface AuthProvider {

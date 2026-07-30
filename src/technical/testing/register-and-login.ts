@@ -4,6 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 
 export interface TestUser {
+  id: string;
   email: string;
   token: string;
 }
@@ -24,8 +25,9 @@ export async function registerAndLogin(
     .send({ email, password })
     .expect(201);
 
-  return {
-    email,
-    token: (login.body as { data: { token: string } }).data.token,
+  const { data } = login.body as {
+    data: { token: string; user: { id: string } };
   };
+
+  return { id: data.user.id, email, token: data.token };
 }

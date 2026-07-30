@@ -8,6 +8,7 @@ import {
   CAPABILITY_RECORD_LOADER,
 } from './capability.decorator';
 import type { PolicyCheck, RecordLoader } from './capability-check';
+import { subjectOf } from './subject';
 import type { AuthenticatedUser } from '../auth/auth.types';
 
 type RequestWithCapabilities = Request & {
@@ -35,7 +36,7 @@ export class CapabilitiesGuard implements CanActivate {
     const request = context
       .switchToHttp()
       .getRequest<RequestWithCapabilities>();
-    const subject = { id: request.user.id, teamIds: [] as string[] };
+    const subject = subjectOf(request.user);
 
     const loaderToken = this.reflector.get<string | symbol | undefined>(
       CAPABILITY_RECORD_LOADER,

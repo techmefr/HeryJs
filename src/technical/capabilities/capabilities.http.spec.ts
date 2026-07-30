@@ -14,6 +14,7 @@ import { CapabilityRecord, CapabilitySubject } from './capabilities.types';
 const CURRENT_SUBJECT: CapabilitySubject = {
   id: 'user-1',
   teamIds: ['team-a'],
+  currentTeamId: 'team-a',
 };
 
 const RECORDS: Record<string, CapabilityRecord> = {

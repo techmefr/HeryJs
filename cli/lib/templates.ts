@@ -9,6 +9,14 @@ import {
   zodTypeFor,
 } from './field-types';
 
+/**
+ * A resource is owned by a team as soon as one of its presets says so, and only
+ * then does the create path have a team to stamp on the record.
+ */
+function ownedByTeam(ctx: ResourceContext): boolean {
+  return Object.values(ctx.permissions).includes('team');
+}
+
 function fieldLines(ctx: ResourceContext, indent: string): string {
   return ctx.fields
     .map((field) => `${indent}${field.name}: ${zodTypeFor(field)},`)
@@ -154,7 +162,7 @@ import type { Prisma, ${ctx.pascalName} } from '@prisma/client';
 import { PRISMA_CLIENT } from '../../technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '../../technical/prisma/prisma.client';
 import { CapabilitySubject } from '../../technical/capabilities/capabilities.types';
-import { scopeWhereFor } from '../../technical/capabilities/scope-where';
+import { scopeWhereFor } from '../../technical/capabilities/scope-where';${ownedByTeam(ctx) ? `\nimport { NoCurrentTeamException } from '../../technical/errors/no-current-team.exception';` : ''}
 import { SignalService } from '../../technical/signal/signal.service';
 import { buildTextSearchWhere } from '../../technical/search/text-search';
 import { SEARCH_DRIVER } from '../../technical/search/search-driver';
@@ -250,11 +258,19 @@ export class ${ctx.pascalName}Service {
   }
 
   async create(subject: CapabilitySubject, data: Create${ctx.pascalName}Input) {
-    const record = await this.prisma.${ctx.camelName}.create({
+${
+  ownedByTeam(ctx)
+    ? `    if (!subject.currentTeamId) {
+      throw new NoCurrentTeamException();
+    }
+
+`
+    : ''
+}    const record = await this.prisma.${ctx.camelName}.create({
       // tenantId is injected by the tenant-scoping Prisma extension, invisible to callers by design.
       data: {
         ...data,
-        ownerId: subject.id,
+        ownerId: subject.id,${ownedByTeam(ctx) ? `\n        // The team comes from the session, never from the request body, so a\n        // caller cannot file a record into a team it does not belong to.\n        teamId: subject.currentTeamId,` : ''}
       } as unknown as Prisma.${ctx.pascalName}CreateInput,
     });
     this.notify();
@@ -308,6 +324,7 @@ import type { ${ctx.pascalName} } from '@prisma/client';
 import { SessionGuard } from '../../technical/auth/session.guard';
 import type { RequestWithUser } from '../../technical/auth/session.guard';
 import { CapabilitiesGuard } from '../../technical/capabilities/capabilities.guard';
+import { subjectOf } from '../../technical/capabilities/subject';
 import {
   Capability,
   LoadRecordWith,
@@ -360,7 +377,7 @@ export class ${ctx.pascalName}Controller {
       limits: [${ctx.pagination.limits.join(', ')}],
       defaultLimit: ${ctx.pagination.default},
     });
-    const subject = { id: req.user.id, teamIds: [] };
+    const subject = subjectOf(req.user);
 
     if (query.withTrashed || query.onlyTrashed) {
       const trashedDecision = canListTrashed${ctx.pascalName}(subject);
@@ -403,7 +420,7 @@ export class ${ctx.pascalName}Controller {
     @Req() req: RequestWithUser,
     @Body(new ZodValidationPipe(create${ctx.pascalName}Schema)) body: Create${ctx.pascalName}Input,
   ) {
-    const subject = { id: req.user.id, teamIds: [] };
+    const subject = subjectOf(req.user);
     return ok(to${ctx.pascalName}View(await this.${ctx.camelName}s.create(subject, body)));
   }
 
@@ -552,7 +569,7 @@ export class ${ctx.pascalName}Resolver {
 
   @Query(() => [${ctx.pascalName}Type], { name: '${ctx.pluralCamelName}' })
   search(@CurrentGqlRequest() req: GqlRequestWithUser) {
-    const subject = { id: req.user.id, teamIds: [] };
+    const subject = subjectOf(req.user);
     const decision = canViewAny${ctx.pascalName}(subject);
     if (!decision.allowed) {
       throw new CapabilityForbiddenException();
@@ -571,7 +588,7 @@ export class ${ctx.pascalName}Resolver {
       throw new RecordNotFoundException('${ctx.pascalName}');
     }
 
-    const subject = { id: req.user.id, teamIds: [] };
+    const subject = subjectOf(req.user);
     const decision = canView${ctx.pascalName}(subject, record);
     if (!decision.allowed) {
       throw new CapabilityForbiddenException();
@@ -585,7 +602,7 @@ export class ${ctx.pascalName}Resolver {
     @Args('input') input: Create${ctx.pascalName}Input,
     @CurrentGqlRequest() req: GqlRequestWithUser,
   ) {
-    const subject = { id: req.user.id, teamIds: [] };
+    const subject = subjectOf(req.user);
     const decision = canCreate${ctx.pascalName}(subject);
     if (!decision.allowed) {
       throw new CapabilityForbiddenException();
@@ -605,7 +622,7 @@ export class ${ctx.pascalName}Resolver {
       throw new RecordNotFoundException('${ctx.pascalName}');
     }
 
-    const subject = { id: req.user.id, teamIds: [] };
+    const subject = subjectOf(req.user);
     const decision = canUpdate${ctx.pascalName}(subject, record);
     if (!decision.allowed) {
       throw new CapabilityForbiddenException();
@@ -624,7 +641,7 @@ export class ${ctx.pascalName}Resolver {
       throw new RecordNotFoundException('${ctx.pascalName}');
     }
 
-    const subject = { id: req.user.id, teamIds: [] };
+    const subject = subjectOf(req.user);
     const decision = canDelete${ctx.pascalName}(subject, record);
     if (!decision.allowed) {
       throw new CapabilityForbiddenException();
@@ -788,6 +805,7 @@ import type { ${ctx.pascalName} } from '@prisma/client';
 import type { RequestWithUser } from '../../technical/auth/session.guard';
 import { SessionGuard } from '../../technical/auth/session.guard';
 import { CapabilitiesGuard } from '../../technical/capabilities/capabilities.guard';
+import { subjectOf } from '../../technical/capabilities/subject';
 import {
   Capability,
   LoadRecordWith,
@@ -844,6 +862,7 @@ import {
 } from '@nestjs/websockets';
 import { AUTH_PROVIDER } from '../../technical/auth/auth.types';
 import type { AuthProvider } from '../../technical/auth/auth.types';
+import { subjectOf } from '../../technical/capabilities/subject';
 import {
   authenticateLiveSocket,
   LiveAuthGuard,
@@ -888,7 +907,7 @@ export class ${ctx.pascalName}LiveGateway implements OnGatewayConnection {
         return { error: 'not found' };
       }
 
-      const subject = { id: client.data.user.id, teamIds: [] };
+      const subject = subjectOf(client.data.user);
       const decision = canView${ctx.pascalName}(subject, record);
       if (!decision.allowed) {
         return { error: 'capability denied' };
@@ -919,7 +938,7 @@ export class ${ctx.pascalName}LiveGateway implements OnGatewayConnection {
         return { error: 'not found' };
       }
 
-      const subject = { id: client.data.user.id, teamIds: [] };
+      const subject = subjectOf(client.data.user);
       const decision = canUpdate${ctx.pascalName}(subject, record);
       if (!decision.allowed) {
         return { error: 'capability denied' };
@@ -1131,7 +1150,7 @@ export function viewFile(ctx: ResourceContext): string {
   const schema = `export const ${ctx.camelName}ViewSchema = z.object({
   id: z.string(),
   tenantId: z.string(),
-  ownerId: z.string(),
+  ownerId: z.string(),${ownedByTeam(ctx) ? `\n  teamId: z.string(),` : ''}
 ${visibleFieldLines}
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
@@ -1227,13 +1246,13 @@ export function prismaModelBlock(ctx: ResourceContext): string {
 model ${ctx.pascalName} {
   id        String    @id @default(cuid())
   tenantId  String
-  ownerId   String
+  ownerId   String${ownedByTeam(ctx) ? `\n  teamId    String` : ''}
 ${customFieldLines}
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  owner User @relation(fields: [ownerId], references: [id])
+  owner User @relation(fields: [ownerId], references: [id])${ownedByTeam(ctx) ? `\n  team  Team @relation(fields: [teamId], references: [id])` : ''}
 
   @@index([tenantId])
 }

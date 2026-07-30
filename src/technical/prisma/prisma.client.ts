@@ -8,7 +8,7 @@ import {
 import { env } from '../config/env';
 import { TenantContextStorage } from '../tenancy/tenant-context';
 
-const TENANT_SCOPED_MODELS = new Set(['Workout']);
+const TENANT_SCOPED_MODELS = new Set(['Team', 'TeamMember', 'Workout']);
 
 const TENANT_FILTERED_OPERATIONS = new Set([
   'findFirst',

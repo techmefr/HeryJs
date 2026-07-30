@@ -55,6 +55,8 @@ jobs:
 
       - run: pnpm run lint:dev-guard
 
+      - run: pnpm run lint:subject
+
       - run: pnpm test
 
       - run: pnpm run build

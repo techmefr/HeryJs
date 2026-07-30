@@ -3,12 +3,40 @@ import { authPrismaClient, getAuthContext } from './better-auth.instance';
 import { InvalidCredentialsException } from '../errors/invalid-credentials.exception';
 import { AuthenticatedUser, AuthProvider } from './auth.types';
 
-async function loadTenantId(userId: string): Promise<string> {
-  const user = await authPrismaClient.user.findUniqueOrThrow({
-    where: { id: userId },
-    select: { tenantId: true },
+/**
+ * Resolves everything the request pipeline is allowed to trust about a caller,
+ * from the database rather than from anything the client sent. The tenant is a
+ * boundary and the team memberships are a perimeter, so both are read here and
+ * nowhere else.
+ */
+async function authenticate(user: {
+  id: string;
+  email: string;
+}): Promise<AuthenticatedUser> {
+  const stored = await authPrismaClient.user.findUniqueOrThrow({
+    where: { id: user.id },
+    select: {
+      tenantId: true,
+      currentTeamId: true,
+      memberships: { select: { teamId: true } },
+    },
   });
-  return user.tenantId;
+
+  const teamIds = stored.memberships.map((membership) => membership.teamId);
+
+  return {
+    id: user.id,
+    email: user.email,
+    tenantId: stored.tenantId,
+    teamIds,
+    // A current team the caller has since been removed from must not keep
+    // granting anything, and a member who never picked one still acts inside a
+    // team, so the stored value is only honoured while the membership holds.
+    currentTeamId:
+      stored.currentTeamId && teamIds.includes(stored.currentTeamId)
+        ? stored.currentTeamId
+        : (teamIds[0] ?? null),
+  };
 }
 
 @Injectable()
@@ -18,8 +46,7 @@ export class SessionAuthProvider implements AuthProvider {
     const result = await auth.api.signUpEmail({
       body: { email, password, name: email },
     });
-    const tenantId = await loadTenantId(result.user.id);
-    return { id: result.user.id, email: result.user.email, tenantId };
+    return await authenticate(result.user);
   }
 
   async login(
@@ -30,11 +57,7 @@ export class SessionAuthProvider implements AuthProvider {
 
     try {
       const result = await auth.api.signInEmail({ body: { email, password } });
-      const tenantId = await loadTenantId(result.user.id);
-      return {
-        user: { id: result.user.id, email: result.user.email, tenantId },
-        token: result.token,
-      };
+      return { user: await authenticate(result.user), token: result.token };
     } catch (error) {
       if (error instanceof APIError) {
         throw new InvalidCredentialsException();
@@ -65,7 +88,6 @@ export class SessionAuthProvider implements AuthProvider {
       return null;
     }
 
-    const tenantId = await loadTenantId(session.user.id);
-    return { id: session.user.id, email: session.user.email, tenantId };
+    return await authenticate(session.user);
   }
 }

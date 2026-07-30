@@ -58,9 +58,11 @@ export class WorkoutPolicy {
     };
   }
 
-  metaCapabilities(): Record<'create', CapabilityDecision> {
+  metaCapabilities(
+    subject: CapabilitySubject,
+  ): Record<'create', CapabilityDecision> {
     return {
-      create: canCreateWorkout({ id: '', teamIds: [] }),
+      create: canCreateWorkout(subject),
     };
   }
 }

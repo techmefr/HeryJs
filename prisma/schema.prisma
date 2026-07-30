@@ -16,6 +16,7 @@ model User {
   name          String?
   image         String?
   tenantId      String   @default("default")
+  currentTeamId String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -23,6 +24,31 @@ model User {
   accounts      Account[]
   workouts      Workout[]
   notifications AppNotification[]
+  memberships   TeamMember[]
+  currentTeam   Team?             @relation("CurrentTeam", fields: [currentTeamId], references: [id], onDelete: SetNull)
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  tenantId  String   @default("default")
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members      TeamMember[]
+  currentUsers User[]       @relation("CurrentTeam")
+}
+
+model TeamMember {
+  teamId    String
+  userId    String
+  tenantId  String   @default("default")
+  createdAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, userId])
 }
 
 model Session {
@@ -129,3 +155,4 @@ model MailLog {
 
   @@index([tenantId])
 }
+

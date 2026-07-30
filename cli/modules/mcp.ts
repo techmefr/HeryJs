@@ -54,6 +54,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import type { Request, Response } from 'express';
 import { SessionGuard } from '../auth/session.guard';
 import type { RequestWithUser } from '../auth/session.guard';
+import { subjectOf } from '../capabilities/subject';
 import { MCP_TOOL_REGISTRARS } from './mcp-tool-registrar';
 import type { McpToolRegistrar } from './mcp-tool-registrar';
 
@@ -67,7 +68,7 @@ export class McpGatewayController {
 
   @All()
   async handle(@Req() req: RequestWithUser, @Res() res: Response) {
-    const subject = { id: req.user.id, teamIds: [] };
+    const subject = subjectOf(req.user);
     const server = new McpServer({ name: 'heryjs', version: '0.0.1' });
 
     for (const registrar of this.registrars) {

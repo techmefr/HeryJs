@@ -26,6 +26,24 @@ export function patchTenantScopedModels(
   writeFileSync(filePath, patched);
 }
 
+function withBackRelation(
+  source: string,
+  model: string,
+  ctx: ResourceContext,
+  filePath: string,
+): string {
+  const start = source.indexOf(`model ${model} {`);
+
+  if (start === -1) {
+    throw new Error(`Could not find "model ${model}" in ${filePath}`);
+  }
+
+  const end = source.indexOf('\n}', start);
+  const relation = `  ${ctx.pluralCamelName} ${ctx.pascalName}[]`;
+
+  return source.slice(0, end) + '\n' + relation + source.slice(end);
+}
+
 export function patchPrismaSchema(
   filePath: string,
   ctx: ResourceContext,
@@ -36,21 +54,13 @@ export function patchPrismaSchema(
     return;
   }
 
-  const userModelStart = source.indexOf('model User {');
+  let patched = withBackRelation(source, 'User', ctx, filePath);
 
-  if (userModelStart === -1) {
-    throw new Error(`Could not find "model User" in ${filePath}`);
+  // A team-owned resource points at Team, and Prisma requires the other end of
+  // that relation to be declared too.
+  if (Object.values(ctx.permissions).includes('team')) {
+    patched = withBackRelation(patched, 'Team', ctx, filePath);
   }
 
-  const userModelEnd = source.indexOf('\n}', userModelStart);
-  const relationLine = `  ${ctx.pluralCamelName} ${ctx.pascalName}[]\n`;
-
-  const withRelation =
-    source.slice(0, userModelEnd) +
-    '\n' +
-    relationLine.trimEnd() +
-    source.slice(userModelEnd);
-
-  const patched = `${withRelation}\n${prismaModelBlock(ctx)}`;
-  writeFileSync(filePath, patched);
+  writeFileSync(filePath, `${patched}\n${prismaModelBlock(ctx)}`);
 }

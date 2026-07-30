@@ -13,6 +13,7 @@ import type { Workout } from '@prisma/client';
 import { SessionGuard } from '../../technical/auth/session.guard';
 import type { RequestWithUser } from '../../technical/auth/session.guard';
 import { CapabilitiesGuard } from '../../technical/capabilities/capabilities.guard';
+import { subjectOf } from '../../technical/capabilities/subject';
 import {
   Capability,
   LoadRecordWith,
@@ -56,7 +57,7 @@ export class WorkoutController {
     @Query('withTrashed') withTrashed?: string,
     @Query('onlyTrashed') onlyTrashed?: string,
   ) {
-    const subject = { id: req.user.id, teamIds: [] };
+    const subject = subjectOf(req.user);
 
     if (withTrashed === 'true' || onlyTrashed === 'true') {
       const trashedDecision = canListTrashedWorkout(subject);
@@ -80,7 +81,7 @@ export class WorkoutController {
         ...record,
         capabilities: this.policy.recordCapabilities(subject, record),
       })),
-      { capabilities: this.policy.metaCapabilities() },
+      { capabilities: this.policy.metaCapabilities(subject) },
     );
   }
 
@@ -97,7 +98,7 @@ export class WorkoutController {
     @Req() req: RequestWithUser,
     @Body(new ZodValidationPipe(createWorkoutSchema)) body: CreateWorkoutInput,
   ) {
-    const subject = { id: req.user.id, teamIds: [] };
+    const subject = subjectOf(req.user);
     return ok(await this.workouts.create(subject, body), [
       resourceMessage('Workout', 'created'),
     ]);

@@ -17,6 +17,7 @@ import { NotificationsModule } from './technical/notifications/notifications.mod
 import { SchedulerModule } from './technical/scheduler/scheduler.module';
 import { SeedersModule } from './technical/seeders/seeders.module';
 import { StorageModule } from './technical/storage/storage.module';
+import { TeamsModule } from './technical/teams/teams.module';
 import { InspectorMiddleware } from './technical/inspector/inspector.middleware';
 import { SignalModule } from './technical/signal/signal.module';
 import { TenantMiddleware } from './technical/tenancy/tenant.middleware';
@@ -52,6 +53,7 @@ import { DomainExceptionFilter } from './technical/errors/domain-exception.filte
     SeedersModule.forRoot([WorkoutSeeder]),
     SignalModule,
     StorageModule,
+    TeamsModule,
     WorkoutModule,
   ],
   controllers: [AppController],

@@ -27,6 +27,7 @@
     "lint:scope-parity": "ts-node scripts/check-scope-parity.ts",
     "lint:coverage": "ts-node scripts/check-lint-coverage.ts",
     "lint:dev-guard": "ts-node scripts/check-no-inline-dev-guard.ts",
+    "lint:subject": "ts-node scripts/check-subject-construction.ts",
     "hery": "ts-node cli/hery.ts"
   },
   "dependencies": {

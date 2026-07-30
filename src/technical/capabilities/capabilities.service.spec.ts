@@ -4,8 +4,16 @@ import { CapabilityRecord, CapabilitySubject } from './capabilities.types';
 describe('CapabilitiesService', () => {
   const service = new CapabilitiesService();
 
-  const owner: CapabilitySubject = { id: 'user-1', teamIds: ['team-a'] };
-  const stranger: CapabilitySubject = { id: 'user-2', teamIds: ['team-b'] };
+  const owner: CapabilitySubject = {
+    id: 'user-1',
+    teamIds: ['team-a'],
+    currentTeamId: 'team-a',
+  };
+  const stranger: CapabilitySubject = {
+    id: 'user-2',
+    teamIds: ['team-b'],
+    currentTeamId: 'team-b',
+  };
 
   const ownedRecord: CapabilityRecord = { ownerId: 'user-1', teamId: 'team-a' };
 

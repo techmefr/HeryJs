@@ -10,6 +10,7 @@ export interface CapabilityDecision {
 export interface CapabilitySubject {
   id: string;
   teamIds: string[];
+  currentTeamId: string | null;
 }
 
 export interface CapabilityRecord {

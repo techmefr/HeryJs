@@ -21,8 +21,20 @@ interface Widget {
 }
 
 const USERS_BY_TOKEN: Record<string, AuthenticatedUser> = {
-  'token-a': { id: 'user-a', email: 'a@example.test', tenantId: 'tenant-a' },
-  'token-b': { id: 'user-b', email: 'b@example.test', tenantId: 'tenant-b' },
+  'token-a': {
+    id: 'user-a',
+    email: 'a@example.test',
+    tenantId: 'tenant-a',
+    teamIds: [],
+    currentTeamId: null,
+  },
+  'token-b': {
+    id: 'user-b',
+    email: 'b@example.test',
+    tenantId: 'tenant-b',
+    teamIds: [],
+    currentTeamId: null,
+  },
 };
 
 class StubAuthProvider implements Pick<AuthProvider, 'validateSession'> {
