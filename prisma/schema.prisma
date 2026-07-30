@@ -116,3 +116,16 @@ model Workout {
 
   @@index([tenantId])
 }
+
+model MailLog {
+  id        String    @id @default(cuid())
+  tenantId  String
+  to        String
+  subject   String
+  status    String    @default("queued")
+  error     String?
+  createdAt DateTime  @default(now())
+  sentAt    DateTime?
+
+  @@index([tenantId])
+}

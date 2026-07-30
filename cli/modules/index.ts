@@ -4,3 +4,4 @@ import './graphql';
 import './mcp';
 import './live';
 import './stream';
+import './mail';

@@ -10,6 +10,7 @@ import { AuthModule } from './technical/auth/auth.module';
 import { FeatureFlagsModule } from './technical/feature-flags/feature-flags.module';
 import { InspectorModule } from './technical/inspector/inspector.module';
 import { JobsModule } from './technical/jobs/jobs.module';
+import { MailModule } from './technical/mail/mail.module';
 import { MonitoringModule } from './technical/monitoring/monitoring.module';
 import { NotificationsModule } from './technical/notifications/notifications.module';
 import { SchedulerModule } from './technical/scheduler/scheduler.module';
@@ -41,6 +42,7 @@ import { DomainExceptionFilter } from './technical/errors/domain-exception.filte
     FeatureFlagsModule,
     InspectorModule,
     JobsModule,
+    MailModule,
     MonitoringModule,
     NotificationsModule,
     SchedulerModule,
