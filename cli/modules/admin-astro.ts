@@ -14,7 +14,7 @@ const PACKAGE_CONTENT = `{
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "lint": "eslint \\"src/**/*.ts\\""
+    "lint": "eslint \\"src/**/*.{ts,astro}\\""
   },
   "dependencies": {
     "astro": "^5.16.2",
@@ -23,6 +23,7 @@ const PACKAGE_CONTENT = `{
   "devDependencies": {
     "@eslint/js": "^9.18.0",
     "eslint": "^10.8.0",
+    "eslint-plugin-astro": "^3.0.1",
     "globals": "^17.0.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.20.0"
@@ -47,7 +48,11 @@ const TSCONFIG_CONTENT = `{
 }
 `;
 
+// The astro block has to come after the tseslint one: both claim .astro files and
+// the last one wins, so the other order leaves .astro parsed as plain TypeScript
+// and every frontmatter or client script silently unlinted.
 const ESLINT_CONTENT = `import eslint from '@eslint/js';
+import astro from 'eslint-plugin-astro';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
@@ -55,6 +60,7 @@ export default tseslint.config(
   { ignores: ['dist', '.astro'] },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
+  ...astro.configs.recommended,
   {
     languageOptions: {
       globals: { ...globals.browser },
@@ -97,15 +103,23 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Caller headers go through \`Headers\` rather than an object spread: \`HeadersInit\`
+ * is also a \`Headers\` instance or an array of pairs, and spreading either of
+ * those into an object literal silently yields no header at all.
+ */
 export async function api<T>(route: string, init?: RequestInit): Promise<Envelope<T>> {
-  const response = await fetch(API_URL + route, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + (token() ?? ''),
-      ...init?.headers,
-    },
-  });
+  const headers = new Headers(init?.headers);
+
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  if (!headers.has('Authorization')) {
+    headers.set('Authorization', 'Bearer ' + (token() ?? ''));
+  }
+
+  const response = await fetch(API_URL + route, { ...init, headers });
 
   // A stale token is the common case here, and every page would otherwise have
   // to handle it: drop it and send the caller back to the form once.
@@ -1454,6 +1468,36 @@ function addWorkspaceMember(): void {
   console.log(pc.green(`✔ patched ${WORKSPACE_FILE}`));
 }
 
+/**
+ * The admin ships its own eslint config, so the root lint script has to delegate
+ * to it. Without this the admin installs a workspace nothing lints, which the
+ * coverage check reports as unreached source — correctly, since it is.
+ */
+function delegateLintToAdmin(): void {
+  const packageFile = 'package.json';
+
+  if (!existsSync(packageFile)) {
+    return;
+  }
+
+  const source = readFileSync(packageFile, 'utf8');
+  const manifest = JSON.parse(source) as {
+    scripts?: Record<string, string>;
+  };
+  const lint = manifest.scripts?.lint;
+
+  if (lint === undefined || lint.includes('--filter admin lint')) {
+    return;
+  }
+
+  manifest.scripts = {
+    ...manifest.scripts,
+    lint: `${lint} && pnpm --filter admin lint`,
+  };
+  writeFileSync(packageFile, `${JSON.stringify(manifest, null, 2)}\n`);
+  console.log(pc.green(`✔ patched ${packageFile}`));
+}
+
 registerModule({
   name: 'admin-astro',
   description:
@@ -1472,6 +1516,7 @@ registerModule({
     }
 
     addWorkspaceMember();
+    delegateLintToAdmin();
 
     console.log('');
     console.log(pc.cyan('Next steps:'));

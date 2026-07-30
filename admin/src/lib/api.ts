@@ -17,15 +17,23 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Caller headers go through `Headers` rather than an object spread: `HeadersInit`
+ * is also a `Headers` instance or an array of pairs, and spreading either of
+ * those into an object literal silently yields no header at all.
+ */
 export async function api<T>(route: string, init?: RequestInit): Promise<Envelope<T>> {
-  const response = await fetch(API_URL + route, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + (token() ?? ''),
-      ...init?.headers,
-    },
-  });
+  const headers = new Headers(init?.headers);
+
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  if (!headers.has('Authorization')) {
+    headers.set('Authorization', 'Bearer ' + (token() ?? ''));
+  }
+
+  const response = await fetch(API_URL + route, { ...init, headers });
 
   // A stale token is the common case here, and every page would otherwise have
   // to handle it: drop it and send the caller back to the form once.
