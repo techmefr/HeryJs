@@ -600,6 +600,146 @@ export class ${ctx.pascalName}Resolver {
 `;
 }
 
+export function mcpToolsFile(ctx: ResourceContext): string {
+  return `import { z } from 'zod';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { Inject, Injectable } from '@nestjs/common';
+import type { CapabilitySubject } from '../../technical/capabilities/capabilities.types';
+import type { McpToolRegistrar } from '../../technical/mcp/mcp-tool-registrar';
+import { create${ctx.pascalName}Schema, update${ctx.pascalName}Schema } from './${ctx.kebabName}.dto';
+import {
+  canCreate${ctx.pascalName},
+  canDelete${ctx.pascalName},
+  canUpdate${ctx.pascalName},
+  canView${ctx.pascalName},
+} from './${ctx.kebabName}.policy';
+import { ${ctx.pascalName}Service } from './${ctx.kebabName}.service';
+import {
+  ${ctx.pascalName.toUpperCase()}_RECORD_LOADER,
+  ${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER,
+} from './${ctx.kebabName}-record.loader';
+import type { ${ctx.pascalName}RecordLoader } from './${ctx.kebabName}-record.loader';
+import { to${ctx.pascalName}View } from './${ctx.kebabName}.view';
+
+function textResult(payload: unknown) {
+  return {
+    content: [{ type: 'text' as const, text: JSON.stringify(payload) }],
+  };
+}
+
+function deniedResult() {
+  return textResult({ error: 'capability denied' });
+}
+
+@Injectable()
+export class ${ctx.pascalName}McpToolRegistrar implements McpToolRegistrar {
+  constructor(
+    private readonly ${ctx.camelName}s: ${ctx.pascalName}Service,
+    @Inject(${ctx.pascalName.toUpperCase()}_RECORD_LOADER)
+    private readonly loader: ${ctx.pascalName}RecordLoader,
+    @Inject(${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER)
+    private readonly visibleLoader: ${ctx.pascalName}RecordLoader,
+  ) {}
+
+  register(server: McpServer, subject: CapabilitySubject): void {
+    server.registerTool(
+      'search_${ctx.kebabName}',
+      {
+        description: 'Search ${ctx.pluralKebabName}, scoped to the current tenant and caller',
+        inputSchema: {},
+      },
+      async () => {
+        const records = await this.${ctx.camelName}s.search();
+        return textResult(records.map(to${ctx.pascalName}View));
+      },
+    );
+
+    server.registerTool(
+      'get_${ctx.kebabName}',
+      {
+        description: 'Get a single ${ctx.kebabName} by id',
+        inputSchema: { id: z.string() },
+      },
+      async ({ id }) => {
+        const record = await this.visibleLoader.load(id);
+        if (!record) {
+          return textResult({ error: 'not found' });
+        }
+
+        const decision = canView${ctx.pascalName}(subject, record);
+        if (!decision.allowed) {
+          return deniedResult();
+        }
+
+        return textResult(to${ctx.pascalName}View(record));
+      },
+    );
+
+    server.registerTool(
+      'create_${ctx.kebabName}',
+      {
+        description: 'Create a ${ctx.kebabName}',
+        inputSchema: create${ctx.pascalName}Schema.shape,
+      },
+      async (input) => {
+        const decision = canCreate${ctx.pascalName}(subject);
+        if (!decision.allowed) {
+          return deniedResult();
+        }
+
+        const record = await this.${ctx.camelName}s.create(subject, input);
+        return textResult(to${ctx.pascalName}View(record));
+      },
+    );
+
+    server.registerTool(
+      'update_${ctx.kebabName}',
+      {
+        description: 'Update a ${ctx.kebabName} by id',
+        inputSchema: { id: z.string(), ...update${ctx.pascalName}Schema.shape },
+      },
+      async ({ id, ...input }) => {
+        const record = await this.loader.load(id);
+        if (!record) {
+          return textResult({ error: 'not found' });
+        }
+
+        const decision = canUpdate${ctx.pascalName}(subject, record);
+        if (!decision.allowed) {
+          return deniedResult();
+        }
+
+        const updated = await this.${ctx.camelName}s.update(record, input);
+        return textResult(to${ctx.pascalName}View(updated));
+      },
+    );
+
+    server.registerTool(
+      'remove_${ctx.kebabName}',
+      {
+        description: 'Soft-delete a ${ctx.kebabName} by id',
+        inputSchema: { id: z.string() },
+      },
+      async ({ id }) => {
+        const record = await this.loader.load(id);
+        if (!record) {
+          return textResult({ error: 'not found' });
+        }
+
+        const decision = canDelete${ctx.pascalName}(subject, record);
+        if (!decision.allowed) {
+          return deniedResult();
+        }
+
+        const removed = await this.${ctx.camelName}s.softDelete(record);
+        return textResult(to${ctx.pascalName}View(removed));
+      },
+    );
+  }
+}
+`;
+}
+
 export function specFile(ctx: ResourceContext): string {
   const requiredFields = ctx.fields.filter((field) => !field.optional);
   const createBody =

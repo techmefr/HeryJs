@@ -13,6 +13,7 @@ import {
   controllerFile,
   dtoFile,
   factoryFile,
+  mcpToolsFile,
   moduleFile,
   policyFile,
   recordLoaderFile,
@@ -31,88 +32,107 @@ export function registerGenerateCommand(program: Command): void {
       '--graphql',
       'also generate a GraphQL resolver (requires the "graphql" module to be installed)',
     )
-    .action((name: string, options: { force?: boolean; graphql?: boolean }) => {
-      const root = process.cwd();
-      const blueprintPath = path.join(
-        root,
-        'blueprints',
-        `${kebabCase(name)}.yaml`,
-      );
-
-      if (!existsSync(blueprintPath)) {
-        console.error(
-          pc.red(
-            `No blueprint found at ${blueprintPath}. Run "hery create:blueprint ${name}" first.`,
-          ),
+    .option(
+      '--mcp',
+      'also generate an MCP tool registrar (requires the "mcp" module to be installed)',
+    )
+    .action(
+      (
+        name: string,
+        options: { force?: boolean; graphql?: boolean; mcp?: boolean },
+      ) => {
+        const root = process.cwd();
+        const blueprintPath = path.join(
+          root,
+          'blueprints',
+          `${kebabCase(name)}.yaml`,
         );
-        process.exitCode = 1;
-        return;
-      }
 
-      const blueprint = loadBlueprint(blueprintPath);
-      const ctx = buildResourceContext(blueprint);
+        if (!existsSync(blueprintPath)) {
+          console.error(
+            pc.red(
+              `No blueprint found at ${blueprintPath}. Run "hery create:blueprint ${name}" first.`,
+            ),
+          );
+          process.exitCode = 1;
+          return;
+        }
 
-      const targetDir = path.join(root, 'src', 'functional', ctx.kebabName);
+        const blueprint = loadBlueprint(blueprintPath);
+        const ctx = buildResourceContext(blueprint);
 
-      if (existsSync(targetDir) && !options.force) {
-        console.error(
-          pc.red(`${targetDir} already exists. Pass --force to overwrite.`),
+        const targetDir = path.join(root, 'src', 'functional', ctx.kebabName);
+
+        if (existsSync(targetDir) && !options.force) {
+          console.error(
+            pc.red(`${targetDir} already exists. Pass --force to overwrite.`),
+          );
+          process.exitCode = 1;
+          return;
+        }
+
+        mkdirSync(targetDir, { recursive: true });
+
+        const files: Record<string, string> = {
+          [`${ctx.kebabName}.dto.ts`]: dtoFile(ctx),
+          [`${ctx.kebabName}.factory.ts`]: factoryFile(ctx),
+          [`${ctx.kebabName}.view.ts`]: viewFile(ctx),
+          [`${ctx.kebabName}.policy.ts`]: policyFile(ctx),
+          [`${ctx.kebabName}-record.loader.ts`]: recordLoaderFile(ctx),
+          [`${ctx.kebabName}.service.ts`]: serviceFile(ctx),
+          [`${ctx.kebabName}.controller.ts`]: controllerFile(ctx),
+          [`${ctx.kebabName}.module.ts`]: moduleFile(ctx),
+          [`${ctx.kebabName}.spec.ts`]: specFile(ctx),
+        };
+
+        if (options.graphql) {
+          files[`${ctx.kebabName}.resolver.ts`] = resolverFile(ctx);
+        }
+
+        if (options.mcp) {
+          files[`${ctx.kebabName}.mcp-tools.ts`] = mcpToolsFile(ctx);
+        }
+
+        for (const [fileName, content] of Object.entries(files)) {
+          writeFileSync(path.join(targetDir, fileName), content);
+          console.log(pc.green(`✔ ${path.join(targetDir, fileName)}`));
+        }
+
+        const schemaPath = path.join(root, 'prisma', 'schema.prisma');
+        const prismaClientPath = path.join(
+          root,
+          'src',
+          'technical',
+          'prisma',
+          'prisma.client.ts',
         );
-        process.exitCode = 1;
-        return;
-      }
 
-      mkdirSync(targetDir, { recursive: true });
+        patchPrismaSchema(schemaPath, ctx);
+        patchTenantScopedModels(prismaClientPath, ctx.pascalName);
+        console.log(pc.green(`✔ patched ${schemaPath}`));
+        console.log(pc.green(`✔ patched ${prismaClientPath}`));
 
-      const files: Record<string, string> = {
-        [`${ctx.kebabName}.dto.ts`]: dtoFile(ctx),
-        [`${ctx.kebabName}.factory.ts`]: factoryFile(ctx),
-        [`${ctx.kebabName}.view.ts`]: viewFile(ctx),
-        [`${ctx.kebabName}.policy.ts`]: policyFile(ctx),
-        [`${ctx.kebabName}-record.loader.ts`]: recordLoaderFile(ctx),
-        [`${ctx.kebabName}.service.ts`]: serviceFile(ctx),
-        [`${ctx.kebabName}.controller.ts`]: controllerFile(ctx),
-        [`${ctx.kebabName}.module.ts`]: moduleFile(ctx),
-        [`${ctx.kebabName}.spec.ts`]: specFile(ctx),
-      };
-
-      if (options.graphql) {
-        files[`${ctx.kebabName}.resolver.ts`] = resolverFile(ctx);
-      }
-
-      for (const [fileName, content] of Object.entries(files)) {
-        writeFileSync(path.join(targetDir, fileName), content);
-        console.log(pc.green(`✔ ${path.join(targetDir, fileName)}`));
-      }
-
-      const schemaPath = path.join(root, 'prisma', 'schema.prisma');
-      const prismaClientPath = path.join(
-        root,
-        'src',
-        'technical',
-        'prisma',
-        'prisma.client.ts',
-      );
-
-      patchPrismaSchema(schemaPath, ctx);
-      patchTenantScopedModels(prismaClientPath, ctx.pascalName);
-      console.log(pc.green(`✔ patched ${schemaPath}`));
-      console.log(pc.green(`✔ patched ${prismaClientPath}`));
-
-      console.log('');
-      console.log(pc.bold(`Generated ${ctx.pascalName} in ${targetDir}`));
-      console.log(pc.cyan('Next steps:'));
-      console.log(
-        `  1. Import ${pc.bold(`${ctx.pascalName}Module`)} into src/app.module.ts`,
-      );
-      console.log(
-        `  2. Run "pnpm hery migrate --name add_${ctx.kebabName}" to create the migration`,
-      );
-
-      if (options.graphql) {
+        console.log('');
+        console.log(pc.bold(`Generated ${ctx.pascalName} in ${targetDir}`));
+        console.log(pc.cyan('Next steps:'));
         console.log(
-          `  3. Add ${pc.bold(`${ctx.pascalName}Resolver`)} to the providers of ${ctx.kebabName}.module.ts`,
+          `  1. Import ${pc.bold(`${ctx.pascalName}Module`)} into src/app.module.ts`,
         );
-      }
-    });
+        console.log(
+          `  2. Run "pnpm hery migrate --name add_${ctx.kebabName}" to create the migration`,
+        );
+
+        if (options.graphql) {
+          console.log(
+            `  3. Add ${pc.bold(`${ctx.pascalName}Resolver`)} to the providers of ${ctx.kebabName}.module.ts`,
+          );
+        }
+
+        if (options.mcp) {
+          console.log(
+            `  3. Add ${pc.bold(`${ctx.pascalName}McpToolRegistrar`)} as an exported provider of ${ctx.kebabName}.module.ts, then list it in ${pc.bold('McpGatewayModule.forRoot({ imports, registrars })')} in src/app.module.ts`,
+          );
+        }
+      },
+    );
 }
