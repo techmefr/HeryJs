@@ -6,3 +6,4 @@ import './live';
 import './stream';
 import './mail';
 import './storage';
+import './admin-astro';

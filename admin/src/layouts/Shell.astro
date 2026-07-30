@@ -1,0 +1,125 @@
+---
+import '../styles/admin.css';
+
+interface Props {
+  title: string;
+  bare?: boolean;
+}
+
+const { title, bare = false } = Astro.props;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} — HeryJs admin</title>
+  </head>
+  <body>
+    {
+      bare ? (
+        <div class="centered">
+          <slot />
+        </div>
+      ) : (
+        <div class="shell">
+          <aside class="side">
+            <a class="brand" href="/">
+              <span class="mark" id="brand-mark"></span>
+              <span>
+                <strong>HeryJs</strong>
+                <span>Admin</span>
+              </span>
+            </a>
+
+            <nav class="group">
+              <h2>General</h2>
+              <a class="item" href="/" id="overview-link"></a>
+            </nav>
+
+            <nav class="group scrolls" id="sections">
+              <h2>Sections</h2>
+            </nav>
+
+            <footer>
+              <code id="api-url"></code>
+              <button class="item" id="sign-out" type="button"></button>
+            </footer>
+          </aside>
+
+          <main>
+            <header class="top">
+              <span>HeryJs</span>
+              <span id="crumb-icon"></span>
+              <span class="crumb" id="crumb">{title}</span>
+              <span class="spacer"></span>
+              <span id="top-extra"></span>
+            </header>
+
+            <div class="page">
+              <slot />
+            </div>
+          </main>
+        </div>
+      )
+    }
+
+    <script>
+      import { API_URL, api, sectionsOf, type DescribedController } from '../lib/api';
+      import { ICONS, icon, iconFor, tintOf } from '../lib/icons';
+      import { clearToken, token } from '../lib/session';
+
+      const onLogin = window.location.pathname.startsWith('/login');
+
+      if (!token() && !onLogin) {
+        window.location.href = '/login';
+      }
+
+      const label = (element: HTMLElement | null, node: typeof ICONS.overview, text: string) => {
+        if (!element) {
+          return;
+        }
+
+        const caption = document.createElement('span');
+        caption.textContent = text;
+        element.append(icon(node), caption);
+      };
+
+      document.getElementById('brand-mark')?.appendChild(icon(ICONS.brand, 16));
+      document.getElementById('crumb-icon')?.appendChild(icon(ICONS.crumb, 13));
+      label(document.getElementById('overview-link'), ICONS.overview, 'Overview');
+      label(document.getElementById('sign-out'), ICONS.signOut, 'Sign out');
+
+      const apiUrl = document.getElementById('api-url');
+
+      if (apiUrl) {
+        apiUrl.textContent = API_URL.replace(/^https?:\/\//, '');
+        apiUrl.title = API_URL;
+      }
+
+      document.getElementById('sign-out')?.addEventListener('click', () => {
+        clearToken();
+        window.location.href = '/login';
+      });
+
+      if (token() && !onLogin) {
+        const nav = document.getElementById('sections');
+        const { data } = await api<DescribedController[]>('/describe');
+        const current = new URLSearchParams(window.location.search).get('path');
+
+        for (const section of sectionsOf(data)) {
+          const link = document.createElement('a');
+          link.className = 'item ' + tintOf(section.path);
+          link.href = '/browse?path=' + encodeURIComponent(section.path);
+          label(link, iconFor(section.path), section.label);
+
+          if (section.path === current) {
+            link.setAttribute('aria-current', 'page');
+          }
+
+          nav?.appendChild(link);
+        }
+      }
+    </script>
+  </body>
+</html>

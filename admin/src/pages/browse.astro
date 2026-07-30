@@ -1,0 +1,66 @@
+---
+import Shell from '../layouts/Shell.astro';
+---
+
+<Shell title="Browse">
+  <h1 id="heading">Browse</h1>
+  <p class="route" id="route"></p>
+
+  <div class="output" id="output"></div>
+</Shell>
+
+<script>
+  import { ApiError, api, labelOf } from '../lib/api';
+  import { tintOf } from '../lib/icons';
+  import { methodBadge, pill, skeleton, state, table } from '../lib/render';
+
+  const heading = document.getElementById('heading')!;
+  const output = document.getElementById('output')!;
+  const route = new URLSearchParams(window.location.search).get('path');
+
+  if (!route) {
+    output.appendChild(state('No section selected', 'Pick one in the sidebar to list its rows.'));
+  } else {
+    const label = labelOf(route);
+    heading.textContent = label;
+    document.title = label + ' — HeryJs admin';
+    document.body.classList.add(tintOf(route));
+
+    const crumb = document.getElementById('crumb');
+
+    if (crumb) {
+      crumb.textContent = label;
+    }
+
+    const target = document.getElementById('route')!;
+    target.appendChild(methodBadge('GET'));
+    target.appendChild(document.createTextNode(route));
+
+    output.appendChild(skeleton());
+
+    try {
+      const { data } = await api<unknown>(route);
+      const rows = (Array.isArray(data) ? data : [data]) as Record<string, unknown>[];
+
+      output.replaceChildren(
+        rows.length === 0
+          ? state('Nothing to show', 'This section answered with an empty collection.')
+          : table(rows),
+      );
+
+      document.getElementById('top-extra')?.appendChild(
+        pill(rows.length + (rows.length === 1 ? ' row' : ' rows'), 'neutral'),
+      );
+    } catch (error) {
+      output.replaceChildren(
+        error instanceof ApiError && error.status === 403
+          ? state(
+              'A capability denied this listing',
+              'The API refused to answer for the signed-in account. Nothing is hidden client side.',
+              'denied',
+            )
+          : state('Could not load this section', 'The request to ' + route + ' failed.', 'denied'),
+      );
+    }
+  }
+</script>
