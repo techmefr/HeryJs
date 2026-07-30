@@ -740,6 +740,110 @@ export class ${ctx.pascalName}McpToolRegistrar implements McpToolRegistrar {
 `;
 }
 
+export function liveGatewayFile(ctx: ResourceContext): string {
+  return `import { Inject, UseGuards } from '@nestjs/common';
+import {
+  ConnectedSocket,
+  MessageBody,
+  OnGatewayConnection,
+  SubscribeMessage,
+  WebSocketGateway,
+} from '@nestjs/websockets';
+import { AUTH_PROVIDER } from '../../technical/auth/auth.types';
+import type { AuthProvider } from '../../technical/auth/auth.types';
+import {
+  authenticateLiveSocket,
+  LiveAuthGuard,
+} from '../../technical/live/live-auth.guard';
+import type { LiveSocket } from '../../technical/live/live-auth.guard';
+import { withTenant } from '../../technical/live/with-tenant';
+import { canUpdate${ctx.pascalName}, canView${ctx.pascalName} } from './${ctx.kebabName}.policy';
+import {
+  ${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER,
+} from './${ctx.kebabName}-record.loader';
+import type { ${ctx.pascalName}RecordLoader } from './${ctx.kebabName}-record.loader';
+
+function room(id: string): string {
+  return '${ctx.kebabName}:' + id;
+}
+
+@WebSocketGateway({ namespace: '/live/${ctx.kebabName}' })
+@UseGuards(LiveAuthGuard)
+export class ${ctx.pascalName}LiveGateway implements OnGatewayConnection {
+  constructor(
+    @Inject(${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER)
+    private readonly visibleLoader: ${ctx.pascalName}RecordLoader,
+    @Inject(AUTH_PROVIDER) private readonly authProvider: AuthProvider,
+  ) {}
+
+  async handleConnection(client: LiveSocket) {
+    const authenticated = await authenticateLiveSocket(
+      client,
+      this.authProvider,
+    );
+
+    if (!authenticated) {
+      client.disconnect(true);
+    }
+  }
+
+  @SubscribeMessage('join')
+  join(@ConnectedSocket() client: LiveSocket, @MessageBody() body: { id: string }) {
+    return withTenant(client, async () => {
+      const record = await this.visibleLoader.load(body.id);
+      if (!record) {
+        return { error: 'not found' };
+      }
+
+      const subject = { id: client.data.user.id, teamIds: [] };
+      const decision = canView${ctx.pascalName}(subject, record);
+      if (!decision.allowed) {
+        return { error: 'capability denied' };
+      }
+
+      await client.join(room(body.id));
+      return { joined: body.id };
+    });
+  }
+
+  @SubscribeMessage('leave')
+  async leave(
+    @ConnectedSocket() client: LiveSocket,
+    @MessageBody() body: { id: string },
+  ) {
+    await client.leave(room(body.id));
+    return { left: body.id };
+  }
+
+  @SubscribeMessage('message')
+  message(
+    @ConnectedSocket() client: LiveSocket,
+    @MessageBody() body: { id: string; text: string },
+  ) {
+    return withTenant(client, async () => {
+      const record = await this.visibleLoader.load(body.id);
+      if (!record) {
+        return { error: 'not found' };
+      }
+
+      const subject = { id: client.data.user.id, teamIds: [] };
+      const decision = canUpdate${ctx.pascalName}(subject, record);
+      if (!decision.allowed) {
+        return { error: 'capability denied' };
+      }
+
+      client.to(room(body.id)).emit('message', {
+        from: client.data.user.id,
+        text: body.text,
+        at: Date.now(),
+      });
+      return { sent: true };
+    });
+  }
+}
+`;
+}
+
 export function specFile(ctx: ResourceContext): string {
   const requiredFields = ctx.fields.filter((field) => !field.optional);
   const createBody =

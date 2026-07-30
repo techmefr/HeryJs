@@ -13,6 +13,7 @@ import {
   controllerFile,
   dtoFile,
   factoryFile,
+  liveGatewayFile,
   mcpToolsFile,
   moduleFile,
   policyFile,
@@ -36,10 +37,19 @@ export function registerGenerateCommand(program: Command): void {
       '--mcp',
       'also generate an MCP tool registrar (requires the "mcp" module to be installed)',
     )
+    .option(
+      '--live',
+      'also generate a live WebSocket gateway (requires the "live" module to be installed)',
+    )
     .action(
       (
         name: string,
-        options: { force?: boolean; graphql?: boolean; mcp?: boolean },
+        options: {
+          force?: boolean;
+          graphql?: boolean;
+          mcp?: boolean;
+          live?: boolean;
+        },
       ) => {
         const root = process.cwd();
         const blueprintPath = path.join(
@@ -93,6 +103,10 @@ export function registerGenerateCommand(program: Command): void {
           files[`${ctx.kebabName}.mcp-tools.ts`] = mcpToolsFile(ctx);
         }
 
+        if (options.live) {
+          files[`${ctx.kebabName}.live.gateway.ts`] = liveGatewayFile(ctx);
+        }
+
         for (const [fileName, content] of Object.entries(files)) {
           writeFileSync(path.join(targetDir, fileName), content);
           console.log(pc.green(`✔ ${path.join(targetDir, fileName)}`));
@@ -131,6 +145,12 @@ export function registerGenerateCommand(program: Command): void {
         if (options.mcp) {
           console.log(
             `  3. Add ${pc.bold(`${ctx.pascalName}McpToolRegistrar`)} as an exported provider of ${ctx.kebabName}.module.ts, then list it in ${pc.bold('McpGatewayModule.forRoot({ imports, registrars })')} in src/app.module.ts`,
+          );
+        }
+
+        if (options.live) {
+          console.log(
+            `  3. Import ${pc.bold('LiveModule')} and add ${pc.bold(`${ctx.pascalName}LiveGateway`)} to the imports/providers of ${ctx.kebabName}.module.ts`,
           );
         }
       },
