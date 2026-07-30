@@ -72,7 +72,11 @@ Dates aren't fixed here on purpose — this ships at the pace of real progress, 
 
 ## Status
 
-Early. Phase 1 is in progress. Not ready for production use yet.
+Phase 1 through 4 are done: the vertical slice, the widening of features (jobs, real-time, notifications, audit, feature flags, monitoring, admin), and a hardening pass (opt-in row-level security, an adversarial security review of tenant isolation and permissions, a more robust generator). Phase 5 — documentation, read-only MCP introspection, public release — is under way. See the [commit history](https://github.com/techmefr/HeryJs/commits/main) for the detail.
+
+## Contributing
+
+HeryJs is a personal project, built in the open, and it's still small enough that one conversation with a maintainer can shape its direction. If you generate a resource and something feels off, or you have a use case the current conventions don't cover well, open an issue — that kind of feedback is exactly what Phase 2's external validation was for, and it doesn't stop mattering after Phase 2 closes. Pull requests are welcome too, especially ones that come with the same "prove it end-to-end, then keep only what's proven" discipline the project holds itself to (see [CONTRIBUTING.md](CONTRIBUTING.md)).
 
 ## License
 
