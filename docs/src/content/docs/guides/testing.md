@@ -61,7 +61,7 @@ All three assert the same underlying property from whichever side applies: the d
 
 ## Extending it
 
-The generated spec is a floor, not a ceiling — it is written once and then owned, like everything else. The hand-maintained reference resource in `src/functional/workout/` shows what a filled-out version looks like, with cases the generator does not write:
+The generated spec is a floor, not a ceiling — it is written once and then owned, like everything else. The reference resource in `examples/workout/` shows what a filled-out version looks like, with cases the generator does not write:
 
 - listing the bin (`?onlyTrashed=true`) is refused to someone who cannot open the records in it;
 - `?include=capabilities` returns resolved decisions on each row and in `meta`;

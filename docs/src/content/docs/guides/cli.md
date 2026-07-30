@@ -36,11 +36,18 @@ Walks through interactive prompts (fields, permissions, pagination limits, sorta
 - `--yes` skips the prompts and takes sensible defaults — useful in scripts, or when trying the generator out.
 - `--all-options` skips the prompts and writes a fully commented blueprint listing every field type, every permission preset and every other option the generator understands, mostly commented out. A quick way to see the whole menu before trimming it to what you need.
 
-## `hery generate <Name>`
+## `hery generate <Name|path>`
 
 Reads the blueprint and writes nine files into `src/functional/<name>/`. See [What gets generated](/guides/generated-files/) for what each one owns.
 
-It also patches `prisma/schema.prisma` (the new model plus its inverse relation on `User`) and `prisma.client.ts` (adding the model to the tenant-scoped set), then prints the two manual steps it deliberately does not take for you: importing the module into `src/app.module.ts`, and running the migration.
+The argument is a name resolved under `blueprints/`, or a path to a YAML file if you would rather keep a blueprint next to whatever it produced:
+
+```bash
+pnpm hery generate Task
+pnpm hery generate examples/workout.yaml
+```
+
+It also patches `prisma/schema.prisma` (the new model plus its inverse relation on `User`), `prisma.client.ts` (adding the model to the tenant-scoped set) and `audit-log.ts` (adding it to the audited set), then prints the two manual steps it deliberately does not take for you: importing the module into `src/app.module.ts`, and running the migration.
 
 - `--force` overwrites an existing resource directory. Without it, `generate` refuses rather than clobbering code you own.
 - `--graphql`, `--mcp`, `--live`, `--stream` each add one more file, wiring the resource into the corresponding module. They require that module to be installed; the flag does not check.

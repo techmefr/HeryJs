@@ -103,4 +103,4 @@ Each requires its module to be installed, and each re-checks the resource's own 
 
 ## What it also patches
 
-`prisma/schema.prisma` gains the model — `id`, `tenantId`, `ownerId`, your fields, timestamps and a nullable `deletedAt`, plus a `teamId` if any preset is `team` — and `prisma.client.ts` gains the model in its tenant-scoped set. That second patch is what makes tenancy automatic for the new resource rather than something to remember.
+`prisma/schema.prisma` gains the model — `id`, `tenantId`, `ownerId`, your fields, timestamps and a nullable `deletedAt`, plus a `teamId` if any preset is `team`. Then two sets in the kernel gain the model's name: `TENANT_SCOPED_MODELS` in `prisma.client.ts` and `AUDITED_MODELS` in `audit-log.ts`. Those two patches are what make tenancy and the audit trail automatic for the new resource rather than something to remember — a set the generator does not maintain is a feature that silently applies to nothing.
