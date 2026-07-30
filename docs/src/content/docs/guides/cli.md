@@ -7,7 +7,7 @@ The `hery` CLI is the only thing in this project that reads a blueprint. It is a
 
 ## `hery create:blueprint <Name>`
 
-Walks through a set of interactive prompts (fields, permissions, pagination limits, sortable fields, filterable fields) and writes a YAML blueprint to `blueprints/<name>.yaml`. Pass `--yes` to skip the prompts and take sensible defaults — useful in scripts or when trying the generator out.
+Walks through a set of interactive prompts (fields, permissions, pagination limits, sortable fields, filterable fields) and writes a YAML blueprint to `blueprints/<name>.yaml`. Pass `--yes` to skip the prompts and take sensible defaults — useful in scripts or when trying the generator out. Pass `--all-options` instead to skip the prompts and write a fully commented blueprint that lists every field type, every permission preset, and every other option the generator understands (mostly commented out) — a quick way to see the whole menu before trimming it down to what you need.
 
 ## `hery generate <Name>`
 
@@ -20,6 +20,15 @@ It also patches `prisma/schema.prisma` (adding the new model and its inverse rel
 ## `hery migrate --name <migration-name>`
 
 A thin wrapper around `prisma migrate dev`, run after `generate` once the schema has been patched.
+
+## `hery mcp:serve`
+
+Starts a read-only [MCP](https://modelcontextprotocol.io) server over stdio, for editors and agents that want to introspect what actually exists in the project. It exposes two tools:
+
+- `list_resources` — the resources actually generated under `src/functional/`.
+- `describe_resource(name)` — that resource's routes (HTTP method, path, the capability guarding it) and its fields, read straight from the real `*.controller.ts` and `prisma/schema.prisma`.
+
+It never reads a blueprint file. A blueprint is a one-time input to `generate`, not a live source of truth — the generated code is.
 
 ## The order that matters
 

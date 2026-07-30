@@ -7,7 +7,7 @@ Tenancy in HeryJs is a boundary, not a scope you remember to add to every query.
 
 ## Resolution: `TenantMiddleware` and `AsyncLocalStorage`
 
-`TenantMiddleware` runs before anything else and reads the tenant identifier for the current request (an `x-tenant-id` header in development), then stores it in an `AsyncLocalStorage` context (`TenantContextStorage`) for the lifetime of that request — no need to thread it through every function call by hand.
+`TenantMiddleware` runs before anything else, ahead of guards and interceptors — it wraps the entire rest of the pipeline in its own callback, so context set here is visible everywhere downstream, including inside guards. It never trusts a client-supplied value for tenant identity: it validates the session's bearer token through `AuthProvider.validateSession()` and reads `tenantId` off the authenticated user, then stores it in an `AsyncLocalStorage` context (`TenantContextStorage`) for the lifetime of that request — no need to thread it through every function call by hand, and nothing a caller can override by sending a header.
 
 ## Enforcement: the tenant-scoped Prisma client
 
@@ -22,4 +22,6 @@ A caller writing `this.prisma.workout.findMany({})` gets tenant-scoped results w
 
 A cross-tenant data leak would require either bypassing the extension entirely (using the raw, non-scoped client) or removing a model from `TENANT_SCOPED_MODELS` — both of which are visible in a code review, unlike a missing `WHERE tenant_id = ?` buried in one query among hundreds.
 
-Row-level security at the database layer is intentionally not part of this — the tenant boundary lives in the application layer, backed by tests that prove tenant A never sees tenant B's records over a real HTTP round trip.
+## Optional second layer: Postgres row-level security
+
+The application-layer boundary above is enough on its own — every generated resource is proven tenant-isolated over a real HTTP round trip. For deployments that want a second, database-level backstop, set `RLS_ENABLED=true` to have tenant-scoped operations run inside a transaction that sets `app.tenant_id` via `set_config`, matching a `FORCE ROW LEVEL SECURITY` policy applied to each tenant-scoped table. This only constrains a genuinely restricted database role (`NOSUPERUSER NOBYPASSRLS`) — a superuser connection always bypasses RLS, flag or not — so it protects against a compromised or misconfigured connection using anything less than superuser credentials, not against the app's own default connection.
