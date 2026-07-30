@@ -21,6 +21,7 @@ import {
   resolverFile,
   serviceFile,
   specFile,
+  streamControllerFile,
   viewFile,
 } from '../lib/templates';
 
@@ -41,6 +42,10 @@ export function registerGenerateCommand(program: Command): void {
       '--live',
       'also generate a live WebSocket gateway (requires the "live" module to be installed)',
     )
+    .option(
+      '--stream',
+      'also generate a stream controller (requires the "stream" module to be installed)',
+    )
     .action(
       (
         name: string,
@@ -49,6 +54,7 @@ export function registerGenerateCommand(program: Command): void {
           graphql?: boolean;
           mcp?: boolean;
           live?: boolean;
+          stream?: boolean;
         },
       ) => {
         const root = process.cwd();
@@ -107,6 +113,11 @@ export function registerGenerateCommand(program: Command): void {
           files[`${ctx.kebabName}.live.gateway.ts`] = liveGatewayFile(ctx);
         }
 
+        if (options.stream) {
+          files[`${ctx.kebabName}.stream.controller.ts`] =
+            streamControllerFile(ctx);
+        }
+
         for (const [fileName, content] of Object.entries(files)) {
           writeFileSync(path.join(targetDir, fileName), content);
           console.log(pc.green(`✔ ${path.join(targetDir, fileName)}`));
@@ -151,6 +162,12 @@ export function registerGenerateCommand(program: Command): void {
         if (options.live) {
           console.log(
             `  3. Import ${pc.bold('LiveModule')} and add ${pc.bold(`${ctx.pascalName}LiveGateway`)} to the imports/providers of ${ctx.kebabName}.module.ts`,
+          );
+        }
+
+        if (options.stream) {
+          console.log(
+            `  3. Import ${pc.bold('StreamModule')} and add ${pc.bold(`${ctx.pascalName}StreamController`)} to the imports/controllers of ${ctx.kebabName}.module.ts`,
           );
         }
       },

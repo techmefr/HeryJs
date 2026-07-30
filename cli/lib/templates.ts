@@ -740,6 +740,57 @@ export class ${ctx.pascalName}McpToolRegistrar implements McpToolRegistrar {
 `;
 }
 
+export function streamControllerFile(ctx: ResourceContext): string {
+  return `import { Controller, Post, Req, UseGuards } from '@nestjs/common';
+import type { ${ctx.pascalName} } from '@prisma/client';
+import type { RequestWithUser } from '../../technical/auth/session.guard';
+import { SessionGuard } from '../../technical/auth/session.guard';
+import { CapabilitiesGuard } from '../../technical/capabilities/capabilities.guard';
+import {
+  Capability,
+  LoadRecordWith,
+} from '../../technical/capabilities/capability.decorator';
+import { ok } from '../../technical/http/envelope';
+import { StreamService } from '../../technical/stream/stream.service';
+import { canUpdate${ctx.pascalName}, canView${ctx.pascalName} } from './${ctx.kebabName}.policy';
+import {
+  ${ctx.pascalName.toUpperCase()}_RECORD_LOADER,
+  ${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER,
+} from './${ctx.kebabName}-record.loader';
+
+type RequestWith${ctx.pascalName} = RequestWithUser & { record: ${ctx.pascalName} };
+
+function roomFor(id: string): string {
+  return '${ctx.kebabName}:' + id;
+}
+
+@Controller('${ctx.pluralKebabName}/:id/stream')
+@UseGuards(SessionGuard, CapabilitiesGuard)
+export class ${ctx.pascalName}StreamController {
+  constructor(private readonly stream: StreamService) {}
+
+  @Post('publish-token')
+  @Capability(canUpdate${ctx.pascalName})
+  @LoadRecordWith(${ctx.pascalName.toUpperCase()}_RECORD_LOADER)
+  async publishToken(@Req() req: RequestWith${ctx.pascalName}) {
+    const room = roomFor(req.record.id);
+    await this.stream.ensureRoom(room);
+    const token = await this.stream.publishToken(room, req.user.id);
+    return ok({ room, token });
+  }
+
+  @Post('viewer-token')
+  @Capability(canView${ctx.pascalName})
+  @LoadRecordWith(${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER)
+  async viewerToken(@Req() req: RequestWith${ctx.pascalName}) {
+    const room = roomFor(req.record.id);
+    const token = await this.stream.viewerToken(room, req.user.id);
+    return ok({ room, token });
+  }
+}
+`;
+}
+
 export function liveGatewayFile(ctx: ResourceContext): string {
   return `import { Inject, UseGuards } from '@nestjs/common';
 import {
