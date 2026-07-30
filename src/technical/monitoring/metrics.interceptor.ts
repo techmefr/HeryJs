@@ -11,6 +11,10 @@ import { httpRequestDuration, httpRequestsTotal } from './metrics.registry';
 @Injectable()
 export class MetricsInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler) {
+    if (context.getType() !== 'http') {
+      return next.handle();
+    }
+
     const request = context.switchToHttp().getRequest<Request>();
     const response = context.switchToHttp().getResponse<Response>();
     const start = process.hrtime.bigint();

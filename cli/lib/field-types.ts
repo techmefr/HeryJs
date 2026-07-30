@@ -42,6 +42,17 @@ export function sampleValueFor(field: BlueprintField): string {
   }
 }
 
+const GRAPHQL_TYPES: Record<BlueprintField['type'], string> = {
+  string: 'String',
+  int: 'Int',
+  boolean: 'Boolean',
+  datetime: 'GraphQLISODateTime',
+};
+
+export function graphqlTypeFor(field: BlueprintField): string {
+  return GRAPHQL_TYPES[field.type];
+}
+
 const TS_TYPES: Record<BlueprintField['type'], string> = {
   string: 'string',
   int: 'number',

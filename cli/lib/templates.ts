@@ -1,6 +1,7 @@
 import type { ResourceContext } from './resource-context';
 import {
   fakerValueFor,
+  graphqlTypeFor,
   prismaTypeFor,
   sampleValueFor,
   tsTypeFor,
@@ -435,6 +436,167 @@ import {
   ],
 })
 export class ${ctx.pascalName}Module {}
+`;
+}
+
+export function resolverFile(ctx: ResourceContext): string {
+  const objectFields = ctx.fields
+    .map(
+      (field) =>
+        `  @Field(() => ${graphqlTypeFor(field)}${field.optional ? ', { nullable: true }' : ''})\n  declare ${field.name}${field.optional ? '?' : ''}: ${tsTypeFor(field)};`,
+    )
+    .join('\n\n');
+
+  const createInputFields = ctx.fields
+    .filter((field) => !field.optional)
+    .map(
+      (field) =>
+        `  @Field(() => ${graphqlTypeFor(field)})\n  declare ${field.name}: ${tsTypeFor(field)};`,
+    )
+    .join('\n\n');
+
+  const updateInputFields = ctx.fields
+    .map(
+      (field) =>
+        `  @Field(() => ${graphqlTypeFor(field)}, { nullable: true })\n  declare ${field.name}?: ${tsTypeFor(field)};`,
+    )
+    .join('\n\n');
+
+  return `import { Inject, UseGuards } from '@nestjs/common';
+import {
+  Args,
+  Field,
+  ID,
+  InputType,
+  Mutation,
+  ObjectType,
+  Query,
+  Resolver,
+} from '@nestjs/graphql';
+import { GqlSessionGuard } from '../../technical/auth/gql-session.guard';
+import type { GqlRequestWithUser } from '../../technical/auth/gql-session.guard';
+import { CurrentGqlRequest } from '../../technical/auth/current-gql-request.decorator';
+import { CapabilityForbiddenException } from '../../technical/errors/capability-forbidden.exception';
+import { RecordNotFoundException } from '../../technical/errors/record-not-found.exception';
+import {
+  canCreate${ctx.pascalName},
+  canDelete${ctx.pascalName},
+  canUpdate${ctx.pascalName},
+  canView${ctx.pascalName},
+} from './${ctx.kebabName}.policy';
+import { ${ctx.pascalName}Service } from './${ctx.kebabName}.service';
+import {
+  ${ctx.pascalName.toUpperCase()}_RECORD_LOADER,
+  ${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER,
+} from './${ctx.kebabName}-record.loader';
+import type { ${ctx.pascalName}RecordLoader } from './${ctx.kebabName}-record.loader';
+
+@ObjectType('${ctx.pascalName}')
+export class ${ctx.pascalName}Type {
+  @Field(() => ID)
+  declare id: string;
+
+${objectFields}
+}
+
+@InputType()
+export class Create${ctx.pascalName}Input {
+${createInputFields}
+}
+
+@InputType()
+export class Update${ctx.pascalName}Input {
+${updateInputFields}
+}
+
+@Resolver(() => ${ctx.pascalName}Type)
+@UseGuards(GqlSessionGuard)
+export class ${ctx.pascalName}Resolver {
+  constructor(
+    private readonly ${ctx.camelName}s: ${ctx.pascalName}Service,
+    @Inject(${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER)
+    private readonly visibleLoader: ${ctx.pascalName}RecordLoader,
+    @Inject(${ctx.pascalName.toUpperCase()}_RECORD_LOADER)
+    private readonly loader: ${ctx.pascalName}RecordLoader,
+  ) {}
+
+  @Query(() => [${ctx.pascalName}Type], { name: '${ctx.pluralCamelName}' })
+  search() {
+    return this.${ctx.camelName}s.search();
+  }
+
+  @Query(() => ${ctx.pascalName}Type, { name: '${ctx.camelName}' })
+  async findOne(
+    @Args('id', { type: () => ID }) id: string,
+    @CurrentGqlRequest() req: GqlRequestWithUser,
+  ) {
+    const record = await this.visibleLoader.load(id);
+    if (!record) {
+      throw new RecordNotFoundException('${ctx.pascalName}');
+    }
+
+    const subject = { id: req.user.id, teamIds: [] };
+    const decision = canView${ctx.pascalName}(subject, record);
+    if (!decision.allowed) {
+      throw new CapabilityForbiddenException();
+    }
+
+    return record;
+  }
+
+  @Mutation(() => ${ctx.pascalName}Type, { name: 'create${ctx.pascalName}' })
+  async create(
+    @Args('input') input: Create${ctx.pascalName}Input,
+    @CurrentGqlRequest() req: GqlRequestWithUser,
+  ) {
+    const subject = { id: req.user.id, teamIds: [] };
+    const decision = canCreate${ctx.pascalName}(subject);
+    if (!decision.allowed) {
+      throw new CapabilityForbiddenException();
+    }
+
+    return this.${ctx.camelName}s.create(subject, input);
+  }
+
+  @Mutation(() => ${ctx.pascalName}Type, { name: 'update${ctx.pascalName}' })
+  async update(
+    @Args('id', { type: () => ID }) id: string,
+    @Args('input') input: Update${ctx.pascalName}Input,
+    @CurrentGqlRequest() req: GqlRequestWithUser,
+  ) {
+    const record = await this.loader.load(id);
+    if (!record) {
+      throw new RecordNotFoundException('${ctx.pascalName}');
+    }
+
+    const subject = { id: req.user.id, teamIds: [] };
+    const decision = canUpdate${ctx.pascalName}(subject, record);
+    if (!decision.allowed) {
+      throw new CapabilityForbiddenException();
+    }
+
+    return this.${ctx.camelName}s.update(record, input);
+  }
+
+  @Mutation(() => ${ctx.pascalName}Type, { name: 'remove${ctx.pascalName}' })
+  async remove(
+    @Args('id', { type: () => ID }) id: string,
+    @CurrentGqlRequest() req: GqlRequestWithUser,
+  ) {
+    const record = await this.loader.load(id);
+    if (!record) {
+      throw new RecordNotFoundException('${ctx.pascalName}');
+    }
+
+    const subject = { id: req.user.id, teamIds: [] };
+    const decision = canDelete${ctx.pascalName}(subject, record);
+    if (!decision.allowed) {
+      throw new CapabilityForbiddenException();
+    }
+
+    return this.${ctx.camelName}s.softDelete(record);
+  }
+}
 `;
 }
 

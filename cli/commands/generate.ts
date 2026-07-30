@@ -16,6 +16,7 @@ import {
   moduleFile,
   policyFile,
   recordLoaderFile,
+  resolverFile,
   serviceFile,
   specFile,
   viewFile,
@@ -26,7 +27,11 @@ export function registerGenerateCommand(program: Command): void {
     .command('generate <name>')
     .description('Generate a resource from its blueprint')
     .option('-f, --force', 'Overwrite an existing resource directory')
-    .action((name: string, options: { force?: boolean }) => {
+    .option(
+      '--graphql',
+      'also generate a GraphQL resolver (requires the "graphql" module to be installed)',
+    )
+    .action((name: string, options: { force?: boolean; graphql?: boolean }) => {
       const root = process.cwd();
       const blueprintPath = path.join(
         root,
@@ -71,6 +76,10 @@ export function registerGenerateCommand(program: Command): void {
         [`${ctx.kebabName}.spec.ts`]: specFile(ctx),
       };
 
+      if (options.graphql) {
+        files[`${ctx.kebabName}.resolver.ts`] = resolverFile(ctx);
+      }
+
       for (const [fileName, content] of Object.entries(files)) {
         writeFileSync(path.join(targetDir, fileName), content);
         console.log(pc.green(`✔ ${path.join(targetDir, fileName)}`));
@@ -99,5 +108,11 @@ export function registerGenerateCommand(program: Command): void {
       console.log(
         `  2. Run "pnpm hery migrate --name add_${ctx.kebabName}" to create the migration`,
       );
+
+      if (options.graphql) {
+        console.log(
+          `  3. Add ${pc.bold(`${ctx.pascalName}Resolver`)} to the providers of ${ctx.kebabName}.module.ts`,
+        );
+      }
     });
 }

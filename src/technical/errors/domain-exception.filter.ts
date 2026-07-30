@@ -19,10 +19,15 @@ interface ResolvedError {
 @Catch()
 export class DomainExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
+    const resolved = this.resolve(exception);
+
+    if (host.getType() !== 'http') {
+      throw new HttpException(resolved.message, resolved.status);
+    }
+
     const ctx = host.switchToHttp();
     const request = ctx.getRequest<Request>();
     const response = ctx.getResponse<Response>();
-    const resolved = this.resolve(exception);
 
     if (request.headers.accept?.includes('text/html')) {
       response
