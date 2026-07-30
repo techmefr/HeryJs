@@ -4,11 +4,11 @@ import pc from 'picocolors';
 import { registerModule } from '../lib/module-registry';
 
 const COMPOSE_FILE = 'docker-compose.storage.yml';
-const TYPES_FILE = 'src/technical/storage/storage.types.ts';
-const LOCAL_PROVIDER_FILE = 'src/technical/storage/local-storage.provider.ts';
-const S3_PROVIDER_FILE = 'src/technical/storage/s3-storage.provider.ts';
-const CONTROLLER_FILE = 'src/technical/storage/storage.controller.ts';
-const MODULE_FILE = 'src/technical/storage/storage.module.ts';
+const TYPES_FILE = 'src/modules/storage/storage.types.ts';
+const LOCAL_PROVIDER_FILE = 'src/modules/storage/local-storage.provider.ts';
+const S3_PROVIDER_FILE = 'src/modules/storage/s3-storage.provider.ts';
+const CONTROLLER_FILE = 'src/modules/storage/storage.controller.ts';
+const MODULE_FILE = 'src/modules/storage/storage.module.ts';
 
 const COMPOSE_CONTENT = `services:
   minio:

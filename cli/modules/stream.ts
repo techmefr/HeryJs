@@ -4,8 +4,8 @@ import pc from 'picocolors';
 import { registerModule } from '../lib/module-registry';
 
 const COMPOSE_FILE = 'docker-compose.stream.yml';
-const SERVICE_FILE = 'src/technical/stream/stream.service.ts';
-const MODULE_FILE = 'src/technical/stream/stream.module.ts';
+const SERVICE_FILE = 'src/modules/stream/stream.service.ts';
+const MODULE_FILE = 'src/modules/stream/stream.module.ts';
 
 const COMPOSE_CONTENT = `services:
   livekit:

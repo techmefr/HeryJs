@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { Injectable } from '@nestjs/common';
-import { env } from '../config/env';
+import { env } from '../../technical/config/env';
 import type { StorageProvider } from './storage.types';
 
 const ROOT = path.resolve(process.cwd(), 'storage');

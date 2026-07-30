@@ -3,14 +3,14 @@ import * as path from 'node:path';
 import pc from 'picocolors';
 import { registerModule } from '../lib/module-registry';
 
-const TYPES_FILE = 'src/technical/mail/mail.types.ts';
-const CONSTANTS_FILE = 'src/technical/mail/mail.constants.ts';
-const PROVIDER_FILE = 'src/technical/mail/console-mail.provider.ts';
-const TEMPLATES_FILE = 'src/technical/mail/mail.templates.ts';
-const SERVICE_FILE = 'src/technical/mail/mail.service.ts';
-const PROCESSOR_FILE = 'src/technical/mail/mail.processor.ts';
-const CONTROLLER_FILE = 'src/technical/mail/mail.controller.ts';
-const MODULE_FILE = 'src/technical/mail/mail.module.ts';
+const TYPES_FILE = 'src/modules/mail/mail.types.ts';
+const CONSTANTS_FILE = 'src/modules/mail/mail.constants.ts';
+const PROVIDER_FILE = 'src/modules/mail/console-mail.provider.ts';
+const TEMPLATES_FILE = 'src/modules/mail/mail.templates.ts';
+const SERVICE_FILE = 'src/modules/mail/mail.service.ts';
+const PROCESSOR_FILE = 'src/modules/mail/mail.processor.ts';
+const CONTROLLER_FILE = 'src/modules/mail/mail.controller.ts';
+const MODULE_FILE = 'src/modules/mail/mail.module.ts';
 const SCHEMA_FILE = 'prisma/schema.prisma';
 
 const MAIL_LOG_MODEL = `

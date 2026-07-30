@@ -7,7 +7,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../app.module';
 import { env } from '../../technical/config/env';
-import { registerAndLogin } from '../../technical/testing/register-and-login';
+import { registerAndLogin } from '../../devtools/testing/register-and-login';
 
 const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });

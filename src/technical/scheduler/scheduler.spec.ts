@@ -4,7 +4,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../app.module';
-import { registerAndLogin } from '../testing/register-and-login';
+import { registerAndLogin } from '../../devtools/testing/register-and-login';
 
 interface ScheduledTaskRun {
   name: string;

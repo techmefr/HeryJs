@@ -811,7 +811,7 @@ import {
   LoadRecordWith,
 } from '../../technical/capabilities/capability.decorator';
 import { ok } from '../../technical/http/envelope';
-import { StreamService } from '../../technical/stream/stream.service';
+import { StreamService } from '../../modules/stream/stream.service';
 import { canUpdate${ctx.pascalName}, canView${ctx.pascalName} } from './${ctx.kebabName}.policy';
 import {
   ${ctx.pascalName.toUpperCase()}_RECORD_LOADER,
@@ -866,9 +866,9 @@ import { subjectOf } from '../../technical/capabilities/subject';
 import {
   authenticateLiveSocket,
   LiveAuthGuard,
-} from '../../technical/live/live-auth.guard';
-import type { LiveSocket } from '../../technical/live/live-auth.guard';
-import { withTenant } from '../../technical/live/with-tenant';
+} from '../../modules/live/live-auth.guard';
+import type { LiveSocket } from '../../modules/live/live-auth.guard';
+import { withTenant } from '../../modules/live/with-tenant';
 import { canUpdate${ctx.pascalName}, canView${ctx.pascalName} } from './${ctx.kebabName}.policy';
 import {
   ${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER,
@@ -1035,7 +1035,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../../app.module';
 import { env } from '../../technical/config/env';
-import { registerAndLogin } from '../../technical/testing/register-and-login';
+import { registerAndLogin } from '../../devtools/testing/register-and-login';
 
 const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });

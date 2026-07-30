@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from '../auth/auth.module';
+import { AuthModule } from '../../technical/auth/auth.module';
 import { InspectorController } from './inspector.controller';
 import { InspectorMiddleware } from './inspector.middleware';
 import { InspectorStore } from './inspector.store';

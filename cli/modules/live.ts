@@ -3,9 +3,9 @@ import * as path from 'node:path';
 import pc from 'picocolors';
 import { registerModule } from '../lib/module-registry';
 
-const GUARD_FILE = 'src/technical/live/live-auth.guard.ts';
-const WITH_TENANT_FILE = 'src/technical/live/with-tenant.ts';
-const MODULE_FILE = 'src/technical/live/live.module.ts';
+const GUARD_FILE = 'src/modules/live/live-auth.guard.ts';
+const WITH_TENANT_FILE = 'src/modules/live/with-tenant.ts';
+const MODULE_FILE = 'src/modules/live/live.module.ts';
 
 const GUARD_CONTENT = `import {
   CanActivate,

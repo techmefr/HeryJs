@@ -1,6 +1,6 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { NextFunction, Request, Response } from 'express';
-import { TenantContextStorage } from '../tenancy/tenant-context';
+import { TenantContextStorage } from '../../technical/tenancy/tenant-context';
 import { InspectorStore } from './inspector.store';
 
 function currentTenantId(): string | undefined {

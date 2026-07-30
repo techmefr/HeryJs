@@ -1,7 +1,7 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
-import { SessionGuard } from '../auth/session.guard';
-import { DevOnlyGuard } from '../dev-only/dev-only.guard';
-import { ok } from '../http/envelope';
+import { SessionGuard } from '../../technical/auth/session.guard';
+import { DevOnlyGuard } from '../../technical/dev-only/dev-only.guard';
+import { ok } from '../../technical/http/envelope';
 import { InspectorStore } from './inspector.store';
 
 @Controller('inspector')

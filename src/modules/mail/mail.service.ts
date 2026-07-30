@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { JobsService } from '../jobs/jobs.service';
-import { PRISMA_CLIENT } from '../prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '../prisma/prisma.client';
-import { TenantContextStorage } from '../tenancy/tenant-context';
+import { JobsService } from '../../technical/jobs/jobs.service';
+import { PRISMA_CLIENT } from '../../technical/prisma/prisma.client';
+import type { TenantScopedPrismaClient } from '../../technical/prisma/prisma.client';
+import { TenantContextStorage } from '../../technical/tenancy/tenant-context';
 import { MAIL_SEND_JOB } from './mail.constants';
 import { renderTemplate } from './mail.templates';
 
