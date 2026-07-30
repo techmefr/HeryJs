@@ -19,6 +19,12 @@ const OPTIONAL_COMPOSE_SERVICES = [
     containerPort: 9200,
     envVar: 'ELASTICSEARCH_URL',
   },
+  {
+    composeFile: 'docker-compose.search-meilisearch.yml',
+    service: 'meilisearch',
+    containerPort: 7700,
+    envVar: 'MEILISEARCH_URL',
+  },
 ];
 
 function resolveComposePort(

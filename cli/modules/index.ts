@@ -1,1 +1,2 @@
 import './elasticsearch';
+import './meilisearch';
