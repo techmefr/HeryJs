@@ -7,6 +7,13 @@ import {
 } from '../audit/audit-log';
 import { env } from '../config/env';
 import { TenantContextStorage } from '../tenancy/tenant-context';
+import { TraceContextStorage } from '../tracing/trace-context';
+
+interface PrismaQueryEvent {
+  query: string;
+  params: string;
+  duration: number;
+}
 
 const TENANT_SCOPED_MODELS = new Set(['Team', 'TeamMember', 'Workout']);
 
@@ -43,7 +50,28 @@ const TENANT_HANDLING = new Map<string, TenantHandling>([
 
 export function createTenantScopedPrismaClient() {
   const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
-  const rawClient = new PrismaClient({ adapter });
+  const rawClient = new PrismaClient({
+    adapter,
+    log: [{ emit: 'event', level: 'query' }],
+  });
+
+  // Same instrumentation as the tenant/audit extensions below: a step per
+  // query, keyed off whatever trace context the pipeline middleware already
+  // opened for this request -- a no-op outside of one (production, or any
+  // call made off the request lifecycle, e.g. a seeder script).
+  (
+    rawClient as unknown as {
+      $on(event: 'query', callback: (event: PrismaQueryEvent) => void): void;
+    }
+  ).$on('query', (event) => {
+    TraceContextStorage.pushStep({
+      stage: 'prisma',
+      label: 'query',
+      status: 'ok',
+      durationMs: event.duration,
+      detail: { sql: event.query, params: event.params },
+    });
+  });
 
   const tenantScopedClient = rawClient.$extends({
     query: {

@@ -2,6 +2,7 @@ import { Inject, Injectable, NestMiddleware } from '@nestjs/common';
 import { NextFunction, Request, Response } from 'express';
 import { AUTH_PROVIDER } from '#technical/auth/auth.types';
 import type { AuthProvider } from '#technical/auth/auth.types';
+import { TraceContextStorage } from '#technical/tracing/trace-context';
 import { TenantContextStorage } from './tenant-context';
 
 @Injectable()
@@ -18,6 +19,7 @@ export class TenantMiddleware implements NestMiddleware {
     // AsyncLocalStorage context wrap every downstream guard, interceptor,
     // and handler for the request, including tenant-scoped Prisma calls
     // made while resolving capabilities.
+    const start = process.hrtime.bigint();
     const header = req.header('authorization');
     const token = header?.startsWith('Bearer ')
       ? header.slice('Bearer '.length)
@@ -25,6 +27,14 @@ export class TenantMiddleware implements NestMiddleware {
 
     const user = token ? await this.authProvider.validateSession(token) : null;
     const tenantId = user?.tenantId ?? 'unauthenticated';
+
+    TraceContextStorage.pushStep({
+      stage: 'middleware',
+      label: 'tenant resolution',
+      status: 'ok',
+      durationMs: Number(process.hrtime.bigint() - start) / 1_000_000,
+      detail: { tenantId },
+    });
 
     TenantContextStorage.run({ tenantId }, () => next());
   }

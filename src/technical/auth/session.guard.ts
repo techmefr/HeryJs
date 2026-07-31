@@ -11,6 +11,7 @@ import {
   MissingSessionException,
   InvalidSessionException,
 } from '#technical/errors/invalid-session.exception';
+import { TraceContextStorage } from '#technical/tracing/trace-context';
 
 export type RequestWithUser = Request & { user: AuthenticatedUser };
 
@@ -21,23 +22,50 @@ export class SessionGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const start = process.hrtime.bigint();
     const request = context.switchToHttp().getRequest<Request>();
     const header = request.header('authorization');
     const token = header?.startsWith('Bearer ')
       ? header.slice('Bearer '.length)
       : undefined;
 
+    const durationMs = () =>
+      Number(process.hrtime.bigint() - start) / 1_000_000;
+
     if (!token) {
+      TraceContextStorage.pushStep({
+        stage: 'guard',
+        label: 'session',
+        status: 'blocked',
+        durationMs: durationMs(),
+        detail: { reason: 'missing session' },
+      });
       throw new MissingSessionException();
     }
 
     const user = await this.authProvider.validateSession(token);
 
     if (!user) {
+      TraceContextStorage.pushStep({
+        stage: 'guard',
+        label: 'session',
+        status: 'blocked',
+        durationMs: durationMs(),
+        detail: { reason: 'invalid session' },
+      });
       throw new InvalidSessionException();
     }
 
     (request as RequestWithUser).user = user;
+
+    TraceContextStorage.pushStep({
+      stage: 'guard',
+      label: 'session',
+      status: 'ok',
+      durationMs: durationMs(),
+      detail: { userId: user.id },
+    });
+
     return true;
   }
 }

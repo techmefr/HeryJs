@@ -35,6 +35,7 @@ const { title, bare = false } = Astro.props;
             <nav class="group">
               <h2>General</h2>
               <a class="item" href="/" id="overview-link" />
+              <a class="item" href="/pipeline" id="pipeline-link" />
             </nav>
 
             <nav class="group scrolls" id="sections">
@@ -102,6 +103,11 @@ const { title, bare = false } = Astro.props;
         document.getElementById('overview-link'),
         ICONS.overview,
         'Overview',
+      );
+      label(
+        document.getElementById('pipeline-link'),
+        ICONS.pipeline,
+        'Pipeline',
       );
       label(document.getElementById('sign-out'), ICONS.signOut, 'Sign out');
 

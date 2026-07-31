@@ -10,6 +10,7 @@ import {
 import type { PolicyCheck, RecordLoader } from './capability-check';
 import { subjectOf } from './subject';
 import type { AuthenticatedUser } from '#technical/auth/auth.types';
+import { TraceContextStorage } from '#technical/tracing/trace-context';
 
 type RequestWithCapabilities = Request & {
   user: AuthenticatedUser;
@@ -24,6 +25,9 @@ export class CapabilitiesGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const start = process.hrtime.bigint();
+    const durationMs = () =>
+      Number(process.hrtime.bigint() - start) / 1_000_000;
     const check = this.reflector.get<PolicyCheck | undefined>(
       CAPABILITY_CHECK,
       context.getHandler(),
@@ -53,6 +57,13 @@ export class CapabilitiesGuard implements CanActivate {
       record = await loader.load(id);
 
       if (!record) {
+        TraceContextStorage.pushStep({
+          stage: 'guard',
+          label: 'capability',
+          status: 'blocked',
+          durationMs: durationMs(),
+          detail: { reason: 'record not found' },
+        });
         throw new RecordNotFoundException('record');
       }
 
@@ -62,8 +73,23 @@ export class CapabilitiesGuard implements CanActivate {
     const decision = check(subject, record);
 
     if (!decision.allowed) {
+      TraceContextStorage.pushStep({
+        stage: 'guard',
+        label: 'capability',
+        status: 'blocked',
+        durationMs: durationMs(),
+        detail: { reason: 'policy denied', policy: check.name || undefined },
+      });
       throw new CapabilityForbiddenException(decision);
     }
+
+    TraceContextStorage.pushStep({
+      stage: 'guard',
+      label: 'capability',
+      status: 'ok',
+      durationMs: durationMs(),
+      detail: { policy: check.name || undefined, scope: decision.scope },
+    });
 
     return true;
   }

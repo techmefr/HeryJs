@@ -8,6 +8,7 @@ import { AuthModule } from '#technical/auth/auth.module';
 import { DescribeModule } from '#technical/describe/describe.module';
 import { FeatureFlagsModule } from '#technical/feature-flags/feature-flags.module';
 import { InspectorModule } from '#devtools/inspector/inspector.module';
+import { PipelineModule } from '#devtools/pipeline/pipeline.module';
 import { ImpersonationModule } from '#modules/impersonation/impersonation.module';
 import { JobsModule } from '#technical/jobs/jobs.module';
 import { MailModule } from '#modules/mail/mail.module';
@@ -18,6 +19,7 @@ import { SeedersModule } from '#technical/seeders/seeders.module';
 import { StorageModule } from '#modules/storage/storage.module';
 import { TeamsModule } from '#technical/teams/teams.module';
 import { InspectorMiddleware } from '#devtools/inspector/inspector.middleware';
+import { PipelineMiddleware } from '#devtools/pipeline/pipeline.middleware';
 import { SignalModule } from '#technical/signal/signal.module';
 import { TenantMiddleware } from '#technical/tenancy/tenant.middleware';
 import { DomainExceptionFilter } from '#technical/errors/domain-exception.filter';
@@ -58,6 +60,7 @@ import { DomainExceptionFilter } from '#technical/errors/domain-exception.filter
     MailModule,
     MonitoringModule,
     NotificationsModule,
+    PipelineModule,
     SchedulerModule,
     SeedersModule.forRoot([]),
     SignalModule,
@@ -72,6 +75,10 @@ import { DomainExceptionFilter } from '#technical/errors/domain-exception.filter
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
+    // Trace opens outermost so every guard, interceptor, handler, and
+    // Prisma call downstream (tenant resolution included) can attach a
+    // step to the same request-scoped context.
+    consumer.apply(PipelineMiddleware).forRoutes('*');
     consumer.apply(TenantMiddleware).forRoutes('*');
     consumer.apply(InspectorMiddleware).forRoutes('*');
   }

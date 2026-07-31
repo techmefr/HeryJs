@@ -73,11 +73,15 @@ export interface AdminSection {
 }
 
 // The overview already reports these, and /signal/stream never ends.
+// /pipeline/traces gets its own dedicated timeline page (pipeline.astro)
+// rather than the generic flat table, so it is hidden from the
+// auto-discovered sidebar sections the same way /describe and /health are.
 const HIDDEN_PATHS = [
   '/',
   '/describe',
   '/health',
   '/metrics',
+  '/pipeline/traces',
   '/signal/stream',
 ];
 
