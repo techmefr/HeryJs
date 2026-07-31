@@ -46,6 +46,24 @@ describe('Workout resource', () => {
     ).toBe('default');
   });
 
+  it('describes its fields and create/update rules for a frontend to consume', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/workouts/describe')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+
+    const body = response.body as {
+      data: {
+        fields: Array<{ name: string }>;
+        limits: number[];
+        rules: { create: { required?: string[] } };
+      };
+    };
+    expect(body.data.fields.map((field) => field.name)).toEqual(['title']);
+    expect(body.data.limits).toEqual([10, 15, 20]);
+    expect(body.data.rules.create.required).toEqual(['title']);
+  });
+
   it('keeps a record out of the list for anyone who cannot open it directly', async () => {
     const created = await request(app.getHttpServer())
       .post('/workouts')

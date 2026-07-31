@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Workout } from '@prisma/client';
+import { z } from 'zod';
 import { SessionGuard } from '#technical/auth/session.guard';
 import type { RequestWithUser } from '#technical/auth/session.guard';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
@@ -41,6 +42,22 @@ import {
 import { toWorkoutView } from './workout.view';
 
 type RequestWithWorkout = RequestWithUser & { record: Workout };
+
+// Computed once at module load, not per request: the blueprint's shape never
+// changes at runtime, and the Zod schemas already own the create/update
+// contract, so their JSON Schema is the rules a frontend needs -- reflected
+// straight off the DTO rather than duplicated by hand.
+const WORKOUT_DESCRIBE = {
+  fields: [{ name: 'title', type: 'string', optional: false }],
+  sorts: ['createdAt'],
+  filters: [],
+  limits: [10, 15, 20],
+  defaultLimit: 15,
+  rules: {
+    create: z.toJSONSchema(createWorkoutSchema),
+    update: z.toJSONSchema(updateWorkoutSchema),
+  },
+};
 
 @Controller('workouts')
 @UseGuards(SessionGuard, CapabilitiesGuard)
@@ -91,6 +108,14 @@ export class WorkoutController {
         channels: [WORKOUT_SIGNAL_CHANNEL],
       },
     );
+  }
+
+  // Registered ahead of :id -- Nest matches routes in declaration order, so
+  // a static segment after the dynamic one would be swallowed as an id.
+  @Get('describe')
+  @Capability(canViewAnyWorkout)
+  describe() {
+    return ok(WORKOUT_DESCRIBE);
   }
 
   @Get(':id')

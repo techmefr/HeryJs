@@ -338,6 +338,7 @@ export function controllerFile(ctx: ResourceContext): string {
   UseGuards,
 } from '@nestjs/common';
 import type { ${ctx.pascalName} } from '@prisma/client';
+import { z } from 'zod';
 import { SessionGuard } from '#technical/auth/session.guard';
 import type { RequestWithUser } from '#technical/auth/session.guard';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
@@ -372,6 +373,24 @@ import {
 import { to${ctx.pascalName}View } from './${ctx.kebabName}.view';
 
 type RequestWith${ctx.pascalName} = RequestWithUser & { record: ${ctx.pascalName} };
+
+// Computed once at module load, not per request: the blueprint's shape never
+// changes at runtime, and the Zod schemas already own the create/update
+// contract, so their JSON Schema is the rules a frontend needs -- reflected
+// straight off the DTO rather than duplicated by hand.
+const ${ctx.pascalName.toUpperCase()}_DESCRIBE = {
+  fields: [
+${ctx.fields.map((field) => `    { name: '${field.name}', type: '${field.type}', optional: ${field.optional} },`).join('\n')}
+  ],
+  sorts: [${ctx.sorts.map((field) => `'${field}'`).join(', ')}],
+  filters: [${ctx.filters.map((field) => `'${field}'`).join(', ')}],
+  limits: [${ctx.pagination.limits.join(', ')}],
+  defaultLimit: ${ctx.pagination.default},
+  rules: {
+    create: z.toJSONSchema(create${ctx.pascalName}Schema),
+    update: z.toJSONSchema(update${ctx.pascalName}Schema),
+  },
+};
 
 @Controller('${ctx.pluralKebabName}')
 @UseGuards(SessionGuard, CapabilitiesGuard)
@@ -422,6 +441,14 @@ export class ${ctx.pascalName}Controller {
         channels: [${ctx.pascalName.toUpperCase()}_SIGNAL_CHANNEL],
       },
     );
+  }
+
+  // Registered ahead of :id -- Nest matches routes in declaration order, so
+  // a static segment after the dynamic one would be swallowed as an id.
+  @Get('describe')
+  @Capability(canViewAny${ctx.pascalName})
+  describe() {
+    return ok(${ctx.pascalName.toUpperCase()}_DESCRIBE);
   }
 
   @Get(':id')
@@ -1156,6 +1183,30 @@ describe('${ctx.pascalName} resource', () => {
     expect(
       (response.body as { data: { tenantId: string } }).data.tenantId,
     ).toBe('default');
+  });
+
+  it('describes its fields and create/update rules for a frontend to consume', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/${ctx.pluralKebabName}/describe')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .expect(200);
+
+    const body = response.body as {
+      data: {
+        fields: Array<{ name: string }>;
+        limits: number[];
+        rules: { create: { required?: string[] } };
+      };
+    };
+    expect(body.data.fields.map((field) => field.name)).toEqual([
+${ctx.fields.map((field) => `      '${field.name}',`).join('\n')}
+    ]);
+    expect(body.data.limits).toEqual([${ctx.pagination.limits.join(', ')}]);
+${
+  requiredFields.length > 0
+    ? `    expect(body.data.rules.create.required).toEqual([${requiredFields.map((field) => `'${field.name}'`).join(', ')}]);`
+    : ''
+}
   });
 
 ${scopeParityTest(ctx, createBody)}
