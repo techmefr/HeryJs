@@ -20,9 +20,6 @@ importers:
       '@bull-board/express':
         specifier: ^8.3.2
         version: 8.3.2(bullmq@5.81.2)
-      '@elastic/elasticsearch':
-        specifier: ^8.19.2
-        version: 8.19.2
       '@modelcontextprotocol/sdk':
         specifier: ^1.30.0
         version: 1.30.0(zod@4.4.3)
@@ -262,6 +259,21 @@ importers:
       '@nestjs/common':
         specifier: ^11.0.0
         version: 11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      picocolors:
+        specifier: ^1.1.1
+        version: 1.1.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
+  packages/search-meilisearch:
+    devDependencies:
+      '@nestjs/common':
+        specifier: ^11.0.0
+        version: 11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      meilisearch:
+        specifier: ^0.44.0
+        version: 0.44.1
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
@@ -5702,6 +5714,9 @@ packages:
   media-typer@1.1.1:
     resolution: {integrity: sha512-yz3xRaG20c6/BOzvYoDaGtPmGscs7YivItZEEqe6GbwNfHuxu9YNmvnEkMzKldAGY4/80pRcQRZSEnhquk9XuQ==}
     engines: {node: '>= 0.8'}
+
+  meilisearch@0.44.1:
+    resolution: {integrity: sha512-ZTZYBmomtRwjaWbvU8U8ct04g/YnrNOlvchogJOPgHcQIQBfjdbAvMJ8mLhuZEzpioYXIT6Cv+FcE150pc2+nw==}
 
   memfs@3.5.3:
     resolution: {integrity: sha512-UERzLsxzllchadvbPs5aolHh65ISpKpM+ccLbOJ8/vvpBKmAWf+la7dXFy7Mr0ySHbdHrFv5kGFCUHHe6GFEmw==}
@@ -13815,6 +13830,8 @@ snapshots:
   media-typer@0.3.0: {}
 
   media-typer@1.1.1: {}
+
+  meilisearch@0.44.1: {}
 
   memfs@3.5.3:
     dependencies:

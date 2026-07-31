@@ -40,7 +40,6 @@
     "@aws-sdk/s3-request-presigner": "^3.1097.0",
     "@bull-board/api": "^8.3.2",
     "@bull-board/express": "^8.3.2",
-    "@elastic/elasticsearch": "^8.19.2",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.0.1",

@@ -1,5 +1,5 @@
 import '../../packages/search-elasticsearch/src/module';
-import './meilisearch';
+import '../../packages/search-meilisearch/src/module';
 import './graphql';
 import './mcp';
 import './live';
