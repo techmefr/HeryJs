@@ -20,6 +20,7 @@ import {
   policyFile,
   recordLoaderFile,
   serviceFile,
+  specFile,
   viewFile,
 } from '../cli/lib/templates';
 
@@ -38,6 +39,27 @@ function asExtracted(source: string): string {
   );
 }
 
+/**
+ * A generated resource's spec assumes `hery generate`'s own "next steps" have
+ * already been followed — the resource module is wired into AppModule by hand,
+ * so importing AppModule is enough. The example is deliberately the one
+ * resource never wired in (see examples/README.md), specifically so a fresh
+ * clone ships no business domain, so its spec has to import and register its
+ * own module to exercise it at all. Same kind of one-line, folder-specific
+ * edit as `asExtracted`, applied here rather than by hand.
+ */
+function withOwnModuleWired(source: string, ctx: ResourceContext): string {
+  return source
+    .replace(
+      "import { AppModule } from '../../src/app.module';\n",
+      `import { AppModule } from '../../src/app.module';\nimport { ${ctx.pascalName}Module } from './${ctx.kebabName}.module';\n`,
+    )
+    .replace(
+      'imports: [AppModule],',
+      `imports: [AppModule, ${ctx.pascalName}Module],`,
+    );
+}
+
 function generatedFiles(ctx: ResourceContext): Record<string, string> {
   return {
     [`${ctx.kebabName}.dto.ts`]: dtoFile(ctx),
@@ -48,6 +70,7 @@ function generatedFiles(ctx: ResourceContext): Record<string, string> {
     [`${ctx.kebabName}.service.ts`]: serviceFile(ctx),
     [`${ctx.kebabName}.controller.ts`]: controllerFile(ctx),
     [`${ctx.kebabName}.module.ts`]: moduleFile(ctx),
+    [`${ctx.kebabName}.spec.ts`]: specFile(ctx),
   };
 }
 
@@ -63,15 +86,16 @@ async function formatted(source: string, filePath: string): Promise<string> {
 }
 
 /**
- * The seeder is not something `hery generate` produces at all. The spec is: the
- * example's copy starts from the generated one and adds the four proofs this
- * framework relies on — collection scope parity, the trashed bin, resolved
- * capabilities on a list, and tenant spoofing through a client header. Pinning
- * it to the generator would delete them, so it is owned by hand until the
- * generator learns to write those four itself.
+ * The seeder is the only file here `hery generate` does not produce at all —
+ * it is domain code (what to seed, with which factory), not framework scaffolding.
+ * The spec used to be hand-owned too: the example's copy started from the
+ * generated one and added four proofs the template didn't write — collection
+ * scope parity, the trashed bin, resolved capabilities on a list, and tenant
+ * spoofing through a client header. The generator now writes all four itself
+ * (`specFile`), so the spec is generated like everything else above.
  */
 function handOwned(ctx: ResourceContext): Set<string> {
-  return new Set([`${ctx.kebabName}.seeder.ts`, `${ctx.kebabName}.spec.ts`]);
+  return new Set([`${ctx.kebabName}.seeder.ts`]);
 }
 
 export async function checkExampleFreshness(): Promise<boolean> {
@@ -125,9 +149,14 @@ export async function checkExampleFreshness(): Promise<boolean> {
 
       present.delete(name);
 
+      const extracted = asExtracted(content);
+      const expectedContent =
+        name === `${ctx.kebabName}.spec.ts`
+          ? withOwnModuleWired(extracted, ctx)
+          : extracted;
+
       if (
-        readFileSync(file, 'utf8') !==
-        (await formatted(asExtracted(content), file))
+        readFileSync(file, 'utf8') !== (await formatted(expectedContent, file))
       ) {
         problems.push(
           `examples/${ctx.kebabName}/${name} differs from what hery generate produces`,

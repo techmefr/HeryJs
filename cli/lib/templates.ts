@@ -1019,6 +1019,70 @@ function scopeParityTest(ctx: ResourceContext, createBody: string): string {
   });`;
 }
 
+// canListTrashed derives from the delete preset (resolveCollectionCapability),
+// not the view preset, so this branches on ctx.permissions.delete rather than
+// mirroring scopeParityTest's condition.
+function trashParityTest(ctx: ResourceContext, createBody: string): string {
+  if (ctx.permissions.delete === 'own' || ctx.permissions.delete === 'team') {
+    return `  it('keeps a trashed record out of the bin of anyone who cannot open it', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send(${createBody})
+      .expect(201);
+
+    const recordId = (created.body as { data: { id: string } }).data.id;
+
+    await request(app.getHttpServer())
+      .delete(\`/${ctx.pluralKebabName}/\${recordId}\`)
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .expect(200);
+
+    const bin = await request(app.getHttpServer())
+      .get('/${ctx.pluralKebabName}?onlyTrashed=true')
+      .set('Authorization', \`Bearer \${strangerToken}\`)
+      .expect(200);
+
+    expect(
+      (bin.body as { data: { id: string }[] }).data.map((record) => record.id),
+    ).not.toContain(recordId);
+  });`;
+  }
+
+  if (ctx.permissions.delete === 'all') {
+    return `  it('lists a trashed record to anyone who can also list the trash', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send(${createBody})
+      .expect(201);
+
+    const recordId = (created.body as { data: { id: string } }).data.id;
+
+    await request(app.getHttpServer())
+      .delete(\`/${ctx.pluralKebabName}/\${recordId}\`)
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .expect(200);
+
+    const bin = await request(app.getHttpServer())
+      .get('/${ctx.pluralKebabName}?onlyTrashed=true')
+      .set('Authorization', \`Bearer \${strangerToken}\`)
+      .expect(200);
+
+    expect(
+      (bin.body as { data: { id: string }[] }).data.map((record) => record.id),
+    ).toContain(recordId);
+  });`;
+  }
+
+  return `  it('refuses to list the trash outright, matching the delete preset', async () => {
+    await request(app.getHttpServer())
+      .get('/${ctx.pluralKebabName}?onlyTrashed=true')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .expect(403);
+  });`;
+}
+
 export function specFile(ctx: ResourceContext): string {
   const requiredFields = ctx.fields.filter((field) => !field.optional);
   const createBody =
@@ -1073,6 +1137,34 @@ describe('${ctx.pascalName} resource', () => {
     ).toBe('default');
   });
 
+${scopeParityTest(ctx, createBody)}
+
+${trashParityTest(ctx, createBody)}
+
+  it('lists records with resolved capabilities via ?include=capabilities', async () => {
+    await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send(${createBody})
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .get('/${ctx.pluralKebabName}?include=capabilities')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .expect(200);
+
+    const body = response.body as {
+      data: Array<{ capabilities: { update: { allowed: boolean } } }>;
+      meta: unknown;
+    };
+    expect(body.data.length).toBeGreaterThan(0);
+    expect(body.data[0]?.capabilities.update.allowed).toBe(true);
+    expect(body.meta).toEqual({
+      capabilities: { create: { allowed: true, scope: '${ctx.permissions.create}' } },
+      channels: ['${ctx.kebabName}'],
+    });
+  });
+
   it('returns a real 403 when someone other than the owner tries to update it', async () => {
     const created = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}')
@@ -1119,8 +1211,6 @@ describe('${ctx.pascalName} resource', () => {
       .expect(200);
   });
 
-${scopeParityTest(ctx, createBody)}
-
   it('never lets a different tenant see this tenant records', async () => {
     const outsider = await registerAndLogin(app);
     await prisma.user.update({
@@ -1134,6 +1224,20 @@ ${scopeParityTest(ctx, createBody)}
       .expect(200);
 
     expect((response.body as { data: unknown[] }).data).toHaveLength(0);
+  });
+
+  it('cannot be spoofed into another tenant via a client-supplied header', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/${ctx.pluralKebabName}')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .set('x-tenant-id', \`tenant-\${randomUUID()}\`)
+      .expect(200);
+
+    expect(
+      (response.body as { data: Array<{ tenantId: string }> }).data.every(
+        (record) => record.tenantId === 'default',
+      ),
+    ).toBe(true);
   });
 });
 `;

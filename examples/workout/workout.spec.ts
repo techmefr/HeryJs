@@ -13,7 +13,7 @@ import { registerAndLogin } from '../../src/devtools/testing/register-and-login'
 const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
-describe('Workout resource (full vertical slice)', () => {
+describe('Workout resource', () => {
   let app: INestApplication<App>;
   let ownerToken: string;
   let strangerToken: string;
@@ -34,11 +34,11 @@ describe('Workout resource (full vertical slice)', () => {
     await prisma.$disconnect();
   });
 
-  it('creates a workout owned by the current user, scoped to the current tenant', async () => {
+  it('creates a record owned by the current user, scoped to the current tenant', async () => {
     const response = await request(app.getHttpServer())
       .post('/workouts')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ title: 'Leg day' })
+      .send({ title: 'title-value' })
       .expect(201);
 
     expect(
@@ -46,17 +46,17 @@ describe('Workout resource (full vertical slice)', () => {
     ).toBe('default');
   });
 
-  it('keeps a workout out of the list for anyone who cannot open it directly', async () => {
+  it('keeps a record out of the list for anyone who cannot open it directly', async () => {
     const created = await request(app.getHttpServer())
       .post('/workouts')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ title: 'Private session' })
+      .send({ title: 'title-value' })
       .expect(201);
 
-    const workoutId = (created.body as { data: { id: string } }).data.id;
+    const recordId = (created.body as { data: { id: string } }).data.id;
 
     await request(app.getHttpServer())
-      .get(`/workouts/${workoutId}`)
+      .get(`/workouts/${recordId}`)
       .set('Authorization', `Bearer ${strangerToken}`)
       .expect(403);
 
@@ -67,20 +67,20 @@ describe('Workout resource (full vertical slice)', () => {
 
     expect(
       (list.body as { data: { id: string }[] }).data.map((record) => record.id),
-    ).not.toContain(workoutId);
+    ).not.toContain(recordId);
   });
 
-  it('keeps a trashed workout out of the bin of anyone who cannot open it', async () => {
+  it('keeps a trashed record out of the bin of anyone who cannot open it', async () => {
     const created = await request(app.getHttpServer())
       .post('/workouts')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ title: 'Session to trash' })
+      .send({ title: 'title-value' })
       .expect(201);
 
-    const workoutId = (created.body as { data: { id: string } }).data.id;
+    const recordId = (created.body as { data: { id: string } }).data.id;
 
     await request(app.getHttpServer())
-      .delete(`/workouts/${workoutId}`)
+      .delete(`/workouts/${recordId}`)
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(200);
 
@@ -91,10 +91,16 @@ describe('Workout resource (full vertical slice)', () => {
 
     expect(
       (bin.body as { data: { id: string }[] }).data.map((record) => record.id),
-    ).not.toContain(workoutId);
+    ).not.toContain(recordId);
   });
 
-  it('lists workouts with resolved capabilities via ?include=capabilities', async () => {
+  it('lists records with resolved capabilities via ?include=capabilities', async () => {
+    await request(app.getHttpServer())
+      .post('/workouts')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ title: 'title-value' })
+      .expect(201);
+
     const response = await request(app.getHttpServer())
       .get('/workouts?include=capabilities')
       .set('Authorization', `Bearer ${ownerToken}`)
@@ -116,49 +122,49 @@ describe('Workout resource (full vertical slice)', () => {
     const created = await request(app.getHttpServer())
       .post('/workouts')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ title: 'Owned by someone else' })
+      .send({ title: 'title-value' })
       .expect(201);
 
-    const workoutId = (created.body as { data: { id: string } }).data.id;
+    const recordId = (created.body as { data: { id: string } }).data.id;
 
     await request(app.getHttpServer())
-      .patch(`/workouts/${workoutId}`)
+      .patch(`/workouts/${recordId}`)
       .set('Authorization', `Bearer ${strangerToken}`)
-      .send({ title: 'Hijacked' })
+      .send({ title: 'title-value' })
       .expect(403);
   });
 
-  it('soft-deletes then restores a workout', async () => {
+  it('soft-deletes then restores a record', async () => {
     const created = await request(app.getHttpServer())
       .post('/workouts')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ title: 'To be deleted' })
+      .send({ title: 'title-value' })
       .expect(201);
 
-    const workoutId = (created.body as { data: { id: string } }).data.id;
+    const recordId = (created.body as { data: { id: string } }).data.id;
 
     await request(app.getHttpServer())
-      .delete(`/workouts/${workoutId}`)
+      .delete(`/workouts/${recordId}`)
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(200);
 
     await request(app.getHttpServer())
-      .get(`/workouts/${workoutId}`)
+      .get(`/workouts/${recordId}`)
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(404);
 
     await request(app.getHttpServer())
-      .post(`/workouts/${workoutId}/restore`)
+      .post(`/workouts/${recordId}/restore`)
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(201);
 
     await request(app.getHttpServer())
-      .get(`/workouts/${workoutId}`)
+      .get(`/workouts/${recordId}`)
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(200);
   });
 
-  it('never lets a different tenant see this tenant workouts', async () => {
+  it('never lets a different tenant see this tenant records', async () => {
     const outsider = await registerAndLogin(app);
     await prisma.user.update({
       where: { email: outsider.email },
@@ -182,7 +188,7 @@ describe('Workout resource (full vertical slice)', () => {
 
     expect(
       (response.body as { data: Array<{ tenantId: string }> }).data.every(
-        (workout) => workout.tenantId === 'default',
+        (record) => record.tenantId === 'default',
       ),
     ).toBe(true);
   });
