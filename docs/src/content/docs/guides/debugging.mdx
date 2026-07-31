@@ -3,7 +3,15 @@ title: Debugging with the pipeline trace
 description: A per-request trace of every layer a request crossed, the one that blocked it highlighted, with the SQL and the refusal reason behind it.
 ---
 
+import TraceExplorer from '../../../components/TraceExplorer.astro';
+
 When a frontend developer reports "I got a 403 and I don't know why" or "this filter returns nothing", the fastest answer usually isn't in the code — it's in the one request that actually failed. The pipeline trace records exactly that: every layer a request crossed, in order, with enough detail on the one that blocked it to answer "why" without adding a single `console.log`.
+
+## Try it
+
+Three fixed examples — pick one to see the request that went out, the response that came back, and the pipeline trace that explains it. This is exactly what the **Pipeline** page in the admin panel shows for a real request, just with canned data here instead of one your app actually served.
+
+<TraceExplorer />
 
 ## What gets recorded
 

@@ -1,0 +1,353 @@
+---
+// Fixed, hand-written examples -- not live data, this never calls a running
+// app. The point is to make "what does a trace actually look like" concrete
+// without a backend to hit, the same way the rest of this doc site shows
+// canned JSON everywhere else. Picking an example on the left swaps all
+// three tabs on the right at once, driven by one small vanilla-JS handler:
+// no framework integration exists in this workspace to reach for instead.
+interface TraceStep {
+	stage: 'middleware' | 'guard' | 'controller' | 'prisma';
+	label: string;
+	status: 'ok' | 'blocked' | 'error';
+	durationMs: number;
+	detail?: unknown;
+}
+
+interface Example {
+	id: string;
+	label: string;
+	method: string;
+	path: string;
+	request: string;
+	response: string;
+	steps: TraceStep[];
+	blockedStepIndex: number | null;
+}
+
+const examples: Example[] = [
+	{
+		id: 'list-ok',
+		label: 'List succeeds',
+		method: 'GET',
+		path: '/workouts?limit=15',
+		request: `GET /workouts?limit=15
+Authorization: Bearer <token>`,
+		response: `{
+  "data": [
+    { "id": "cly8x7g9k0000abc123def456", "title": "Leg day" }
+  ],
+  "meta": { "channels": ["acme:workout"] },
+  "messages": []
+}`,
+		steps: [
+			{ stage: 'middleware', label: 'tenant resolution', status: 'ok', durationMs: 1 },
+			{ stage: 'guard', label: 'session', status: 'ok', durationMs: 0 },
+			{
+				stage: 'guard',
+				label: 'capability',
+				status: 'ok',
+				durationMs: 1,
+				detail: { policy: 'canViewAnyWorkout', scope: 'own' },
+			},
+			{ stage: 'controller', label: 'WorkoutController.findAll', status: 'ok', durationMs: 0 },
+			{
+				stage: 'prisma',
+				label: 'workout.findMany',
+				status: 'ok',
+				durationMs: 4,
+				detail: { sql: 'SELECT * FROM "Workout" WHERE "ownerId" = $1 LIMIT 15', params: ['user_9f8e7d6c'] },
+			},
+		],
+		blockedStepIndex: null,
+	},
+	{
+		id: 'capability-blocked',
+		label: 'Capability blocks it',
+		method: 'GET',
+		path: '/audit-logs',
+		request: `GET /audit-logs
+Authorization: Bearer <token>`,
+		response: `{
+  "error": {
+    "status": 403,
+    "key": "capability.forbidden",
+    "message": "You cannot view this resource.",
+    "details": {}
+  }
+}`,
+		steps: [
+			{ stage: 'middleware', label: 'tenant resolution', status: 'ok', durationMs: 1 },
+			{ stage: 'guard', label: 'session', status: 'ok', durationMs: 0 },
+			{
+				stage: 'guard',
+				label: 'capability',
+				status: 'blocked',
+				durationMs: 1,
+				detail: { reason: 'policy denied', policy: 'canReadAuditLog' },
+			},
+		],
+		blockedStepIndex: 2,
+	},
+	{
+		id: 'validation-failed',
+		label: 'Validation fails',
+		method: 'POST',
+		path: '/workouts',
+		request: `POST /workouts
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{}`,
+		response: `{
+  "error": {
+    "status": 422,
+    "key": "validation.failed",
+    "message": "Validation failed.",
+    "details": { "title": ["Required"] }
+  }
+}`,
+		steps: [
+			{ stage: 'middleware', label: 'tenant resolution', status: 'ok', durationMs: 1 },
+			{ stage: 'guard', label: 'session', status: 'ok', durationMs: 0 },
+			{
+				stage: 'guard',
+				label: 'capability',
+				status: 'ok',
+				durationMs: 1,
+				detail: { policy: 'canCreateWorkout', scope: 'own' },
+			},
+			{
+				stage: 'controller',
+				label: 'ZodValidationPipe',
+				status: 'error',
+				durationMs: 0,
+				detail: { reason: 'title: Required' },
+			},
+		],
+		blockedStepIndex: 3,
+	},
+];
+---
+
+<div class="trace-explorer" data-examples={JSON.stringify(examples)}>
+	<div class="trace-picker">
+		{
+			examples.map((example, index) => (
+				<button type="button" class="trace-pick" data-index={index} aria-pressed={index === 0 ? 'true' : 'false'}>
+					<span class="trace-pick-method">{example.method}</span>
+					<span class="trace-pick-label">{example.label}</span>
+				</button>
+			))
+		}
+	</div>
+
+	<div class="trace-panel">
+		<div class="trace-tabs" role="tablist">
+			<button type="button" class="trace-tab" data-tab="request" aria-selected="true">Request</button>
+			<button type="button" class="trace-tab" data-tab="response" aria-selected="false">Response</button>
+			<button type="button" class="trace-tab" data-tab="trace" aria-selected="false">Pipeline trace</button>
+		</div>
+
+		<pre class="trace-view" data-view="request"><code></code></pre>
+		<pre class="trace-view" data-view="response" hidden><code></code></pre>
+		<ol class="trace-view trace-steps" data-view="trace" hidden></ol>
+	</div>
+</div>
+
+<script>
+	function init(root: HTMLElement) {
+		const examples = JSON.parse(root.dataset.examples ?? '[]');
+		const picks = root.querySelectorAll<HTMLButtonElement>('.trace-pick');
+		const tabs = root.querySelectorAll<HTMLButtonElement>('.trace-tab');
+		const views = root.querySelectorAll<HTMLElement>('.trace-view');
+		const requestCode = root.querySelector('[data-view="request"] code')!;
+		const responseCode = root.querySelector('[data-view="response"] code')!;
+		const stepsList = root.querySelector('.trace-steps')!;
+
+		function renderSteps(example: (typeof examples)[number]) {
+			stepsList.innerHTML = '';
+			example.steps.forEach((step: any, index: number) => {
+				const item = document.createElement('li');
+				item.className = `trace-step trace-step-${step.status}`;
+				if (index === example.blockedStepIndex) item.classList.add('trace-step-culprit');
+				const detail = step.detail ? `<pre>${JSON.stringify(step.detail, null, 2)}</pre>` : '';
+				item.innerHTML = `
+					<div class="trace-step-head">
+						<span class="trace-step-stage">${step.stage}</span>
+						<span class="trace-step-status">${step.status}</span>
+						<span class="trace-step-duration">${step.durationMs}ms</span>
+					</div>
+					<div class="trace-step-label">${step.label}</div>
+					${detail}
+				`;
+				stepsList.appendChild(item);
+			});
+		}
+
+		function select(index: number) {
+			const example = examples[index];
+			picks.forEach((pick, pickIndex) => pick.setAttribute('aria-pressed', String(pickIndex === index)));
+			requestCode.textContent = example.request;
+			responseCode.textContent = example.response;
+			renderSteps(example);
+		}
+
+		function showTab(name: string) {
+			tabs.forEach((tab) => tab.setAttribute('aria-selected', String(tab.dataset.tab === name)));
+			views.forEach((view) => {
+				view.hidden = view.dataset.view !== name;
+			});
+		}
+
+		picks.forEach((pick, index) => pick.addEventListener('click', () => select(index)));
+		tabs.forEach((tab) => tab.addEventListener('click', () => showTab(tab.dataset.tab!)));
+
+		select(0);
+	}
+
+	document.querySelectorAll<HTMLElement>('.trace-explorer').forEach(init);
+</script>
+
+<style>
+	.trace-explorer {
+		display: grid;
+		grid-template-columns: 13rem 1fr;
+		gap: 1rem;
+		margin: 1.5rem 0;
+		border: 2px solid var(--sl-color-hairline);
+		border-radius: 0.75rem;
+		overflow: hidden;
+	}
+
+	.trace-picker {
+		display: flex;
+		flex-direction: column;
+		background: var(--sl-color-gray-6);
+		border-inline-end: 2px solid var(--sl-color-hairline);
+	}
+
+	.trace-pick {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.15rem;
+		padding: 0.75rem 1rem;
+		border: none;
+		border-bottom: 1px solid var(--sl-color-hairline-light);
+		background: transparent;
+		color: var(--sl-color-gray-2);
+		text-align: left;
+		cursor: pointer;
+		font-size: var(--sl-text-sm);
+	}
+
+	.trace-pick-method {
+		font-family: var(--__sl-font-mono);
+		font-size: 0.75rem;
+		font-weight: 700;
+		color: var(--sl-color-accent);
+	}
+
+	.trace-pick[aria-pressed='true'] {
+		background: var(--sl-color-accent-low);
+		color: var(--sl-color-white);
+		font-weight: 600;
+	}
+
+	.trace-panel {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+		padding: 0.5rem 1rem 1rem;
+	}
+
+	.trace-tabs {
+		display: flex;
+		gap: 0.25rem;
+		border-bottom: 1px solid var(--sl-color-hairline-light);
+		margin-bottom: 0.75rem;
+	}
+
+	.trace-tab {
+		padding: 0.5rem 0.75rem;
+		border: none;
+		background: transparent;
+		color: var(--sl-color-gray-3);
+		cursor: pointer;
+		font-size: var(--sl-text-sm);
+		border-bottom: 2px solid transparent;
+	}
+
+	.trace-tab[aria-selected='true'] {
+		color: var(--sl-color-white);
+		border-bottom-color: var(--sl-color-accent);
+		font-weight: 600;
+	}
+
+	.trace-view {
+		margin: 0;
+	}
+
+	pre.trace-view {
+		font-size: var(--sl-text-sm);
+		white-space: pre-wrap;
+	}
+
+	.trace-steps {
+		list-style: none;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.trace-step {
+		border: 1px solid var(--sl-color-hairline-light);
+		border-radius: 0.5rem;
+		padding: 0.5rem 0.75rem;
+	}
+
+	.trace-step-culprit {
+		border-color: var(--sl-color-red, #e04848);
+		background: color-mix(in srgb, var(--sl-color-red, #e04848) 10%, transparent);
+	}
+
+	.trace-step-head {
+		display: flex;
+		gap: 0.5rem;
+		align-items: baseline;
+		font-size: var(--sl-text-xs);
+	}
+
+	.trace-step-stage {
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: var(--sl-color-accent);
+		font-weight: 700;
+	}
+
+	.trace-step-status {
+		color: var(--sl-color-gray-3);
+	}
+
+	.trace-step-culprit .trace-step-status {
+		color: var(--sl-color-red, #e04848);
+		font-weight: 700;
+	}
+
+	.trace-step-duration {
+		margin-inline-start: auto;
+		color: var(--sl-color-gray-3);
+	}
+
+	.trace-step-label {
+		font-weight: 600;
+		margin-top: 0.15rem;
+	}
+
+	.trace-step pre {
+		margin: 0.4rem 0 0;
+		font-size: var(--sl-text-xs);
+		white-space: pre-wrap;
+	}
+</style>
