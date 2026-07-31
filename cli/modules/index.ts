@@ -6,5 +6,5 @@ import '../../packages/graphql/src/module';
 import '../../packages/live/src/module';
 import '../../packages/storage/src/module';
 import '../../packages/mail/src/module';
-import './impersonation';
+import '../../packages/impersonation/src/module';
 import './admin-astro';

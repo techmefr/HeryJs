@@ -10,13 +10,13 @@ import pc from 'picocolors';
 
 // A module's runtime/ is written against the app's kernel through this
 // specifier, so tsconfig.json in the module's own package can map it to
-// ../../src/technical/* and type-check/lint the file where it is authored --
-// exactly the problem the CI check-module-template-imports script exists to
-// catch, moved one step earlier because the file is now real instead of a
-// string. Most modules land two levels under src/ (src/modules/<name>/), but
-// the two search drivers land directly inside the kernel's own src/technical
-// /search/ -- so the rewrite target is computed per destination file rather
-// than fixed, from that file's own directory back to src/technical.
+// ../../src/technical/* and type-check/lint the file where it is authored,
+// instead of a string template nothing checks until it lands in a generated
+// project. Most modules land two levels under src/ (src/modules/<name>/), but
+// some (search drivers, the graphql guard) land directly inside the kernel's
+// own src/technical/ tree -- so the rewrite target is computed per
+// destination file rather than fixed, from that file's own directory back to
+// src/technical.
 const KERNEL_SPECIFIER = '#kernel/';
 
 function kernelPrefixFor(destFileDir: string): string {

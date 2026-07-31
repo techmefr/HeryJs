@@ -8,7 +8,6 @@
 import { checkCapabilityDecorator } from './check-capability-decorator';
 import { checkExampleFreshness } from './check-example-freshness';
 import { checkLintCoverage } from './check-lint-coverage';
-import { checkModuleTemplateImports } from './check-module-template-imports';
 import { checkNoInlineDevGuard } from './check-no-inline-dev-guard';
 import { checkScopeParity } from './check-scope-parity';
 import { checkSubjectConstruction } from './check-subject-construction';
@@ -21,7 +20,6 @@ const CHECKS: Array<{ name: string; run: () => boolean | Promise<boolean> }> = [
   { name: 'dev-guard', run: checkNoInlineDevGuard },
   { name: 'subject', run: checkSubjectConstruction },
   { name: 'template-imports', run: checkTemplateImports },
-  { name: 'module-template-imports', run: checkModuleTemplateImports },
   { name: 'example-freshness', run: checkExampleFreshness },
 ];
 
