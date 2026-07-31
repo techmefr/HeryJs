@@ -94,10 +94,10 @@ export function renderTemplate(
 `;
 
 const SERVICE_CONTENT = `import { Inject, Injectable } from '@nestjs/common';
-import { JobsService } from '../jobs/jobs.service';
-import { PRISMA_CLIENT } from '../prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '../prisma/prisma.client';
-import { TenantContextStorage } from '../tenancy/tenant-context';
+import { JobsService } from '../../technical/jobs/jobs.service';
+import { PRISMA_CLIENT } from '../../technical/prisma/prisma.client';
+import type { TenantScopedPrismaClient } from '../../technical/prisma/prisma.client';
+import { TenantContextStorage } from '../../technical/tenancy/tenant-context';
 import { MAIL_SEND_JOB } from './mail.constants';
 import { renderTemplate } from './mail.templates';
 
@@ -135,9 +135,9 @@ export class MailService {
 const PROCESSOR_CONTENT = `import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject } from '@nestjs/common';
 import type { Job } from 'bullmq';
-import { DEFAULT_QUEUE } from '../jobs/jobs.constants';
-import { PRISMA_CLIENT } from '../prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '../prisma/prisma.client';
+import { DEFAULT_QUEUE } from '../../technical/jobs/jobs.constants';
+import { PRISMA_CLIENT } from '../../technical/prisma/prisma.client';
+import type { TenantScopedPrismaClient } from '../../technical/prisma/prisma.client';
 import { MAIL_PROVIDER } from './mail.types';
 import type { MailProvider } from './mail.types';
 
@@ -185,9 +185,9 @@ export class MailProcessor extends WorkerHost {
 `;
 
 const CONTROLLER_CONTENT = `import { Controller, Get, UseGuards } from '@nestjs/common';
-import { SessionGuard } from '../auth/session.guard';
-import { ok } from '../http/envelope';
-import { TenantContextStorage } from '../tenancy/tenant-context';
+import { SessionGuard } from '../../technical/auth/session.guard';
+import { ok } from '../../technical/http/envelope';
+import { TenantContextStorage } from '../../technical/tenancy/tenant-context';
 import { MailService } from './mail.service';
 
 @Controller('mail')
@@ -203,9 +203,9 @@ export class MailController {
 `;
 
 const MODULE_CONTENT = `import { Module } from '@nestjs/common';
-import { AuthModule } from '../auth/auth.module';
-import { JobsModule } from '../jobs/jobs.module';
-import { PrismaModule } from '../prisma/prisma.module';
+import { AuthModule } from '../../technical/auth/auth.module';
+import { JobsModule } from '../../technical/jobs/jobs.module';
+import { PrismaModule } from '../../technical/prisma/prisma.module';
 import { ConsoleMailProvider } from './console-mail.provider';
 import { MailController } from './mail.controller';
 import { MailProcessor } from './mail.processor';

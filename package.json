@@ -31,6 +31,7 @@
     "lint:dev-guard": "pnpm run lint:conventions dev-guard",
     "lint:subject": "pnpm run lint:conventions subject",
     "lint:template-imports": "pnpm run lint:conventions template-imports",
+    "lint:module-template-imports": "pnpm run lint:conventions module-template-imports",
     "lint:example": "pnpm run lint:conventions example-freshness",
     "hery": "ts-node cli/hery.ts"
   },

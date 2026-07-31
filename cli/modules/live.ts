@@ -14,8 +14,8 @@ const GUARD_CONTENT = `import {
   Injectable,
 } from '@nestjs/common';
 import type { Socket } from 'socket.io';
-import { AUTH_PROVIDER } from '../auth/auth.types';
-import type { AuthenticatedUser, AuthProvider } from '../auth/auth.types';
+import { AUTH_PROVIDER } from '../../technical/auth/auth.types';
+import type { AuthenticatedUser, AuthProvider } from '../../technical/auth/auth.types';
 
 export type LiveSocket = Omit<Socket, 'data'> & {
   data: { user: AuthenticatedUser };
@@ -56,7 +56,7 @@ export class LiveAuthGuard implements CanActivate {
 }
 `;
 
-const WITH_TENANT_CONTENT = `import { TenantContextStorage } from '../tenancy/tenant-context';
+const WITH_TENANT_CONTENT = `import { TenantContextStorage } from '../../technical/tenancy/tenant-context';
 import type { LiveSocket } from './live-auth.guard';
 
 // WebSocket message handlers never go through TenantMiddleware (it only
@@ -76,7 +76,7 @@ export function withTenant<T>(
 `;
 
 const MODULE_CONTENT = `import { Module } from '@nestjs/common';
-import { AuthModule } from '../auth/auth.module';
+import { AuthModule } from '../../technical/auth/auth.module';
 import { LiveAuthGuard } from './live-auth.guard';
 
 @Module({
