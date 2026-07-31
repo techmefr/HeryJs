@@ -16,23 +16,23 @@ pnpm hery install storage mail graphql     # several
 pnpm hery install --all                    # the full package
 ```
 
-`install` takes a variadic list of module ids. `--all` installs every registered module in registry order — note that it *ignores* any names given alongside it, and that it will install both search drivers, which is rarely what you want.
+`install` takes a variadic list of module ids. `--all` installs every registered module in registry order — note that it _ignores_ any names given alongside it, and that it will install both search drivers, which is rarely what you want.
 
 Running `pnpm hery install` with no arguments prints `nothing to install` and exits 0. An unknown id reports itself and sets a failing exit code, but the other names in the same invocation are still installed.
 
 ## What is available
 
-| Id | What it adds |
-|---|---|
-| `search-elasticsearch` | Swaps free-text search onto Elasticsearch — docker service, driver, DI wiring. |
-| `search-meilisearch` | The same, onto Meilisearch. |
-| `graphql` | A GraphQL endpoint (Apollo driver) with a session guard mirroring the REST auth flow. |
-| `mcp` | An authenticated MCP gateway over Streamable HTTP, exposing resources as tools. |
-| `live` | Bidirectional WebSocket support (Socket.IO). |
-| `stream` | One-to-many audio/video over LiveKit. |
-| `mail` | Outgoing mail: a `MailLog` model, string templates, and a BullMQ job that sends. |
-| `storage` | File storage behind a swappable provider — local disk by default, S3-compatible via `STORAGE_DRIVER=s3`. |
-| `admin-astro` | An admin panel built with Astro, discovering its sections from `GET /describe`. |
+| Id                     | What it adds                                                                                             |
+| ---------------------- | -------------------------------------------------------------------------------------------------------- |
+| `search-elasticsearch` | Swaps free-text search onto Elasticsearch — docker service, driver, DI wiring.                           |
+| `search-meilisearch`   | The same, onto Meilisearch.                                                                              |
+| `graphql`              | A GraphQL endpoint (Apollo driver) with a session guard mirroring the REST auth flow.                    |
+| `mcp`                  | An authenticated MCP gateway over Streamable HTTP, exposing resources as tools.                          |
+| `live`                 | Bidirectional WebSocket support (Socket.IO).                                                             |
+| `stream`               | One-to-many audio/video over LiveKit.                                                                    |
+| `mail`                 | Outgoing mail: a `MailLog` model, string templates, and a BullMQ job that sends.                         |
+| `storage`              | File storage behind a swappable provider — local disk by default, S3-compatible via `STORAGE_DRIVER=s3`. |
+| `admin-astro`          | An admin panel built with Astro, discovering its sections from `GET /describe`.                          |
 
 Four of them have a runtime half in `src/modules/`: `live`, `stream`, `mail`, `storage`. The search drivers install into the existing `technical/search/` folder, because they implement a contract the kernel already owns.
 
@@ -42,8 +42,8 @@ Four of them have a runtime half in `src/modules/`: `live`, `stream`, `mail`, `s
 
 ```ts
 export interface ModuleDefinition {
-  name: string;          // the id you type
-  description: string;   // the line module:list prints
+  name: string; // the id you type
+  description: string; // the line module:list prints
   dependencies?: string[];
   install(): void | Promise<void>;
 }
@@ -63,7 +63,7 @@ Nothing is overwritten and nothing is re-templated, so a file you have edited by
 
 The two modules that patch an existing file guard on content rather than existence: `mail` skips if `prisma/schema.prisma` already contains `model MailLog`, and `admin-astro` skips if `pnpm-workspace.yaml` already lists `admin`.
 
-Be aware of what this does *not* give you. There is no record anywhere of which modules are installed — no manifest, no marker in `package.json`. "Installed" is inferred one file at a time, at write time. And **there is no uninstall command**: removing a module means deleting its folder, its npm dependencies and its wiring by hand. The layering rules are what make that a bounded job rather than an archaeology exercise.
+Be aware of what this does _not_ give you. There is no record anywhere of which modules are installed — no manifest, no marker in `package.json`. "Installed" is inferred one file at a time, at write time. And **there is no uninstall command**: removing a module means deleting its folder, its npm dependencies and its wiring by hand. The layering rules are what make that a bounded job rather than an archaeology exercise.
 
 One consequence of the unconditional dependency step: `pnpm add -w` runs on every install of a module that declares dependencies, even when every file is then skipped.
 
@@ -79,7 +79,7 @@ Next steps:
 
 `src/app.module.ts` is the single composition point between the kernel and the optional layer, and it is yours. A tool that rewrote it would be a tool you could no longer freely edit — and the whole premise here is that you can.
 
-Two modules wire into a *resource* module rather than the app module, because they are per-resource by nature: `live` (a gateway) and `stream` (a controller) both go into `src/functional/<name>/<name>.module.ts`.
+Two modules wire into a _resource_ module rather than the app module, because they are per-resource by nature: `live` (a gateway) and `stream` (a controller) both go into `src/functional/<name>/<name>.module.ts`.
 
 ## Schema and environment
 
@@ -99,13 +99,15 @@ docker compose -f docker-compose.storage.yml up -d
 
 Every variable below has a working development default, and none of them are written to `.env` by the installer.
 
-| Module | Variables |
-|---|---|
-| `search-elasticsearch` | `ELASTICSEARCH_URL` |
-| `search-meilisearch` | `MEILISEARCH_URL`, `MEILISEARCH_API_KEY` |
-| `stream` | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` |
-| `storage` | `STORAGE_DRIVER`, `STORAGE_S3_BUCKET`, `STORAGE_S3_REGION`, `STORAGE_S3_ENDPOINT`, `STORAGE_S3_ACCESS_KEY`, `STORAGE_S3_SECRET_KEY` |
-| `admin-astro` | `PUBLIC_API_URL` |
-| `graphql`, `mcp`, `live`, `mail` | none |
+| Module                           | Variables                                                                                                                                                 |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `search-elasticsearch`           | `ELASTICSEARCH_URL`                                                                                                                                       |
+| `search-meilisearch`             | `MEILISEARCH_URL`, `MEILISEARCH_API_KEY`                                                                                                                  |
+| `stream`                         | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`                                                                                                    |
+| `storage`                        | `STORAGE_URL_SECRET`, `STORAGE_DRIVER`, `STORAGE_S3_BUCKET`, `STORAGE_S3_REGION`, `STORAGE_S3_ENDPOINT`, `STORAGE_S3_ACCESS_KEY`, `STORAGE_S3_SECRET_KEY` |
+| `admin-astro`                    | `PUBLIC_API_URL`                                                                                                                                          |
+| `graphql`, `mcp`, `live`, `mail` | none                                                                                                                                                      |
 
-The development defaults are development defaults in the literal sense — the LiveKit dev keys are `devkey`/`secret`, the MinIO credentials are `heryjs`/`heryjs-dev-secret`, and the local storage driver signs URLs with `SIGNAL_TOKEN_SECRET`, whose own default announces itself as `dev-signal-secret-change-in-production`. Set every one of them before a deployment sees traffic.
+The development defaults are development defaults in the literal sense — the LiveKit dev keys are `devkey`/`secret` and the MinIO credentials are `heryjs`/`heryjs-dev-secret`. Set every one of them before a deployment sees traffic.
+
+The two secrets the framework itself signs with, `SIGNAL_TOKEN_SECRET` and `STORAGE_URL_SECRET`, are the exception: they also have development defaults, but `NODE_ENV=production` refuses to boot on either of them, because a default printed in a public repository is not a secret. They are separate on purpose — the local storage driver signs its URLs the same way the signal SSE token is signed, and one shared value would mean a leak on either side forges both.

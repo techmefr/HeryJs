@@ -72,7 +72,7 @@ export class LocalStorageProvider implements StorageProvider {
   }
 
   private sign(key: string, exp: number): string {
-    return createHmac('sha256', env.SIGNAL_TOKEN_SECRET)
+    return createHmac('sha256', env.STORAGE_URL_SECRET)
       .update(`${key}:${exp}`)
       .digest('base64url');
   }
