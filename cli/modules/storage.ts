@@ -5,6 +5,7 @@ import { registerModule } from '../lib/module-registry';
 
 const COMPOSE_FILE = 'docker-compose.storage.yml';
 const TYPES_FILE = 'src/modules/storage/storage.types.ts';
+const INVALID_KEY_FILE = 'src/modules/storage/invalid-storage-key.exception.ts';
 const LOCAL_PROVIDER_FILE = 'src/modules/storage/local-storage.provider.ts';
 const S3_PROVIDER_FILE = 'src/modules/storage/s3-storage.provider.ts';
 const CONTROLLER_FILE = 'src/modules/storage/storage.controller.ts';
@@ -37,15 +38,47 @@ const TYPES_CONTENT = `export interface StorageProvider {
 export const STORAGE_PROVIDER = Symbol('STORAGE_PROVIDER');
 `;
 
+const INVALID_KEY_CONTENT = `import { HttpStatus } from '@nestjs/common';
+import { DomainException } from '../../technical/errors/domain.exception';
+
+export class InvalidStorageKeyException extends DomainException {
+  constructor(key: string) {
+    super(
+      HttpStatus.BAD_REQUEST,
+      'storage.key.invalid',
+      'A storage key must stay inside the storage root.',
+      { key },
+    );
+  }
+}
+`;
+
 const LOCAL_PROVIDER_CONTENT = `import { createHmac, timingSafeEqual } from 'node:crypto';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { env } from '../../technical/config/env';
+import { InvalidStorageKeyException } from './invalid-storage-key.exception';
 import type { StorageProvider } from './storage.types';
 
 const ROOT = path.resolve(process.cwd(), 'storage');
 const DEFAULT_TTL_SECONDS = 900;
+
+/**
+ * A key names a location inside ROOT and nothing else. \`path.join\` walks out of
+ * the root without complaint on a key containing \`../\`, and this module's own
+ * instructions tell developers to inject the provider and pass keys straight in,
+ * so refusing the escape belongs here rather than in every call site.
+ */
+function insideRoot(key: string): string {
+  const target = path.resolve(ROOT, key);
+
+  if (target !== ROOT && !target.startsWith(\`\${ROOT}\${path.sep}\`)) {
+    throw new InvalidStorageKeyException(key);
+  }
+
+  return target;
+}
 
 // Zero-config default: files live on local disk, "signed URLs" are served
 // by StorageController with an HMAC signature + expiry, the same trick
@@ -56,13 +89,13 @@ const DEFAULT_TTL_SECONDS = 900;
 @Injectable()
 export class LocalStorageProvider implements StorageProvider {
   async put(key: string, body: Buffer): Promise<void> {
-    const target = path.join(ROOT, key);
+    const target = insideRoot(key);
     await mkdir(path.dirname(target), { recursive: true });
     await writeFile(target, body);
   }
 
   async remove(key: string): Promise<void> {
-    await rm(path.join(ROOT, key), { force: true });
+    await rm(insideRoot(key), { force: true });
   }
 
   signedUrl(key: string, expiresInSeconds = DEFAULT_TTL_SECONDS): Promise<string> {
@@ -87,7 +120,7 @@ export class LocalStorageProvider implements StorageProvider {
   }
 
   async read(key: string): Promise<Buffer> {
-    return readFile(path.join(ROOT, key));
+    return readFile(insideRoot(key));
   }
 
   private sign(key: string, exp: number): string {
@@ -208,6 +241,7 @@ registerModule({
     const files: Record<string, string> = {
       [COMPOSE_FILE]: COMPOSE_CONTENT,
       [TYPES_FILE]: TYPES_CONTENT,
+      [INVALID_KEY_FILE]: INVALID_KEY_CONTENT,
       [LOCAL_PROVIDER_FILE]: LOCAL_PROVIDER_CONTENT,
       [S3_PROVIDER_FILE]: S3_PROVIDER_CONTENT,
       [CONTROLLER_FILE]: CONTROLLER_CONTENT,
