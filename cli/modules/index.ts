@@ -4,7 +4,7 @@ import '../../packages/mcp/src/module';
 import '../../packages/stream/src/module';
 import '../../packages/graphql/src/module';
 import '../../packages/live/src/module';
+import '../../packages/storage/src/module';
 import './mail';
-import './storage';
 import './impersonation';
 import './admin-astro';
