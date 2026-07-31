@@ -1,0 +1,13 @@
+{
+  "name": "live",
+  "private": true,
+  "version": "0.0.1",
+  "devDependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/platform-socket.io": "^11.0.0",
+    "@nestjs/websockets": "^11.0.0",
+    "picocolors": "^1.1.1",
+    "socket.io": "^4.8.1",
+    "typescript": "^5.7.3"
+  }
+}

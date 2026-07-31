@@ -3,7 +3,7 @@ import '../../packages/search-meilisearch/src/module';
 import '../../packages/mcp/src/module';
 import '../../packages/stream/src/module';
 import '../../packages/graphql/src/module';
-import './live';
+import '../../packages/live/src/module';
 import './mail';
 import './storage';
 import './impersonation';
