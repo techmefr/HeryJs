@@ -32,7 +32,10 @@ registerModule({
       `  1. Import ${pc.bold('MeilisearchSearchModule')} into src/app.module.ts`,
     );
     console.log(
-      `  2. Run "pnpm hery up --start" to boot Meilisearch and resolve MEILISEARCH_URL`,
+      `  2. Declare it in hery.config.ts, e.g. { search: { default: 'prisma', engines: { prisma: { driver: 'prisma' }, meilisearch: { driver: 'meilisearch' } } } }`,
+    );
+    console.log(
+      `  3. Run "pnpm hery up --start" to boot Meilisearch and resolve MEILISEARCH_URL`,
     );
   },
 });

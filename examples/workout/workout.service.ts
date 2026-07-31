@@ -1,13 +1,11 @@
-import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Prisma, Workout } from '@prisma/client';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import { CapabilitySubject } from '#technical/capabilities/capabilities.types';
 import { scopeWhereFor } from '#technical/capabilities/scope-where';
 import { SignalService } from '#technical/signal/signal.service';
-import { buildTextSearchWhere } from '#technical/search/text-search';
-import { SEARCH_DRIVER } from '#technical/search/search-driver';
-import type { SearchDriver } from '#technical/search/search-driver';
+import { SearchEngineRegistry } from '#technical/search/search-engine.registry';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { CreateWorkoutInput, UpdateWorkoutInput } from './workout.dto';
 
@@ -20,6 +18,7 @@ export interface WorkoutSearchOptions {
   sort?: { field: string; direction: 'asc' | 'desc' };
   filters?: Record<string, string>;
   search?: string;
+  searchEngine?: string;
   limit?: number;
 }
 
@@ -32,9 +31,7 @@ export class WorkoutService {
   constructor(
     @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,
     private readonly signal: SignalService,
-    @Optional()
-    @Inject(SEARCH_DRIVER)
-    private readonly searchDriver?: SearchDriver,
+    private readonly searchEngines: SearchEngineRegistry,
   ) {}
 
   private notify() {
@@ -49,20 +46,22 @@ export class WorkoutService {
   // (hery search:reindex backfills it); returning a 500 for a write that
   // actually succeeded is not.
   private async syncSearchIndex(record: Workout) {
-    if (!this.searchDriver) {
+    const driver = this.searchEngines.externalDriver;
+
+    if (!driver) {
       return;
     }
 
     try {
       if (record.deletedAt) {
-        await this.searchDriver.remove(SEARCH_COLLECTION, record.id);
+        await driver.remove(SEARCH_COLLECTION, record.id);
         return;
       }
 
       const document = Object.fromEntries(
         SEARCHABLE_FIELDS.map((field) => [field, record[field]]),
       );
-      await this.searchDriver.index(
+      await driver.index(
         SEARCH_COLLECTION,
         record.id,
         document,
@@ -83,18 +82,20 @@ export class WorkoutService {
         : { deletedAt: null };
 
     const searchWhere = options.search
-      ? this.searchDriver
-        ? {
-            id: {
-              in: await this.searchDriver.search(
+      ? {
+          id: {
+            in: await this.searchEngines
+              .resolve(
+                options.searchEngine ?? this.searchEngines.defaultKeyword,
+              )
+              .search(
                 SEARCH_COLLECTION,
                 options.search,
                 SEARCHABLE_FIELDS,
                 TenantContextStorage.getTenantId(),
               ),
-            },
-          }
-        : buildTextSearchWhere(options.search, SEARCHABLE_FIELDS)
+          },
+        }
       : undefined;
 
     // The scope clause sits in its own AND branch so a declared filter can

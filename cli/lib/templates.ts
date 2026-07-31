@@ -157,16 +157,14 @@ export function serviceFile(ctx: ResourceContext): string {
     .filter((field) => field.type === 'string')
     .map((field) => field.name);
 
-  return `import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
+  return `import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Prisma, ${ctx.pascalName} } from '@prisma/client';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import { CapabilitySubject } from '#technical/capabilities/capabilities.types';
 import { scopeWhereFor } from '#technical/capabilities/scope-where';${ownedByTeam(ctx) ? `\nimport { NoCurrentTeamException } from '#technical/errors/no-current-team.exception';` : ''}
 import { SignalService } from '#technical/signal/signal.service';
-import { buildTextSearchWhere } from '#technical/search/text-search';
-import { SEARCH_DRIVER } from '#technical/search/search-driver';
-import type { SearchDriver } from '#technical/search/search-driver';
+import { SearchEngineRegistry } from '#technical/search/search-engine.registry';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { Create${ctx.pascalName}Input, Update${ctx.pascalName}Input } from './${ctx.kebabName}.dto';
 
@@ -179,6 +177,7 @@ export interface ${ctx.pascalName}SearchOptions {
   sort?: { field: string; direction: 'asc' | 'desc' };
   filters?: Record<string, string>;
   search?: string;
+  searchEngine?: string;
   limit?: number;
 }
 
@@ -191,9 +190,7 @@ export class ${ctx.pascalName}Service {
   constructor(
     @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,
     private readonly signal: SignalService,
-    @Optional()
-    @Inject(SEARCH_DRIVER)
-    private readonly searchDriver?: SearchDriver,
+    private readonly searchEngines: SearchEngineRegistry,
   ) {}
 
   private notify() {
@@ -208,20 +205,22 @@ export class ${ctx.pascalName}Service {
   // (hery search:reindex backfills it); returning a 500 for a write that
   // actually succeeded is not.
   private async syncSearchIndex(record: ${ctx.pascalName}) {
-    if (!this.searchDriver) {
+    const driver = this.searchEngines.externalDriver;
+
+    if (!driver) {
       return;
     }
 
     try {
       if (record.deletedAt) {
-        await this.searchDriver.remove(SEARCH_COLLECTION, record.id);
+        await driver.remove(SEARCH_COLLECTION, record.id);
         return;
       }
 
       const document = Object.fromEntries(
         SEARCHABLE_FIELDS.map((field) => [field, record[field]]),
       );
-      await this.searchDriver.index(
+      await driver.index(
         SEARCH_COLLECTION,
         record.id,
         document,
@@ -245,18 +244,18 @@ export class ${ctx.pascalName}Service {
         : { deletedAt: null };
 
     const searchWhere = options.search
-      ? this.searchDriver
-        ? {
-            id: {
-              in: await this.searchDriver.search(
+      ? {
+          id: {
+            in: await this.searchEngines
+              .resolve(options.searchEngine ?? this.searchEngines.defaultKeyword)
+              .search(
                 SEARCH_COLLECTION,
                 options.search,
                 SEARCHABLE_FIELDS,
                 TenantContextStorage.getTenantId(),
               ),
-            },
-          }
-        : buildTextSearchWhere(options.search, SEARCHABLE_FIELDS)
+          },
+        }
       : undefined;
 
     // The scope clause sits in its own AND branch so a declared filter can
@@ -475,6 +474,7 @@ export function moduleFile(ctx: ResourceContext): string {
 import { AuthModule } from '#technical/auth/auth.module';
 import { CapabilitiesService } from '#technical/capabilities/capabilities.service';
 import { PrismaModule } from '#technical/prisma/prisma.module';
+import { SearchModule } from '#technical/search/search.module';
 import { SignalModule } from '#technical/signal/signal.module';
 import { ${ctx.pascalName}Controller } from './${ctx.kebabName}.controller';
 import { ${ctx.pascalName}Policy } from './${ctx.kebabName}.policy';
@@ -487,7 +487,7 @@ import {
 } from './${ctx.kebabName}-record.loader';
 
 @Module({
-  imports: [PrismaModule, AuthModule, SignalModule],
+  imports: [PrismaModule, AuthModule, SearchModule, SignalModule],
   controllers: [${ctx.pascalName}Controller],
   providers: [
     ${ctx.pascalName}Service,
@@ -1108,6 +1108,9 @@ export function specFile(ctx: ResourceContext): string {
     requiredFields.length > 0
       ? `{ ${requiredFields.map((field) => `${field.name}: ${sampleValueFor(field)}`).join(', ')} }`
       : '{}';
+  const primarySearchField = ctx.fields.find(
+    (field) => field.type === 'string',
+  );
 
   return `import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
@@ -1258,7 +1261,38 @@ ${trashParityTest(ctx, createBody)}
       ),
     ).toBe(true);
   });
-});
+${
+  primarySearchField
+    ? `
+  it('finds a record by text search through the explicitly named default engine', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send(${createBody})
+      .expect(201);
+
+    const record = (created.body as { data: Record<string, unknown> }).data;
+    const term = String(record.${primarySearchField.name});
+
+    const found = await request(app.getHttpServer())
+      .get(\`/${ctx.pluralKebabName}?q=\${term}&search[engine]=prisma\`)
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .expect(200);
+
+    expect(
+      (found.body as { data: { id: string }[] }).data.map((r) => r.id),
+    ).toContain(record.id);
+  });
+
+  it('rejects a search engine keyword hery.config.ts never declared', async () => {
+    await request(app.getHttpServer())
+      .get('/${ctx.pluralKebabName}?q=anything&search[engine]=nonexistent')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .expect(400);
+  });
+`
+    : ''
+}});
 `;
 }
 

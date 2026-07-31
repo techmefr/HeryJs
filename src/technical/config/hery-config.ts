@@ -50,3 +50,9 @@ export function loadHeryConfig(): HeryConfig {
 }
 
 export const heryConfig = loadHeryConfig();
+
+// A DI token rather than importing `heryConfig` directly wherever it's
+// needed: consumers like SearchEngineRegistry validate this value in their
+// constructor, and a provider is what lets a test override it with a
+// fixture instead of only ever seeing this process's real hery.config.ts.
+export const HERY_CONFIG = Symbol('HERY_CONFIG');

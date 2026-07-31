@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '#technical/auth/auth.module';
 import { CapabilitiesService } from '#technical/capabilities/capabilities.service';
 import { PrismaModule } from '#technical/prisma/prisma.module';
+import { SearchModule } from '#technical/search/search.module';
 import { SignalModule } from '#technical/signal/signal.module';
 import { WorkoutController } from './workout.controller';
 import { WorkoutPolicy } from './workout.policy';
@@ -14,7 +15,7 @@ import {
 } from './workout-record.loader';
 
 @Module({
-  imports: [PrismaModule, AuthModule, SignalModule],
+  imports: [PrismaModule, AuthModule, SearchModule, SignalModule],
   controllers: [WorkoutController],
   providers: [
     WorkoutService,

@@ -192,4 +192,31 @@ describe('Workout resource', () => {
       ),
     ).toBe(true);
   });
+
+  it('finds a record by text search through the explicitly named default engine', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/workouts')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ title: 'title-value' })
+      .expect(201);
+
+    const record = (created.body as { data: Record<string, unknown> }).data;
+    const term = String(record.title);
+
+    const found = await request(app.getHttpServer())
+      .get(`/workouts?q=${term}&search[engine]=prisma`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+
+    expect(
+      (found.body as { data: { id: string }[] }).data.map((r) => r.id),
+    ).toContain(record.id);
+  });
+
+  it('rejects a search engine keyword hery.config.ts never declared', async () => {
+    await request(app.getHttpServer())
+      .get('/workouts?q=anything&search[engine]=nonexistent')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(400);
+  });
 });

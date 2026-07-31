@@ -32,7 +32,10 @@ registerModule({
       `  1. Import ${pc.bold('ElasticsearchSearchModule')} into src/app.module.ts`,
     );
     console.log(
-      `  2. Run "pnpm hery up --start" to boot Elasticsearch and resolve ELASTICSEARCH_URL`,
+      `  2. Declare it in hery.config.ts, e.g. { search: { default: 'prisma', engines: { prisma: { driver: 'prisma' }, elasticsearch: { driver: 'elasticsearch' } } } }`,
+    );
+    console.log(
+      `  3. Run "pnpm hery up --start" to boot Elasticsearch and resolve ELASTICSEARCH_URL`,
     );
   },
 });
