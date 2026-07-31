@@ -27,6 +27,8 @@ const USERS_BY_TOKEN: Record<string, AuthenticatedUser> = {
     tenantId: 'tenant-a',
     teamIds: [],
     currentTeamId: null,
+    role: null,
+    impersonatedBy: null,
   },
   'token-b': {
     id: 'user-b',
@@ -34,6 +36,8 @@ const USERS_BY_TOKEN: Record<string, AuthenticatedUser> = {
     tenantId: 'tenant-b',
     teamIds: [],
     currentTeamId: null,
+    role: null,
+    impersonatedBy: null,
   },
 };
 

@@ -9,15 +9,16 @@ import { AuthenticatedUser, AuthProvider } from './auth.types';
  * boundary and the team memberships are a perimeter, so both are read here and
  * nowhere else.
  */
-async function authenticate(user: {
-  id: string;
-  email: string;
-}): Promise<AuthenticatedUser> {
+async function authenticate(
+  user: { id: string; email: string },
+  impersonatedBy: string | null = null,
+): Promise<AuthenticatedUser> {
   const stored = await authPrismaClient.user.findUniqueOrThrow({
     where: { id: user.id },
     select: {
       tenantId: true,
       currentTeamId: true,
+      role: true,
       memberships: { select: { teamId: true } },
     },
   });
@@ -36,6 +37,8 @@ async function authenticate(user: {
       stored.currentTeamId && teamIds.includes(stored.currentTeamId)
         ? stored.currentTeamId
         : (teamIds[0] ?? null),
+    role: stored.role,
+    impersonatedBy,
   };
 }
 
@@ -88,6 +91,11 @@ export class SessionAuthProvider implements AuthProvider {
       return null;
     }
 
-    return await authenticate(session.user);
+    const impersonatedBy =
+      'impersonatedBy' in session.session
+        ? ((session.session.impersonatedBy as string | null) ?? null)
+        : null;
+
+    return await authenticate(session.user, impersonatedBy);
   }
 }

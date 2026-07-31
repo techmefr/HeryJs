@@ -36,6 +36,88 @@ export function patchModelSet(
   writeFileSync(filePath, patched);
 }
 
+/**
+ * Adds field lines to an existing model block, for a module whose runtime
+ * needs a column on a model it does not own (impersonation needs `role` on
+ * `User`, which belongs to the kernel's auth schema, not to the module).
+ * Guarded on the first field already being present, the same one-check
+ * idempotence `patchModelSet` uses.
+ */
+export function patchModelFields(
+  filePath: string,
+  modelName: string,
+  fieldLines: string[],
+): void {
+  const source = readFileSync(filePath, 'utf8');
+  const start = source.indexOf(`model ${modelName} {`);
+
+  if (start === -1) {
+    throw new Error(`Could not find "model ${modelName}" in ${filePath}`);
+  }
+
+  const close = source.indexOf('\n}', start);
+  const guard = fieldLines[0];
+
+  if (guard === undefined) {
+    throw new Error('patchModelFields called with no field lines');
+  }
+
+  if (source.slice(start, close).includes(guard.trim())) {
+    return;
+  }
+
+  // Timestamps are conventionally the last scalars before the blank line that
+  // separates them from relations, so a new scalar field belongs right before
+  // them -- never after the relations, and never after createdAt/updatedAt.
+  const timestamps = source.indexOf('\n  createdAt', start);
+  const blankLine = source.indexOf('\n\n', start);
+  const insertAt =
+    timestamps !== -1 && timestamps < close
+      ? timestamps
+      : blankLine !== -1 && blankLine < close
+        ? blankLine
+        : close;
+
+  const patched =
+    source.slice(0, insertAt) +
+    '\n' +
+    fieldLines.join('\n') +
+    source.slice(insertAt);
+  writeFileSync(filePath, patched);
+}
+
+/**
+ * Exact-match string replacement for kernel files a module needs to extend --
+ * a new plugin registered, a new field threaded through the session. Each
+ * pair is `[search, replace]`; the whole patch is skipped once `guardText` is
+ * already present, so re-running `hery install` twice is a no-op.
+ */
+export function patchExactStrings(
+  filePath: string,
+  pairs: Array<[string, string]>,
+  guardText: string,
+): void {
+  const source = readFileSync(filePath, 'utf8');
+
+  if (source.includes(guardText)) {
+    return;
+  }
+
+  let patched = source;
+
+  for (const [search, replace] of pairs) {
+    if (!patched.includes(search)) {
+      throw new Error(
+        `Could not find ${JSON.stringify(search)} in ${filePath}`,
+      );
+    }
+
+    patched = patched.replace(search, replace);
+  }
+
+  writeFileSync(filePath, patched);
+}
+
 function withBackRelation(
   source: string,
   model: string,

@@ -4,6 +4,12 @@ export interface AuthenticatedUser {
   tenantId: string;
   teamIds: string[];
   currentTeamId: string | null;
+  role: string | null;
+  // Set only while the caller is inside an impersonation session, to the id
+  // of the admin who started it. Never trust it from anywhere but the
+  // session row itself -- see TenantMiddleware's own comment on why nothing
+  // client-supplied is trusted for identity.
+  impersonatedBy: string | null;
 }
 
 export interface AuthProvider {

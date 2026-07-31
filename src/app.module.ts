@@ -8,6 +8,7 @@ import { AuthModule } from './technical/auth/auth.module';
 import { DescribeModule } from './technical/describe/describe.module';
 import { FeatureFlagsModule } from './technical/feature-flags/feature-flags.module';
 import { InspectorModule } from './devtools/inspector/inspector.module';
+import { ImpersonationModule } from './modules/impersonation/impersonation.module';
 import { JobsModule } from './technical/jobs/jobs.module';
 import { MailModule } from './modules/mail/mail.module';
 import { MonitoringModule } from './technical/monitoring/monitoring.module';
@@ -42,6 +43,7 @@ import { DomainExceptionFilter } from './technical/errors/domain-exception.filte
     AuthModule,
     DescribeModule,
     FeatureFlagsModule,
+    ImpersonationModule,
     InspectorModule,
     JobsModule,
     MailModule,

@@ -6,4 +6,5 @@ import './live';
 import './stream';
 import './mail';
 import './storage';
+import './impersonation';
 import './admin-astro';
