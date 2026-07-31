@@ -2,7 +2,7 @@ import '../../packages/search-elasticsearch/src/module';
 import '../../packages/search-meilisearch/src/module';
 import '../../packages/mcp/src/module';
 import '../../packages/stream/src/module';
-import './graphql';
+import '../../packages/graphql/src/module';
 import './live';
 import './mail';
 import './storage';

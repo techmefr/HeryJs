@@ -1,0 +1,16 @@
+{
+  "name": "graphql-module",
+  "private": true,
+  "version": "0.0.1",
+  "devDependencies": {
+    "@apollo/server": "^4.11.2",
+    "@as-integrations/express5": "^1.1.2",
+    "@nestjs/apollo": "^13.1.0",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/graphql": "^13.1.0",
+    "express": "^5.0.1",
+    "graphql": "^16.9.0",
+    "picocolors": "^1.1.1",
+    "typescript": "^5.7.3"
+  }
+}
