@@ -8,7 +8,7 @@ import {
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { RecordNotFoundException } from '../errors/record-not-found.exception';
+import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
 import { CapabilitiesService } from './capabilities.service';
 import { CapabilityRecord, CapabilitySubject } from './capabilities.types';
 

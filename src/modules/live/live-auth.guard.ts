@@ -5,11 +5,11 @@ import {
   Injectable,
 } from '@nestjs/common';
 import type { Socket } from 'socket.io';
-import { AUTH_PROVIDER } from '../../technical/auth/auth.types';
+import { AUTH_PROVIDER } from '#technical/auth/auth.types';
 import type {
   AuthenticatedUser,
   AuthProvider,
-} from '../../technical/auth/auth.types';
+} from '#technical/auth/auth.types';
 
 export type LiveSocket = Omit<Socket, 'data'> & {
   data: { user: AuthenticatedUser };

@@ -1,7 +1,7 @@
 import { Inject, Injectable, NestMiddleware } from '@nestjs/common';
 import { NextFunction, Request, Response } from 'express';
-import { AUTH_PROVIDER } from '../auth/auth.types';
-import type { AuthProvider } from '../auth/auth.types';
+import { AUTH_PROVIDER } from '#technical/auth/auth.types';
+import type { AuthProvider } from '#technical/auth/auth.types';
 import { TenantContextStorage } from './tenant-context';
 
 @Injectable()

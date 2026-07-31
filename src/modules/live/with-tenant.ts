@@ -1,4 +1,4 @@
-import { TenantContextStorage } from '../../technical/tenancy/tenant-context';
+import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import type { LiveSocket } from './live-auth.guard';
 
 // WebSocket message handlers never go through TenantMiddleware (it only

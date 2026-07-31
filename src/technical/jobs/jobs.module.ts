@@ -1,6 +1,6 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
-import { env } from '../config/env';
+import { env } from '#technical/config/env';
 import { DEFAULT_QUEUE } from './jobs.constants';
 import { JobsService } from './jobs.service';
 

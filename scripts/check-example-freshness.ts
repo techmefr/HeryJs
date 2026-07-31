@@ -28,18 +28,6 @@ const REPO_ROOT = path.resolve(__dirname, '..');
 const EXAMPLES_DIR = path.join(REPO_ROOT, 'examples');
 
 /**
- * The one edit the extraction applies. A generated resource sits in
- * src/functional/, one level from the kernel; the example sits in examples/, one
- * level from src/. Nothing else about the file may differ.
- */
-function asExtracted(source: string): string {
-  return source.replace(
-    /'\.\.\/\.\.\/(technical|devtools|modules|app\.module)/g,
-    "'../../src/$1",
-  );
-}
-
-/**
  * A generated resource's spec assumes `hery generate`'s own "next steps" have
  * already been followed — the resource module is wired into AppModule by hand,
  * so importing AppModule is enough. The example is deliberately the one
@@ -51,8 +39,8 @@ function asExtracted(source: string): string {
 function withOwnModuleWired(source: string, ctx: ResourceContext): string {
   return source
     .replace(
-      "import { AppModule } from '../../src/app.module';\n",
-      `import { AppModule } from '../../src/app.module';\nimport { ${ctx.pascalName}Module } from './${ctx.kebabName}.module';\n`,
+      "import { AppModule } from '#app.module';\n",
+      `import { AppModule } from '#app.module';\nimport { ${ctx.pascalName}Module } from './${ctx.kebabName}.module';\n`,
     )
     .replace(
       'imports: [AppModule],',
@@ -149,11 +137,10 @@ export async function checkExampleFreshness(): Promise<boolean> {
 
       present.delete(name);
 
-      const extracted = asExtracted(content);
       const expectedContent =
         name === `${ctx.kebabName}.spec.ts`
-          ? withOwnModuleWired(extracted, ctx)
-          : extracted;
+          ? withOwnModuleWired(content, ctx)
+          : content;
 
       if (
         readFileSync(file, 'utf8') !== (await formatted(expectedContent, file))

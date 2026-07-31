@@ -1,12 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import { PRISMA_CLIENT } from '../../src/technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '../../src/technical/prisma/prisma.client';
+import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
+import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import type {
   Seeder,
   SeederContext,
   SeederOptions,
-} from '../../src/technical/seeders/seeder.types';
+} from '#technical/seeders/seeder.types';
 import { workoutFactory } from './workout.factory';
 
 @Injectable()

@@ -10,7 +10,7 @@ import type { AuthenticatedUser, AuthProvider } from './auth.types';
 import {
   MissingSessionException,
   InvalidSessionException,
-} from '../errors/invalid-session.exception';
+} from '#technical/errors/invalid-session.exception';
 
 export type RequestWithUser = Request & { user: AuthenticatedUser };
 

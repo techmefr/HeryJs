@@ -1,5 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
-import { DomainException } from '../../technical/errors/domain.exception';
+import { DomainException } from '#technical/errors/domain.exception';
 
 export class InvalidStorageKeyException extends DomainException {
   constructor(key: string) {

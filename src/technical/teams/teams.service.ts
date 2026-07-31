@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { RecordNotFoundException } from '../errors/record-not-found.exception';
-import { PRISMA_CLIENT } from '../prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '../prisma/prisma.client';
+import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
+import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
+import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 
 @Injectable()
 export class TeamsService {

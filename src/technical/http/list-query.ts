@@ -1,4 +1,4 @@
-import { InvalidQueryException } from '../errors/invalid-query.exception';
+import { InvalidQueryException } from '#technical/errors/invalid-query.exception';
 
 export interface ListQueryContract {
   sorts: readonly string[];

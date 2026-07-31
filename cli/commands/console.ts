@@ -1,9 +1,9 @@
 import * as repl from 'node:repl';
 import { NestFactory } from '@nestjs/core';
 import type { Command } from 'commander';
-import { AppModule } from '../../src/app.module';
-import { PRISMA_CLIENT } from '../../src/technical/prisma/prisma.client';
-import { TenantContextStorage } from '../../src/technical/tenancy/tenant-context';
+import { AppModule } from '#app.module';
+import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
+import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 
 export function registerConsoleCommand(program: Command): void {
   program

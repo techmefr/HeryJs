@@ -38,16 +38,16 @@ export type Update${ctx.pascalName}Input = z.infer<typeof update${ctx.pascalName
 
 export function policyFile(ctx: ResourceContext): string {
   return `import { Injectable } from '@nestjs/common';
-import { CapabilitiesService } from '../../technical/capabilities/capabilities.service';
+import { CapabilitiesService } from '#technical/capabilities/capabilities.service';
 import {
   resolveCapability,
   resolveCollectionCapability,
-} from '../../technical/capabilities/resolve-capability';
-import type { PolicyCheck } from '../../technical/capabilities/capability-check';
+} from '#technical/capabilities/resolve-capability';
+import type { PolicyCheck } from '#technical/capabilities/capability-check';
 import {
   CapabilityDecision,
   CapabilitySubject,
-} from '../../technical/capabilities/capabilities.types';
+} from '#technical/capabilities/capabilities.types';
 
 export interface ${ctx.pascalName}RecordLike {
   ownerId: string;
@@ -108,9 +108,9 @@ export class ${ctx.pascalName}Policy {
 
 export function recordLoaderFile(ctx: ResourceContext): string {
   return `import { Inject, Injectable } from '@nestjs/common';
-import { PRISMA_CLIENT } from '../../technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '../../technical/prisma/prisma.client';
-import type { RecordLoader } from '../../technical/capabilities/capability-check';
+import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
+import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
+import type { RecordLoader } from '#technical/capabilities/capability-check';
 import type { ${ctx.pascalName}RecordLike } from './${ctx.kebabName}.policy';
 
 export const ${ctx.pascalName.toUpperCase()}_RECORD_LOADER = Symbol(
@@ -159,15 +159,15 @@ export function serviceFile(ctx: ResourceContext): string {
 
   return `import { Inject, Injectable, Optional } from '@nestjs/common';
 import type { Prisma, ${ctx.pascalName} } from '@prisma/client';
-import { PRISMA_CLIENT } from '../../technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '../../technical/prisma/prisma.client';
-import { CapabilitySubject } from '../../technical/capabilities/capabilities.types';
-import { scopeWhereFor } from '../../technical/capabilities/scope-where';${ownedByTeam(ctx) ? `\nimport { NoCurrentTeamException } from '../../technical/errors/no-current-team.exception';` : ''}
-import { SignalService } from '../../technical/signal/signal.service';
-import { buildTextSearchWhere } from '../../technical/search/text-search';
-import { SEARCH_DRIVER } from '../../technical/search/search-driver';
-import type { SearchDriver } from '../../technical/search/search-driver';
-import { TenantContextStorage } from '../../technical/tenancy/tenant-context';
+import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
+import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
+import { CapabilitySubject } from '#technical/capabilities/capabilities.types';
+import { scopeWhereFor } from '#technical/capabilities/scope-where';${ownedByTeam(ctx) ? `\nimport { NoCurrentTeamException } from '#technical/errors/no-current-team.exception';` : ''}
+import { SignalService } from '#technical/signal/signal.service';
+import { buildTextSearchWhere } from '#technical/search/text-search';
+import { SEARCH_DRIVER } from '#technical/search/search-driver';
+import type { SearchDriver } from '#technical/search/search-driver';
+import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { Create${ctx.pascalName}Input, Update${ctx.pascalName}Input } from './${ctx.kebabName}.dto';
 
 const SEARCHABLE_FIELDS = [${searchableFields.map((name) => `'${name}'`).join(', ')}] as const;
@@ -321,18 +321,18 @@ export function controllerFile(ctx: ResourceContext): string {
   UseGuards,
 } from '@nestjs/common';
 import type { ${ctx.pascalName} } from '@prisma/client';
-import { SessionGuard } from '../../technical/auth/session.guard';
-import type { RequestWithUser } from '../../technical/auth/session.guard';
-import { CapabilitiesGuard } from '../../technical/capabilities/capabilities.guard';
-import { subjectOf } from '../../technical/capabilities/subject';
+import { SessionGuard } from '#technical/auth/session.guard';
+import type { RequestWithUser } from '#technical/auth/session.guard';
+import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
+import { subjectOf } from '#technical/capabilities/subject';
 import {
   Capability,
   LoadRecordWith,
-} from '../../technical/capabilities/capability.decorator';
-import { CapabilityForbiddenException } from '../../technical/errors/capability-forbidden.exception';
-import { ok } from '../../technical/http/envelope';
-import { parseListQuery } from '../../technical/http/list-query';
-import { ZodValidationPipe } from '../../technical/validation/zod-validation.pipe';
+} from '#technical/capabilities/capability.decorator';
+import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
+import { ok } from '#technical/http/envelope';
+import { parseListQuery } from '#technical/http/list-query';
+import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import { create${ctx.pascalName}Schema, update${ctx.pascalName}Schema } from './${ctx.kebabName}.dto';
 import type { Create${ctx.pascalName}Input, Update${ctx.pascalName}Input } from './${ctx.kebabName}.dto';
 import {
@@ -453,10 +453,10 @@ export class ${ctx.pascalName}Controller {
 
 export function moduleFile(ctx: ResourceContext): string {
   return `import { Module } from '@nestjs/common';
-import { AuthModule } from '../../technical/auth/auth.module';
-import { CapabilitiesService } from '../../technical/capabilities/capabilities.service';
-import { PrismaModule } from '../../technical/prisma/prisma.module';
-import { SignalModule } from '../../technical/signal/signal.module';
+import { AuthModule } from '#technical/auth/auth.module';
+import { CapabilitiesService } from '#technical/capabilities/capabilities.service';
+import { PrismaModule } from '#technical/prisma/prisma.module';
+import { SignalModule } from '#technical/signal/signal.module';
 import { ${ctx.pascalName}Controller } from './${ctx.kebabName}.controller';
 import { ${ctx.pascalName}Policy } from './${ctx.kebabName}.policy';
 import { ${ctx.pascalName}Service } from './${ctx.kebabName}.service';
@@ -519,12 +519,12 @@ import {
   Query,
   Resolver,
 } from '@nestjs/graphql';
-import { GqlSessionGuard } from '../../technical/auth/gql-session.guard';
-import type { GqlRequestWithUser } from '../../technical/auth/gql-session.guard';
-import { CurrentGqlRequest } from '../../technical/auth/current-gql-request.decorator';
-import { subjectOf } from '../../technical/capabilities/subject';
-import { CapabilityForbiddenException } from '../../technical/errors/capability-forbidden.exception';
-import { RecordNotFoundException } from '../../technical/errors/record-not-found.exception';
+import { GqlSessionGuard } from '#technical/auth/gql-session.guard';
+import type { GqlRequestWithUser } from '#technical/auth/gql-session.guard';
+import { CurrentGqlRequest } from '#technical/auth/current-gql-request.decorator';
+import { subjectOf } from '#technical/capabilities/subject';
+import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
+import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
 import {
   canCreate${ctx.pascalName},
   canDelete${ctx.pascalName},
@@ -658,8 +658,8 @@ export function mcpToolsFile(ctx: ResourceContext): string {
   return `import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Inject, Injectable } from '@nestjs/common';
-import type { CapabilitySubject } from '../../technical/capabilities/capabilities.types';
-import type { McpToolRegistrar } from '../../technical/mcp/mcp-tool-registrar';
+import type { CapabilitySubject } from '#technical/capabilities/capabilities.types';
+import type { McpToolRegistrar } from '#technical/mcp/mcp-tool-registrar';
 import { create${ctx.pascalName}Schema, update${ctx.pascalName}Schema } from './${ctx.kebabName}.dto';
 import {
   canCreate${ctx.pascalName},
@@ -803,15 +803,15 @@ export class ${ctx.pascalName}McpToolRegistrar implements McpToolRegistrar {
 export function streamControllerFile(ctx: ResourceContext): string {
   return `import { Controller, Post, Req, UseGuards } from '@nestjs/common';
 import type { ${ctx.pascalName} } from '@prisma/client';
-import type { RequestWithUser } from '../../technical/auth/session.guard';
-import { SessionGuard } from '../../technical/auth/session.guard';
-import { CapabilitiesGuard } from '../../technical/capabilities/capabilities.guard';
+import type { RequestWithUser } from '#technical/auth/session.guard';
+import { SessionGuard } from '#technical/auth/session.guard';
+import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import {
   Capability,
   LoadRecordWith,
-} from '../../technical/capabilities/capability.decorator';
-import { ok } from '../../technical/http/envelope';
-import { StreamService } from '../../modules/stream/stream.service';
+} from '#technical/capabilities/capability.decorator';
+import { ok } from '#technical/http/envelope';
+import { StreamService } from '#modules/stream/stream.service';
 import { canUpdate${ctx.pascalName}, canView${ctx.pascalName} } from './${ctx.kebabName}.policy';
 import {
   ${ctx.pascalName.toUpperCase()}_RECORD_LOADER,
@@ -860,15 +860,15 @@ import {
   SubscribeMessage,
   WebSocketGateway,
 } from '@nestjs/websockets';
-import { AUTH_PROVIDER } from '../../technical/auth/auth.types';
-import type { AuthProvider } from '../../technical/auth/auth.types';
-import { subjectOf } from '../../technical/capabilities/subject';
+import { AUTH_PROVIDER } from '#technical/auth/auth.types';
+import type { AuthProvider } from '#technical/auth/auth.types';
+import { subjectOf } from '#technical/capabilities/subject';
 import {
   authenticateLiveSocket,
   LiveAuthGuard,
-} from '../../modules/live/live-auth.guard';
-import type { LiveSocket } from '../../modules/live/live-auth.guard';
-import { withTenant } from '../../modules/live/with-tenant';
+} from '#modules/live/live-auth.guard';
+import type { LiveSocket } from '#modules/live/live-auth.guard';
+import { withTenant } from '#modules/live/with-tenant';
 import { canUpdate${ctx.pascalName}, canView${ctx.pascalName} } from './${ctx.kebabName}.policy';
 import {
   ${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER,
@@ -1097,9 +1097,9 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { AppModule } from '../../app.module';
-import { env } from '../../technical/config/env';
-import { registerAndLogin } from '../../devtools/testing/register-and-login';
+import { AppModule } from '#app.module';
+import { env } from '#technical/config/env';
+import { registerAndLogin } from '#devtools/testing/register-and-login';
 
 const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });

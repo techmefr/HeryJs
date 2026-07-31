@@ -8,11 +8,11 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { SessionGuard } from '../auth/session.guard';
-import type { RequestWithUser } from '../auth/session.guard';
-import { CapabilityForbiddenException } from '../errors/capability-forbidden.exception';
-import { ok } from '../http/envelope';
-import { ZodValidationPipe } from '../validation/zod-validation.pipe';
+import { SessionGuard } from '#technical/auth/session.guard';
+import type { RequestWithUser } from '#technical/auth/session.guard';
+import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
+import { ok } from '#technical/http/envelope';
+import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import {
   addTeamMemberSchema,
   createTeamSchema,

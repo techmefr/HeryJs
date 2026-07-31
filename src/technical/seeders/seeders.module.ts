@@ -1,6 +1,6 @@
 import { DynamicModule, Module, Type } from '@nestjs/common';
-import { AuthModule } from '../auth/auth.module';
-import { PrismaModule } from '../prisma/prisma.module';
+import { AuthModule } from '#technical/auth/auth.module';
+import { PrismaModule } from '#technical/prisma/prisma.module';
 import { SEEDERS, Seeder } from './seeder.types';
 import { SeedersController } from './seeders.controller';
 

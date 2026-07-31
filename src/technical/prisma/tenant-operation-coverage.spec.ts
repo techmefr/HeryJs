@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Prisma, PrismaClient } from '@prisma/client';
-import { env } from '../config/env';
-import { TenantContextStorage } from '../tenancy/tenant-context';
+import { env } from '#technical/config/env';
+import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { createTenantScopedPrismaClient } from './prisma.client';
 
 const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });

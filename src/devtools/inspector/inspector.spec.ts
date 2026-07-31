@@ -2,9 +2,9 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { AppModule } from '../../app.module';
+import { AppModule } from '#app.module';
 import { WorkoutModule } from '../../../examples/workout/workout.module';
-import { registerAndLogin } from '../testing/register-and-login';
+import { registerAndLogin } from '#devtools/testing/register-and-login';
 
 interface InspectedRequest {
   method: string;

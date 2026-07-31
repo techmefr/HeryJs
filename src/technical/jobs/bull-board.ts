@@ -4,7 +4,7 @@ import { ExpressAdapter } from '@bull-board/express';
 import type { INestApplication } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
-import { env } from '../config/env';
+import { env } from '#technical/config/env';
 import { DEFAULT_QUEUE } from './jobs.constants';
 
 export function mountBullBoard(app: INestApplication) {

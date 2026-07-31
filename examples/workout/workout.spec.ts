@@ -5,10 +5,10 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { AppModule } from '../../src/app.module';
+import { AppModule } from '#app.module';
 import { WorkoutModule } from './workout.module';
-import { env } from '../../src/technical/config/env';
-import { registerAndLogin } from '../../src/devtools/testing/register-and-login';
+import { env } from '#technical/config/env';
+import { registerAndLogin } from '#devtools/testing/register-and-login';
 
 const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });

@@ -1,10 +1,10 @@
 import { Controller, Get, Post, Query, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import IORedis from 'ioredis';
-import { SessionGuard } from '../auth/session.guard';
-import { env } from '../config/env';
-import { ok } from '../http/envelope';
-import { TenantContextStorage } from '../tenancy/tenant-context';
+import { SessionGuard } from '#technical/auth/session.guard';
+import { env } from '#technical/config/env';
+import { ok } from '#technical/http/envelope';
+import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { CHANNEL_PREFIX } from './signal.service';
 import { SignalTokenService } from './signal-token.service';
 

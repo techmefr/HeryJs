@@ -10,8 +10,11 @@ import {
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { AUTH_PROVIDER } from '../auth/auth.types';
-import type { AuthProvider, AuthenticatedUser } from '../auth/auth.types';
+import { AUTH_PROVIDER } from '#technical/auth/auth.types';
+import type {
+  AuthProvider,
+  AuthenticatedUser,
+} from '#technical/auth/auth.types';
 import { TenantMiddleware } from './tenant.middleware';
 import { TenantScopedStore } from './tenant-scoped-store';
 

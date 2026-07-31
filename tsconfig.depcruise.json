@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "./",
+    "paths": {
+      "#technical/*": ["src/technical/*"],
+      "#devtools/*": ["src/devtools/*"],
+      "#modules/*": ["src/modules/*"],
+      "#functional/*": ["src/functional/*"],
+      "#app.module": ["src/app.module"]
+    }
+  }
+}

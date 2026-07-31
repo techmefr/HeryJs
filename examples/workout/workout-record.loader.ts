@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PRISMA_CLIENT } from '../../src/technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '../../src/technical/prisma/prisma.client';
-import type { RecordLoader } from '../../src/technical/capabilities/capability-check';
+import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
+import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
+import type { RecordLoader } from '#technical/capabilities/capability-check';
 import type { WorkoutRecordLike } from './workout.policy';
 
 export const WORKOUT_RECORD_LOADER = Symbol('WORKOUT_RECORD_LOADER');

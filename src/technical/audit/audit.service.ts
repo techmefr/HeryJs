@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import { PRISMA_CLIENT } from '../prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '../prisma/prisma.client';
+import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
+import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import { canonicalJson } from './canonical-json';
 
 @Injectable()

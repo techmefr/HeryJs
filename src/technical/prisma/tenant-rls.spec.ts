@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
-import { env } from '../config/env';
+import { env } from '#technical/config/env';
 
 describe('row-level security on Workout (opt-in, real database)', () => {
   const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });

@@ -7,9 +7,9 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { SessionGuard } from '../auth/session.guard';
-import type { RequestWithUser } from '../auth/session.guard';
-import { ok } from '../http/envelope';
+import { SessionGuard } from '#technical/auth/session.guard';
+import type { RequestWithUser } from '#technical/auth/session.guard';
+import { ok } from '#technical/http/envelope';
 import { NOTIFICATION_PROVIDER } from './notification.types';
 import type { NotificationProvider } from './notification.types';
 

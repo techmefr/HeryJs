@@ -1,8 +1,8 @@
 import { Injectable, RequestMethod } from '@nestjs/common';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { DiscoveryService, MetadataScanner } from '@nestjs/core';
-import { CAPABILITY_CHECK } from '../capabilities/capability.decorator';
-import type { PolicyCheck } from '../capabilities/capability-check';
+import { CAPABILITY_CHECK } from '#technical/capabilities/capability.decorator';
+import type { PolicyCheck } from '#technical/capabilities/capability-check';
 
 export interface DescribedRoute {
   method: string;

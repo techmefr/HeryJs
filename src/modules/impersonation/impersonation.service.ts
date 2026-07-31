@@ -1,16 +1,16 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { writeAuditLog } from '../../technical/audit/audit-log';
+import { writeAuditLog } from '#technical/audit/audit-log';
 import {
   authPrismaClient,
   getAuthContext,
-} from '../../technical/auth/better-auth.instance';
-import type { AuthenticatedUser } from '../../technical/auth/auth.types';
-import { CapabilityForbiddenException } from '../../technical/errors/capability-forbidden.exception';
-import { NotImpersonatingException } from '../../technical/errors/not-impersonating.exception';
-import { RecordNotFoundException } from '../../technical/errors/record-not-found.exception';
-import { SelfImpersonationException } from '../../technical/errors/self-impersonation.exception';
-import { PRISMA_CLIENT } from '../../technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '../../technical/prisma/prisma.client';
+} from '#technical/auth/better-auth.instance';
+import type { AuthenticatedUser } from '#technical/auth/auth.types';
+import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
+import { NotImpersonatingException } from '#technical/errors/not-impersonating.exception';
+import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
+import { SelfImpersonationException } from '#technical/errors/self-impersonation.exception';
+import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
+import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 
 export interface ImpersonationSession {
   token: string;

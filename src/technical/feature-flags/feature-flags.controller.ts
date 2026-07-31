@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
-import { SessionGuard } from '../auth/session.guard';
-import { ok } from '../http/envelope';
-import { ZodValidationPipe } from '../validation/zod-validation.pipe';
+import { SessionGuard } from '#technical/auth/session.guard';
+import { ok } from '#technical/http/envelope';
+import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import { FeatureFlagsService } from './feature-flags.service';
 import { setFeatureFlagSchema } from './set-feature-flag.dto';
 import type { SetFeatureFlagDto } from './set-feature-flag.dto';

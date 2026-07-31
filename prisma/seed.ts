@@ -1,7 +1,7 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import type { Prisma } from '@prisma/client';
 import { PrismaClient } from '@prisma/client';
-import { env } from '../src/technical/config/env';
+import { env } from '#technical/config/env';
 import { workoutFactory } from '../examples/workout/workout.factory';
 
 const DEMO_TENANT_ID = 'demo-tenant';

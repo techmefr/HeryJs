@@ -2,10 +2,10 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { AppModule } from '../../app.module';
-import { authPrismaClient } from '../auth/better-auth.instance';
-import { registerAndLogin } from '../../devtools/testing/register-and-login';
-import type { TestUser } from '../../devtools/testing/register-and-login';
+import { AppModule } from '#app.module';
+import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { registerAndLogin } from '#devtools/testing/register-and-login';
+import type { TestUser } from '#devtools/testing/register-and-login';
 
 interface TeamPayload {
   data: { id: string; name: string }[];

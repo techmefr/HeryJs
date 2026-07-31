@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { authPrismaClient, getAuthContext } from './better-auth.instance';
-import { InvalidCredentialsException } from '../errors/invalid-credentials.exception';
+import { InvalidCredentialsException } from '#technical/errors/invalid-credentials.exception';
 import { AuthenticatedUser, AuthProvider } from './auth.types';
 
 /**

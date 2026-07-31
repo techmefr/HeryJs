@@ -44,6 +44,7 @@ const COPY_ENTRIES = [
   '.dependency-cruiser.cjs',
   'tsconfig.json',
   'tsconfig.build.json',
+  'tsconfig.depcruise.json',
   'nest-cli.json',
   'eslint.config.mjs',
   '.oxlintrc.json',

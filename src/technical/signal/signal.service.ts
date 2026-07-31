@@ -1,6 +1,6 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import IORedis from 'ioredis';
-import { env } from '../config/env';
+import { env } from '#technical/config/env';
 
 const CHANNEL_PREFIX = 'signal:';
 

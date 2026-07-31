@@ -6,12 +6,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { Capability } from '../../technical/capabilities/capability.decorator';
-import { CapabilitiesGuard } from '../../technical/capabilities/capabilities.guard';
-import { MissingSessionException } from '../../technical/errors/invalid-session.exception';
-import { ok } from '../../technical/http/envelope';
-import { SessionGuard } from '../../technical/auth/session.guard';
-import type { RequestWithUser } from '../../technical/auth/session.guard';
+import { Capability } from '#technical/capabilities/capability.decorator';
+import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
+import { MissingSessionException } from '#technical/errors/invalid-session.exception';
+import { ok } from '#technical/http/envelope';
+import { SessionGuard } from '#technical/auth/session.guard';
+import type { RequestWithUser } from '#technical/auth/session.guard';
 import { canImpersonate } from './impersonation.policy';
 import { ImpersonationService } from './impersonation.service';
 

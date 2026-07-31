@@ -1,7 +1,7 @@
 import { Body, Controller, Inject, Post, UseGuards } from '@nestjs/common';
-import { DevOnlyGuard } from '../dev-only/dev-only.guard';
-import { ok } from '../http/envelope';
-import { ZodValidationPipe } from '../validation/zod-validation.pipe';
+import { DevOnlyGuard } from '#technical/dev-only/dev-only.guard';
+import { ok } from '#technical/http/envelope';
+import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import { AUTH_PROVIDER } from './auth.types';
 import type { AuthProvider } from './auth.types';
 import { loginSchema, registerSchema } from './auth.schemas';

@@ -1,14 +1,14 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
 import type { Prisma, Workout } from '@prisma/client';
-import { PRISMA_CLIENT } from '../../src/technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '../../src/technical/prisma/prisma.client';
-import { CapabilitySubject } from '../../src/technical/capabilities/capabilities.types';
-import { scopeWhereFor } from '../../src/technical/capabilities/scope-where';
-import { SignalService } from '../../src/technical/signal/signal.service';
-import { buildTextSearchWhere } from '../../src/technical/search/text-search';
-import { SEARCH_DRIVER } from '../../src/technical/search/search-driver';
-import type { SearchDriver } from '../../src/technical/search/search-driver';
-import { TenantContextStorage } from '../../src/technical/tenancy/tenant-context';
+import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
+import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
+import { CapabilitySubject } from '#technical/capabilities/capabilities.types';
+import { scopeWhereFor } from '#technical/capabilities/scope-where';
+import { SignalService } from '#technical/signal/signal.service';
+import { buildTextSearchWhere } from '#technical/search/text-search';
+import { SEARCH_DRIVER } from '#technical/search/search-driver';
+import type { SearchDriver } from '#technical/search/search-driver';
+import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { CreateWorkoutInput, UpdateWorkoutInput } from './workout.dto';
 
 const SEARCHABLE_FIELDS = ['title'] as const;

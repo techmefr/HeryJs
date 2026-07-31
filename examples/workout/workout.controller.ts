@@ -10,18 +10,18 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Workout } from '@prisma/client';
-import { SessionGuard } from '../../src/technical/auth/session.guard';
-import type { RequestWithUser } from '../../src/technical/auth/session.guard';
-import { CapabilitiesGuard } from '../../src/technical/capabilities/capabilities.guard';
-import { subjectOf } from '../../src/technical/capabilities/subject';
+import { SessionGuard } from '#technical/auth/session.guard';
+import type { RequestWithUser } from '#technical/auth/session.guard';
+import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
+import { subjectOf } from '#technical/capabilities/subject';
 import {
   Capability,
   LoadRecordWith,
-} from '../../src/technical/capabilities/capability.decorator';
-import { CapabilityForbiddenException } from '../../src/technical/errors/capability-forbidden.exception';
-import { ok } from '../../src/technical/http/envelope';
-import { parseListQuery } from '../../src/technical/http/list-query';
-import { ZodValidationPipe } from '../../src/technical/validation/zod-validation.pipe';
+} from '#technical/capabilities/capability.decorator';
+import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
+import { ok } from '#technical/http/envelope';
+import { parseListQuery } from '#technical/http/list-query';
+import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import { createWorkoutSchema, updateWorkoutSchema } from './workout.dto';
 import type { CreateWorkoutInput, UpdateWorkoutInput } from './workout.dto';
 import {

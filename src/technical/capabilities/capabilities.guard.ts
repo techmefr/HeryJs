@@ -1,15 +1,15 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { ModuleRef, Reflector } from '@nestjs/core';
 import type { Request } from 'express';
-import { CapabilityForbiddenException } from '../errors/capability-forbidden.exception';
-import { RecordNotFoundException } from '../errors/record-not-found.exception';
+import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
+import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
 import {
   CAPABILITY_CHECK,
   CAPABILITY_RECORD_LOADER,
 } from './capability.decorator';
 import type { PolicyCheck, RecordLoader } from './capability-check';
 import { subjectOf } from './subject';
-import type { AuthenticatedUser } from '../auth/auth.types';
+import type { AuthenticatedUser } from '#technical/auth/auth.types';
 
 type RequestWithCapabilities = Request & {
   user: AuthenticatedUser;

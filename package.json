@@ -15,7 +15,7 @@
     "start": "nest start -b swc",
     "start:dev": "nest start -b swc --watch",
     "start:debug": "nest start -b swc --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "node dist/src/main",
     "lint": "eslint \"{src,apps,libs,test,cli,scripts,prisma,examples,packages}/**/*.ts\" \"prisma.config.ts\" --ignore-pattern \"packages/admin-astro/src/runtime/**\" --fix && pnpm --filter admin lint",
     "lint:fast": "oxlint -c .oxlintrc.json src apps libs test cli scripts prisma prisma.config.ts",
     "lint:types": "oxlint -c .oxlintrc.json --type-aware src apps libs test cli scripts prisma prisma.config.ts",
@@ -26,7 +26,7 @@
     "test:debug": "NODE_OPTIONS=--experimental-vm-modules node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json",
     "arch:check": "depcruise src --config .dependency-cruiser.cjs",
-    "lint:conventions": "ts-node scripts/check-conventions.ts",
+    "lint:conventions": "NODE_OPTIONS=--conditions=development ts-node scripts/check-conventions.ts",
     "lint:capabilities": "pnpm run lint:conventions capabilities",
     "lint:scope-parity": "pnpm run lint:conventions scope-parity",
     "lint:coverage": "pnpm run lint:conventions coverage",
@@ -34,7 +34,7 @@
     "lint:subject": "pnpm run lint:conventions subject",
     "lint:template-imports": "pnpm run lint:conventions template-imports",
     "lint:example": "pnpm run lint:conventions example-freshness",
-    "hery": "ts-node cli/hery.ts"
+    "hery": "NODE_OPTIONS=--conditions=development ts-node cli/hery.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1097.0",
@@ -128,6 +128,40 @@
     "roots": [
       "<rootDir>/src",
       "<rootDir>/examples"
-    ]
+    ],
+    "moduleNameMapper": {
+      "^#technical/(.*)$": "<rootDir>/src/technical/$1",
+      "^#devtools/(.*)$": "<rootDir>/src/devtools/$1",
+      "^#modules/(.*)$": "<rootDir>/src/modules/$1",
+      "^#functional/(.*)$": "<rootDir>/src/functional/$1",
+      "^#app\\.module$": "<rootDir>/src/app.module"
+    }
+  },
+  "imports": {
+    "#technical/*": {
+      "types": "./src/technical/*.ts",
+      "development": "./src/technical/*.ts",
+      "default": "./dist/src/technical/*.js"
+    },
+    "#devtools/*": {
+      "types": "./src/devtools/*.ts",
+      "development": "./src/devtools/*.ts",
+      "default": "./dist/src/devtools/*.js"
+    },
+    "#modules/*": {
+      "types": "./src/modules/*.ts",
+      "development": "./src/modules/*.ts",
+      "default": "./dist/src/modules/*.js"
+    },
+    "#functional/*": {
+      "types": "./src/functional/*.ts",
+      "development": "./src/functional/*.ts",
+      "default": "./dist/src/functional/*.js"
+    },
+    "#app.module": {
+      "types": "./src/app.module.ts",
+      "development": "./src/app.module.ts",
+      "default": "./dist/src/app.module.js"
+    }
   }
 }

@@ -1,4 +1,4 @@
-import type { PolicyCheck } from '../../technical/capabilities/capability-check';
+import type { PolicyCheck } from '#technical/capabilities/capability-check';
 
 // Better Auth's own admin() plugin also refuses this server-side (it is the
 // only thing granting the "impersonate" permission to a role) -- this gate

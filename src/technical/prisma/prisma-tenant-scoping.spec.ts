@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
-import { TenantContextStorage } from '../tenancy/tenant-context';
+import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import {
   createTenantScopedPrismaClient,
   TenantScopedPrismaClient,

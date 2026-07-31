@@ -82,8 +82,17 @@ module.exports = {
       path: 'node_modules',
     },
     tsPreCompilationDeps: true,
+    // A dedicated tsconfig, not tsconfig.json: the #foo subpath imports are
+    // declared here as tsconfig `paths` purely so this tool can follow them
+    // (its enhancedResolveOptions has no importsFields option, so it cannot
+    // read package.json's "imports" field the way Node itself does at
+    // runtime). Nest's swc builder reads baseUrl/paths from whatever tsconfig
+    // it resolves and rewrites matching specifiers into relative imports at
+    // compile time — it does this wrong for the exact-match "#app.module"
+    // key, so these paths must stay out of the tsconfig swc and tsc actually
+    // build from.
     tsConfig: {
-      fileName: 'tsconfig.json',
+      fileName: 'tsconfig.depcruise.json',
     },
     enhancedResolveOptions: {
       exportsFields: ['exports'],

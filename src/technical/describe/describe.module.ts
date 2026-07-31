@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { DiscoveryModule } from '@nestjs/core';
-import { AuthModule } from '../auth/auth.module';
+import { AuthModule } from '#technical/auth/auth.module';
 import { DescribeController } from './describe.controller';
 import { DescribeService } from './describe.service';
 

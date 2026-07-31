@@ -6,9 +6,9 @@ import {
   HealthIndicatorResult,
 } from '@nestjs/terminus';
 import IORedis from 'ioredis';
-import { env } from '../config/env';
-import { PRISMA_CLIENT } from '../prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '../prisma/prisma.client';
+import { env } from '#technical/config/env';
+import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
+import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 
 @Controller('health')
 export class HealthController {

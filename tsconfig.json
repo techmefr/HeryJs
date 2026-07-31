@@ -13,14 +13,24 @@
     "target": "ES2023",
     "sourceMap": true,
     "outDir": "./dist",
-    "types": ["jest", "node"],
+    "types": [
+      "jest",
+      "node"
+    ],
     "incremental": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "strictBindCallApply": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": true
+    "noUncheckedIndexedAccess": true,
+    "rootDir": "./"
   },
-  "exclude": ["node_modules", "dist", "docs", "admin", "packages"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "docs",
+    "admin",
+    "packages"
+  ]
 }

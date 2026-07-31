@@ -1,4 +1,4 @@
-import type { AuthenticatedUser } from '../auth/auth.types';
+import type { AuthenticatedUser } from '#technical/auth/auth.types';
 import type { CapabilitySubject } from './capabilities.types';
 
 /**
