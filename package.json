@@ -1,7 +1,7 @@
 {
   "name": "heryjs",
   "version": "0.0.1",
-  "description": "A convention framework for NestJS. Generate once, own your code.",
+  "description": "A framework built on top of NestJS. Generate once, own your code.",
   "author": "",
   "private": true,
   "license": "MIT",

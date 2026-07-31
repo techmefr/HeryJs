@@ -2,7 +2,7 @@
 
 **Generate once. Own your code. Structure everything.**
 
-HeryJs is a convention framework built on top of [NestJS](https://nestjs.com). It generates a resource once, hands you the code, and gets out of the way. No platform, no re-sync, no runtime magic sitting between you and your codebase.
+HeryJs is a framework built on top of [NestJS](https://nestjs.com) — the way Nuxt sits on Vue, or Adonis on Express. NestJS gives you the runtime; HeryJs gives you the project: a CLI that scaffolds a new app, generates secured resources into it, and installs the pieces most backends end up building by hand anyway. Nothing re-syncs, nothing runs a schema at request time. What you get is a normal, readable, ownable NestJS codebase from the first commit.
 
 ---
 
@@ -25,6 +25,28 @@ HeryJs takes a deliberately different path from typical low-code or model-driven
 - **A structure a machine can also read.** Because every domain follows the same shape (`search`, `mutate`, `signal`, `jobs`, `events`, `policies`), both a human and a coding agent know exactly where to look. No exploration tax.
 
 This is a bet, not a certainty: that developers — and the agents increasingly writing code alongside them — prefer owning plain, predictable code over depending on a platform's lifecycle. Everything else follows from that bet.
+
+## Getting started
+
+```bash
+git clone https://github.com/techmefr/HeryJs.git
+cd HeryJs
+pnpm install
+pnpm hery new my-app
+cd my-app
+cp .env.example .env
+docker compose up -d
+pnpm install
+pnpm exec prisma migrate dev
+pnpm start:dev
+```
+
+`hery new` scaffolds a fresh, standalone project: the kernel, the CLI, the default modules, none of HeryJs's own demo or docs. From there, generate your first resource:
+
+```bash
+pnpm hery create:blueprint Workout
+pnpm hery generate blueprints/workout.yaml
+```
 
 ## What it generates
 
@@ -50,33 +72,32 @@ Out of the box, that resource comes with:
 - **Capabilities** — resolved permission decisions embedded via `?include=capabilities`, computed in memory, no per-row query
 - **Multi-tenant isolation** — enforced automatically, underneath permissions
 - **Auth** — session-based login wired in from the start
+- **A generated test suite** — scope parity, the trashed bin, resolved capabilities, tenant-header spoofing, proven for every resource, not just the example
 
 The blueprint is never read again after generation. It becomes historical documentation, nothing more. From that point on, the code is yours: edit it by hand like any other NestJS module.
 
+## What's included
+
+Every project starts with a kernel that's always there — auth, capabilities, multi-tenancy, teams, audit, feature flags, request inspector, scheduler, an interactive console, health checks and metrics — plus a growing set of modules you install only when you need them:
+
+```bash
+pnpm hery module:list
+pnpm hery install <module>
+```
+
+Search (Prisma, Elasticsearch, Meilisearch), GraphQL, MCP (read and write), real-time (`live`, WebSocket), streaming (LiveKit), mail, file storage, admin impersonation, and an admin dashboard (`admin-astro`) that every module contributes a section to automatically, with no registry to maintain.
+
 ## What it deliberately does not do
 
-HeryJs covers a common backend core — auth, permissions, multi-tenancy, CRUD, jobs, notifications, real-time, audit, monitoring. It does not try to be a solution for everything. File storage, full-text search, billing, i18n, exports — for those, you write ordinary NestJS code in a clean, conventional project. HeryJs never gets in the way, but it doesn't pretend to replace judgment either.
-
-## Roadmap
-
-The plan is to prove the hard parts early, in a thin vertical slice, before spreading out into more features.
-
-- **Phase 1 — Vertical slice.** Scaffold, an in-memory capabilities engine, tenant isolation, and one fully generated resource — secured, tenant-aware, permission-aware, auth included. A conventions linter running in CI from day one, as the only real guard against structural drift once nothing re-syncs.
-- **Phase 2 — Early external validation.** A handful of outside developers generate a resource and give feedback, before any further feature gets built.
-- **Phase 3 — Widening, brick by brick.** Background jobs, real-time (SSE), a proper dev experience (`hery up`), then notifications, audit, feature flags, monitoring, and an admin surface — each proven end-to-end, not bolted on in isolation.
-- **Phase 4 — Hardening.** Opt-in row-level security, an adversarial security pass on tenant isolation and permissions, a generator that's robust enough for someone else's production.
-- **Phase 5 — Public release.** Documentation, read-only introspection for coding agents, and the story told once it's actually been validated — not before.
-- **Phase 6 — Demand-driven.** Full-text search, file storage, billing, GraphQL, and anything else the community actually asks for.
-
-Dates aren't fixed here on purpose — this ships at the pace of real progress, not a calendar.
+HeryJs covers a common backend core. It does not try to be a solution for everything. Billing, i18n — for those, you write ordinary NestJS code in a clean, conventional project. HeryJs never gets in the way, but it doesn't pretend to replace judgment either.
 
 ## Status
 
-Phase 1 through 4 are done: the vertical slice, the widening of features (jobs, real-time, notifications, audit, feature flags, monitoring, admin), and a hardening pass (opt-in row-level security, an adversarial security review of tenant isolation and permissions, a more robust generator). Phase 5 — documentation, read-only MCP introspection, public release — is under way. See the [commit history](https://github.com/techmefr/HeryJs/commits/main) for the detail.
+The vertical slice, the widening of features, and a hardening pass (opt-in row-level security, an adversarial security review, a more robust generator) are done. Since then: teams as a first-class permission scope, a module system with a growing catalog (search drivers, GraphQL, MCP, live, stream, mail, storage, impersonation), an admin dashboard every module plugs into automatically, a layered architecture enforced by an actual linter, and `hery new` — a real starting point for a project that isn't this repository. A security and correctness audit pass is next. See the [commit history](https://github.com/techmefr/HeryJs/commits/main) for the detail.
 
 ## Contributing
 
-HeryJs is a personal project, built in the open, and it's still small enough that one conversation with a maintainer can shape its direction. If you generate a resource and something feels off, or you have a use case the current conventions don't cover well, open an issue — that kind of feedback is exactly what Phase 2's external validation was for, and it doesn't stop mattering after Phase 2 closes. Pull requests are welcome too, especially ones that come with the same "prove it end-to-end, then keep only what's proven" discipline the project holds itself to (see [CONTRIBUTING.md](CONTRIBUTING.md)).
+HeryJs is a personal project, built in the open, and it's still small enough that one conversation with a maintainer can shape its direction. If you generate a resource and something feels off, or you have a use case the current conventions don't cover well, open an issue. Pull requests are welcome too, especially ones that come with the same "prove it end-to-end, then keep only what's proven" discipline the project holds itself to (see [CONTRIBUTING.md](CONTRIBUTING.md)).
 
 ## License
 
