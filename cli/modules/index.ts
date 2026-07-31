@@ -5,6 +5,6 @@ import '../../packages/stream/src/module';
 import '../../packages/graphql/src/module';
 import '../../packages/live/src/module';
 import '../../packages/storage/src/module';
-import './mail';
+import '../../packages/mail/src/module';
 import './impersonation';
 import './admin-astro';
