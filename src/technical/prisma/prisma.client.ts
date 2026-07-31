@@ -10,15 +10,35 @@ import { TenantContextStorage } from '../tenancy/tenant-context';
 
 const TENANT_SCOPED_MODELS = new Set(['Team', 'TeamMember', 'Workout']);
 
-const TENANT_FILTERED_OPERATIONS = new Set([
-  'findFirst',
-  'findMany',
-  'findUnique',
-  'count',
-  'update',
-  'updateMany',
-  'delete',
-  'deleteMany',
+type TenantHandling =
+  'stamp-data' | 'stamp-entries' | 'stamp-and-filter' | 'filter';
+
+/**
+ * Every Prisma operation on a tenant-scoped model has to be classified here.
+ * This used to be an allowlist of filtered operations, and anything missing from
+ * it ran unscoped: `upsert` let one tenant overwrite another tenant's row, and
+ * `aggregate` and `groupBy` counted rows across the whole table. An allowlist
+ * guarding a boundary has to fail closed, so an unclassified operation now
+ * throws instead of quietly crossing it.
+ */
+const TENANT_HANDLING = new Map<string, TenantHandling>([
+  ['create', 'stamp-data'],
+  ['createMany', 'stamp-entries'],
+  ['createManyAndReturn', 'stamp-entries'],
+  ['upsert', 'stamp-and-filter'],
+  ['findUnique', 'filter'],
+  ['findUniqueOrThrow', 'filter'],
+  ['findFirst', 'filter'],
+  ['findFirstOrThrow', 'filter'],
+  ['findMany', 'filter'],
+  ['count', 'filter'],
+  ['aggregate', 'filter'],
+  ['groupBy', 'filter'],
+  ['update', 'filter'],
+  ['updateMany', 'filter'],
+  ['updateManyAndReturn', 'filter'],
+  ['delete', 'filter'],
+  ['deleteMany', 'filter'],
 ]);
 
 export function createTenantScopedPrismaClient() {
@@ -33,26 +53,39 @@ export function createTenantScopedPrismaClient() {
             return query(args);
           }
 
+          const handling = TENANT_HANDLING.get(operation);
+
+          if (handling === undefined) {
+            throw new Error(
+              `Operation "${operation}" on tenant-scoped model "${model}" has no entry in TENANT_HANDLING. Classify it there rather than letting it run across the tenant boundary.`,
+            );
+          }
+
           const tenantId = TenantContextStorage.getTenantId();
           const scopedArgs = args as {
             data?: Record<string, unknown> | Record<string, unknown>[];
+            create?: Record<string, unknown>;
             where?: Record<string, unknown>;
           };
 
-          if (operation === 'create') {
+          if (handling === 'stamp-data') {
             scopedArgs.data = {
               ...(scopedArgs.data as Record<string, unknown>),
               tenantId,
             };
-          } else if (
-            operation === 'createMany' &&
-            Array.isArray(scopedArgs.data)
-          ) {
-            scopedArgs.data = scopedArgs.data.map((entry) => ({
-              ...entry,
-              tenantId,
-            }));
-          } else if (TENANT_FILTERED_OPERATIONS.has(operation)) {
+          } else if (handling === 'stamp-entries') {
+            scopedArgs.data = (
+              Array.isArray(scopedArgs.data)
+                ? scopedArgs.data
+                : [scopedArgs.data ?? {}]
+            ).map((entry) => ({ ...entry, tenantId }));
+          } else if (handling === 'stamp-and-filter') {
+            // An upsert is both halves at once: the row it may create has to
+            // carry the tenant, and the row it may update has to be found
+            // inside it.
+            scopedArgs.create = { ...scopedArgs.create, tenantId };
+            scopedArgs.where = { ...scopedArgs.where, tenantId };
+          } else {
             scopedArgs.where = { ...scopedArgs.where, tenantId };
           }
 
