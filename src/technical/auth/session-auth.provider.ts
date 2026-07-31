@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { authPrismaClient, getAuthContext } from './better-auth.instance';
+import { ApiKeyService } from './api-key.service';
 import { InvalidCredentialsException } from '#technical/errors/invalid-credentials.exception';
 import { AuthenticatedUser, AuthProvider } from './auth.types';
 
@@ -44,6 +45,8 @@ async function authenticate(
 
 @Injectable()
 export class SessionAuthProvider implements AuthProvider {
+  constructor(private readonly apiKeys: ApiKeyService) {}
+
   async register(email: string, password: string): Promise<AuthenticatedUser> {
     const { auth } = await getAuthContext();
     const result = await auth.api.signUpEmail({
@@ -97,5 +100,10 @@ export class SessionAuthProvider implements AuthProvider {
         : null;
 
     return await authenticate(session.user, impersonatedBy);
+  }
+
+  async validateApiKey(token: string): Promise<AuthenticatedUser | null> {
+    const identity = await this.apiKeys.validate(token);
+    return identity ? await authenticate(identity) : null;
   }
 }

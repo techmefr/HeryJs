@@ -73,4 +73,76 @@ describe('auth over a real HTTP round trip', () => {
       .send({ email, password: 'wrong-password' })
       .expect(401);
   });
+
+  describe('API keys', () => {
+    let sessionToken: string;
+
+    beforeAll(async () => {
+      const keyEmail = `${randomUUID()}@example.test`;
+      await request(app.getHttpServer())
+        .post('/auth/register')
+        .send({ email: keyEmail, password })
+        .expect(201);
+      const loginResponse = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ email: keyEmail, password })
+        .expect(201);
+      sessionToken = (loginResponse.body as { data: { token: string } }).data
+        .token;
+    });
+
+    it('reaches a protected route with a freshly created API key', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/api-keys')
+        .set('Authorization', `Bearer ${sessionToken}`)
+        .send({ name: 'ci-script' })
+        .expect(201);
+      const key = (created.body as { data: { key: string } }).data.key;
+      expect(key).toEqual(expect.stringContaining('hery_ak_'));
+
+      await request(app.getHttpServer())
+        .get('/protected')
+        .set('Authorization', `Bearer ${key}`)
+        .expect(200);
+    });
+
+    it('never shows the raw key again once listed', async () => {
+      const list = await request(app.getHttpServer())
+        .get('/api-keys')
+        .set('Authorization', `Bearer ${sessionToken}`)
+        .expect(200);
+
+      const keys = (list.body as { data: { name: string }[] }).data;
+      expect(keys.some((entry) => entry.name === 'ci-script')).toBe(true);
+      expect(JSON.stringify(list.body)).not.toContain('hery_ak_');
+    });
+
+    it('rejects a revoked API key', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/api-keys')
+        .set('Authorization', `Bearer ${sessionToken}`)
+        .send({ name: 'throwaway' })
+        .expect(201);
+      const { id, key } = (
+        created.body as { data: { id: string; key: string } }
+      ).data;
+
+      await request(app.getHttpServer())
+        .delete(`/api-keys/${id}`)
+        .set('Authorization', `Bearer ${sessionToken}`)
+        .expect(200);
+
+      await request(app.getHttpServer())
+        .get('/protected')
+        .set('Authorization', `Bearer ${key}`)
+        .expect(401);
+    });
+
+    it('rejects a garbage API key', async () => {
+      await request(app.getHttpServer())
+        .get('/protected')
+        .set('Authorization', 'Bearer hery_ak_nonexistent.secret')
+        .expect(401);
+    });
+  });
 });

@@ -19,6 +19,7 @@ export interface AuthProvider {
     password: string,
   ): Promise<{ user: AuthenticatedUser; token: string }>;
   validateSession(token: string): Promise<AuthenticatedUser | null>;
+  validateApiKey(token: string): Promise<AuthenticatedUser | null>;
   devToken(): Promise<{ user: AuthenticatedUser; token: string }>;
 }
 

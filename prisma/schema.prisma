@@ -29,7 +29,20 @@ model User {
   workouts      Workout[]
   notifications AppNotification[]
   memberships   TeamMember[]
+  apiKeys       ApiKey[]
   currentTeam   Team?             @relation("CurrentTeam", fields: [currentTeamId], references: [id], onDelete: SetNull)
+}
+
+model ApiKey {
+  id        String    @id @default(cuid())
+  userId    String
+  name      String
+  prefix    String    @unique
+  hashedKey String
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Team {
