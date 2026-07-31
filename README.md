@@ -71,7 +71,7 @@ Out of the box, that resource comes with:
 - **`mutate`** — create, update, soft-delete, restore
 - **Capabilities** — resolved permission decisions embedded via `?include=capabilities`, computed in memory, no per-row query
 - **Multi-tenant isolation** — enforced automatically, underneath permissions
-- **Auth** — session-based login wired in from the start
+- **Auth** — session-based login wired in from the start, plus API keys for CI and scripts
 - **A generated test suite** — scope parity, the trashed bin, resolved capabilities, tenant-header spoofing, proven for every resource, not just the example
 
 The blueprint is never read again after generation. It becomes historical documentation, nothing more. From that point on, the code is yours: edit it by hand like any other NestJS module.
@@ -93,7 +93,7 @@ HeryJs covers a common backend core. It does not try to be a solution for everyt
 
 ## Status
 
-The vertical slice, the widening of features, and a hardening pass (opt-in row-level security, an adversarial security review, a more robust generator) are done. Since then: teams as a first-class permission scope, a module system with a growing catalog (search drivers, GraphQL, MCP, live, stream, mail, storage, impersonation), an admin dashboard every module plugs into automatically, a layered architecture enforced by an actual linter, and `hery new` — a real starting point for a project that isn't this repository. A security and correctness audit pass is next. See the [commit history](https://github.com/techmefr/HeryJs/commits/main) for the detail.
+The vertical slice, the widening of features, and a hardening pass (opt-in row-level security, an adversarial security review, a more robust generator) are done. Since then: teams as a first-class permission scope, a module system with a growing catalog (search drivers, GraphQL, MCP, live, stream, mail, storage, impersonation), an admin dashboard every module plugs into automatically, a layered architecture enforced by an actual linter, and `hery new` — a real starting point for a project that isn't this repository. A pre-publication external audit has since closed out a round of fixes: tenant-safe search indexing, actor tracking on the audit trail, `hery.config.ts` as a real closed-config point, keyword-selected search engines, a bounded impersonation session with its own admin-on-admin test, and API keys for non-interactive callers. See the [commit history](https://github.com/techmefr/HeryJs/commits/main) for the detail.
 
 ## Contributing
 

@@ -16,6 +16,8 @@ DELETE /impersonation           // stop
 
 `POST /impersonation/:userId` returns a bearer token for the target user. Use it exactly like any other session token — every subsequent request authenticates as the target, tenant and capabilities included. `DELETE /impersonation`, called with that same token, ends the session. There is nothing to restore: the admin's own token was never touched by starting the impersonation, so going back to it is just a matter of using it again.
 
+The session this returns is short-lived on purpose — `impersonationSessionDuration` on Better Auth's `admin()` plugin bounds it to 30 minutes, so a support session that is never explicitly stopped does not linger indefinitely. An admin cannot impersonate another admin either: Better Auth's own admin plugin refuses that server-side, surfaced here as a 403.
+
 ## Why there is no restore step
 
 Better Auth's own impersonation flow is cookie-based — it swaps the session cookie and stashes the admin's original one in a second cookie so it can be restored later. This app is bearer-only and never reads a cookie back, so none of that machinery runs. The target session's token is lifted straight out of the API response instead, and "stopping" is nothing more than deleting that session's own row. The admin's original session was never revoked, so it is still valid the whole time.
@@ -35,6 +37,8 @@ UPDATE "User" SET role = 'admin' WHERE email = '...';
 ## Audited like anything else sensitive
 
 Starting and ending a session both write a hash-chained audit row (`writeAuditLog`, model `Impersonation`) — who impersonated whom, and when it ended. It goes through the same audit trail as any tenant-scoped model, called directly rather than through the automatic Prisma-extension path, since a Better Auth session is not a model the framework owns.
+
+Every audit row, on any model, also carries `userId` and `impersonatedBy`. A write made while impersonating is attributed to the target — the row's `userId` is the target's id, exactly as it would be if the target had made the request themselves — while `impersonatedBy` keeps the admin visible. The hash chain covers both fields, so altering either after the fact breaks the same tamper check that protects the rest of the entry.
 
 ## Installing
 

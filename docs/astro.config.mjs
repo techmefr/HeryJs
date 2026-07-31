@@ -22,6 +22,7 @@ export default defineConfig({
 				{
 					label: 'Core concepts',
 					items: [
+						{ label: 'Authentication', slug: 'guides/authentication' },
 						{ label: 'Capabilities', slug: 'guides/capabilities' },
 						{ label: 'Teams', slug: 'guides/teams' },
 						{ label: 'Multi-tenancy', slug: 'guides/tenancy' },

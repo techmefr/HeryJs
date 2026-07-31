@@ -1,6 +1,6 @@
 ---
 title: Full-text search
-description: Prisma by default, Elasticsearch or Meilisearch as modules, behind one three-method contract — and what changes when you swap.
+description: A closed list of named engines declared in hery.config.ts, Prisma as the built-in default, Elasticsearch or Meilisearch as installable drivers behind the same tenant-safe contract.
 ---
 
 Every generated resource accepts a free-text query on its collection route:
@@ -9,7 +9,51 @@ Every generated resource accepts a free-text query on its collection route:
 GET /workouts?q=squat
 ```
 
-No configuration, no module, no engine. The default implementation is a `LIKE` against the resource's string columns, which is the right answer for most projects for a long time. When it stops being the right answer, an engine drops in behind the same contract.
+With no config and no module installed, that runs against Prisma — a case-insensitive substring match, the right answer for most projects for a long time. When it stops being the right answer, an engine drops in behind the same contract, selected by name rather than by which module happens to be installed.
+
+## `hery.config.ts` is the closed list of engines
+
+A project-root config file, typed against `HeryConfig` via `satisfies` — an unknown key or a malformed engine fails at typecheck, not at boot:
+
+```ts
+// hery.config.ts
+import type { HeryConfig } from './src/technical/config/hery-config.types';
+
+export default {
+  search: {
+    default: 'prisma',
+    engines: {
+      prisma: { driver: 'prisma' },
+    },
+  },
+} satisfies HeryConfig;
+```
+
+`search.engines` is a Scout-style keyword-to-driver map. Adding an entry after installing `search-elasticsearch`:
+
+```ts
+export default {
+  search: {
+    default: 'prisma',
+    engines: {
+      prisma: { driver: 'prisma' },
+      elasticsearch: { driver: 'elasticsearch' },
+    },
+  },
+} satisfies HeryConfig;
+```
+
+`SearchEngineRegistry` resolves every declared engine at construction, once, at boot. A `driver` this list names without a matching module installed to back it fails the app's own startup — not a silent fallback to Prisma, not a 500 on first search. Fix it the way any other misconfiguration gets fixed: install the module, or remove the entry.
+
+## Selecting an engine per request
+
+```
+GET /workouts?q=squat&search[engine]=elasticsearch
+```
+
+`search[engine]` picks the keyword from `hery.config.ts`'s closed list, alongside `filter[x]` in the same bracket-style query convention. Omit it and the request falls back to `search.default`. Ask for a keyword the config never declared and the answer is a plain `InvalidQueryException` — a 400, the same family as an unknown sort or filter field, never a silent fallback and never a 5xx.
+
+Prisma is one entry in that list like any other, not a special case: `PrismaSearchDriver` implements the exact same `SearchDriver` interface Elasticsearch and Meilisearch do.
 
 ## The contract
 
@@ -19,30 +63,15 @@ Three methods, in `technical/search/search-driver.ts`:
 export const SEARCH_DRIVER = Symbol('SEARCH_DRIVER');
 
 export interface SearchDriver {
-  index(collection: string, id: string, document: Record<string, unknown>): Promise<void>;
+  index(collection: string, id: string, document: Record<string, unknown>, tenantId: string): Promise<void>;
   remove(collection: string, id: string): Promise<void>;
-  search(collection: string, term: string, fields: readonly string[]): Promise<string[]>;
+  search(collection: string, term: string, fields: readonly string[], tenantId: string): Promise<string[]>;
 }
 ```
 
 `search()` returns **ids only** — no scores, no highlights, no totals. That is what lets the engine's answer be folded into a Prisma query as one clause among several, instead of becoming the source of the response. The engine proposes candidates; the database still decides what the caller may see.
 
-## Selecting a driver
-
-There is no environment variable for this. The generated service injects the driver **optionally**:
-
-```ts
-@Optional()
-@Inject(SEARCH_DRIVER)
-private readonly searchDriver?: SearchDriver,
-```
-
-So the default is literally *no provider bound*, and the fallback path runs. Installing `search-elasticsearch` or `search-meilisearch` writes a driver plus a global module that binds `SEARCH_DRIVER`; importing that module into `src/app.module.ts` is what switches every resource over at once.
-
-```bash
-pnpm hery install search-meilisearch
-pnpm hery up --start          # boots the service, resolves MEILISEARCH_URL into .env
-```
+`tenantId` is mandatory on `index()` and `search()`, not optional metadata. An external engine holds every tenant's documents in one collection, so the tenant boundary has to be enforced inside the driver's own query — `bool.filter` on Elasticsearch, `filter` plus `updateFilterableAttributes` on Meilisearch — not bolted on by filtering the driver's results afterwards. A top-N search that never knew about tenants can fill its whole page with another tenant's matches, silently starving or zeroing out the caller's own results with no error anywhere. `PrismaSearchDriver` gets this for free: it reads through the same tenant-scoped Prisma client every other query already goes through, so it simply ignores the parameter.
 
 ## The default: Prisma `contains`
 
@@ -88,41 +117,50 @@ return this.prisma.workout.findMany({
 });
 ```
 
-The capability scope sits in its own `AND` branch; the search clause sits in another. Because they are separate elements of an `AND`, search can only ever *intersect* — it is arithmetically incapable of re-admitting a row the scope excluded. That holds for the engine path too, where `searchWhere` is an `id: { in: [...] }` list handed back by a system that knows nothing about permissions.
+The capability scope sits in its own `AND` branch; the search clause sits in another. Because they are separate elements of an `AND`, search can only ever *intersect* — it is arithmetically incapable of re-admitting a row the scope excluded. That holds for the engine path too, where `searchWhere` is an `id: { in: [...] }` list handed back by a system that, for an external engine, already filtered by tenant on its own side before returning anything.
 
 Tenancy is enforced a layer lower still, by the tenant-scoping Prisma extension, which adds its own `tenantId` filter to the same query. Neither clause can be reached from the query string.
 
-## What changes when you install an engine
+## What still changes when you install an engine
 
-Two behaviour changes, neither of which is a leak, both of which you should know about before flipping the switch.
+**Soft-deleted records leave the index.** `softDelete` removes the document and `restore` re-adds it, so `?q=…&onlyTrashed=true` returns nothing while a non-Prisma driver is active, where the default path would return the matches.
 
-**Recall becomes approximate in a multi-tenant deployment.** The index name is the resource name, shared by every tenant, and the indexed document carries only the searchable fields — no `tenantId`, no `ownerId`, no `teamId`. `SearchDriver.search()` takes no filter argument. So the engine returns its default top-N hits computed across *all* tenants and owners, and Prisma then discards the ones the caller may not see. Nothing leaks, but a tenant with genuinely matching records can receive fewer results than exist — or none — because the global result window was consumed by other tenants' documents. On the default Prisma path this cannot happen.
+**Recall is exact per tenant, but still an engine's own top-N.** Once a driver enforces the tenant filter server-side, a tenant's results are no longer diluted by other tenants' documents — but the engine's own default window (10 hits on Elasticsearch, 20 on Meilisearch, neither driver passes an explicit size) is still the ceiling on candidates *before* the security clauses narrow them further.
 
-**Soft-deleted records leave the index.** `softDelete` removes the document and `restore` re-adds it, so `?q=…&onlyTrashed=true` returns nothing while a driver is active, where the default path would return the matches.
+## Index maintenance is asynchronous by failure, not by design
 
-## Index maintenance is synchronous and unguarded
-
-The generated service syncs the index inside the same request as the write, after the database has committed:
+The generated service syncs the index inside the same request as the write, after the database has committed, wrapped in its own `try`/`catch`:
 
 ```ts
 private async syncSearchIndex(record: Workout) {
-  if (!this.searchDriver) {
+  const driver = this.searchEngines.externalDriver;
+  if (!driver) {
     return;
   }
-  if (record.deletedAt) {
-    await this.searchDriver.remove(SEARCH_COLLECTION, record.id);
-    return;
+  try {
+    if (record.deletedAt) {
+      await driver.remove(SEARCH_COLLECTION, record.id);
+      return;
+    }
+    const document = Object.fromEntries(
+      SEARCHABLE_FIELDS.map((field) => [field, record[field]]),
+    );
+    await driver.index(SEARCH_COLLECTION, record.id, document, record.tenantId);
+  } catch (error) {
+    this.logger.warn(`search index out of sync for ${SEARCH_COLLECTION}:${record.id}: ${error.message}`);
   }
-  const document = Object.fromEntries(
-    SEARCHABLE_FIELDS.map((field) => [field, record[field]]),
-  );
-  await this.searchDriver.index(SEARCH_COLLECTION, record.id, document);
 }
 ```
 
-Called from `create`, `update`, `softDelete` and `restore`. The `await` is not wrapped in a `try`, which has a consequence worth stating plainly: **if the engine is unreachable, the write still commits and the request still fails.** The caller sees a 5xx for an operation that succeeded, and the index falls behind.
+Called from `create`, `update`, `softDelete` and `restore`. An unreachable engine logs and moves on: the write still commits and the request still succeeds, at the cost of the index falling behind until it is reachable again. `externalDriver` is whichever single non-Prisma driver a project has installed (at most one — Elasticsearch and Meilisearch both bind the same `SEARCH_DRIVER` token); Prisma's own `index()`/`remove()` are no-ops, since Prisma is already the system of record and never needs a separate sync step.
 
-There is also no reindex or backfill command. Installing a search module on an existing dataset leaves the index empty — only records written afterwards are indexed. Both of these are real gaps rather than design decisions, and both are worth a small piece of owned code before an engine goes anywhere near production: wrap `syncSearchIndex` in your own error handling, and write the backfill loop once.
+## Backfilling an existing dataset
+
+```bash
+pnpm hery search:reindex Workout
+```
+
+Installing a search module on an existing dataset does not retroactively index anything written before it — only writes made afterwards go through `syncSearchIndex`. `search:reindex <model>` walks every row of that Prisma model, across every tenant, and calls `index()` or `remove()` on whatever driver is installed, deriving the searchable fields from the same rule the generator itself uses (every scalar `String` field, minus the reserved ones like `id`/`tenantId`/timestamps). It bypasses the tenant-scoped Prisma client entirely — the same way `prisma/seed.ts` does — because a backfill has no single request's tenant to scope by; it needs every tenant's rows in one pass.
 
 ## The services
 
@@ -136,6 +174,4 @@ Both modules ship a compose file with the container port unpublished, so Docker 
 | URL variable | `ELASTICSEARCH_URL` | `MEILISEARCH_URL` |
 | Also | — | `MEILISEARCH_API_KEY` |
 
-Neither driver creates an explicit mapping or index settings — indices are created implicitly on first write with the engine's dynamic defaults, and field restriction happens per query rather than in a stored configuration.
-
-Note that neither driver passes a result-size parameter, so the engine's default window above is the effective ceiling on candidates *before* the security clauses narrow them. Raising it is an edit in the driver file, which you own.
+Neither driver creates an explicit mapping or index settings — indices are created implicitly on first write with the engine's dynamic defaults, and field restriction happens per query rather than in a stored configuration. Installing either prints a reminder to declare the engine in `hery.config.ts`; until it is declared, `search[engine]` has no keyword to select it by.
