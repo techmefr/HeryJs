@@ -16,6 +16,7 @@ const CURRENT_SUBJECT: CapabilitySubject = {
   id: 'user-1',
   teamIds: ['team-a'],
   currentTeamId: 'team-a',
+  role: null,
 };
 
 const RECORDS: Record<string, CapabilityRecord> = {

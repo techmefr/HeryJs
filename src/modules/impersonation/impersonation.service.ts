@@ -62,9 +62,10 @@ export class ImpersonationService {
         body: { userId: targetUserId },
       });
     } catch (error) {
-      // Not an admin, or the target is itself an admin: Better Auth's own
-      // role check (granted only to role "admin", see better-auth.instance.ts)
-      // already refused it, so this just gives the refusal HeryJs's shape.
+      // The caller's own role is already checked upstream by
+      // @Capability(canImpersonate) -- the only way this still throws is
+      // Better Auth's other admin-plugin rule, refusing to impersonate a
+      // user who is themselves an admin.
       if (error instanceof APIError) {
         throw new CapabilityForbiddenException({ reason: error.message });
       }

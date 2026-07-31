@@ -15,6 +15,7 @@ const subject: CapabilitySubject = {
   id: 'user-1',
   teamIds: ['team-a', 'team-b'],
   currentTeamId: 'team-a',
+  role: null,
 };
 
 const rows: Row[] = [
@@ -77,6 +78,7 @@ describe('scopeWhereFor', () => {
       id: 'user-9',
       teamIds: [],
       currentTeamId: null,
+      role: null,
     };
 
     expect(scopeWhereFor('team', teamless)).toEqual({ teamId: { in: [] } });

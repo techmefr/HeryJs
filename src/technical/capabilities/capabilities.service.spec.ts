@@ -8,11 +8,13 @@ describe('CapabilitiesService', () => {
     id: 'user-1',
     teamIds: ['team-a'],
     currentTeamId: 'team-a',
+    role: null,
   };
   const stranger: CapabilitySubject = {
     id: 'user-2',
     teamIds: ['team-b'],
     currentTeamId: 'team-b',
+    role: null,
   };
 
   const ownedRecord: CapabilityRecord = { ownerId: 'user-1', teamId: 'team-a' };

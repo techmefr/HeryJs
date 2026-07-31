@@ -9,11 +9,15 @@ const BETTER_AUTH_INSTANCE_FILE = 'src/technical/auth/better-auth.instance.ts';
 const AUTH_TYPES_FILE = 'src/technical/auth/auth.types.ts';
 const SESSION_AUTH_PROVIDER_FILE =
   'src/technical/auth/session-auth.provider.ts';
+const CAPABILITIES_TYPES_FILE =
+  'src/technical/capabilities/capabilities.types.ts';
+const CAPABILITIES_SUBJECT_FILE = 'src/technical/capabilities/subject.ts';
 
 const SELF_EXCEPTION_FILE =
   'src/technical/errors/self-impersonation.exception.ts';
 const NOT_IMPERSONATING_EXCEPTION_FILE =
   'src/technical/errors/not-impersonating.exception.ts';
+const POLICY_FILE = 'src/modules/impersonation/impersonation.policy.ts';
 const SERVICE_FILE = 'src/modules/impersonation/impersonation.service.ts';
 const CONTROLLER_FILE = 'src/modules/impersonation/impersonation.controller.ts';
 const MODULE_FILE = 'src/modules/impersonation/impersonation.module.ts';
@@ -44,6 +48,16 @@ export class NotImpersonatingException extends DomainException {
     );
   }
 }
+`;
+
+const POLICY_CONTENT = `import type { PolicyCheck } from '../../technical/capabilities/capability-check';
+
+// Better Auth's own admin() plugin also refuses this server-side (it is the
+// only thing granting the "impersonate" permission to a role) -- this gate
+// makes that same decision visible to HeryJs's own capability system, so the
+// route is authorized the same way every other route in the framework is.
+export const canImpersonate: PolicyCheck = (subject) =>
+  subject.role === 'admin' ? { allowed: true, scope: 'all' } : { allowed: false };
 `;
 
 const SERVICE_CONTENT = `import { Inject, Injectable } from '@nestjs/common';
@@ -110,9 +124,10 @@ export class ImpersonationService {
         body: { userId: targetUserId },
       });
     } catch (error) {
-      // Not an admin, or the target is itself an admin: Better Auth's own
-      // role check (granted only to role "admin", see better-auth.instance.ts)
-      // already refused it, so this just gives the refusal HeryJs's shape.
+      // The caller's own role is already checked upstream by
+      // @Capability(canImpersonate) -- the only way this still throws is
+      // Better Auth's other admin-plugin rule, refusing to impersonate a
+      // user who is themselves an admin.
       if (error instanceof APIError) {
         throw new CapabilityForbiddenException({ reason: error.message });
       }
@@ -165,10 +180,13 @@ const CONTROLLER_CONTENT = `import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { Capability } from '../../technical/capabilities/capability.decorator';
+import { CapabilitiesGuard } from '../../technical/capabilities/capabilities.guard';
 import { MissingSessionException } from '../../technical/errors/invalid-session.exception';
 import { ok } from '../../technical/http/envelope';
 import { SessionGuard } from '../../technical/auth/session.guard';
 import type { RequestWithUser } from '../../technical/auth/session.guard';
+import { canImpersonate } from './impersonation.policy';
 import { ImpersonationService } from './impersonation.service';
 
 // SessionGuard already validated this exact header to build req.user, so
@@ -189,11 +207,12 @@ function bearerToken(req: RequestWithUser): string {
 }
 
 @Controller('impersonation')
-@UseGuards(SessionGuard)
+@UseGuards(SessionGuard, CapabilitiesGuard)
 export class ImpersonationController {
   constructor(private readonly impersonation: ImpersonationService) {}
 
   @Post(':userId')
+  @Capability(canImpersonate)
   async start(@Req() req: RequestWithUser, @Param('userId') userId: string) {
     const session = await this.impersonation.start(
       req.user,
@@ -235,6 +254,7 @@ registerModule({
     const files: Record<string, string> = {
       [SELF_EXCEPTION_FILE]: SELF_EXCEPTION_CONTENT,
       [NOT_IMPERSONATING_EXCEPTION_FILE]: NOT_IMPERSONATING_EXCEPTION_CONTENT,
+      [POLICY_FILE]: POLICY_CONTENT,
       [SERVICE_FILE]: SERVICE_CONTENT,
       [CONTROLLER_FILE]: CONTROLLER_CONTENT,
       [MODULE_FILE]: MODULE_CONTENT,
@@ -350,6 +370,34 @@ registerModule({
       'impersonatedBy,\n  };',
     );
     console.log(pc.green(`✔ patched ${SESSION_AUTH_PROVIDER_FILE}`));
+
+    patchExactStrings(
+      CAPABILITIES_TYPES_FILE,
+      [
+        [
+          '  currentTeamId: string | null;\n}',
+          [
+            '  currentTeamId: string | null;',
+            '  role: string | null;',
+            '}',
+          ].join('\n'),
+        ],
+      ],
+      'role: string | null;',
+    );
+    console.log(pc.green(`✔ patched ${CAPABILITIES_TYPES_FILE}`));
+
+    patchExactStrings(
+      CAPABILITIES_SUBJECT_FILE,
+      [
+        [
+          '    currentTeamId: user.currentTeamId,\n  };',
+          '    currentTeamId: user.currentTeamId,\n    role: user.role,\n  };',
+        ],
+      ],
+      'role: user.role,',
+    );
+    console.log(pc.green(`✔ patched ${CAPABILITIES_SUBJECT_FILE}`));
 
     console.log('');
     console.log(pc.cyan('Next steps:'));

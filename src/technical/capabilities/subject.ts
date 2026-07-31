@@ -11,5 +11,6 @@ export function subjectOf(user: AuthenticatedUser): CapabilitySubject {
     id: user.id,
     teamIds: user.teamIds,
     currentTeamId: user.currentTeamId,
+    role: user.role,
   };
 }
