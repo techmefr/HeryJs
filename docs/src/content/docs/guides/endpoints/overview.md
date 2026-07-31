@@ -14,10 +14,10 @@ The pages in this section walk through a real one, `Workout`, end to end. Each p
 | `GET`    | `/workouts`             | List, with search, sort, filter and pagination             | [Search](/guides/endpoints/search/)              |
 | `GET`    | `/workouts/describe`    | The resource's contract — fields, limits, validation rules | [Details](/guides/endpoints/details/)            |
 | `GET`    | `/workouts/:id`         | Read one record                                            | [Details](/guides/endpoints/details/)            |
-| `POST`   | `/workouts`             | Create                                                     | [Create and update](/guides/endpoints/mutate/)   |
-| `PATCH`  | `/workouts/:id`         | Update                                                     | [Create and update](/guides/endpoints/mutate/)   |
-| `DELETE` | `/workouts/:id`         | Soft-delete                                                | [Delete and restore](/guides/endpoints/destroy/) |
-| `POST`   | `/workouts/:id/restore` | Undo a soft-delete                                         | [Delete and restore](/guides/endpoints/destroy/) |
+| `POST`   | `/workouts`             | Create                                                     | [Create](/guides/endpoints/create/)   |
+| `PATCH`  | `/workouts/:id`         | Update                                                     | [Update](/guides/endpoints/update/)   |
+| `DELETE` | `/workouts/:id`         | Soft-delete                                                | [Delete](/guides/endpoints/delete/) |
+| `POST`   | `/workouts/:id/restore` | Undo a soft-delete                                         | [Restore](/guides/endpoints/restore/) |
 
 Every one of them requires a session — send the bearer token you got from `/auth/login` or `/auth/register` in an `Authorization: Bearer <token>` header. See [Authentication](/guides/authentication/) for how to get one.
 

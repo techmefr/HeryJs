@@ -29,8 +29,10 @@ import shareIcon from 'lucide-static/icons/share-2.svg?raw';
 import layoutDashboardIcon from 'lucide-static/icons/layout-dashboard.svg?raw';
 import bookOpenIcon from 'lucide-static/icons/book-open.svg?raw';
 import fileSearchIcon from 'lucide-static/icons/file-search.svg?raw';
-import pencilIcon from 'lucide-static/icons/pencil.svg?raw';
+import plusIcon from 'lucide-static/icons/plus.svg?raw';
+import pencilLineIcon from 'lucide-static/icons/pencil-line.svg?raw';
 import trashIcon from 'lucide-static/icons/trash-2.svg?raw';
+import rotateCcwIcon from 'lucide-static/icons/rotate-ccw.svg?raw';
 import wrenchIcon from 'lucide-static/icons/wrench.svg?raw';
 import activityIcon from 'lucide-static/icons/activity.svg?raw';
 
@@ -66,8 +68,10 @@ const LEAF_ICONS: Record<string, string> = {
 	Overview: bookOpenIcon,
 	Search: searchIcon,
 	Details: fileSearchIcon,
-	'Create and update': pencilIcon,
-	'Delete and restore': trashIcon,
+	Create: plusIcon,
+	Update: pencilLineIcon,
+	Delete: trashIcon,
+	Restore: rotateCcwIcon,
 	'Developer tooling': wrenchIcon,
 	'Pipeline trace': activityIcon,
 };

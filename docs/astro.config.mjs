@@ -72,8 +72,10 @@ export default defineConfig({
 						{ label: 'Overview', slug: 'guides/endpoints/overview' },
 						{ label: 'Search', slug: 'guides/endpoints/search' },
 						{ label: 'Details', slug: 'guides/endpoints/details' },
-						{ label: 'Create and update', slug: 'guides/endpoints/mutate' },
-						{ label: 'Delete and restore', slug: 'guides/endpoints/destroy' },
+						{ label: 'Create', slug: 'guides/endpoints/create' },
+						{ label: 'Update', slug: 'guides/endpoints/update' },
+						{ label: 'Delete', slug: 'guides/endpoints/delete' },
+						{ label: 'Restore', slug: 'guides/endpoints/restore' },
 					],
 				},
 				{

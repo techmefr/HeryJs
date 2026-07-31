@@ -1,9 +1,7 @@
 ---
-title: Delete and restore
-description: Soft-deleting a record and undoing it — what changes, what a client sees in the meantime, and nothing is ever gone from the database.
+title: Delete
+description: Soft-deleting a record — what changes, what a client sees afterwards, and nothing is ever gone from the database.
 ---
-
-## Deleting a record
 
 ```
 DELETE /workouts/cly8x7g9k0000abc123def456
@@ -23,22 +21,4 @@ Soft-delete: the record stops appearing in normal listings and detail reads (a 4
 }
 ```
 
-## Restoring it
-
-```
-POST /workouts/cly8x7g9k0000abc123def456/restore
-Authorization: Bearer <token>
-```
-
-Undoes it. Answers with the record's own `data` shape, same as create and update, `deletedAt` back to `null`.
-
-```json
-{
-  "data": {
-    "id": "cly8x7g9k0000abc123def456",
-    "title": "Leg day",
-    "deletedAt": null
-  },
-  "messages": []
-}
-```
+To undo this, see [Restore](/guides/endpoints/restore/).
