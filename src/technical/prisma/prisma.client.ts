@@ -162,6 +162,8 @@ export function createTenantScopedPrismaClient() {
               operation,
               recordId: record?.id ?? null,
               data: result,
+              userId: TenantContextStorage.getUserId(),
+              impersonatedBy: TenantContextStorage.getImpersonatedBy(),
             });
           }
 

@@ -7,13 +7,14 @@ import { AppModule } from '#app.module';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 import type { TestUser } from '#devtools/testing/register-and-login';
+import { WorkoutModule } from '../../../examples/workout/workout.module';
 
 describe('Impersonation', () => {
   let app: INestApplication<App>;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [AppModule, WorkoutModule],
     }).compile();
     app = moduleRef.createNestApplication();
     await app.init();
@@ -121,6 +122,33 @@ describe('Impersonation', () => {
       orderBy: { createdAt: 'asc' },
     });
     expect(trail.map((entry) => entry.operation)).toEqual(['start', 'end']);
+    expect(trail.map((entry) => entry.userId)).toEqual([admin.id, target.id]);
+    expect(trail.map((entry) => entry.impersonatedBy)).toEqual([
+      null,
+      admin.id,
+    ]);
+  });
+
+  it('attributes a write made while impersonating to the target, but keeps the admin visible as impersonatedBy', async () => {
+    const admin = await registerAndLogin(app);
+    await promoteToAdmin(admin.id);
+    const target = await registerAndLogin(app);
+
+    const started = await startImpersonating(admin, target.id).expect(201);
+    const { data } = started.body as { data: { token: string } };
+
+    const created = await request(app.getHttpServer())
+      .post('/workouts')
+      .set('Authorization', `Bearer ${data.token}`)
+      .send({ title: 'title-value' })
+      .expect(201);
+    const workoutId = (created.body as { data: { id: string } }).data.id;
+
+    const entry = await authPrismaClient.auditLog.findFirst({
+      where: { model: 'Workout', recordId: workoutId },
+    });
+    expect(entry?.userId).toBe(target.id);
+    expect(entry?.impersonatedBy).toBe(admin.id);
   });
 
   it('refuses to end a session that never started one', async () => {

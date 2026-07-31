@@ -10,19 +10,19 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  emailVerified Boolean  @default(false)
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified Boolean   @default(false)
   name          String?
   image         String?
-  tenantId      String   @default("default")
+  tenantId      String    @default("default")
   currentTeamId String?
   role          String?
-  banned        Boolean  @default(false)
+  banned        Boolean   @default(false)
   banReason     String?
   banExpires    DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   sessions      Session[]
   accounts      Account[]
@@ -121,15 +121,17 @@ model AppNotification {
 }
 
 model AuditLog {
-  id           String   @id @default(cuid())
-  tenantId     String
-  model        String
-  operation    String
-  recordId     String?
-  data         Json
-  hash         String
-  previousHash String?
-  createdAt    DateTime @default(now())
+  id             String   @id @default(cuid())
+  tenantId       String
+  model          String
+  operation      String
+  recordId       String?
+  data           Json
+  userId         String?
+  impersonatedBy String?
+  hash           String
+  previousHash   String?
+  createdAt      DateTime @default(now())
 
   @@index([tenantId])
 }
@@ -160,4 +162,3 @@ model MailLog {
 
   @@index([tenantId])
 }
-

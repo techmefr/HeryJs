@@ -36,6 +36,13 @@ export class TenantMiddleware implements NestMiddleware {
       detail: { tenantId },
     });
 
-    TenantContextStorage.run({ tenantId }, () => next());
+    TenantContextStorage.run(
+      {
+        tenantId,
+        userId: user?.id ?? null,
+        impersonatedBy: user?.impersonatedBy ?? null,
+      },
+      () => next(),
+    );
   }
 }

@@ -24,6 +24,13 @@ interface AuditEntryInput {
   operation: string;
   recordId: string | null;
   data: unknown;
+  // Who did this, and, if it happened during an impersonation session, who
+  // was really behind it -- without these, a write made by an admin wearing
+  // a user's identity is indistinguishable from that user's own write, and
+  // the hash chain only proves the entry hasn't been altered, not who it
+  // belongs to.
+  userId: string | null;
+  impersonatedBy: string | null;
 }
 
 function computeHash(previousHash: string | null, entry: AuditEntryInput) {
@@ -52,6 +59,8 @@ export async function writeAuditLog(
       operation: entry.operation,
       recordId: entry.recordId,
       data: entry.data as object,
+      userId: entry.userId,
+      impersonatedBy: entry.impersonatedBy,
       hash,
       previousHash,
     },

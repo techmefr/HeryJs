@@ -82,6 +82,8 @@ export class ImpersonationService {
         targetUserId: target.id,
         targetEmail: target.email,
       },
+      userId: admin.id,
+      impersonatedBy: null,
     });
 
     return {
@@ -105,6 +107,8 @@ export class ImpersonationService {
       operation: 'end',
       recordId: user.id,
       data: { adminId: user.impersonatedBy, targetUserId: user.id },
+      userId: user.id,
+      impersonatedBy: user.impersonatedBy,
     });
   }
 }
