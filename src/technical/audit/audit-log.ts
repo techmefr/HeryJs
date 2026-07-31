@@ -3,7 +3,20 @@ import type { PrismaClient } from '@prisma/client';
 import { canonicalJson } from './canonical-json';
 
 export const AUDITED_MODELS = new Set(['Workout']);
-export const AUDITED_OPERATIONS = new Set(['create', 'update', 'delete']);
+// A bulk operation is still a mutation of an audited model -- `updateMany`/
+// `deleteMany`/`upsert` used to be absent from this set, so a single call
+// could rewrite or erase every row for a tenant with zero trace in the
+// chain. `recordId` degrades to null for these (the result is `{ count }`,
+// not a record), but the entry itself, and the count in `data`, is exactly
+// what makes the gap visible instead of invisible.
+export const AUDITED_OPERATIONS = new Set([
+  'create',
+  'update',
+  'delete',
+  'updateMany',
+  'deleteMany',
+  'upsert',
+]);
 
 interface AuditEntryInput {
   tenantId: string;

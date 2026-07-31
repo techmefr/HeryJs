@@ -4,10 +4,17 @@ import * as path from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { env } from '#technical/config/env';
 import { InvalidStorageKeyException } from './invalid-storage-key.exception';
+import { StorageBodyTooLargeException } from './storage-body-too-large.exception';
 import type { StorageProvider } from './storage.types';
 
 const ROOT = path.resolve(process.cwd(), 'storage');
 const DEFAULT_TTL_SECONDS = 900;
+const MAX_BODY_BYTES = 25 * 1024 * 1024;
+const DEFAULT_CONTENT_TYPE = 'application/octet-stream';
+
+function metaPath(target: string): string {
+  return `${target}.meta.json`;
+}
 
 /**
  * A key names a location inside ROOT and nothing else. `path.join` walks out of
@@ -33,14 +40,38 @@ function insideRoot(key: string): string {
 // anything beyond local dev.
 @Injectable()
 export class LocalStorageProvider implements StorageProvider {
-  async put(key: string, body: Buffer): Promise<void> {
+  async put(key: string, body: Buffer, contentType: string): Promise<void> {
+    if (body.byteLength > MAX_BODY_BYTES) {
+      throw new StorageBodyTooLargeException(body.byteLength, MAX_BODY_BYTES);
+    }
+
     const target = insideRoot(key);
     await mkdir(path.dirname(target), { recursive: true });
     await writeFile(target, body);
+    await writeFile(metaPath(target), JSON.stringify({ contentType }));
   }
 
   async remove(key: string): Promise<void> {
-    await rm(insideRoot(key), { force: true });
+    const target = insideRoot(key);
+    await rm(target, { force: true });
+    await rm(metaPath(target), { force: true });
+  }
+
+  // The controller serves this file's bytes directly (S3/MinIO never proxy
+  // through this app, they serve their own signed URL) -- without the
+  // stored content type, the browser is left to sniff the response and will
+  // happily execute an uploaded HTML/SVG file as same-origin markup.
+  async contentTypeOf(key: string): Promise<string> {
+    try {
+      const raw = await readFile(metaPath(insideRoot(key)), 'utf8');
+      const contentType = (JSON.parse(raw) as { contentType?: unknown })
+        .contentType;
+      return typeof contentType === 'string'
+        ? contentType
+        : DEFAULT_CONTENT_TYPE;
+    } catch {
+      return DEFAULT_CONTENT_TYPE;
+    }
   }
 
   signedUrl(

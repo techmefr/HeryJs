@@ -26,7 +26,15 @@ export class StorageController {
       throw new NotFoundException();
     }
 
-    const body = await this.local.read(key);
-    res.send(body);
+    const [body, contentType] = await Promise.all([
+      this.local.read(key),
+      this.local.contentTypeOf(key),
+    ]);
+
+    // nosniff matters as much as the content type itself: without it, a
+    // browser that doesn't trust a mislabeled type will still sniff an
+    // uploaded HTML/SVG file and execute it same-origin.
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.type(contentType).send(body);
   }
 }

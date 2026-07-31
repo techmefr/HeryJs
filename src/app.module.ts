@@ -37,6 +37,15 @@ import { DomainExceptionFilter } from '#technical/errors/domain-exception.filter
           process.env.NODE_ENV === 'test'
             ? undefined
             : { target: 'pino-pretty', options: { singleLine: true } },
+        // A bearer token IS a live session (or, for up to 30 minutes, an
+        // impersonation session) -- logging it verbatim on every request is
+        // equivalent to logging the password. redact() below drops the value
+        // rather than the whole header, so the rest of pino-http's default
+        // request serializer is unaffected.
+        redact: {
+          paths: ['req.headers.authorization', 'req.headers.cookie'],
+          censor: '[redacted]',
+        },
       },
     }),
     AuditModule,
