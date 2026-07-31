@@ -1,9 +1,9 @@
 import '../../packages/search-elasticsearch/src/module';
 import '../../packages/search-meilisearch/src/module';
 import '../../packages/mcp/src/module';
+import '../../packages/stream/src/module';
 import './graphql';
 import './live';
-import './stream';
 import './mail';
 import './storage';
 import './impersonation';

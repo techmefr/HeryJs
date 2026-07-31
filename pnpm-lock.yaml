@@ -251,6 +251,24 @@ importers:
         specifier: ^0.34.5
         version: 0.34.5
 
+  packages/mcp:
+    devDependencies:
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.30.0
+        version: 1.30.0(zod@4.4.3)
+      '@nestjs/common':
+        specifier: ^11.0.0
+        version: 11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@types/express':
+        specifier: ^5.0.0
+        version: 5.0.6
+      picocolors:
+        specifier: ^1.1.1
+        version: 1.1.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
   packages/search-elasticsearch:
     devDependencies:
       '@elastic/elasticsearch':
@@ -274,6 +292,21 @@ importers:
       meilisearch:
         specifier: ^0.44.0
         version: 0.44.1
+      picocolors:
+        specifier: ^1.1.1
+        version: 1.1.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
+  packages/stream:
+    devDependencies:
+      '@nestjs/common':
+        specifier: ^11.0.0
+        version: 11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      livekit-server-sdk:
+        specifier: ^2.17.0
+        version: 2.17.0
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
