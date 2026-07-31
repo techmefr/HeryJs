@@ -1,4 +1,4 @@
-import './elasticsearch';
+import '../../packages/search-elasticsearch/src/module';
 import './meilisearch';
 import './graphql';
 import './mcp';

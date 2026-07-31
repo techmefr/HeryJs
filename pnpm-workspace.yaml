@@ -2,6 +2,7 @@ packages:
   - '.'
   - 'admin'
   - 'docs'
+  - 'packages/*'
 
 allowBuilds:
   '@prisma/client': true

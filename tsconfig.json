@@ -22,5 +22,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true
   },
-  "exclude": ["node_modules", "dist", "docs", "admin"]
+  "exclude": ["node_modules", "dist", "docs", "admin", "packages"]
 }

@@ -1,0 +1,11 @@
+{
+  "name": "search-elasticsearch",
+  "private": true,
+  "version": "0.0.1",
+  "devDependencies": {
+    "@elastic/elasticsearch": "^8.17.0",
+    "@nestjs/common": "^11.0.0",
+    "picocolors": "^1.1.1",
+    "typescript": "^5.7.3"
+  }
+}
