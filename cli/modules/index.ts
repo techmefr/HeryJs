@@ -7,4 +7,4 @@ import '../../packages/live/src/module';
 import '../../packages/storage/src/module';
 import '../../packages/mail/src/module';
 import '../../packages/impersonation/src/module';
-import './admin-astro';
+import '../../packages/admin-astro/src/module';

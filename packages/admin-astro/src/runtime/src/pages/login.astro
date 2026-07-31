@@ -1,0 +1,78 @@
+---
+import Shell from '../layouts/Shell.astro';
+---
+
+<Shell title="Sign in" bare>
+  <div class="card">
+    <span class="brand">
+      <span class="mark" id="brand-mark"></span>
+      <span>
+        <strong>HeryJs</strong>
+        <span>Admin</span>
+      </span>
+    </span>
+
+    <h1>Sign in</h1>
+    <p class="lede">
+      Same session endpoint as the API. The token stays in this browser.
+    </p>
+
+    <form id="form">
+      <label>
+        Email
+        <input id="email" type="email" required autocomplete="username" />
+      </label>
+      <label>
+        Password
+        <input
+          id="password"
+          type="password"
+          required
+          autocomplete="current-password"
+        />
+      </label>
+      <button class="primary" type="submit">Sign in</button>
+    </form>
+
+    <p class="error" id="error" hidden></p>
+  </div>
+</Shell>
+
+<script>
+  import { API_URL } from '../lib/api';
+  import { ICONS, icon } from '../lib/icons';
+  import { storeToken } from '../lib/session';
+
+  document.getElementById('brand-mark')?.appendChild(icon(ICONS.brand, 16));
+
+  const form = document.getElementById('form') as HTMLFormElement;
+  const error = document.getElementById('error')!;
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    error.hidden = true;
+
+    const email = (document.getElementById('email') as HTMLInputElement).value;
+    const password = (document.getElementById('password') as HTMLInputElement)
+      .value;
+
+    void fetch(API_URL + '/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error('Sign in failed');
+        }
+
+        const body = (await response.json()) as { data: { token: string } };
+        storeToken(body.data.token);
+        window.location.href = '/';
+      })
+      .catch(() => {
+        error.hidden = false;
+        error.textContent = 'Those credentials were refused.';
+      });
+  });
+</script>

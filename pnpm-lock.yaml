@@ -251,6 +251,15 @@ importers:
         specifier: ^0.34.5
         version: 0.34.5
 
+  packages/admin-astro:
+    devDependencies:
+      lucide:
+        specifier: ^1.27.0
+        version: 1.27.0
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
   packages/graphql:
     devDependencies:
       '@apollo/server':

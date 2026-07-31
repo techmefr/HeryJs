@@ -1,0 +1,88 @@
+---
+import Shell from '../layouts/Shell.astro';
+---
+
+<Shell title="Overview">
+  <h1>Overview</h1>
+  <p class="lede">
+    Every controller the API reports, with the capability guarding each route.
+    Resource routes always carry one; the technical endpoints are gated at the
+    controller level instead.
+  </p>
+
+  <div class="output" id="output"></div>
+</Shell>
+
+<script>
+  import {
+    api,
+    labelOf,
+    sectionsOf,
+    type DescribedController,
+  } from '../lib/api';
+  import { icon, iconFor, tintOf } from '../lib/icons';
+  import { methodBadge, skeleton, stat } from '../lib/render';
+
+  const output = document.getElementById('output')!;
+  output.appendChild(skeleton(4));
+
+  const { data } = await api<DescribedController[]>('/describe');
+  const routes = data.flatMap((controller) => controller.routes);
+
+  const strip = document.createElement('div');
+  strip.className = 'strip';
+  strip.append(
+    stat(data.length, 'Controllers', 'tint-1'),
+    stat(routes.length, 'Routes', 'tint-2'),
+    stat(
+      routes.filter((route) => route.capability).length,
+      'Behind a capability',
+      'tint-0',
+    ),
+    stat(sectionsOf(data).length, 'Browsable sections', 'tint-3'),
+  );
+
+  const grid = document.createElement('div');
+  grid.className = 'grid';
+
+  for (const controller of data) {
+    const card = document.createElement('section');
+    card.className = 'card ' + tintOf(controller.basePath);
+
+    const heading = document.createElement('h2');
+
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.appendChild(icon(iconFor(controller.basePath), 15));
+    heading.appendChild(chip);
+
+    const name = document.createElement('span');
+    name.textContent = labelOf(controller.basePath) || 'Root';
+    heading.appendChild(name);
+    card.appendChild(heading);
+
+    for (const route of controller.routes) {
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.appendChild(methodBadge(route.method));
+
+      const path = document.createElement('span');
+      path.className = 'path';
+      path.textContent =
+        controller.basePath + (route.path === '/' ? '' : route.path);
+      path.title = path.textContent;
+      row.appendChild(path);
+
+      const capability = document.createElement('span');
+      capability.className = route.capability ? 'cap' : 'cap none';
+      capability.textContent = route.capability ?? 'no capability';
+      row.appendChild(capability);
+
+      card.appendChild(row);
+    }
+
+    grid.appendChild(card);
+  }
+
+  output.replaceChildren(strip, grid);
+</script>

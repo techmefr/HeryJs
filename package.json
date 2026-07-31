@@ -16,7 +16,7 @@
     "start:dev": "nest start -b swc --watch",
     "start:debug": "nest start -b swc --debug --watch",
     "start:prod": "node dist/main",
-    "lint": "eslint \"{src,apps,libs,test,cli,scripts,prisma,examples,packages}/**/*.ts\" \"prisma.config.ts\" --fix && pnpm --filter admin lint",
+    "lint": "eslint \"{src,apps,libs,test,cli,scripts,prisma,examples,packages}/**/*.ts\" \"prisma.config.ts\" --ignore-pattern \"packages/admin-astro/src/runtime/**\" --fix && pnpm --filter admin lint",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
