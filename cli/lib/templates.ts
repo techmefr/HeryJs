@@ -157,7 +157,7 @@ export function serviceFile(ctx: ResourceContext): string {
     .filter((field) => field.type === 'string')
     .map((field) => field.name);
 
-  return `import { Inject, Injectable, Optional } from '@nestjs/common';
+  return `import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import type { Prisma, ${ctx.pascalName} } from '@prisma/client';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
@@ -186,6 +186,8 @@ export const ${ctx.pascalName.toUpperCase()}_SIGNAL_CHANNEL = '${ctx.camelName}'
 
 @Injectable()
 export class ${ctx.pascalName}Service {
+  private readonly logger = new Logger(${ctx.pascalName}Service.name);
+
   constructor(
     @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,
     private readonly signal: SignalService,
@@ -200,20 +202,36 @@ export class ${ctx.pascalName}Service {
     );
   }
 
+  // A search engine that is down must not turn into a failed write: the
+  // Prisma call above this already committed, so the record is durable
+  // either way. Losing the index update for one record is recoverable
+  // (hery search:reindex backfills it); returning a 500 for a write that
+  // actually succeeded is not.
   private async syncSearchIndex(record: ${ctx.pascalName}) {
     if (!this.searchDriver) {
       return;
     }
 
-    if (record.deletedAt) {
-      await this.searchDriver.remove(SEARCH_COLLECTION, record.id);
-      return;
-    }
+    try {
+      if (record.deletedAt) {
+        await this.searchDriver.remove(SEARCH_COLLECTION, record.id);
+        return;
+      }
 
-    const document = Object.fromEntries(
-      SEARCHABLE_FIELDS.map((field) => [field, record[field]]),
-    );
-    await this.searchDriver.index(SEARCH_COLLECTION, record.id, document);
+      const document = Object.fromEntries(
+        SEARCHABLE_FIELDS.map((field) => [field, record[field]]),
+      );
+      await this.searchDriver.index(
+        SEARCH_COLLECTION,
+        record.id,
+        document,
+        record.tenantId,
+      );
+    } catch (error) {
+      this.logger.warn(
+        \`search index out of sync for \${SEARCH_COLLECTION}:\${record.id}: \${(error as Error).message}\`,
+      );
+    }
   }
 
   async search(
@@ -234,6 +252,7 @@ export class ${ctx.pascalName}Service {
                 SEARCH_COLLECTION,
                 options.search,
                 SEARCHABLE_FIELDS,
+                TenantContextStorage.getTenantId(),
               ),
             },
           }
