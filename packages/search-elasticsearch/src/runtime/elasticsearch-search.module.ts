@@ -1,13 +1,15 @@
 import { Global, Module } from '@nestjs/common';
-import { SEARCH_DRIVER } from '#kernel/search/search-driver';
+import { searchDriverToken } from '#kernel/search/search-driver';
 import { ElasticsearchSearchDriver } from './elasticsearch-search.driver';
+
+const TOKEN = searchDriverToken('elasticsearch');
 
 @Global()
 @Module({
   providers: [
     ElasticsearchSearchDriver,
-    { provide: SEARCH_DRIVER, useExisting: ElasticsearchSearchDriver },
+    { provide: TOKEN, useExisting: ElasticsearchSearchDriver },
   ],
-  exports: [SEARCH_DRIVER],
+  exports: [TOKEN],
 })
 export class ElasticsearchSearchModule {}

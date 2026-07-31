@@ -1,13 +1,15 @@
 import { Global, Module } from '@nestjs/common';
-import { SEARCH_DRIVER } from '#kernel/search/search-driver';
+import { searchDriverToken } from '#kernel/search/search-driver';
 import { MeilisearchSearchDriver } from './meilisearch-search.driver';
+
+const TOKEN = searchDriverToken('meilisearch');
 
 @Global()
 @Module({
   providers: [
     MeilisearchSearchDriver,
-    { provide: SEARCH_DRIVER, useExisting: MeilisearchSearchDriver },
+    { provide: TOKEN, useExisting: MeilisearchSearchDriver },
   ],
-  exports: [SEARCH_DRIVER],
+  exports: [TOKEN],
 })
 export class MeilisearchSearchModule {}

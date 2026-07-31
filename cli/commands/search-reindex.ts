@@ -4,10 +4,13 @@ import { Prisma, PrismaClient } from '@prisma/client';
 import type { Command } from 'commander';
 import pc from 'picocolors';
 import { AppModule } from '#app.module';
+import { heryConfig } from '#technical/config/hery-config';
 import { env } from '#technical/config/env';
-import { SEARCH_DRIVER } from '#technical/search/search-driver';
+import { searchDriverToken } from '#technical/search/search-driver';
 import type { SearchDriver } from '#technical/search/search-driver';
 import { camelCase, kebabCase } from '../lib/naming';
+
+const BUILTIN_DRIVER = 'prisma';
 
 const RESERVED_FIELDS = new Set([
   'id',
@@ -39,19 +42,34 @@ export function registerSearchReindexCommand(program: Command): void {
         logger: false,
       });
 
-      // Nothing provides SEARCH_DRIVER at all when no search-* module is
-      // installed -- @Optional() only suppresses that at constructor
-      // injection time, .get() itself still throws, so absence has to be
-      // caught rather than checked for a falsy return.
-      let driver: SearchDriver | undefined;
+      // Resolved straight off hery.config.ts's declared engines rather than
+      // through SearchEngineRegistry, which only exists in the container if
+      // the project has at least one generated resource wired to SearchModule
+      // -- this command has to work even when reindexing a hand-added Prisma
+      // model that was never run through hery generate. Each declared engine
+      // is looked up by its own token; nothing provides a given token at all
+      // when its module is not installed, so absence has to be caught rather
+      // than checked for a falsy return.
+      const engines = heryConfig.search?.engines ?? {};
+      const drivers = new Set<SearchDriver>();
 
-      try {
-        driver = app.get<SearchDriver>(SEARCH_DRIVER, { strict: false });
-      } catch {
-        driver = undefined;
+      for (const engine of Object.values(engines)) {
+        if (engine.driver === BUILTIN_DRIVER) {
+          continue;
+        }
+
+        try {
+          drivers.add(
+            app.get<SearchDriver>(searchDriverToken(engine.driver), {
+              strict: false,
+            }),
+          );
+        } catch {
+          continue;
+        }
       }
 
-      if (!driver) {
+      if (drivers.size === 0) {
         console.log(
           pc.yellow('No search engine installed -- nothing to reindex.'),
         );
@@ -128,7 +146,9 @@ export function registerSearchReindexCommand(program: Command): void {
 
         for (const record of page) {
           if (hasSoftDelete && record.deletedAt) {
-            await driver.remove(collection, record.id);
+            for (const driver of drivers) {
+              await driver.remove(collection, record.id, record.tenantId);
+            }
             removed += 1;
             continue;
           }
@@ -136,7 +156,14 @@ export function registerSearchReindexCommand(program: Command): void {
           const document = Object.fromEntries(
             searchableFields.map((field) => [field, record[field]]),
           );
-          await driver.index(collection, record.id, document, record.tenantId);
+          for (const driver of drivers) {
+            await driver.index(
+              collection,
+              record.id,
+              document,
+              record.tenantId,
+            );
+          }
           indexed += 1;
         }
 

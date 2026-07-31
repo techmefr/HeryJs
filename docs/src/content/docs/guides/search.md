@@ -43,7 +43,9 @@ export default {
 } satisfies HeryConfig;
 ```
 
-`SearchEngineRegistry` resolves every declared engine at construction, once, at boot. A `driver` this list names without a matching module installed to back it fails the app's own startup — not a silent fallback to Prisma, not a 500 on first search. Fix it the way any other misconfiguration gets fixed: install the module, or remove the entry.
+`SearchEngineRegistry` resolves every declared engine once, at boot. A `driver` this list names without a matching module installed to back it fails the app's own startup — not a silent fallback to Prisma, not a 500 on first search. Fix it the way any other misconfiguration gets fixed: install the module, or remove the entry.
+
+Declaring more than one non-Prisma engine at once is supported — `elasticsearch` and `meilisearch` can both be present in `search.engines` in the same app, each resolving to its own driver instance, never to each other's.
 
 ## Selecting an engine per request
 
@@ -60,14 +62,20 @@ Prisma is one entry in that list like any other, not a special case: `PrismaSear
 Three methods, in `technical/search/search-driver.ts`:
 
 ```ts
-export const SEARCH_DRIVER = Symbol('SEARCH_DRIVER');
+export function searchDriverToken(driverName: string): symbol {
+  return Symbol.for(`heryjs:search-driver:${driverName}`);
+}
 
 export interface SearchDriver {
   index(collection: string, id: string, document: Record<string, unknown>, tenantId: string): Promise<void>;
-  remove(collection: string, id: string): Promise<void>;
+  remove(collection: string, id: string, tenantId: string): Promise<void>;
   search(collection: string, term: string, fields: readonly string[], tenantId: string): Promise<string[]>;
 }
 ```
+
+Each driver module provides under its own token — `searchDriverToken('elasticsearch')`, `searchDriverToken('meilisearch')` — rather than one token every driver module binds to. Two engines installed side by side each keep their own provider; nothing has to alias, and nothing silently overwrites the other.
+
+`tenantId` is part of the `remove()` signature for consistency with `index()`/`search()`, even though neither shipped driver needs it: a Prisma cuid is already globally unique, so there is no ambiguity a tenant filter would resolve on delete.
 
 `search()` returns **ids only** — no scores, no highlights, no totals. That is what lets the engine's answer be folded into a Prisma query as one clause among several, instead of becoming the source of the response. The engine proposes candidates; the database still decides what the caller may see.
 
@@ -133,26 +141,24 @@ The generated service syncs the index inside the same request as the write, afte
 
 ```ts
 private async syncSearchIndex(record: Workout) {
-  const driver = this.searchEngines.externalDriver;
-  if (!driver) {
-    return;
-  }
-  try {
-    if (record.deletedAt) {
-      await driver.remove(SEARCH_COLLECTION, record.id);
-      return;
+  for (const driver of this.searchEngines.externalDrivers) {
+    try {
+      if (record.deletedAt) {
+        await driver.remove(SEARCH_COLLECTION, record.id, record.tenantId);
+        continue;
+      }
+      const document = Object.fromEntries(
+        SEARCHABLE_FIELDS.map((field) => [field, record[field]]),
+      );
+      await driver.index(SEARCH_COLLECTION, record.id, document, record.tenantId);
+    } catch (error) {
+      this.logger.warn(`search index out of sync for ${SEARCH_COLLECTION}:${record.id}: ${error.message}`);
     }
-    const document = Object.fromEntries(
-      SEARCHABLE_FIELDS.map((field) => [field, record[field]]),
-    );
-    await driver.index(SEARCH_COLLECTION, record.id, document, record.tenantId);
-  } catch (error) {
-    this.logger.warn(`search index out of sync for ${SEARCH_COLLECTION}:${record.id}: ${error.message}`);
   }
 }
 ```
 
-Called from `create`, `update`, `softDelete` and `restore`. An unreachable engine logs and moves on: the write still commits and the request still succeeds, at the cost of the index falling behind until it is reachable again. `externalDriver` is whichever single non-Prisma driver a project has installed (at most one — Elasticsearch and Meilisearch both bind the same `SEARCH_DRIVER` token); Prisma's own `index()`/`remove()` are no-ops, since Prisma is already the system of record and never needs a separate sync step.
+Called from `create`, `update`, `softDelete` and `restore`. An unreachable engine logs and moves on for that engine only: the write still commits and the request still succeeds, at the cost of that engine's index falling behind until it is reachable again — one engine being down never stops the others from getting the update. `externalDrivers` is every distinct non-Prisma driver a project has installed, deduplicated by instance — `search[engine]` lets a later request read through any of them, so a write has to reach all of them, not just whichever was declared first. Prisma's own `index()`/`remove()` are no-ops, since Prisma is already the system of record and never needs a separate sync step.
 
 ## Backfilling an existing dataset
 

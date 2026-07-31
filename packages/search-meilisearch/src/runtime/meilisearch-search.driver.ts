@@ -41,6 +41,10 @@ export class MeilisearchSearchDriver implements SearchDriver {
   }
 
   async remove(collection: string, id: string): Promise<void> {
+    // Deletion is by id alone -- a Prisma cuid is already globally unique, so
+    // there is no ambiguity a tenant filter would resolve here. tenantId is
+    // part of the shared SearchDriver contract for consistency with
+    // index()/search(), not because this call needs it.
     await this.client.index(collection).deleteDocument(id);
   }
 

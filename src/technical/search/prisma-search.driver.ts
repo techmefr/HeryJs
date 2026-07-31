@@ -37,7 +37,9 @@ export class PrismaSearchDriver implements SearchDriver {
   }
 
   async remove(): Promise<void> {
-    // Same: nothing external to remove a row from.
+    // Same: nothing external to remove a row from. tenantId is part of the
+    // shared SearchDriver contract, unused here like the rest of this driver's
+    // no-op indexing methods.
   }
 
   async search(

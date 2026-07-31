@@ -44,33 +44,32 @@ export class WorkoutService {
   // Prisma call above this already committed, so the record is durable
   // either way. Losing the index update for one record is recoverable
   // (hery search:reindex backfills it); returning a 500 for a write that
-  // actually succeeded is not.
+  // actually succeeded is not. Every declared non-Prisma engine gets synced,
+  // not just one -- search[engine] lets a later request read through any of
+  // them, so a write has to reach all of them, and one engine being down
+  // must not stop the others from getting the update.
   private async syncSearchIndex(record: Workout) {
-    const driver = this.searchEngines.externalDriver;
+    for (const driver of this.searchEngines.externalDrivers) {
+      try {
+        if (record.deletedAt) {
+          await driver.remove(SEARCH_COLLECTION, record.id, record.tenantId);
+          continue;
+        }
 
-    if (!driver) {
-      return;
-    }
-
-    try {
-      if (record.deletedAt) {
-        await driver.remove(SEARCH_COLLECTION, record.id);
-        return;
+        const document = Object.fromEntries(
+          SEARCHABLE_FIELDS.map((field) => [field, record[field]]),
+        );
+        await driver.index(
+          SEARCH_COLLECTION,
+          record.id,
+          document,
+          record.tenantId,
+        );
+      } catch (error) {
+        this.logger.warn(
+          `search index out of sync for ${SEARCH_COLLECTION}:${record.id}: ${(error as Error).message}`,
+        );
       }
-
-      const document = Object.fromEntries(
-        SEARCHABLE_FIELDS.map((field) => [field, record[field]]),
-      );
-      await driver.index(
-        SEARCH_COLLECTION,
-        record.id,
-        document,
-        record.tenantId,
-      );
-    } catch (error) {
-      this.logger.warn(
-        `search index out of sync for ${SEARCH_COLLECTION}:${record.id}: ${(error as Error).message}`,
-      );
     }
   }
 
