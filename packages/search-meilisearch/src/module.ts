@@ -10,6 +10,7 @@ const DEST_DIR = 'src/technical/search';
 
 registerModule({
   name: 'search-meilisearch',
+  channel: 'official',
   description:
     'Swap free-text search from Prisma contains() to Meilisearch (docker service, driver, DI wiring)',
   dependencies: ['meilisearch'],

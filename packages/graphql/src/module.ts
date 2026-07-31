@@ -8,6 +8,7 @@ const DEST_DIR = 'src/technical';
 
 registerModule({
   name: 'graphql',
+  channel: 'official',
   description:
     'Add a GraphQL endpoint (Apollo driver) with a session guard mirroring the REST auth flow. Use "hery generate <Name> --graphql" to add a resolver to a resource.',
   dependencies: [

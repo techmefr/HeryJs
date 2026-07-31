@@ -39,18 +39,34 @@ Five of them have a runtime half in `src/modules/`: `live`, `stream`, `mail`, `s
 
 `hery module:monitoring` looks like a module but is a separate command: it scaffolds Prometheus, Grafana and Loki as a local compose stack. It is not in the registry, so it does not appear in `module:list` and `--all` does not cover it.
 
-## A module is four fields
+## Two channels, discovered rather than hardcoded
+
+Every module above is **official** — it lives in this repository's own `packages/` directory. `module:list` labels each entry with its channel:
+
+```
+admin-astro [official] - Add an admin panel built with Astro...
+```
+
+Discovery walks `packages/*` at startup and requires whatever `src/module.ts` it finds there — there is no barrel file listing packages by hand, so a new official module needs nothing beyond its own folder to show up.
+
+The **community** channel is the same mechanism turned outward: any npm package a project installs can register itself as a module by adding a `heryjs.module: true` marker to its own `package.json`. `hery module:list` and `hery install` scan the project's declared dependencies for that marker and require whichever ones carry it — there is no separate registry to submit to and nothing HeryJs curates on that side; the convention itself is the whole channel.
+
+## A module is these fields
 
 ```ts
+export type ModuleChannel = 'official' | 'community';
+
 export interface ModuleDefinition {
   name: string; // the id you type
   description: string; // the line module:list prints
+  channel: ModuleChannel;
   dependencies?: string[];
   install(): void | Promise<void>;
+  uninstall?(): void | Promise<void>;
 }
 ```
 
-`dependencies` are npm specifiers handed to `pnpm add -w` before `install()` runs. `install()` does all the writing and prints its own next steps. That is the whole contract — there is no version field, no file manifest, no declared dependency between modules, and no uninstall hook.
+`dependencies` are npm specifiers handed to `pnpm add -w` before `install()` runs. `install()` does all the writing and prints its own next steps. `uninstall()` is optional and rarely needed — see below for why removing a module stops short of being fully automatic.
 
 ## Installing is idempotent, per file
 
@@ -64,7 +80,15 @@ Nothing is overwritten and nothing is re-templated, so a file you have edited by
 
 The modules that patch an existing file guard on content rather than existence: `mail` skips if `prisma/schema.prisma` already contains `model MailLog`, `admin-astro` skips if `pnpm-workspace.yaml` already lists `admin`, and `impersonation` skips each of its four kernel-file patches independently, once its own marker is already there.
 
-Be aware of what this does _not_ give you. There is no record anywhere of which modules are installed — no manifest, no marker in `package.json`. "Installed" is inferred one file at a time, at write time. And **there is no uninstall command**: removing a module means deleting its folder, its npm dependencies and its wiring by hand. The layering rules are what make that a bounded job rather than an archaeology exercise.
+Be aware of what this does _not_ give you. There is no record anywhere of which modules are installed — no manifest, no marker in `package.json`. "Installed" is inferred one file at a time, at write time.
+
+## `hery uninstall` removes what is safe to automate, and nothing else
+
+```bash
+pnpm hery uninstall storage
+```
+
+`install()` copies runtime files and patches a handful of kernel files, both of which become code the project owns from that point on — possibly edited since. Reversing either automatically would mean guessing whether what is on disk still matches what was generated, the same silent-rewrite risk "own your code" rules out everywhere else. So `uninstall` only automates the one part that is unambiguous: removing the module's own npm dependencies. Everything else — the import in `src/app.module.ts`, the copied or patched files, a Prisma migration to drop whatever it added — comes back as an explicit numbered list, the same shape `install()` itself prints for its next steps. The layering rules are what make finishing that list a bounded job rather than an archaeology exercise.
 
 One consequence of the unconditional dependency step: `pnpm add -w` runs on every install of a module that declares dependencies, even when every file is then skipped.
 

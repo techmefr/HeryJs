@@ -3,7 +3,9 @@ import type { Command } from 'commander';
 import pc from 'picocolors';
 import { getModule, listModules } from '../lib/module-registry';
 import type { ModuleDefinition } from '../lib/module-registry';
-import '../modules';
+import { loadModules } from '../lib/module-discovery';
+
+loadModules();
 
 export function registerInstallCommand(program: Command): void {
   program

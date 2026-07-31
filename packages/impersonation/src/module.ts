@@ -21,6 +21,7 @@ const CAPABILITIES_SUBJECT_FILE = 'src/technical/capabilities/subject.ts';
 
 registerModule({
   name: 'impersonation',
+  channel: 'official',
   description:
     "Let an admin act as another user for support, without ever leaving the tenant boundary or the audit trail: a bearer token for the target user, minted from the admin's own, that never touches the admin's original session.",
   install() {

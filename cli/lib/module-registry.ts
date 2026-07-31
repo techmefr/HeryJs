@@ -1,8 +1,12 @@
+export type ModuleChannel = 'official' | 'community';
+
 export interface ModuleDefinition {
   name: string;
   description: string;
+  channel: ModuleChannel;
   dependencies?: string[];
   install(): void | Promise<void>;
+  uninstall?(): void | Promise<void>;
 }
 
 const registry = new Map<string, ModuleDefinition>();

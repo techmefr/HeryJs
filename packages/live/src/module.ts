@@ -8,6 +8,7 @@ const DEST_DIR = 'src/modules/live';
 
 registerModule({
   name: 'live',
+  channel: 'official',
   description:
     'Add bidirectional WebSocket support (Socket.IO). Use "hery generate <Name> --live" to add a live gateway to a resource.',
   dependencies: [

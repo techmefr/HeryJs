@@ -8,6 +8,7 @@ const DEST_DIR = 'src/technical/mcp';
 
 registerModule({
   name: 'mcp',
+  channel: 'official',
   description:
     'Add an authenticated MCP gateway (Streamable HTTP, stateless) exposing generated resources as tools. Use "hery generate <Name> --mcp" to add write tools to a resource.',
   dependencies: ['@modelcontextprotocol/sdk'],

@@ -37,6 +37,7 @@ function patchSchema(): void {
 
 registerModule({
   name: 'mail',
+  channel: 'official',
   description:
     'Add outgoing mail: a MailLog resource, string templates, and a BullMQ job that actually sends. Ships with a console-logging provider by default -- swap MAIL_PROVIDER for a real one.',
   dependencies: [],

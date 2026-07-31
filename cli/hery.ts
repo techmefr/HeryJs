@@ -12,6 +12,7 @@ import { registerModuleListCommand } from './commands/module-list';
 import { registerModuleMonitoringCommand } from './commands/module-monitoring';
 import { registerNewCommand } from './commands/new';
 import { registerSearchReindexCommand } from './commands/search-reindex';
+import { registerUninstallCommand } from './commands/uninstall';
 import { registerUpCommand } from './commands/up';
 
 const envPath = path.resolve(process.cwd(), '.env');
@@ -35,6 +36,7 @@ registerModuleListCommand(program);
 registerModuleMonitoringCommand(program);
 registerNewCommand(program);
 registerSearchReindexCommand(program);
+registerUninstallCommand(program);
 registerUpCommand(program);
 
 void program.parseAsync(process.argv);

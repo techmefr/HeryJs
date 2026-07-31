@@ -10,6 +10,7 @@ const DEST_DIR = 'src/modules/storage';
 
 registerModule({
   name: 'storage',
+  channel: 'official',
   description:
     'Add file storage behind a swappable provider: local disk (signed local URLs) by default, S3-compatible (real S3 or self-hosted MinIO) via STORAGE_DRIVER=s3.',
   dependencies: ['@aws-sdk/client-s3', '@aws-sdk/s3-request-presigner'],

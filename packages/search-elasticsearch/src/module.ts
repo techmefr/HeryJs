@@ -10,6 +10,7 @@ const DEST_DIR = 'src/technical/search';
 
 registerModule({
   name: 'search-elasticsearch',
+  channel: 'official',
   description:
     'Swap free-text search from Prisma contains() to Elasticsearch (docker service, driver, DI wiring)',
   dependencies: ['@elastic/elasticsearch@^8.17.0'],

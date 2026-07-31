@@ -10,6 +10,7 @@ const DEST_DIR = 'src/modules/stream';
 
 registerModule({
   name: 'stream',
+  channel: 'official',
   description:
     'Add one-to-many audio/video streaming via LiveKit (SFU). Use "hery generate <Name> --stream" to add publish/viewer token endpoints to a resource.',
   dependencies: ['livekit-server-sdk'],
