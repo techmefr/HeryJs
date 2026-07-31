@@ -1,0 +1,80 @@
+---
+title: Debugging with the pipeline trace
+description: A per-request trace of every layer a request crossed, the one that blocked it highlighted, with the SQL and the refusal reason behind it.
+---
+
+When a frontend developer reports "I got a 403 and I don't know why" or "this filter returns nothing", the fastest answer usually isn't in the code — it's in the one request that actually failed. The pipeline trace records exactly that: every layer a request crossed, in order, with enough detail on the one that blocked it to answer "why" without adding a single `console.log`.
+
+## What gets recorded
+
+Four stages, each pushed from code that already runs on every request — there is no proxy standing in front of the app rewriting calls:
+
+| Stage | What it captures |
+|---|---|
+| `middleware` | Tenant resolution |
+| `guard` | Session check, then the capability decision — policy name and the scope it resolved to |
+| `controller` | Which handler ran, by class and method name |
+| `prisma` | The real SQL Prisma sent, its parameters, and how long it took |
+
+```ts
+export interface TraceStep {
+  stage: 'middleware' | 'guard' | 'controller' | 'prisma';
+  label: string;
+  status: 'ok' | 'blocked' | 'error';
+  durationMs: number;
+  detail?: unknown;
+}
+```
+
+A request that fails a capability check produces a step like this, `detail` included:
+
+```json
+{
+  "stage": "guard",
+  "label": "capability",
+  "status": "blocked",
+  "durationMs": 1,
+  "detail": { "reason": "policy denied", "policy": "canReadAuditLog" }
+}
+```
+
+That single field is usually the whole answer: not "some check failed somewhere", but the exact policy function that said no.
+
+## Reading a trace
+
+```
+GET /pipeline/traces
+```
+
+Each entry is one request:
+
+```json
+{
+  "id": "...",
+  "method": "GET",
+  "path": "/audit-logs",
+  "status": 403,
+  "durationMs": 4,
+  "timestamp": "2026-07-31T09:12:03.000Z",
+  "steps": [
+    { "stage": "middleware", "label": "tenant resolution", "status": "ok", "durationMs": 1 },
+    { "stage": "guard", "label": "session", "status": "ok", "durationMs": 0 },
+    { "stage": "guard", "label": "capability", "status": "blocked", "durationMs": 1, "detail": { "reason": "policy denied", "policy": "canReadAuditLog" } }
+  ],
+  "blockedStepIndex": 2
+}
+```
+
+`blockedStepIndex` is the first step whose status isn't `ok` — the one to look at first, before reading the rest in order. A request that succeeded end to end has it as `null`.
+
+In the admin panel, this is the **Pipeline** page: one card per request, a row of dots for its steps, the blocked one outlined in red, click any dot for its detail panel. Same data as the endpoint above, just easier to scan across many requests at once.
+
+## What it deliberately does not do
+
+- **No production trace.** The tracing context is never opened when `NODE_ENV=production` — a `pushStep()` call outside that context is a plain no-op, so nothing is held in memory and nothing is computed on a production request. This tool exists for the environment where you're actually chasing the bug, not for prod observability.
+- **No history beyond 200 requests.** A ring buffer, in memory, per process — the same shape as the [request inspector](/guides/devtools/). Gone on restart, and each instance behind a load balancer only knows about its own requests.
+- **The route is dev-only, the same way as the rest of `devtools/`.** `SessionGuard` + `DevOnlyGuard`: it needs a session, and it 404s once `NODE_ENV=production`.
+
+## When to reach for this instead of the inspector
+
+The [request inspector](/guides/devtools/) tells you a request happened, its status and how long it took — a flat access log. The pipeline trace tells you *why* a specific one ended the way it did: which layer decided, what it decided against, and the SQL underneath it. Reach for the inspector to see traffic; reach for the pipeline trace once you already have one request you need to explain.

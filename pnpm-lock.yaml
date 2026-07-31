@@ -253,6 +253,9 @@ importers:
       astro:
         specifier: ^7.0.2
         version: 7.1.4(@astrojs/markdown-remark@7.2.1)(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@types/node@26.1.2)(ioredis@5.11.1)(jiti@2.7.0)(rollup@4.62.3)(terser@5.49.0)
+      lucide-static:
+        specifier: ^1.28.0
+        version: 1.28.0
       sharp:
         specifier: ^0.34.5
         version: 0.34.5
@@ -6324,6 +6327,9 @@ packages:
   lru.min@1.1.4:
     resolution: {integrity: sha512-DqC6n3QQ77zdFpCMASA1a3Jlb64Hv2N2DciFGkO/4L9+q/IpIAuRlKOvCXabtRW6cQf8usbmM6BE/TOPysCdIA==}
     engines: {bun: '>=1.0.0', deno: '>=1.30.0', node: '>=8.0.0'}
+
+  lucide-static@1.28.0:
+    resolution: {integrity: sha512-dC3VJwRFsjEVX7Iaq4rY88pm7Fi2OmOb8P0WRzXsUMgbt7sCmFX8bLhaDBeNW6JdRjuele+jKqqFaam4yr+Ygg==}
 
   lucide@1.27.0:
     resolution: {integrity: sha512-m78hY+pL+dLrVvDEl68oYTdvjXW5Nz0ULDsUfbWfl7lzNDv1kFZGG+bAEm2eGEmUyvpZgAcyRwNhFljIErss3w==}
@@ -15035,6 +15041,8 @@ snapshots:
   lru-cache@7.18.3: {}
 
   lru.min@1.1.4: {}
+
+  lucide-static@1.28.0: {}
 
   lucide@1.27.0: {}
 
