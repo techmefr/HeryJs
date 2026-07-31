@@ -9,11 +9,67 @@ import serverIcon from 'lucide-static/icons/server.svg?raw';
 import monitorIcon from 'lucide-static/icons/monitor.svg?raw';
 import bugIcon from 'lucide-static/icons/bug.svg?raw';
 import caretIcon from 'lucide-static/icons/chevron-right.svg?raw';
+import rocketIcon from 'lucide-static/icons/rocket.svg?raw';
+import folderTreeIcon from 'lucide-static/icons/folder-tree.svg?raw';
+import keyRoundIcon from 'lucide-static/icons/key-round.svg?raw';
+import shieldCheckIcon from 'lucide-static/icons/shield-check.svg?raw';
+import usersIcon from 'lucide-static/icons/users.svg?raw';
+import buildingIcon from 'lucide-static/icons/building-2.svg?raw';
+import triangleAlertIcon from 'lucide-static/icons/triangle-alert.svg?raw';
+import terminalIcon from 'lucide-static/icons/terminal.svg?raw';
+import fileTextIcon from 'lucide-static/icons/file-text.svg?raw';
+import fileCodeIcon from 'lucide-static/icons/file-code.svg?raw';
+import flaskIcon from 'lucide-static/icons/flask-conical.svg?raw';
+import puzzleIcon from 'lucide-static/icons/puzzle.svg?raw';
+import searchIcon from 'lucide-static/icons/search.svg?raw';
+import radioIcon from 'lucide-static/icons/radio.svg?raw';
+import mailIcon from 'lucide-static/icons/mail.svg?raw';
+import userCogIcon from 'lucide-static/icons/user-cog.svg?raw';
+import shareIcon from 'lucide-static/icons/share-2.svg?raw';
+import layoutDashboardIcon from 'lucide-static/icons/layout-dashboard.svg?raw';
+import bookOpenIcon from 'lucide-static/icons/book-open.svg?raw';
+import fileSearchIcon from 'lucide-static/icons/file-search.svg?raw';
+import pencilIcon from 'lucide-static/icons/pencil.svg?raw';
+import trashIcon from 'lucide-static/icons/trash-2.svg?raw';
+import wrenchIcon from 'lucide-static/icons/wrench.svg?raw';
+import activityIcon from 'lucide-static/icons/activity.svg?raw';
 
 const TOP_LEVEL_ICONS: Record<string, string> = {
 	Backend: serverIcon,
 	Frontend: monitorIcon,
 	Debug: bugIcon,
+};
+
+// Leaf pages get their own icon too, keyed by the sidebar label in
+// astro.config.mjs -- there is no per-item icon field in Starlight's sidebar
+// schema (only a text badge), so this is the same override pattern as
+// TOP_LEVEL_ICONS, just applied one level down.
+const LEAF_ICONS: Record<string, string> = {
+	Introduction: rocketIcon,
+	'Project structure': folderTreeIcon,
+	Authentication: keyRoundIcon,
+	Capabilities: shieldCheckIcon,
+	Teams: usersIcon,
+	'Multi-tenancy': buildingIcon,
+	'Errors and responses': triangleAlertIcon,
+	'The hery CLI': terminalIcon,
+	'The blueprint contract': fileTextIcon,
+	'What gets generated': fileCodeIcon,
+	'Testing conventions': flaskIcon,
+	'The module system': puzzleIcon,
+	'Full-text search': searchIcon,
+	Realtime: radioIcon,
+	'Mail and storage': mailIcon,
+	Impersonation: userCogIcon,
+	'GraphQL and MCP': shareIcon,
+	'Admin panel and introspection': layoutDashboardIcon,
+	Overview: bookOpenIcon,
+	Search: searchIcon,
+	Details: fileSearchIcon,
+	'Create and update': pencilIcon,
+	'Delete and restore': trashIcon,
+	'Developer tooling': wrenchIcon,
+	'Pipeline trace': activityIcon,
 };
 
 // Starlight's own flattenSidebar lives under utils/, a path its package.json
@@ -42,6 +98,7 @@ const { sublist, nested } = Astro.props as Props;
 						class:list={[{ large: !nested }, entry.attrs.class]}
 						{...entry.attrs}
 					>
+						{LEAF_ICONS[entry.label] && <span class="nav-icon" set:html={LEAF_ICONS[entry.label]} />}
 						<span>{entry.label}</span>
 					</a>
 				) : (

@@ -67,7 +67,13 @@ export default defineConfig({
 				{
 					label: 'Frontend',
 					collapsed: true,
-					items: [{ label: 'API reference', slug: 'guides/api-reference' }],
+					items: [
+						{ label: 'Overview', slug: 'guides/endpoints/overview' },
+						{ label: 'Search', slug: 'guides/endpoints/search' },
+						{ label: 'Details', slug: 'guides/endpoints/details' },
+						{ label: 'Create and update', slug: 'guides/endpoints/mutate' },
+						{ label: 'Delete and restore', slug: 'guides/endpoints/destroy' },
+					],
 				},
 				{
 					label: 'Debug',
