@@ -56,6 +56,16 @@ describe('Impersonation', () => {
     await startImpersonating(admin, admin.id).expect(400);
   });
 
+  it('refuses an admin impersonating another admin', async () => {
+    const admin = await registerAndLogin(app);
+    await promoteToAdmin(admin.id);
+
+    const otherAdmin = await registerAndLogin(app);
+    await promoteToAdmin(otherAdmin.id);
+
+    await startImpersonating(admin, otherAdmin.id).expect(403);
+  });
+
   it('refuses impersonating a user in another tenant', async () => {
     const admin = await registerAndLogin(app);
     await promoteToAdmin(admin.id);
