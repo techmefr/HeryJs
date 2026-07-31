@@ -10,6 +10,7 @@ import { registerMcpServeCommand } from './commands/mcp-serve';
 import { registerMigrateCommand } from './commands/migrate';
 import { registerModuleListCommand } from './commands/module-list';
 import { registerModuleMonitoringCommand } from './commands/module-monitoring';
+import { registerNewCommand } from './commands/new';
 import { registerUpCommand } from './commands/up';
 
 const envPath = path.resolve(process.cwd(), '.env');
@@ -31,6 +32,7 @@ registerMcpServeCommand(program);
 registerMigrateCommand(program);
 registerModuleListCommand(program);
 registerModuleMonitoringCommand(program);
+registerNewCommand(program);
 registerUpCommand(program);
 
 void program.parseAsync(process.argv);

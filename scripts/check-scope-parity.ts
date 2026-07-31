@@ -85,11 +85,22 @@ export function checkScopeParity(): boolean {
   const serviceFiles = resourceFilesIn(findServiceFiles);
 
   if (serviceFiles.length === 0) {
-    console.error(
-      `Found no resource service under ${RESOURCE_ROOTS.join(' or ')}. This check reports
+    // This repository always ships examples/, so an empty scan here means
+    // something got silently emptied. A project scaffolded by `hery new` never
+    // has examples/ at all and starts with zero resources on purpose — that is
+    // not the regression this check exists to catch.
+    if (existsSync(path.resolve(__dirname, '..', 'examples'))) {
+      console.error(
+        `Found no resource service under ${RESOURCE_ROOTS.join(' or ')}. This check reports
 success on an empty scan, so an empty scan has to be the failure instead.`,
+      );
+      return false;
+    }
+
+    console.log(
+      '✔ no resource service yet (no examples/ directory — this is a scaffolded project, not the framework repo)',
     );
-    return false;
+    return true;
   }
 
   const violations = serviceFiles.flatMap(checkFile);
