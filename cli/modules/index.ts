@@ -1,7 +1,7 @@
 import '../../packages/search-elasticsearch/src/module';
 import '../../packages/search-meilisearch/src/module';
+import '../../packages/mcp/src/module';
 import './graphql';
-import './mcp';
 import './live';
 import './stream';
 import './mail';

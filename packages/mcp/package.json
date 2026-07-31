@@ -1,0 +1,12 @@
+{
+  "name": "mcp",
+  "private": true,
+  "version": "0.0.1",
+  "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@nestjs/common": "^11.0.0",
+    "@types/express": "^5.0.0",
+    "picocolors": "^1.1.1",
+    "typescript": "^5.7.3"
+  }
+}
