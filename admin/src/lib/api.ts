@@ -1,6 +1,7 @@
 import { clearToken, token } from './session';
 
-export const API_URL = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3000';
+export const API_URL =
+  import.meta.env.PUBLIC_API_URL ?? 'http://localhost:3000';
 
 export interface Envelope<T> {
   data: T;
@@ -22,7 +23,10 @@ export class ApiError extends Error {
  * is also a `Headers` instance or an array of pairs, and spreading either of
  * those into an object literal silently yields no header at all.
  */
-export async function api<T>(route: string, init?: RequestInit): Promise<Envelope<T>> {
+export async function api<T>(
+  route: string,
+  init?: RequestInit,
+): Promise<Envelope<T>> {
   const headers = new Headers(init?.headers);
 
   if (!headers.has('Content-Type')) {
@@ -69,7 +73,13 @@ export interface AdminSection {
 }
 
 // The overview already reports these, and /signal/stream never ends.
-const HIDDEN_PATHS = ['/', '/describe', '/health', '/metrics', '/signal/stream'];
+const HIDDEN_PATHS = [
+  '/',
+  '/describe',
+  '/health',
+  '/metrics',
+  '/signal/stream',
+];
 
 // A section is any GET route that takes no argument, whether it sits at the root
 // of a resource or deeper like /inspector/requests. Nothing has to be
@@ -79,7 +89,11 @@ export function sectionsOf(controllers: DescribedController[]): AdminSection[] {
   return controllers.flatMap((controller) =>
     controller.routes
       .filter((route) => route.method === 'GET' && !route.path.includes(':'))
-      .map((route) => (route.path === '/' ? controller.basePath : controller.basePath + route.path))
+      .map((route) =>
+        route.path === '/'
+          ? controller.basePath
+          : controller.basePath + route.path,
+      )
       .filter((route) => !HIDDEN_PATHS.includes(route))
       .map((route) => ({ label: labelOf(route), path: route })),
   );

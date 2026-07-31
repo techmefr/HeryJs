@@ -5,15 +5,21 @@ import Shell from '../layouts/Shell.astro';
 <Shell title="Overview">
   <h1>Overview</h1>
   <p class="lede">
-    Every controller the API reports, with the capability guarding each route. Resource routes
-    always carry one; the technical endpoints are gated at the controller level instead.
+    Every controller the API reports, with the capability guarding each route.
+    Resource routes always carry one; the technical endpoints are gated at the
+    controller level instead.
   </p>
 
   <div class="output" id="output"></div>
 </Shell>
 
 <script>
-  import { api, labelOf, sectionsOf, type DescribedController } from '../lib/api';
+  import {
+    api,
+    labelOf,
+    sectionsOf,
+    type DescribedController,
+  } from '../lib/api';
   import { icon, iconFor, tintOf } from '../lib/icons';
   import { methodBadge, skeleton, stat } from '../lib/render';
 
@@ -28,7 +34,11 @@ import Shell from '../layouts/Shell.astro';
   strip.append(
     stat(data.length, 'Controllers', 'tint-1'),
     stat(routes.length, 'Routes', 'tint-2'),
-    stat(routes.filter((route) => route.capability).length, 'Behind a capability', 'tint-0'),
+    stat(
+      routes.filter((route) => route.capability).length,
+      'Behind a capability',
+      'tint-0',
+    ),
     stat(sectionsOf(data).length, 'Browsable sections', 'tint-3'),
   );
 
@@ -58,7 +68,8 @@ import Shell from '../layouts/Shell.astro';
 
       const path = document.createElement('span');
       path.className = 'path';
-      path.textContent = controller.basePath + (route.path === '/' ? '' : route.path);
+      path.textContent =
+        controller.basePath + (route.path === '/' ? '' : route.path);
       path.title = path.textContent;
       row.appendChild(path);
 

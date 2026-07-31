@@ -25,7 +25,7 @@ const { title, bare = false } = Astro.props;
         <div class="shell">
           <aside class="side">
             <a class="brand" href="/">
-              <span class="mark" id="brand-mark"></span>
+              <span class="mark" id="brand-mark" />
               <span>
                 <strong>HeryJs</strong>
                 <span>Admin</span>
@@ -34,7 +34,7 @@ const { title, bare = false } = Astro.props;
 
             <nav class="group">
               <h2>General</h2>
-              <a class="item" href="/" id="overview-link"></a>
+              <a class="item" href="/" id="overview-link" />
             </nav>
 
             <nav class="group scrolls" id="sections">
@@ -42,18 +42,20 @@ const { title, bare = false } = Astro.props;
             </nav>
 
             <footer>
-              <code id="api-url"></code>
-              <button class="item" id="sign-out" type="button"></button>
+              <code id="api-url" />
+              <button class="item" id="sign-out" type="button" />
             </footer>
           </aside>
 
           <main>
             <header class="top">
               <span>HeryJs</span>
-              <span id="crumb-icon"></span>
-              <span class="crumb" id="crumb">{title}</span>
-              <span class="spacer"></span>
-              <span id="top-extra"></span>
+              <span id="crumb-icon" />
+              <span class="crumb" id="crumb">
+                {title}
+              </span>
+              <span class="spacer" />
+              <span id="top-extra" />
             </header>
 
             <div class="page">
@@ -65,7 +67,12 @@ const { title, bare = false } = Astro.props;
     }
 
     <script>
-      import { API_URL, api, sectionsOf, type DescribedController } from '../lib/api';
+      import {
+        API_URL,
+        api,
+        sectionsOf,
+        type DescribedController,
+      } from '../lib/api';
       import { ICONS, icon, iconFor, tintOf } from '../lib/icons';
       import { clearToken, token } from '../lib/session';
 
@@ -75,7 +82,11 @@ const { title, bare = false } = Astro.props;
         window.location.href = '/login';
       }
 
-      const label = (element: HTMLElement | null, node: typeof ICONS.overview, text: string) => {
+      const label = (
+        element: HTMLElement | null,
+        node: typeof ICONS.overview,
+        text: string,
+      ) => {
         if (!element) {
           return;
         }
@@ -87,7 +98,11 @@ const { title, bare = false } = Astro.props;
 
       document.getElementById('brand-mark')?.appendChild(icon(ICONS.brand, 16));
       document.getElementById('crumb-icon')?.appendChild(icon(ICONS.crumb, 13));
-      label(document.getElementById('overview-link'), ICONS.overview, 'Overview');
+      label(
+        document.getElementById('overview-link'),
+        ICONS.overview,
+        'Overview',
+      );
       label(document.getElementById('sign-out'), ICONS.signOut, 'Sign out');
 
       const apiUrl = document.getElementById('api-url');

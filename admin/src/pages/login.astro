@@ -13,7 +13,9 @@ import Shell from '../layouts/Shell.astro';
     </span>
 
     <h1>Sign in</h1>
-    <p class="lede">Same session endpoint as the API. The token stays in this browser.</p>
+    <p class="lede">
+      Same session endpoint as the API. The token stays in this browser.
+    </p>
 
     <form id="form">
       <label>
@@ -22,7 +24,12 @@ import Shell from '../layouts/Shell.astro';
       </label>
       <label>
         Password
-        <input id="password" type="password" required autocomplete="current-password" />
+        <input
+          id="password"
+          type="password"
+          required
+          autocomplete="current-password"
+        />
       </label>
       <button class="primary" type="submit">Sign in</button>
     </form>
@@ -46,7 +53,8 @@ import Shell from '../layouts/Shell.astro';
     error.hidden = true;
 
     const email = (document.getElementById('email') as HTMLInputElement).value;
-    const password = (document.getElementById('password') as HTMLInputElement).value;
+    const password = (document.getElementById('password') as HTMLInputElement)
+      .value;
 
     void fetch(API_URL + '/auth/login', {
       method: 'POST',

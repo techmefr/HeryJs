@@ -1,7 +1,15 @@
 import { ICONS, icon } from './icons';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}T/;
-const HTTP_METHODS = new Set(['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'HEAD', 'OPTIONS']);
+const HTTP_METHODS = new Set([
+  'GET',
+  'POST',
+  'PATCH',
+  'PUT',
+  'DELETE',
+  'HEAD',
+  'OPTIONS',
+]);
 
 export function pill(text: string, tone: string): HTMLElement {
   const element = document.createElement('span');
@@ -27,7 +35,11 @@ function statusTone(status: number): string {
   return status >= 300 ? 'neutral' : 'ok';
 }
 
-function writeCell(target: HTMLTableCellElement, column: string, value: unknown): void {
+function writeCell(
+  target: HTMLTableCellElement,
+  column: string,
+  value: unknown,
+): void {
   if (value === null || value === undefined) {
     target.className = 'nothing';
     target.textContent = '—';
@@ -48,7 +60,9 @@ function writeCell(target: HTMLTableCellElement, column: string, value: unknown)
     }
 
     target.className = 'mono';
-    target.textContent = Number.isInteger(value) ? String(value) : value.toFixed(2);
+    target.textContent = Number.isInteger(value)
+      ? String(value)
+      : value.toFixed(2);
     return;
   }
 
@@ -66,7 +80,9 @@ function writeCell(target: HTMLTableCellElement, column: string, value: unknown)
   }
 
   target.className = 'mono';
-  target.textContent = ISO_DATE.test(text) ? text.replace('T', ' ').slice(0, 19) : text;
+  target.textContent = ISO_DATE.test(text)
+    ? text.replace('T', ' ').slice(0, 19)
+    : text;
   target.title = text;
 }
 
@@ -130,7 +146,11 @@ export function stat(value: number, caption: string, tone = ''): HTMLElement {
   return card;
 }
 
-export function state(message: string, hint: string, tone = 'muted'): HTMLElement {
+export function state(
+  message: string,
+  hint: string,
+  tone = 'muted',
+): HTMLElement {
   const card = document.createElement('div');
   card.className = 'card state ' + tone;
   card.appendChild(icon(tone === 'muted' ? ICONS.empty : ICONS.lock, 26));
