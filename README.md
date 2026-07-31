@@ -2,6 +2,8 @@
 
 **Generate once. Own your code. Structure everything.**
 
+[Documentation](https://techmefr.github.io/HeryJs/)
+
 HeryJs is a framework built on top of [NestJS](https://nestjs.com) — the way Nuxt sits on Vue, or Adonis on Express. NestJS gives you the runtime; HeryJs gives you the project: a CLI that scaffolds a new app, generates secured resources into it, and installs the pieces most backends end up building by hand anyway. Nothing re-syncs, nothing runs a schema at request time. What you get is a normal, readable, ownable NestJS codebase from the first commit.
 
 ---
