@@ -7,12 +7,19 @@ export interface CheckResult {
   hint?: string;
 }
 
-export function parseHostPort(url: string, fallbackPort: number) {
-  const parsed = new URL(url);
-  return {
-    host: parsed.hostname,
-    port: parsed.port ? Number(parsed.port) : fallbackPort,
-  };
+export function parseHostPort(
+  url: string,
+  fallbackPort: number,
+): { host: string; port: number } | null {
+  try {
+    const parsed = new URL(url);
+    return {
+      host: parsed.hostname,
+      port: parsed.port ? Number(parsed.port) : fallbackPort,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function checkTcp(
@@ -43,7 +50,16 @@ export function checkTcp(
 export function checkMigrations(): CheckResult {
   const result = spawnSync('npx', ['prisma', 'migrate', 'status'], {
     encoding: 'utf-8',
+    shell: process.platform === 'win32',
   });
+
+  if (result.error || result.status === null) {
+    return {
+      label: 'Prisma migrations',
+      ok: false,
+      hint: 'could not run "npx prisma migrate status"',
+    };
+  }
 
   const output = `${result.stdout ?? ''}${result.stderr ?? ''}`;
   const upToDate = output.includes('Database schema is up to date');
@@ -62,13 +78,22 @@ export async function runInfraChecks(): Promise<CheckResult[]> {
   const checks: CheckResult[] = [];
 
   if (databaseUrl) {
-    const { host, port } = parseHostPort(databaseUrl, 5432);
-    const reachable = await checkTcp(host, port);
-    checks.push({
-      label: `PostgreSQL (${host}:${port})`,
-      ok: reachable,
-      hint: reachable ? undefined : 'run "docker compose up -d postgres"',
-    });
+    const parsed = parseHostPort(databaseUrl, 5432);
+
+    if (parsed) {
+      const reachable = await checkTcp(parsed.host, parsed.port);
+      checks.push({
+        label: `PostgreSQL (${parsed.host}:${parsed.port})`,
+        ok: reachable,
+        hint: reachable ? undefined : 'run "docker compose up -d postgres"',
+      });
+    } else {
+      checks.push({
+        label: 'PostgreSQL',
+        ok: false,
+        hint: 'DATABASE_URL is not a valid URL',
+      });
+    }
   } else {
     checks.push({
       label: 'PostgreSQL',
@@ -77,13 +102,22 @@ export async function runInfraChecks(): Promise<CheckResult[]> {
     });
   }
 
-  const { host: redisHost, port: redisPort } = parseHostPort(redisUrl, 6379);
-  const redisReachable = await checkTcp(redisHost, redisPort);
-  checks.push({
-    label: `Valkey (${redisHost}:${redisPort})`,
-    ok: redisReachable,
-    hint: redisReachable ? undefined : 'run "docker compose up -d valkey"',
-  });
+  const redisParsed = parseHostPort(redisUrl, 6379);
+
+  if (redisParsed) {
+    const redisReachable = await checkTcp(redisParsed.host, redisParsed.port);
+    checks.push({
+      label: `Valkey (${redisParsed.host}:${redisParsed.port})`,
+      ok: redisReachable,
+      hint: redisReachable ? undefined : 'run "docker compose up -d valkey"',
+    });
+  } else {
+    checks.push({
+      label: 'Valkey',
+      ok: false,
+      hint: 'REDIS_URL is not a valid URL',
+    });
+  }
 
   if (databaseUrl && checks[0]?.ok) {
     checks.push(checkMigrations());

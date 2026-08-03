@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { walkFiles } from '../walk';
 import type { LintRule, Violation } from '../types';
@@ -7,7 +7,24 @@ import type { LintRule, Violation } from '../types';
 // generator's own tooling, not the shape a generated project's code follows,
 // and a fair amount of it legitimately bootstraps from process.env before
 // env.ts's schema can even be loaded.
-const ROOT = 'src';
+//
+// A module's src/runtime is the same rule: it is what `hery install` copies
+// verbatim into src/modules/, so a raw read there survives the copy and
+// reaches production. The rest of a module -- its src/module.ts -- is
+// build-time-only CLI code, the same category as cli/ and scripts/, and stays
+// out of scope for the same reason.
+function packageRuntimeRoots(repoRoot: string): string[] {
+  const packagesDir = path.join(repoRoot, 'packages');
+
+  if (!existsSync(packagesDir)) {
+    return [];
+  }
+
+  return readdirSync(packagesDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => path.join(packagesDir, entry.name, 'src', 'runtime'))
+    .filter((dir) => existsSync(dir));
+}
 
 // The one file allowed to touch process.env directly -- every other read is
 // supposed to go through the parsed, validated `env` export instead.
@@ -44,15 +61,18 @@ function checkFile(filePath: string, repoRoot: string): Violation[] {
 export const noRawProcessEnvRule: LintRule = {
   name: 'no-raw-process-env',
   run(repoRoot) {
-    const dir = path.join(repoRoot, ROOT);
+    const roots = [
+      path.join(repoRoot, 'src'),
+      ...packageRuntimeRoots(repoRoot),
+    ].filter((dir) => existsSync(dir));
 
-    if (!existsSync(dir)) {
-      return [];
-    }
-
-    return walkFiles(
-      dir,
-      (name) => name.endsWith('.ts') && !name.endsWith('.spec.ts'),
-    ).flatMap((file) => checkFile(file, repoRoot));
+    return roots
+      .flatMap((dir) =>
+        walkFiles(
+          dir,
+          (name) => name.endsWith('.ts') && !name.endsWith('.spec.ts'),
+        ),
+      )
+      .flatMap((file) => checkFile(file, repoRoot));
   },
 };

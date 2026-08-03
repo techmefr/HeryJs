@@ -14,6 +14,20 @@ import type { Violation } from '../lib/lint/types';
 
 const DEFAULT_BASELINE_PATH = '.hery/lint-baseline.json';
 
+// A violation can be anchored on a file that does not exist -- resource-shape
+// used to do exactly that for the companion file it flags as missing.
+// partitionViolations and baselineFrom already treat "no content" as '',
+// so tolerating ENOENT here rather than crashing keeps the two consistent
+// instead of the whole command going down on the one path most likely to
+// hit a missing file.
+function readFileOrEmpty(repoRoot: string, relativeFile: string): string {
+  try {
+    return readFileSync(path.join(repoRoot, relativeFile), 'utf8');
+  } catch {
+    return '';
+  }
+}
+
 interface LintOptions {
   minScore?: string;
   baseline: string;
@@ -101,7 +115,7 @@ export function registerLintCommand(program: Command): void {
         if (!fileContents.has(violation.file)) {
           fileContents.set(
             violation.file,
-            readFileSync(path.join(repoRoot, violation.file), 'utf8'),
+            readFileOrEmpty(repoRoot, violation.file),
           );
         }
       }
