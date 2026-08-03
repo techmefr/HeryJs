@@ -266,6 +266,9 @@ importers:
 
   packages/admin-astro:
     devDependencies:
+      astro:
+        specifier: ^5.16.2
+        version: 5.18.2(@types/node@26.1.2)(ioredis@5.11.1)(jiti@2.7.0)(lightningcss@1.33.0)(rollup@4.62.3)(terser@5.49.0)(typescript@5.9.3)
       lucide:
         specifier: ^1.27.0
         version: 1.27.0
