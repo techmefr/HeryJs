@@ -24,6 +24,12 @@ sorts: [createdAt, title]
 filters: [title]
 ```
 
+## Naming
+
+`name` must be PascalCase (`WorkoutSession`, not `workout_session` or `workoutSession`) and every field `name` must be camelCase (`scheduledAt`, not `scheduled_at`). Both are enforced by the same regex the schema loads and validates against — a blueprint that breaks either is rejected before generation runs, and `hery create:blueprint` rejects the resource name even earlier, at the command line.
+
+This is the one casing convention in the project, and it is deliberately the only one: the resource name is PascalCase because it becomes a class name (`WorkoutSessionController`, `WorkoutSessionService`), a field name is camelCase because it becomes a TypeScript property and, with no `@map` anywhere in `schema.prisma`, the Postgres column name too — there is no separate snake_case layer at the database boundary to keep in sync with the one everything else already uses.
+
 ## Fields
 
 Each field has a `type` (`string`, `int`, `boolean`, `datetime`), whether it's `optional`, and whether it's `hidden` — a hidden field is stripped from every API response by the generated `<name>.view.ts`, no matter which endpoint returns the record.
