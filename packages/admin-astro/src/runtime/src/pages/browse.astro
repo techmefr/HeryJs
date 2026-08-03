@@ -16,14 +16,18 @@ import Shell from '../layouts/Shell.astro';
 
   const heading = document.getElementById('heading')!;
   const output = document.getElementById('output')!;
-  const route = new URLSearchParams(window.location.search).get('path');
+  const params = new URLSearchParams(window.location.search);
+  const route = params.get('path');
+  const method = params.get('method') === 'POST' ? 'POST' : 'GET';
 
   if (!route) {
     output.appendChild(
       state('No section selected', 'Pick one in the sidebar to list its rows.'),
     );
   } else {
-    const label = labelOf(route);
+    const label = labelOf(
+      method === 'POST' ? route.slice(0, -'/search'.length) : route,
+    );
     heading.textContent = label;
     document.title = label + ' — HeryJs admin';
     document.body.classList.add(tintOf(route));
@@ -35,13 +39,18 @@ import Shell from '../layouts/Shell.astro';
     }
 
     const target = document.getElementById('route')!;
-    target.appendChild(methodBadge('GET'));
+    target.appendChild(methodBadge(method));
     target.appendChild(document.createTextNode(route));
 
     output.appendChild(skeleton());
 
     try {
-      const { data } = await api<unknown>(route);
+      const { data } = await api<unknown>(
+        route,
+        method === 'POST'
+          ? { method: 'POST', body: JSON.stringify({}) }
+          : undefined,
+      );
       const rows = (Array.isArray(data) ? data : [data]) as Record<
         string,
         unknown

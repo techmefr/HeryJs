@@ -77,7 +77,14 @@ This is the part worth reading closely, because a WebSocket bypasses everything 
 
 ```ts
 export function withTenant<T>(client: LiveSocket, fn: () => Promise<T>): Promise<T> {
-  return TenantContextStorage.run({ tenantId: client.data.user.tenantId }, fn);
+  return TenantContextStorage.run(
+    {
+      tenantId: client.data.user.tenantId,
+      userId: client.data.user.id,
+      impersonatedBy: client.data.user.impersonatedBy,
+    },
+    fn,
+  );
 }
 ```
 

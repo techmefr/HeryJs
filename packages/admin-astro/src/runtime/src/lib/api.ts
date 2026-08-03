@@ -70,32 +70,56 @@ export interface DescribedController {
 export interface AdminSection {
   label: string;
   path: string;
+  method: 'GET' | 'POST';
 }
 
 // The overview already reports these, and /signal/stream never ends.
+// /pipeline/traces gets its own dedicated timeline page (pipeline.astro)
+// rather than the generic flat table, so it is hidden from the
+// auto-discovered sidebar sections the same way /describe and /health are.
 const HIDDEN_PATHS = [
   '/',
   '/describe',
   '/health',
   '/metrics',
+  '/pipeline/traces',
   '/signal/stream',
 ];
 
 // A section is any GET route that takes no argument, whether it sits at the root
-// of a resource or deeper like /inspector/requests. Nothing has to be
-// registered: installing a module that ships such a route is enough for it to
-// show up here.
+// of a resource or deeper like /inspector/requests, or a POST route ending in
+// /search -- the Lomkit-style search contract takes its query in the body, so
+// it never shows up as a plain listable GET. Nothing has to be registered:
+// installing a module that ships such a route is enough for it to show up here.
 export function sectionsOf(controllers: DescribedController[]): AdminSection[] {
   return controllers.flatMap((controller) =>
     controller.routes
-      .filter((route) => route.method === 'GET' && !route.path.includes(':'))
-      .map((route) =>
-        route.path === '/'
-          ? controller.basePath
-          : controller.basePath + route.path,
+      .filter(
+        (route) =>
+          (route.method === 'GET' && !route.path.includes(':')) ||
+          (route.method === 'POST' && route.path.endsWith('/search')),
       )
-      .filter((route) => !HIDDEN_PATHS.includes(route))
-      .map((route) => ({ label: labelOf(route), path: route })),
+      .map((route) => ({
+        method: route.method as 'GET' | 'POST',
+        path:
+          route.path === '/'
+            ? controller.basePath
+            : controller.basePath + route.path,
+      }))
+      .filter(
+        (route) =>
+          !HIDDEN_PATHS.includes(route.path) &&
+          !route.path.endsWith('/describe'),
+      )
+      .map((route) => ({
+        label: labelOf(
+          route.method === 'POST'
+            ? route.path.slice(0, -'/search'.length)
+            : route.path,
+        ),
+        path: route.path,
+        method: route.method,
+      })),
   );
 }
 

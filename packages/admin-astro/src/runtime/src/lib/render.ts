@@ -23,7 +23,7 @@ export function methodBadge(method: string): HTMLElement {
   return pill(method, method.toLowerCase());
 }
 
-function statusTone(status: number): string {
+export function statusTone(status: number): string {
   if (status >= 500) {
     return 'danger';
   }

@@ -1,0 +1,164 @@
+---
+import Shell from '../layouts/Shell.astro';
+---
+
+<Shell title="Pipeline">
+  <h1>Pipeline</h1>
+  <p class="lede">
+    Every request, one step per layer it crossed — middleware, guards, the
+    controller handler, each Prisma query. The step that blocked a request is
+    highlighted; click any step for its detail.
+  </p>
+
+  <div class="output" id="output"></div>
+</Shell>
+
+<script>
+  import { ApiError, api } from '../lib/api';
+  import {
+    methodBadge,
+    pill,
+    skeleton,
+    state,
+    statusTone,
+  } from '../lib/render';
+
+  interface TraceStep {
+    stage: string;
+    label: string;
+    status: 'ok' | 'blocked' | 'error';
+    durationMs: number;
+    detail?: unknown;
+  }
+
+  interface TraceRecord {
+    id: string;
+    method: string;
+    path: string;
+    status: number;
+    durationMs: number;
+    timestamp: string;
+    steps: TraceStep[];
+    blockedStepIndex: number | null;
+  }
+
+  const output = document.getElementById('output')!;
+  output.appendChild(skeleton());
+
+  function stepChip(
+    step: TraceStep,
+    isBlocking: boolean,
+  ): { chip: HTMLElement; detail: HTMLElement } {
+    const chip = document.createElement('div');
+    chip.className = 'step' + (step.status !== 'ok' ? ' blocked' : '');
+    chip.tabIndex = 0;
+
+    if (isBlocking) {
+      chip.setAttribute('aria-current', 'step');
+    }
+
+    const stage = document.createElement('span');
+    stage.className = 'stage';
+    stage.textContent = step.stage;
+    chip.append(stage, document.createTextNode(step.label));
+
+    const detail = document.createElement('pre');
+    detail.className = 'step-detail';
+    detail.hidden = true;
+    detail.textContent =
+      Math.round(step.durationMs * 100) / 100 +
+      ' ms\n' +
+      (step.detail === undefined
+        ? '(no detail for this step)'
+        : JSON.stringify(step.detail, null, 2));
+
+    chip.addEventListener('click', () => {
+      detail.hidden = !detail.hidden;
+    });
+    chip.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        detail.hidden = !detail.hidden;
+      }
+    });
+
+    return { chip, detail };
+  }
+
+  function traceCard(trace: TraceRecord): HTMLElement {
+    const card = document.createElement('div');
+    card.className = 'card trace';
+
+    const head = document.createElement('div');
+    head.className = 'trace-head';
+    head.appendChild(methodBadge(trace.method));
+
+    const path = document.createElement('span');
+    path.className = 'path';
+    path.textContent = trace.path;
+    head.appendChild(path);
+
+    head.appendChild(pill(String(trace.status), statusTone(trace.status)));
+    head.appendChild(pill(Math.round(trace.durationMs) + ' ms', 'neutral'));
+
+    const when = document.createElement('span');
+    when.className = 'when';
+    when.textContent = trace.timestamp.replace('T', ' ').slice(0, 19);
+    head.appendChild(when);
+
+    const steps = document.createElement('div');
+    steps.className = 'trace-steps';
+    const detailHost = document.createElement('div');
+
+    trace.steps.forEach((step, index) => {
+      const { chip, detail } = stepChip(step, index === trace.blockedStepIndex);
+      steps.appendChild(chip);
+      detailHost.appendChild(detail);
+    });
+
+    card.append(head, steps, detailHost);
+
+    return card;
+  }
+
+  try {
+    const { data } = await api<TraceRecord[]>('/pipeline/traces');
+
+    output.replaceChildren(
+      data.length === 0
+        ? state(
+            'No traced requests yet',
+            'Traces appear here as soon as a request hits the API in a non-production environment.',
+          )
+        : (() => {
+            const list = document.createElement('div');
+            list.className = 'traces';
+            list.append(...data.map(traceCard));
+            return list;
+          })(),
+    );
+
+    document
+      .getElementById('top-extra')
+      ?.appendChild(
+        pill(
+          data.length + (data.length === 1 ? ' trace' : ' traces'),
+          'neutral',
+        ),
+      );
+  } catch (error) {
+    output.replaceChildren(
+      error instanceof ApiError && error.status === 404
+        ? state(
+            'Not available',
+            'The pipeline trace is a dev-only endpoint, disabled in production.',
+            'denied',
+          )
+        : state(
+            'Could not load traces',
+            'The request to /pipeline/traces failed.',
+            'denied',
+          ),
+    );
+  }
+</script>

@@ -645,6 +645,89 @@ button.primary:hover {
   font-size: 0.8125rem;
 }
 
+/* Pipeline */
+
+.traces {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.trace-head {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.875rem 1.125rem;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+}
+
+.trace-head .path {
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trace-head .when {
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.trace-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border-top: 1px solid var(--border);
+  padding: 0.875rem 1.125rem;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--hover);
+  padding: 0.375rem 0.625rem;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  color: var(--muted);
+}
+
+.step .stage {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.step.blocked {
+  border-color: color-mix(in srgb, var(--danger) 55%, var(--border));
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+
+.step.blocked .stage {
+  color: var(--danger);
+}
+
+.step[aria-current='step'] {
+  border-width: 2px;
+  border-color: var(--danger);
+}
+
+.step-detail {
+  border-top: 1px solid var(--border);
+  background: var(--raised);
+  padding: 0.875rem 1.125rem;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 @media (width <= 820px) {
   .shell {
     grid-template-columns: minmax(0, 1fr);

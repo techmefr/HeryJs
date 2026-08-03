@@ -106,7 +106,11 @@ export function sectionsOf(controllers: DescribedController[]): AdminSection[] {
             ? controller.basePath
             : controller.basePath + route.path,
       }))
-      .filter((route) => !HIDDEN_PATHS.includes(route.path))
+      .filter(
+        (route) =>
+          !HIDDEN_PATHS.includes(route.path) &&
+          !route.path.endsWith('/describe'),
+      )
       .map((route) => ({
         label: labelOf(
           route.method === 'POST'
