@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import * as ts from 'typescript';
-import { kebabCase, pascalCase } from './naming';
+import { kebabCase, kebabToPascalCase } from './naming';
 
 export interface ResourceRoute {
   method: string;
@@ -44,7 +44,7 @@ export function listResources(): string[] {
     .filter((dir) =>
       existsSync(path.join(functionalDir(), dir, `${dir}.controller.ts`)),
     )
-    .map((dir) => pascalCase(dir));
+    .map((dir) => kebabToPascalCase(dir));
 }
 
 function decoratorCallee(decorator: ts.Decorator): string | undefined {
@@ -181,7 +181,7 @@ function parseHiddenFields(resourceDir: string, kebabName: string): string[] {
 
 export function describeResource(name: string): ResourceDescription | null {
   const resourceDir = findResourceDirs().find(
-    (dir) => pascalCase(dir) === name || dir === kebabCase(name),
+    (dir) => kebabToPascalCase(dir) === name || dir === kebabCase(name),
   );
 
   if (!resourceDir) {
@@ -198,7 +198,7 @@ export function describeResource(name: string): ResourceDescription | null {
     return null;
   }
 
-  const pascalName = pascalCase(resourceDir);
+  const pascalName = kebabToPascalCase(resourceDir);
   const hiddenFields = new Set(parseHiddenFields(resourceDir, resourceDir));
 
   const fields = parsePrismaFields(pascalName).map((field) => ({

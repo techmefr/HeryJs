@@ -139,11 +139,11 @@ function withBackRelation(
 export function patchPrismaSchema(
   filePath: string,
   ctx: ResourceContext,
-): void {
+): boolean {
   const source = readFileSync(filePath, 'utf8');
 
   if (source.includes(`model ${ctx.pascalName} {`)) {
-    return;
+    return false;
   }
 
   let patched = withBackRelation(source, 'User', ctx, filePath);
@@ -155,4 +155,5 @@ export function patchPrismaSchema(
   }
 
   writeFileSync(filePath, `${patched}\n${prismaModelBlock(ctx)}`);
+  return true;
 }

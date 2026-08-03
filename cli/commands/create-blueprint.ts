@@ -243,6 +243,18 @@ export function registerCreateBlueprintCommand(program: Command): void {
         name: string,
         options: { yes?: boolean; allOptions?: boolean },
       ) => {
+        // Matches blueprintSchema's own `name` field: generate can only ever
+        // fail on a name shaped otherwise, and a name built from user input
+        // that is not this shape is also how the write below could land
+        // outside blueprints/ in the first place.
+        if (!/^[A-Z][a-zA-Z0-9]*$/.test(name)) {
+          console.error(
+            pc.red('a resource name must be PascalCase, e.g. WorkoutSession'),
+          );
+          process.exitCode = 1;
+          return;
+        }
+
         const blueprintsDir = path.resolve(process.cwd(), 'blueprints');
 
         if (!existsSync(blueprintsDir)) {

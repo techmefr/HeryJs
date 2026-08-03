@@ -30,8 +30,10 @@ export const blueprintSchema = z.object({
       default: z.number().int().positive().default(15),
     })
     .default({ limits: [10, 15, 20], default: 15 }),
-  sorts: z.array(z.string()).default(['createdAt']),
-  filters: z.array(z.string()).default([]),
+  sorts: z
+    .array(z.string().regex(/^[a-z][a-zA-Z0-9]*$/))
+    .default(['createdAt']),
+  filters: z.array(z.string().regex(/^[a-z][a-zA-Z0-9]*$/)).default([]),
 });
 
 export type PermissionPreset = z.infer<typeof permissionPresetSchema>;
@@ -64,6 +66,45 @@ function assertNoReservedField(
   }
 }
 
+// The columns a sort or filter entry may name beyond the blueprint's own
+// fields -- every generated column except tenantId, which multi-tenancy
+// already applies ahead of anything a caller can request.
+const KNOWN_NON_FIELD_SORT_FILTER_TARGETS = new Set([
+  'id',
+  'createdAt',
+  'updatedAt',
+  'deletedAt',
+  'ownerId',
+  'teamId',
+]);
+
+/**
+ * Both arrays are interpolated unescaped into generated TypeScript and used
+ * as raw Prisma `orderBy`/`where` keys, so an entry that names nothing real
+ * is not a "no rows" query -- it is a controller that fails to compile, or a
+ * 500 on the search route the moment it is called.
+ */
+function assertSortsAndFiltersAreKnownFields(
+  blueprint: Blueprint,
+  report: (message: string) => void,
+): void {
+  const fieldNames = new Set(blueprint.fields.map((field) => field.name));
+
+  for (const [kind, entries] of [
+    ['sort', blueprint.sorts],
+    ['filter', blueprint.filters],
+  ] as const) {
+    for (const entry of entries) {
+      if (
+        !fieldNames.has(entry) &&
+        !KNOWN_NON_FIELD_SORT_FILTER_TARGETS.has(entry)
+      ) {
+        report(`${kind} "${entry}" names no declared field`);
+      }
+    }
+  }
+}
+
 /**
  * Accepts either a blueprint name, resolved under `blueprints/`, or a path to a
  * YAML file. A name is the everyday case; a path is what makes a blueprint
@@ -86,6 +127,9 @@ export function loadBlueprint(filePath: string): Blueprint {
   const problems: string[] = [];
 
   assertNoReservedField(blueprint, (message) => problems.push(message));
+  assertSortsAndFiltersAreKnownFields(blueprint, (message) =>
+    problems.push(message),
+  );
 
   if (problems.length > 0) {
     throw new Error(

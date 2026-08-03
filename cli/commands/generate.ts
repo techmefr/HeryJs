@@ -131,10 +131,16 @@ export function registerGenerateCommand(program: Command): void {
           'audit-log.ts',
         );
 
-        patchPrismaSchema(schemaPath, ctx);
+        const schemaPatched = patchPrismaSchema(schemaPath, ctx);
         patchModelSet(prismaClientPath, 'TENANT_SCOPED_MODELS', ctx.pascalName);
         patchModelSet(auditLogPath, 'AUDITED_MODELS', ctx.pascalName);
-        console.log(pc.green(`✔ patched ${schemaPath}`));
+        console.log(
+          schemaPatched
+            ? pc.green(`✔ patched ${schemaPath}`)
+            : pc.dim(
+                `model ${ctx.pascalName} already in ${schemaPath}, schema left untouched`,
+              ),
+        );
         console.log(pc.green(`✔ patched ${prismaClientPath}`));
         console.log(pc.green(`✔ patched ${auditLogPath}`));
 
