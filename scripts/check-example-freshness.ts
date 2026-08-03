@@ -33,8 +33,8 @@ const EXAMPLES_DIR = path.join(REPO_ROOT, 'examples');
  * so importing AppModule is enough. The example is deliberately the one
  * resource never wired in (see examples/README.md), specifically so a fresh
  * clone ships no business domain, so its spec has to import and register its
- * own module to exercise it at all. Same kind of one-line, folder-specific
- * edit as `asExtracted`, applied here rather than by hand.
+ * own module to exercise it at all. A one-line, folder-specific edit, applied
+ * here rather than by hand.
  */
 function withOwnModuleWired(source: string, ctx: ResourceContext): string {
   return source

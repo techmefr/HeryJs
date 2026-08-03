@@ -34,18 +34,18 @@ rather than by hand.
 So there is nothing to keep in sync. Change a template and this check tells you the
 example is stale; regenerate and commit.
 
-## The two hand-owned files
+## The one hand-owned file
 
 `workout.seeder.ts` is not something `hery generate` produces at all. It lives here
 rather than in `technical/` because a seeder for a domain is part of that domain, and
 putting it in shared infrastructure would make infrastructure depend on a business
 model — which the architecture linter refuses.
 
-`workout.spec.ts` starts from the generated spec and adds four proofs the generator
-does not write yet: collection scope parity, the trashed bin, resolved capabilities on
-a list, and tenant spoofing through a client-supplied header. Pinning it to the
-generator would delete them, so it is owned by hand until those four move into the
-template.
+`workout.spec.ts` used to be hand-owned too: it started from the generated spec and
+added four proofs the template didn't write — collection scope parity, the trashed
+bin, resolved capabilities on a list, and tenant spoofing through a client-supplied
+header. The generator now writes all four itself, so the spec is generated like
+everything else and `pnpm lint:example` checks it byte-for-byte along with the rest.
 
 ## Conventions still apply
 

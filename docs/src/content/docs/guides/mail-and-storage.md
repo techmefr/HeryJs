@@ -69,7 +69,7 @@ The S3 driver uses the AWS SDK and real presigned URLs, and works against any S3
 
 ### Two things the module does not do
 
-**There is no upload endpoint.** No multipart handling, no file interceptor, no size or MIME validation. The only storage route in the framework is the local read route above. Accepting an upload means writing your own controller that validates whatever your product should accept and calls `.put()` — the framework declines to guess your limits.
+**There is no upload endpoint.** No multipart handling, no file interceptor. The only storage route in the framework is the local read route above. Accepting an upload means writing your own controller that validates whatever your product should accept and calls `.put()`. `.put()` itself refuses a body over 25 MB with `StorageBodyTooLargeException`, but that is a blanket ceiling, not a MIME check — the framework declines to guess your content-type limits.
 
 **Keys are not tenant-scoped.** Nothing in the module prefixes a key, and it does not read the tenant context at all. The key you pass is the key that is used, verbatim. This is the one place in HeryJs where a tenant boundary is *not* established for you, so it is worth stating bluntly: two tenants that both write `avatars/profile.png` write the same object.
 
@@ -79,4 +79,4 @@ Put the tenant in the key, at the one place you build keys:
 const key = `${TenantContextStorage.getTenantId()}/avatars/${record.id}.png`;
 ```
 
-The same discipline applies to key *shape*: keys reach the filesystem through a path join, so a key assembled from client input can contain `../`. Derive keys from ids you control rather than from a supplied filename.
+The same discipline applies to key *shape*: the local provider resolves every key against the storage root and throws `InvalidStorageKeyException` if the result escapes it, so `../`, `../../` and similar sequences are rejected rather than silently reaching the filesystem. Still derive keys from ids you control rather than from a supplied filename — the check exists so a client cannot walk outside your storage root, not so you can skip thinking about what a filename could contain.

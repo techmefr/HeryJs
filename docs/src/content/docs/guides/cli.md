@@ -165,6 +165,8 @@ The baseline (`.hery/lint-baseline.json` by default, override with `--baseline <
 
 `--format json` prints `{ score, grandfathered, violations }` instead of the text report, for a script or an agent to act on.
 
+## `hery console`
+
 Boots the real application into a REPL with the DI container and the tenant-scoped Prisma client. `--tenant <id>` picks the tenant the whole session runs inside. See [Developer tooling](/guides/devtools/).
 
 ## `hery hosts`
