@@ -33,6 +33,9 @@ Thumbs.db
 .vscode/
 *.swp
 
+# AI tooling
+.claude/
+
 # Prisma (generated client outside node_modules, if applicable)
 prisma/generated/
 prisma/*.db

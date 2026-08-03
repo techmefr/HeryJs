@@ -7,16 +7,35 @@ The `hery` CLI is the only thing in this project that reads a blueprint. It is a
 
 | Command | What it does |
 |---|---|
+| `new <name>` | Scaffolds a fresh HeryJs project in its own directory. |
 | `create:blueprint <Name>` | Writes a blueprint from prompts or defaults. |
 | `generate <Name>` | Writes a full resource from that blueprint. |
 | `migrate --name <name>` | Runs `prisma migrate dev`. |
 | `install [modules...]` | Installs optional modules. |
+| `uninstall <module>` | Removes a module and reverses what installing it did. |
 | `module:list` | Lists the modules available to install. |
 | `module:monitoring` | Scaffolds Prometheus, Grafana and Loki. |
+| `search:reindex <Name>` | Rebuilds a resource's search index from Postgres. |
 | `up` | Checks that local dependencies are ready. |
 | `console` | Boots the app into a REPL. |
 | `hosts` | Adds the local hostname to your hosts file. |
 | `mcp:serve` | A read-only MCP server over stdio. |
+
+## `hery new <name>`
+
+Scaffolds a fresh HeryJs project in `./<name>`: the CLI, every module's authoring package, the kernel (`technical/`), the always-on DX tools (`devtools/`), the modules wired in by default, and a rewritten `package.json`. It then runs `git init` and commits the result, and prints the commands to take from there:
+
+```bash
+pnpm hery new my-app
+cd my-app
+cp .env.example .env
+docker compose up -d
+pnpm install
+pnpm exec prisma migrate dev
+pnpm start:dev
+```
+
+Examples and the doc site are deliberately not copied — this is the framework's own demo, not part of what ships.
 
 ## The order that matters
 
@@ -64,6 +83,14 @@ Installs optional modules à la carte or, with `--all`, the full package. `hery 
 pnpm hery install storage mail
 pnpm hery install --all
 ```
+
+## `hery uninstall <module>`
+
+Removes the module's own npm dependencies (`pnpm remove`) and prints the rest of what to clean up by hand — the runtime files it copied in and the kernel files it patched. It only automates what is safe to automate outright: your own edits to those files since installing are exactly what "own your code" says the tool must never guess about and silently revert. Run `hery module:list` to see what's installed. See [The module system](/guides/modules/).
+
+## `hery search:reindex <Name>`
+
+Rebuilds a resource's search index from what is actually in Postgres — the source of truth stays the database, the index is a derived cache that can always be thrown away and rebuilt. Run it after installing a search engine module on a resource that already has data, or any time the index and the database might have drifted. See [Full-text search](/guides/search/).
 
 ## `hery module:monitoring`
 

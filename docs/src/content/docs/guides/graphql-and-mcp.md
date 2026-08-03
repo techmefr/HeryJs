@@ -95,10 +95,6 @@ if (!decision.allowed) {
 }
 ```
 
-:::caution[Resolver generation is not usable yet]
-The generated resolver file is currently missing an import for `subjectOf`, so it does not typecheck. The module itself installs and the endpoint works; the per-resource resolver does not compile until that import is added by hand. Prefer REST or the MCP module until this is fixed.
-:::
-
-Two smaller differences from REST worth knowing when they do work: a denial throws `CapabilityForbiddenException` without the decision attached, so the response does not report the scope the way a REST 403 does; and the session is validated twice per request — once by the tenant middleware, once by the resolver guard.
+Two smaller differences from REST worth knowing: a denial throws `CapabilityForbiddenException` without the decision attached, so the response does not report the scope the way a REST 403 does; and the session is validated twice per request — once by the tenant middleware, once by the resolver guard.
 
 The endpoint path is whatever `@nestjs/graphql` defaults to; HeryJs does not set it, so treat it as the library's default rather than a framework guarantee.
