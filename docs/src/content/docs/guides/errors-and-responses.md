@@ -36,7 +36,7 @@ The two 401s are split on purpose. "You sent no token" and "you sent a token tha
 A single Nest exception filter, `DomainExceptionFilter`, is wired once via `APP_FILTER` and turns any `DomainException` into the same JSON shape:
 
 ```json
-{ "error": { "status": 403, "key": "capability.forbidden", "message": "...", "details": {} } }
+{ "error": { "status": 403, "key": "capability.forbidden", "message": "..." } }
 ```
 
 No controller formats its own error response. If a new error case needs a new shape, it's a new `DomainException` subclass, not a one-off `res.status(...).json(...)`.

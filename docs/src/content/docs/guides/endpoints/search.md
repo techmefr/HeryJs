@@ -38,7 +38,7 @@ POST /workouts/search
     "status": 400,
     "key": "query.invalid",
     "message": "Invalid value for \"limit\". Allowed: 10, 15, 20.",
-    "details": {}
+    "details": { "param": "limit", "allowed": [10, 15, 20] }
   }
 }
 ```
@@ -60,7 +60,7 @@ To know a resource's actual allow-lists ahead of time instead of guessing from a
       "deletedAt": null
     }
   ],
-  "meta": { "channels": ["acme:workout"] },
+  "meta": { "channels": ["workout"] },
   "messages": []
 }
 ```
@@ -82,11 +82,16 @@ POST /workouts/search?include=capabilities
     {
       "id": "cly8x7g9k0000abc123def456",
       "title": "Leg day",
-      "capabilities": { "view": true, "update": true, "delete": true }
+      "capabilities": {
+        "update": { "allowed": true, "scope": "own" },
+        "delete": { "allowed": true, "scope": "own" }
+      }
     }
   ],
   "messages": []
 }
 ```
+
+There is no `view` key: seeing the record in this response already answered that question. Each value is a resolved decision, not a plain boolean — `scope` names which rule let the write through (`own`, `team` or `all`), and is absent when `allowed` is `false`.
 
 Use this to decide whether to render an edit button, not as a substitute for handling the 403 the server still returns if you ignore it — the server re-checks every write regardless of what this said a moment ago.

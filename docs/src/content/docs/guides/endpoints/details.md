@@ -25,20 +25,31 @@ Authorization: Bearer <token>
 }
 ```
 
-A record you are not allowed to see — someone else's, in a `view: own` resource — answers exactly like a record that does not exist:
+A record that does not exist, is soft-deleted, or belongs to another tenant answers 404 — those three cases are indistinguishable from outside, on purpose, since none of them is information the caller should be able to tell apart:
 
 ```json
 {
   "error": {
     "status": 404,
     "key": "workout.notFound",
-    "message": "Workout not found.",
-    "details": {}
+    "message": "Workout not found."
   }
 }
 ```
 
-That is deliberate: a 403 here would confirm the record exists, which is itself information a caller without access should not get.
+A record that does exist, in your tenant, live — but that the `view` preset says you may not see, someone else's in a `view: own` resource — answers 403 instead:
+
+```json
+{
+  "error": {
+    "status": 403,
+    "key": "capability.forbidden",
+    "message": "You are not allowed to perform this action."
+  }
+}
+```
+
+The two are not interchangeable: 404 hides whether the record exists at all, while 403 already told you it does — the loader that resolves it for the capability check only ever sees rows visible in your tenant, so getting past it to a 403 is itself proof of existence. That is fine here because a same-tenant record does not need to hide its existence from you the way a foreign one does.
 
 ## The resource's contract
 

@@ -8,7 +8,7 @@ DELETE /workouts/cly8x7g9k0000abc123def456
 Authorization: Bearer <token>
 ```
 
-Soft-delete: the record stops appearing in normal listings and detail reads (a 404, same as one you never had access to), but nothing is actually gone from the database. Listing it again requires `withTrashed` or `onlyTrashed` — see [Search](/guides/endpoints/search/) — which is itself gated behind the delete permission, not the read one.
+Soft-delete: the record stops appearing in normal listings and detail reads (a 404, same as one that does not exist), but nothing is actually gone from the database. Listing it again requires `withTrashed` or `onlyTrashed` — see [Search](/guides/endpoints/search/) — which is itself gated behind the delete permission, not the read one.
 
 ```json
 {
