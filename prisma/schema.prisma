@@ -147,6 +147,11 @@ model AuditLog {
   createdAt      DateTime @default(now())
 
   @@index([tenantId])
+  // Two entries in the same tenant's chain can never claim the same
+  // predecessor -- that is a fork, and the linear verifier can never accept
+  // one. Postgres treats each NULL as distinct, so this also caps a tenant
+  // at exactly one genesis entry (the only row allowed a null previousHash).
+  @@unique([tenantId, previousHash])
 }
 
 model Workout {

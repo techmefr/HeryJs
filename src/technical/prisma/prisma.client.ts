@@ -73,7 +73,39 @@ export function createTenantScopedPrismaClient() {
     });
   });
 
-  const tenantScopedClient = rawClient.$extends({
+  // Audit is applied first, so it stays the outer layer: the tenant extension
+  // below sometimes bypasses its own `query(args)` and calls the raw client
+  // directly (the RLS branch runs its own transaction against `rawClient`
+  // rather than proceeding down the chain), and only a layer that wraps
+  // *around* that call still observes its result. An audit extension applied
+  // second would sit inside the tenant layer and never run on that branch.
+  const auditedClient = rawClient.$extends({
+    query: {
+      $allModels: {
+        async $allOperations({ model, operation, args, query }) {
+          const result = await query(args);
+
+          if (AUDITED_MODELS.has(model) && AUDITED_OPERATIONS.has(operation)) {
+            const record = result as { id?: string } | null;
+
+            await writeAuditLog(rawClient, {
+              tenantId: TenantContextStorage.getTenantId(),
+              model,
+              operation,
+              recordId: record?.id ?? null,
+              data: result,
+              userId: TenantContextStorage.getUserId(),
+              impersonatedBy: TenantContextStorage.getImpersonatedBy(),
+            });
+          }
+
+          return result;
+        },
+      },
+    },
+  });
+
+  return auditedClient.$extends({
     query: {
       $allModels: {
         $allOperations({ model, operation, args, query }) {
@@ -142,32 +174,6 @@ export function createTenantScopedPrismaClient() {
             }
             return run(args);
           });
-        },
-      },
-    },
-  });
-
-  return tenantScopedClient.$extends({
-    query: {
-      $allModels: {
-        async $allOperations({ model, operation, args, query }) {
-          const result = await query(args);
-
-          if (AUDITED_MODELS.has(model) && AUDITED_OPERATIONS.has(operation)) {
-            const record = result as { id?: string } | null;
-
-            await writeAuditLog(rawClient, {
-              tenantId: TenantContextStorage.getTenantId(),
-              model,
-              operation,
-              recordId: record?.id ?? null,
-              data: result,
-              userId: TenantContextStorage.getUserId(),
-              impersonatedBy: TenantContextStorage.getImpersonatedBy(),
-            });
-          }
-
-          return result;
         },
       },
     },

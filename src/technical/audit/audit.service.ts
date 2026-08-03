@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
+import { auditEntryPayload } from './audit-log';
 import { canonicalJson } from './canonical-json';
 
 @Injectable()
@@ -25,13 +26,17 @@ export class AuditService {
       const expectedHash: string = createHash('sha256')
         .update(previousHash ?? '')
         .update(
-          canonicalJson({
-            tenantId: entry.tenantId,
-            model: entry.model,
-            operation: entry.operation,
-            recordId: entry.recordId,
-            data: entry.data,
-          }),
+          canonicalJson(
+            auditEntryPayload({
+              tenantId: entry.tenantId,
+              model: entry.model,
+              operation: entry.operation,
+              recordId: entry.recordId,
+              data: entry.data,
+              userId: entry.userId,
+              impersonatedBy: entry.impersonatedBy,
+            }),
+          ),
         )
         .digest('hex');
 

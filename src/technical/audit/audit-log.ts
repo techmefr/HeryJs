@@ -18,7 +18,7 @@ export const AUDITED_OPERATIONS = new Set([
   'upsert',
 ]);
 
-interface AuditEntryInput {
+export interface AuditEntryInput {
   tenantId: string;
   model: string;
   operation: string;
@@ -33,10 +33,27 @@ interface AuditEntryInput {
   impersonatedBy: string | null;
 }
 
+/**
+ * The one shape hashed into the chain. Both the writer and the verifier must
+ * call this on the same fields, or a legitimate chain hashes to two different
+ * values depending on which side computed it.
+ */
+export function auditEntryPayload(entry: AuditEntryInput): AuditEntryInput {
+  return {
+    tenantId: entry.tenantId,
+    model: entry.model,
+    operation: entry.operation,
+    recordId: entry.recordId,
+    data: entry.data,
+    userId: entry.userId,
+    impersonatedBy: entry.impersonatedBy,
+  };
+}
+
 function computeHash(previousHash: string | null, entry: AuditEntryInput) {
   return createHash('sha256')
     .update(previousHash ?? '')
-    .update(canonicalJson(entry))
+    .update(canonicalJson(auditEntryPayload(entry)))
     .digest('hex');
 }
 
@@ -44,25 +61,37 @@ export async function writeAuditLog(
   client: PrismaClient,
   entry: AuditEntryInput,
 ) {
-  const last = await client.auditLog.findFirst({
-    where: { tenantId: entry.tenantId },
-    orderBy: { createdAt: 'desc' },
-  });
+  // Reading the chain's tail and appending to it are two separate statements,
+  // so two concurrent mutations on the same tenant can both read the same
+  // tail and both append a row claiming it as their predecessor -- a fork the
+  // linear verifier can never accept. A transaction alone does not stop this
+  // under Postgres's default isolation (each still sees a snapshot without
+  // the other's uncommitted row), so the transaction takes a session-scoped
+  // advisory lock keyed by tenant first: the second writer blocks until the
+  // first commits, and then reads the tail it actually produced.
+  await client.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${entry.tenantId}))`;
 
-  const previousHash = last?.hash ?? null;
-  const hash = computeHash(previousHash, entry);
+    const last = await tx.auditLog.findFirst({
+      where: { tenantId: entry.tenantId },
+      orderBy: { createdAt: 'desc' },
+    });
 
-  await client.auditLog.create({
-    data: {
-      tenantId: entry.tenantId,
-      model: entry.model,
-      operation: entry.operation,
-      recordId: entry.recordId,
-      data: entry.data as object,
-      userId: entry.userId,
-      impersonatedBy: entry.impersonatedBy,
-      hash,
-      previousHash,
-    },
+    const previousHash = last?.hash ?? null;
+    const hash = computeHash(previousHash, entry);
+
+    await tx.auditLog.create({
+      data: {
+        tenantId: entry.tenantId,
+        model: entry.model,
+        operation: entry.operation,
+        recordId: entry.recordId,
+        data: entry.data as object,
+        userId: entry.userId,
+        impersonatedBy: entry.impersonatedBy,
+        hash,
+        previousHash,
+      },
+    });
   });
 }
