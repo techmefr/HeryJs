@@ -534,7 +534,12 @@ export class ${ctx.pascalName}Module {}
 }
 
 export function resolverFile(ctx: ResourceContext): string {
+  // A hidden field governs output, so it is absent from the ObjectType the same
+  // way the view strips it from every REST response. GraphQL cannot serve a
+  // field its type never declared, which is what makes this the boundary rather
+  // than the resolver bodies below.
   const objectFields = ctx.fields
+    .filter((field) => !field.hidden)
     .map(
       (field) =>
         `  @Field(() => ${graphqlTypeFor(field)}${field.optional ? ', { nullable: true }' : ''})\n  declare ${field.name}${field.optional ? '?' : ''}: ${tsTypeFor(field)};`,
@@ -556,16 +561,30 @@ export function resolverFile(ctx: ResourceContext): string {
     )
     .join('\n\n');
 
+  // Named conditionally because the convention check refuses a template that
+  // imports what it does not use, and only a blueprint carrying that field type
+  // makes graphqlTypeFor emit the matching scalar. The inputs keep every field,
+  // hidden ones included, so a hidden int still needs Int.
+  const graphqlImports = [
+    'Args',
+    'Field',
+    ...(ctx.fields.some((field) => field.type === 'datetime')
+      ? ['GraphQLISODateTime']
+      : []),
+    'ID',
+    'InputType',
+    ...(ctx.fields.some((field) => field.type === 'int') ? ['Int'] : []),
+    'Mutation',
+    'ObjectType',
+    'Query',
+    'Resolver',
+  ]
+    .map((name) => `  ${name},`)
+    .join('\n');
+
   return `import { Inject, UseGuards } from '@nestjs/common';
 import {
-  Args,
-  Field,
-  ID,
-  InputType,
-  Mutation,
-  ObjectType,
-  Query,
-  Resolver,
+${graphqlImports}
 } from '@nestjs/graphql';
 import { GqlSessionGuard } from '#technical/auth/gql-session.guard';
 import type { GqlRequestWithUser } from '#technical/auth/gql-session.guard';
@@ -586,6 +605,7 @@ import {
   ${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER,
 } from './${ctx.kebabName}-record.loader';
 import type { ${ctx.pascalName}RecordLoader } from './${ctx.kebabName}-record.loader';
+import { to${ctx.pascalName}View } from './${ctx.kebabName}.view';
 
 @ObjectType('${ctx.pascalName}')
 export class ${ctx.pascalName}Type {
@@ -617,14 +637,16 @@ export class ${ctx.pascalName}Resolver {
   ) {}
 
   @Query(() => [${ctx.pascalName}Type], { name: '${ctx.pluralCamelName}' })
-  search(@CurrentGqlRequest() req: GqlRequestWithUser) {
+  async search(@CurrentGqlRequest() req: GqlRequestWithUser) {
     const subject = subjectOf(req.user);
     const decision = canViewAny${ctx.pascalName}(subject);
     if (!decision.allowed) {
       throw new CapabilityForbiddenException();
     }
 
-    return this.${ctx.camelName}s.search(subject);
+    return (await this.${ctx.camelName}s.search(subject)).map(
+      to${ctx.pascalName}View,
+    );
   }
 
   @Query(() => ${ctx.pascalName}Type, { name: '${ctx.camelName}' })
@@ -643,7 +665,7 @@ export class ${ctx.pascalName}Resolver {
       throw new CapabilityForbiddenException();
     }
 
-    return record;
+    return to${ctx.pascalName}View(record);
   }
 
   @Mutation(() => ${ctx.pascalName}Type, { name: 'create${ctx.pascalName}' })
@@ -657,7 +679,9 @@ export class ${ctx.pascalName}Resolver {
       throw new CapabilityForbiddenException();
     }
 
-    return this.${ctx.camelName}s.create(subject, input);
+    return to${ctx.pascalName}View(
+      await this.${ctx.camelName}s.create(subject, input),
+    );
   }
 
   @Mutation(() => ${ctx.pascalName}Type, { name: 'update${ctx.pascalName}' })
@@ -677,7 +701,9 @@ export class ${ctx.pascalName}Resolver {
       throw new CapabilityForbiddenException();
     }
 
-    return this.${ctx.camelName}s.update(record, input);
+    return to${ctx.pascalName}View(
+      await this.${ctx.camelName}s.update(record, input),
+    );
   }
 
   @Mutation(() => ${ctx.pascalName}Type, { name: 'remove${ctx.pascalName}' })
@@ -696,7 +722,7 @@ export class ${ctx.pascalName}Resolver {
       throw new CapabilityForbiddenException();
     }
 
-    return this.${ctx.camelName}s.softDelete(record);
+    return to${ctx.pascalName}View(await this.${ctx.camelName}s.softDelete(record));
   }
 }
 `;
