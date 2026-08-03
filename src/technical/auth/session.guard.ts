@@ -7,7 +7,7 @@ import {
 import { Request } from 'express';
 import { AUTH_PROVIDER } from './auth.types';
 import type { AuthenticatedUser, AuthProvider } from './auth.types';
-import { ApiKeyService } from './api-key.service';
+import { resolveCaller } from './resolve-caller';
 import {
   MissingSessionException,
   InvalidSessionException,
@@ -44,9 +44,7 @@ export class SessionGuard implements CanActivate {
       throw new MissingSessionException();
     }
 
-    const user = await (ApiKeyService.isApiKey(token)
-      ? this.authProvider.validateApiKey(token)
-      : this.authProvider.validateSession(token));
+    const user = await resolveCaller(this.authProvider, token);
 
     if (!user) {
       TraceContextStorage.pushStep({

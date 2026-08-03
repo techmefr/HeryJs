@@ -2,6 +2,7 @@ import { Inject, Injectable, NestMiddleware } from '@nestjs/common';
 import { NextFunction, Request, Response } from 'express';
 import { AUTH_PROVIDER } from '#technical/auth/auth.types';
 import type { AuthProvider } from '#technical/auth/auth.types';
+import { resolveCaller } from '#technical/auth/resolve-caller';
 import { TraceContextStorage } from '#technical/tracing/trace-context';
 import { TenantContextStorage } from './tenant-context';
 
@@ -25,7 +26,7 @@ export class TenantMiddleware implements NestMiddleware {
       ? header.slice('Bearer '.length)
       : undefined;
 
-    const user = token ? await this.authProvider.validateSession(token) : null;
+    const user = token ? await resolveCaller(this.authProvider, token) : null;
     const tenantId = user?.tenantId ?? 'unauthenticated';
 
     TraceContextStorage.pushStep({
