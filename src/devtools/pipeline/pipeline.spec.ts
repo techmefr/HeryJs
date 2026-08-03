@@ -39,8 +39,9 @@ describe('pipeline trace', () => {
     const { token } = await registerAndLogin(app);
 
     await request(app.getHttpServer())
-      .get('/workouts')
+      .post('/workouts/search')
       .set('Authorization', `Bearer ${token}`)
+      .send({})
       .expect(200);
 
     const response = await request(app.getHttpServer())
@@ -50,7 +51,8 @@ describe('pipeline trace', () => {
 
     const traces = (response.body as { data: TraceRecord[] }).data;
     const trace = traces.find(
-      (candidate) => candidate.path === '/workouts' && candidate.status === 200,
+      (candidate) =>
+        candidate.path === '/workouts/search' && candidate.status === 200,
     );
 
     expect(trace).toBeDefined();
@@ -76,7 +78,7 @@ describe('pipeline trace', () => {
   });
 
   it('marks the guard step that blocked a rejected request', async () => {
-    await request(app.getHttpServer()).get('/workouts').expect(401);
+    await request(app.getHttpServer()).get('/workouts/describe').expect(401);
 
     const { token } = await registerAndLogin(app);
     const response = await request(app.getHttpServer())
@@ -86,7 +88,8 @@ describe('pipeline trace', () => {
 
     const traces = (response.body as { data: TraceRecord[] }).data;
     const trace = traces.find(
-      (candidate) => candidate.path === '/workouts' && candidate.status === 401,
+      (candidate) =>
+        candidate.path === '/workouts/describe' && candidate.status === 401,
     );
 
     expect(trace).toBeDefined();

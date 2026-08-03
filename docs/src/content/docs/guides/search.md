@@ -3,10 +3,11 @@ title: Full-text search
 description: A closed list of named engines declared in hery.config.ts, Prisma as the built-in default, Elasticsearch or Meilisearch as installable drivers behind the same tenant-safe contract.
 ---
 
-Every generated resource accepts a free-text query on its collection route:
+Every generated resource accepts a free-text query in its search route's body:
 
 ```
-GET /workouts?q=squat
+POST /workouts/search
+{ "search": { "q": "squat" } }
 ```
 
 With no config and no module installed, that runs against Prisma — a case-insensitive substring match, the right answer for most projects for a long time. When it stops being the right answer, an engine drops in behind the same contract, selected by name rather than by which module happens to be installed.
@@ -50,10 +51,11 @@ Declaring more than one non-Prisma engine at once is supported — `elasticsearc
 ## Selecting an engine per request
 
 ```
-GET /workouts?q=squat&search[engine]=elasticsearch
+POST /workouts/search
+{ "search": { "q": "squat", "engine": "elasticsearch" } }
 ```
 
-`search[engine]` picks the keyword from `hery.config.ts`'s closed list, alongside `filter[x]` in the same bracket-style query convention. Omit it and the request falls back to `search.default`. Ask for a keyword the config never declared and the answer is a plain `InvalidQueryException` — a 400, the same family as an unknown sort or filter field, never a silent fallback and never a 5xx.
+`search.engine` picks the keyword from `hery.config.ts`'s closed list, alongside `filters` in the same JSON body. Omit it and the request falls back to `search.default`. Ask for a keyword the config never declared and the answer is a plain `InvalidQueryException` — a 400, the same family as an unknown sort or filter field, never a silent fallback and never a 5xx.
 
 Prisma is one entry in that list like any other, not a special case: `PrismaSearchDriver` implements the exact same `SearchDriver` interface Elasticsearch and Meilisearch do.
 
@@ -106,7 +108,7 @@ const SEARCHABLE_FIELDS = ['title', 'notes'] as const;
 Because it is a plain constant in a file you own, narrowing it is an edit, not a configuration change. Two things worth knowing before you rely on the default:
 
 - A field marked `hidden: true` in the blueprint is still searchable. It is stripped from responses by the view, so its *contents* never reach the client — but a caller can still discover that some record matches a guessed value, and with an engine installed the field is shipped into the external index.
-- A resource with no string fields gets an empty list, and `?q=` silently matches nothing rather than erroring.
+- A resource with no string fields gets an empty list, and `search.q` silently matches nothing rather than erroring.
 
 ## Search cannot widen what you may see
 
@@ -131,7 +133,7 @@ Tenancy is enforced a layer lower still, by the tenant-scoping Prisma extension,
 
 ## What still changes when you install an engine
 
-**Soft-deleted records leave the index.** `softDelete` removes the document and `restore` re-adds it, so `?q=…&onlyTrashed=true` returns nothing while a non-Prisma driver is active, where the default path would return the matches.
+**Soft-deleted records leave the index.** `softDelete` removes the document and `restore` re-adds it, so `{ "search": { "q": "…" }, "onlyTrashed": true }` returns nothing while a non-Prisma driver is active, where the default path would return the matches.
 
 **Recall is exact per tenant, but still an engine's own top-N.** Once a driver enforces the tenant filter server-side, a tenant's results are no longer diluted by other tenants' documents — but the engine's own default window (10 hits on Elasticsearch, 20 on Meilisearch, neither driver passes an explicit size) is still the ceiling on candidates *before* the security clauses narrow them further.
 
@@ -180,4 +182,4 @@ Both modules ship a compose file with the container port unpublished, so Docker 
 | URL variable | `ELASTICSEARCH_URL` | `MEILISEARCH_URL` |
 | Also | — | `MEILISEARCH_API_KEY` |
 
-Neither driver creates an explicit mapping or index settings — indices are created implicitly on first write with the engine's dynamic defaults, and field restriction happens per query rather than in a stored configuration. Installing either prints a reminder to declare the engine in `hery.config.ts`; until it is declared, `search[engine]` has no keyword to select it by.
+Neither driver creates an explicit mapping or index settings — indices are created implicitly on first write with the engine's dynamic defaults, and field restriction happens per query rather than in a stored configuration. Installing either prints a reminder to declare the engine in `hery.config.ts`; until it is declared, `search.engine` has no keyword to select it by.

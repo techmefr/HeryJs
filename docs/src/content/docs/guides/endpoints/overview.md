@@ -11,7 +11,7 @@ The pages in this section walk through a real one, `Workout`, end to end. Each p
 
 | Method   | Path                    | What it does                                               | Documented in                                    |
 | -------- | ----------------------- | ---------------------------------------------------------- | ------------------------------------------------ |
-| `GET`    | `/workouts`             | List, with search, sort, filter and pagination             | [Search](/guides/endpoints/search/)              |
+| `POST`   | `/workouts/search`      | List, with search, sort, filter and pagination             | [Search](/guides/endpoints/search/)              |
 | `GET`    | `/workouts/describe`    | The resource's contract — fields, limits, validation rules | [Details](/guides/endpoints/details/)            |
 | `GET`    | `/workouts/:id`         | Read one record                                            | [Details](/guides/endpoints/details/)            |
 | `POST`   | `/workouts`             | Create                                                     | [Create](/guides/endpoints/create/)   |

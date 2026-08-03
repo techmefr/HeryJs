@@ -131,7 +131,11 @@ const { title, bare = false } = Astro.props;
         for (const section of sectionsOf(data)) {
           const link = document.createElement('a');
           link.className = 'item ' + tintOf(section.path);
-          link.href = '/browse?path=' + encodeURIComponent(section.path);
+          link.href =
+            '/browse?path=' +
+            encodeURIComponent(section.path) +
+            '&method=' +
+            section.method;
           label(link, iconFor(section.path), section.label);
 
           if (section.path === current) {

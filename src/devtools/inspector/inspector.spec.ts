@@ -31,7 +31,7 @@ describe('request inspector', () => {
     const { token } = await registerAndLogin(app);
 
     await request(app.getHttpServer())
-      .get('/workouts')
+      .get('/workouts/describe')
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
@@ -40,7 +40,7 @@ describe('request inspector', () => {
       .set('Authorization', `Bearer ${token}`)
       .expect(404);
 
-    await request(app.getHttpServer()).get('/workouts').expect(401);
+    await request(app.getHttpServer()).get('/workouts/describe').expect(401);
 
     const response = await request(app.getHttpServer())
       .get('/inspector/requests')
@@ -52,7 +52,7 @@ describe('request inspector', () => {
     expect(entries).toContainEqual(
       expect.objectContaining({
         method: 'GET',
-        path: '/workouts',
+        path: '/workouts/describe',
         status: 200,
       }),
     );
@@ -66,7 +66,7 @@ describe('request inspector', () => {
     expect(entries).toContainEqual(
       expect.objectContaining({
         method: 'GET',
-        path: '/workouts',
+        path: '/workouts/describe',
         status: 401,
       }),
     );

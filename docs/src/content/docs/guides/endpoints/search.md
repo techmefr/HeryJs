@@ -4,23 +4,32 @@ description: List a resource with pagination, sorting, filtering and full-text s
 ---
 
 ```
-GET /workouts?limit=15&sort=-createdAt&filter[title]=leg&q=press
+POST /workouts/search
 Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "limit": 15,
+  "sort": "-createdAt",
+  "filters": { "title": "leg" },
+  "search": { "q": "press" }
+}
 ```
 
-| Param                         | What it does                                                                                   |
-| ----------------------------- | ---------------------------------------------------------------------------------------------- |
-| `limit`                       | Page size — must be one of the values the blueprint's `pagination.limits` declares             |
-| `sort`                        | A field from the blueprint's `sorts` list; prefix with `-` for descending                      |
-| `filter[field]`               | Exact-match filter, one entry per allow-listed field                                           |
-| `q`                           | Free-text search across the resource's string fields — see [Full-text search](/guides/search/) |
-| `search[engine]`              | Picks a named search engine when more than one is configured, instead of the default           |
-| `withTrashed` / `onlyTrashed` | Include or show only soft-deleted rows — gated behind the delete permission, not the read one  |
+| Body field                    | What it does                                                                                   |
+| ------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `limit`                        | Page size — must be one of the values the blueprint's `pagination.limits` declares             |
+| `sort`                         | A field from the blueprint's `sorts` list; prefix with `-` for descending                      |
+| `filters.<field>`              | Exact-match filter, one entry per allow-listed field                                           |
+| `search.q`                     | Free-text search across the resource's string fields — see [Full-text search](/guides/search/) |
+| `search.engine`                | Picks a named search engine when more than one is configured, instead of the default           |
+| `withTrashed` / `onlyTrashed`  | Include or show only soft-deleted rows — gated behind the delete permission, not the read one  |
 
-Every one of these is an allow-list, not a passthrough. Ask for something outside it and you get a 400, not a silently ignored parameter:
+Every one of these is an allow-list, not a passthrough. Ask for something outside it and you get a 400, not a silently ignored field:
 
 ```
-GET /workouts?limit=999
+POST /workouts/search
+{ "limit": 999 }
 ```
 
 ```json
@@ -60,10 +69,11 @@ To know a resource's actual allow-lists ahead of time instead of guessing from a
 
 ## Knowing what you're allowed to do before you try it
 
-Add `?include=capabilities` and each record grows a `capabilities` object describing what the current caller may do with it — no need to attempt an update just to find out it will fail:
+Add `?include=capabilities` and each record grows a `capabilities` object describing what the current caller may do with it — no need to attempt an update just to find out it will fail. This stays a query parameter even though the search itself moved to the body, since it shapes the response rather than the query:
 
 ```
-GET /workouts?include=capabilities
+POST /workouts/search?include=capabilities
+{}
 ```
 
 ```json

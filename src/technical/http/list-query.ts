@@ -7,7 +7,14 @@ export interface ListQueryContract {
   defaultLimit: number;
 }
 
-export type RawListQuery = Record<string, string | undefined>;
+export interface SearchRequestBody {
+  limit?: number;
+  sort?: string;
+  filters?: Record<string, string>;
+  search?: { q?: string; engine?: string };
+  withTrashed?: boolean;
+  onlyTrashed?: boolean;
+}
 
 export interface ParsedListQuery {
   withTrashed: boolean;
@@ -19,13 +26,11 @@ export interface ParsedListQuery {
   limit: number;
 }
 
-const FILTER_KEY_PATTERN = /^filter\[(.+)\]$/;
-
-export function parseListQuery(
-  query: RawListQuery,
+export function parseSearchRequest(
+  body: SearchRequestBody,
   contract: ListQueryContract,
 ): ParsedListQuery {
-  const limit = query.limit ? Number(query.limit) : contract.defaultLimit;
+  const limit = body.limit ?? contract.defaultLimit;
 
   if (!contract.limits.includes(limit)) {
     throw new InvalidQueryException('limit', contract.limits);
@@ -33,26 +38,19 @@ export function parseListQuery(
 
   let sort: ParsedListQuery['sort'];
 
-  if (query.sort) {
-    const field = query.sort.replace(/^-/, '');
+  if (body.sort) {
+    const field = body.sort.replace(/^-/, '');
 
     if (!contract.sorts.includes(field)) {
       throw new InvalidQueryException('sort', contract.sorts);
     }
 
-    sort = { field, direction: query.sort.startsWith('-') ? 'desc' : 'asc' };
+    sort = { field, direction: body.sort.startsWith('-') ? 'desc' : 'asc' };
   }
 
   const filters: Record<string, string> = {};
 
-  for (const [key, value] of Object.entries(query)) {
-    const match = FILTER_KEY_PATTERN.exec(key);
-    const field = match?.[1];
-
-    if (!field || value === undefined) {
-      continue;
-    }
-
+  for (const [field, value] of Object.entries(body.filters ?? {})) {
     if (!contract.filters.includes(field)) {
       throw new InvalidQueryException('filter', contract.filters);
     }
@@ -60,17 +58,12 @@ export function parseListQuery(
     filters[field] = value;
   }
 
-  const search = query.q?.trim();
-  // A bracket key rather than a nested body field, consistent with
-  // filter[x] above -- the engine keyword lives "in the request's search
-  // object" without requiring the term itself (query.q) to move there too,
-  // which is a separate, still-open question (Lomkit-style POST body vs.
-  // this GET-with-query-string shape) this change does not settle.
-  const searchEngine = query['search[engine]']?.trim();
+  const search = body.search?.q?.trim();
+  const searchEngine = body.search?.engine?.trim();
 
   return {
-    withTrashed: query.withTrashed === 'true',
-    onlyTrashed: query.onlyTrashed === 'true',
+    withTrashed: body.withTrashed === true,
+    onlyTrashed: body.onlyTrashed === true,
     sort,
     filters: Object.keys(filters).length > 0 ? filters : undefined,
     search: search ? search : undefined,

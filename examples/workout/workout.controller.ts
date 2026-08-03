@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Patch,
   Post,
   Query,
@@ -21,7 +22,8 @@ import {
 } from '#technical/capabilities/capability.decorator';
 import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
 import { ok } from '#technical/http/envelope';
-import { parseListQuery } from '#technical/http/list-query';
+import { parseSearchRequest } from '#technical/http/list-query';
+import type { SearchRequestBody } from '#technical/http/list-query';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import { createWorkoutSchema, updateWorkoutSchema } from './workout.dto';
 import type { CreateWorkoutInput, UpdateWorkoutInput } from './workout.dto';
@@ -67,14 +69,15 @@ export class WorkoutController {
     private readonly policy: WorkoutPolicy,
   ) {}
 
-  @Get()
+  @Post('search')
+  @HttpCode(200)
   @Capability(canViewAnyWorkout)
   async search(
     @Req() req: RequestWithUser,
-    @Query() rawQuery: Record<string, string>,
+    @Query('include') include: string | undefined,
+    @Body() body: SearchRequestBody,
   ) {
-    const { include } = rawQuery;
-    const query = parseListQuery(rawQuery, {
+    const query = parseSearchRequest(body, {
       sorts: ['createdAt'],
       filters: [],
       limits: [10, 15, 20],

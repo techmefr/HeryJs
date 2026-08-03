@@ -31,7 +31,7 @@ export interface DescribedController {
       "name": "WorkoutController",
       "basePath": "/workouts",
       "routes": [
-        { "method": "GET", "path": "/", "handler": "search", "capability": "canViewAnyWorkout" }
+        { "method": "POST", "path": "/search", "handler": "search", "capability": "canViewAnyWorkout" }
       ]
     }
   ],
@@ -61,22 +61,26 @@ pnpm --filter admin dev
 
 Astro on port 4322, in its own pnpm workspace. Statically built on purpose: every page authenticates from the browser with the session token, so there is nothing to render on a server and no adapter to deploy — the pages are files.
 
-Three pages. An overview counting controllers, routes and how many sit behind a capability; a browse page rendering one route as a table; and a login form. Sign in with any account of your API — it posts to the same `/auth/login` the rest of the world uses and keeps the token in the browser.
+Four pages. An overview counting controllers, routes and how many sit behind a capability; a browse page rendering one route as a table; a login form; and the [Pipeline](/guides/debugging/) page, one card per traced request with the blocked step outlined. Sign in with any account of your API — it posts to the same `/auth/login` the rest of the world uses and keeps the token in the browser.
 
-### Every argument-free GET becomes a section
+### Every argument-free GET, and every POST search route, becomes a section
 
-The rule that turns introspection into a UI is four lines:
+The rule that turns introspection into a UI is a two-branch filter:
 
 ```ts
 controller.routes
-  .filter((route) => route.method === 'GET' && !route.path.includes(':'))
+  .filter(
+    (route) =>
+      (route.method === 'GET' && !route.path.includes(':')) ||
+      (route.method === 'POST' && route.path.endsWith('/search')),
+  )
 ```
 
-A `GET` with no path parameter is something that can be listed without knowing anything else, so it becomes a sidebar entry, and its payload becomes a table. Routes taking an `:id` are skipped because there is no id to supply; non-`GET` routes are skipped because the panel does not mutate. A handful of paths that are not resource listings — the root, `/describe` itself, `/health`, `/metrics` and the signal stream — are excluded by name.
+A `GET` with no path parameter is something that can be listed without knowing anything else, so it becomes a sidebar entry, and its payload becomes a table. Routes taking an `:id` are skipped because there is no id to supply. A resource's search route is the one deliberate exception to "non-`GET` routes are skipped": the Lomkit-style search contract takes its query in a JSON body rather than the query string, so the panel calls it with `{}` as the body and renders the result exactly like a plain listing. A handful of paths that are not resource listings — the root, `/describe` itself, `/health`, `/metrics` and the signal stream — are excluded by name.
 
 Note that "argument-free" is a test on **path parameters only**. A GET route that requires a query parameter is still listed, and will render whatever it answers when called without one.
 
-This is why the panel needs no per-resource work. `/workouts` appears because it was generated; `/teams`, `/notifications`, `/audit-logs`, `/feature-flags` appear because the kernel ships them; `/scheduler/tasks` and `/inspector/requests` appear because they are GET routes like any other. Install `mail` and `/mail` appears too.
+This is why the panel needs no per-resource work. `/workouts/search` appears because it was generated; `/teams`, `/notifications`, `/audit-logs`, `/feature-flags` appear because the kernel ships them; `/scheduler/tasks` and `/inspector/requests` appear because they are GET routes like any other. Install `mail` and `/mail` appears too.
 
 ### Columns come from the payload
 
@@ -90,7 +94,7 @@ The consequence is a useful one: **a field the resource's view strips never reac
 
 ### It is read-only
 
-The only request the panel makes that is not a `GET` is the login. There are no forms, no edit views and no delete buttons. A 403 is surfaced as a state card explaining that the API refused for the signed-in account, rather than being hidden client-side — the panel shows you what the backend decided, which is the same contract the frontend gets everywhere else in HeryJs.
+The only requests the panel makes that are not a `GET` are the login and a resource's own search route, always called with an empty body. There are no forms, no edit views and no delete buttons. A 403 is surfaced as a state card explaining that the API refused for the signed-in account, rather than being hidden client-side — the panel shows you what the backend decided, which is the same contract the frontend gets everywhere else in HeryJs.
 
 Point it at another API with `PUBLIC_API_URL` if yours is not on `http://localhost:3000`.
 

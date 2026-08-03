@@ -331,6 +331,7 @@ export function controllerFile(ctx: ResourceContext): string {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Patch,
   Post,
   Query,
@@ -349,7 +350,8 @@ import {
 } from '#technical/capabilities/capability.decorator';
 import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
 import { ok } from '#technical/http/envelope';
-import { parseListQuery } from '#technical/http/list-query';
+import { parseSearchRequest } from '#technical/http/list-query';
+import type { SearchRequestBody } from '#technical/http/list-query';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import { create${ctx.pascalName}Schema, update${ctx.pascalName}Schema } from './${ctx.kebabName}.dto';
 import type { Create${ctx.pascalName}Input, Update${ctx.pascalName}Input } from './${ctx.kebabName}.dto';
@@ -400,14 +402,15 @@ export class ${ctx.pascalName}Controller {
     private readonly policy: ${ctx.pascalName}Policy,
   ) {}
 
-  @Get()
+  @Post('search')
+  @HttpCode(200)
   @Capability(canViewAny${ctx.pascalName})
   async search(
     @Req() req: RequestWithUser,
-    @Query() rawQuery: Record<string, string>,
+    @Query('include') include: string | undefined,
+    @Body() body: SearchRequestBody,
   ) {
-    const { include } = rawQuery;
-    const query = parseListQuery(rawQuery, {
+    const query = parseSearchRequest(body, {
       sorts: [${ctx.sorts.map((field) => `'${field}'`).join(', ')}],
       filters: [${ctx.filters.map((field) => `'${field}'`).join(', ')}],
       limits: [${ctx.pagination.limits.join(', ')}],
@@ -1020,8 +1023,9 @@ function scopeParityTest(ctx: ResourceContext, createBody: string): string {
       .expect(403);
 
     const list = await request(app.getHttpServer())
-      .get('/${ctx.pluralKebabName}')
+      .post('/${ctx.pluralKebabName}/search')
       .set('Authorization', \`Bearer \${strangerToken}\`)
+      .send({})
       .expect(200);
 
     expect(
@@ -1046,8 +1050,9 @@ function scopeParityTest(ctx: ResourceContext, createBody: string): string {
       .expect(200);
 
     const list = await request(app.getHttpServer())
-      .get('/${ctx.pluralKebabName}')
+      .post('/${ctx.pluralKebabName}/search')
       .set('Authorization', \`Bearer \${strangerToken}\`)
+      .send({})
       .expect(200);
 
     expect(
@@ -1058,8 +1063,9 @@ function scopeParityTest(ctx: ResourceContext, createBody: string): string {
 
   return `  it('refuses the collection route outright, matching the view preset', async () => {
     await request(app.getHttpServer())
-      .get('/${ctx.pluralKebabName}')
+      .post('/${ctx.pluralKebabName}/search')
       .set('Authorization', \`Bearer \${strangerToken}\`)
+      .send({})
       .expect(403);
   });`;
 }
@@ -1084,8 +1090,9 @@ function trashParityTest(ctx: ResourceContext, createBody: string): string {
       .expect(200);
 
     const bin = await request(app.getHttpServer())
-      .get('/${ctx.pluralKebabName}?onlyTrashed=true')
+      .post('/${ctx.pluralKebabName}/search')
       .set('Authorization', \`Bearer \${strangerToken}\`)
+      .send({ onlyTrashed: true })
       .expect(200);
 
     expect(
@@ -1110,8 +1117,9 @@ function trashParityTest(ctx: ResourceContext, createBody: string): string {
       .expect(200);
 
     const bin = await request(app.getHttpServer())
-      .get('/${ctx.pluralKebabName}?onlyTrashed=true')
+      .post('/${ctx.pluralKebabName}/search')
       .set('Authorization', \`Bearer \${strangerToken}\`)
+      .send({ onlyTrashed: true })
       .expect(200);
 
     expect(
@@ -1122,8 +1130,9 @@ function trashParityTest(ctx: ResourceContext, createBody: string): string {
 
   return `  it('refuses to list the trash outright, matching the delete preset', async () => {
     await request(app.getHttpServer())
-      .get('/${ctx.pluralKebabName}?onlyTrashed=true')
+      .post('/${ctx.pluralKebabName}/search')
       .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ onlyTrashed: true })
       .expect(403);
   });`;
 }
@@ -1221,7 +1230,8 @@ ${trashParityTest(ctx, createBody)}
       .expect(201);
 
     const response = await request(app.getHttpServer())
-      .get('/${ctx.pluralKebabName}?include=capabilities')
+      .post('/${ctx.pluralKebabName}/search?include=capabilities')
+      .send({})
       .set('Authorization', \`Bearer \${ownerToken}\`)
       .expect(200);
 
@@ -1291,8 +1301,9 @@ ${trashParityTest(ctx, createBody)}
     });
 
     const response = await request(app.getHttpServer())
-      .get('/${ctx.pluralKebabName}')
+      .post('/${ctx.pluralKebabName}/search')
       .set('Authorization', \`Bearer \${outsider.token}\`)
+      .send({})
       .expect(200);
 
     expect((response.body as { data: unknown[] }).data).toHaveLength(0);
@@ -1300,9 +1311,10 @@ ${trashParityTest(ctx, createBody)}
 
   it('cannot be spoofed into another tenant via a client-supplied header', async () => {
     const response = await request(app.getHttpServer())
-      .get('/${ctx.pluralKebabName}')
+      .post('/${ctx.pluralKebabName}/search')
       .set('Authorization', \`Bearer \${ownerToken}\`)
       .set('x-tenant-id', \`tenant-\${randomUUID()}\`)
+      .send({})
       .expect(200);
 
     expect(
@@ -1325,7 +1337,8 @@ ${
     const term = String(record.${primarySearchField.name});
 
     const found = await request(app.getHttpServer())
-      .get(\`/${ctx.pluralKebabName}?q=\${term}&search[engine]=prisma\`)
+      .post('/${ctx.pluralKebabName}/search')
+      .send({ search: { q: term, engine: 'prisma' } })
       .set('Authorization', \`Bearer \${ownerToken}\`)
       .expect(200);
 
@@ -1336,7 +1349,8 @@ ${
 
   it('rejects a search engine keyword hery.config.ts never declared', async () => {
     await request(app.getHttpServer())
-      .get('/${ctx.pluralKebabName}?q=anything&search[engine]=nonexistent')
+      .post('/${ctx.pluralKebabName}/search')
+      .send({ search: { q: 'anything', engine: 'nonexistent' } })
       .set('Authorization', \`Bearer \${ownerToken}\`)
       .expect(400);
   });

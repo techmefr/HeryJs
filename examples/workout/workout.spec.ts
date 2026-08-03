@@ -79,8 +79,9 @@ describe('Workout resource', () => {
       .expect(403);
 
     const list = await request(app.getHttpServer())
-      .get('/workouts')
+      .post('/workouts/search')
       .set('Authorization', `Bearer ${strangerToken}`)
+      .send({})
       .expect(200);
 
     expect(
@@ -103,8 +104,9 @@ describe('Workout resource', () => {
       .expect(200);
 
     const bin = await request(app.getHttpServer())
-      .get('/workouts?onlyTrashed=true')
+      .post('/workouts/search')
       .set('Authorization', `Bearer ${strangerToken}`)
+      .send({ onlyTrashed: true })
       .expect(200);
 
     expect(
@@ -120,7 +122,8 @@ describe('Workout resource', () => {
       .expect(201);
 
     const response = await request(app.getHttpServer())
-      .get('/workouts?include=capabilities')
+      .post('/workouts/search?include=capabilities')
+      .send({})
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(200);
 
@@ -190,8 +193,9 @@ describe('Workout resource', () => {
     });
 
     const response = await request(app.getHttpServer())
-      .get('/workouts')
+      .post('/workouts/search')
       .set('Authorization', `Bearer ${outsider.token}`)
+      .send({})
       .expect(200);
 
     expect((response.body as { data: unknown[] }).data).toHaveLength(0);
@@ -199,9 +203,10 @@ describe('Workout resource', () => {
 
   it('cannot be spoofed into another tenant via a client-supplied header', async () => {
     const response = await request(app.getHttpServer())
-      .get('/workouts')
+      .post('/workouts/search')
       .set('Authorization', `Bearer ${ownerToken}`)
       .set('x-tenant-id', `tenant-${randomUUID()}`)
+      .send({})
       .expect(200);
 
     expect(
@@ -222,7 +227,8 @@ describe('Workout resource', () => {
     const term = String(record.title);
 
     const found = await request(app.getHttpServer())
-      .get(`/workouts?q=${term}&search[engine]=prisma`)
+      .post('/workouts/search')
+      .send({ search: { q: term, engine: 'prisma' } })
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(200);
 
@@ -233,7 +239,8 @@ describe('Workout resource', () => {
 
   it('rejects a search engine keyword hery.config.ts never declared', async () => {
     await request(app.getHttpServer())
-      .get('/workouts?q=anything&search[engine]=nonexistent')
+      .post('/workouts/search')
+      .send({ search: { q: 'anything', engine: 'nonexistent' } })
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(400);
   });
