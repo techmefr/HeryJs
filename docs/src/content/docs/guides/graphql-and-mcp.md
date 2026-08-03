@@ -61,6 +61,16 @@ Input is validated by the resource's own Zod schemas, and results pass through t
 
 One behavioural note for client authors: a denial comes back as tool *content* (`{ error: 'capability denied' }`), not as a protocol error or an HTTP 403. An agent sees a refusal it can reason about rather than a transport failure.
 
+### Why `/mcp` sits behind a session, not native MCP auth
+
+MCP's own [authorization spec](https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization) describes a full OAuth 2.1 resource-server flow a server may expose — Protected Resource Metadata, authorization-server discovery, `iss` validation, PKCE, scope step-up. `/mcp` does not implement any of it; it sits behind the same `SessionGuard` as everything else. Three reasons this stays a session route rather than growing its own OAuth surface:
+
+1. That whole flow is explicitly **OPTIONAL** in the spec itself — skipping it is not a compliance gap, it is a choice the protocol hands the server.
+2. Becoming a real OAuth 2.1 resource server is an infrastructure project on its own, out of proportion with a kernel whose whole premise is to expose what it generates rather than take on a protocol's full surface — the same "the framework exposes, it does not reason" boundary applied to auth this time.
+3. The two cases the MCP OAuth flow exists to cover — a human behind an interactive client, a script or agent with no human present — are already covered through the same door as REST: a session for the first, an [API key](/guides/authentication/) for the second.
+
+This is a considered decision, not an oversight, and it is not permanent: the trigger for revisiting it is concrete — a real MCP client that refuses to connect at all without native OAuth discovery (Protected Resource Metadata and the rest), not a hypothetical future client that might want it.
+
 ### Two MCP surfaces, different jobs
 
 `hery mcp:serve` and the `mcp` module are easy to confuse. They share almost nothing.
