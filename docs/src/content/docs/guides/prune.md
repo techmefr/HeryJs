@@ -78,6 +78,12 @@ async run(): Promise<void> {
 
 `pruneDue()` walks every prunable model, skips the ones whose rule sets `lock`, and hard-deletes the rest. It runs on `authPrismaClient` — the same unscoped client audit-log and impersonation writes use — because pruning is a system job across every tenant at once, not a request made on anyone's behalf.
 
+## It writes to the audit log too
+
+A hard delete is the one thing the audit log cannot skip, so pruning does not go through `deleteMany` blind: it reads the exact rows first, deletes them by id, then writes one `writeAuditLog` entry per tenant those rows belonged to, with `operation: 'prune'` and the count in `data`. `recordId` is `null` — like any bulk operation, there is no single record to name — but the tenant and the count are exactly what makes the sweep visible afterwards instead of leaving a gap in the chain.
+
+The actor differs by path. `pruneNow` is always called from a request, so it attributes the entry to whoever is signed in — `TenantContextStorage.getUserId()` and `getImpersonatedBy()`, the same session-derived pair every other write in the codebase uses. The scheduled `pruneDue` run has no caller behind it at all, so its entries carry a `null` actor rather than inventing one.
+
 ## The admin page
 
 Installing the admin module gives you a dedicated `/prune` page: one row per configured model, its retention window, whether it is locked or automatic, and a **Prune now** button that calls the manual-trigger route directly. It is not part of the generic auto-discovered resource list — `GET /prune` is deliberately excluded from that list the same way `/pipeline/traces` is, so it gets this page instead of the flat data table every other resource gets.

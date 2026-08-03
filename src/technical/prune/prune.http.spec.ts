@@ -4,7 +4,10 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
-import { registerAndLogin } from '#devtools/testing/register-and-login';
+import {
+  registerAndLogin,
+  type TestUser,
+} from '#devtools/testing/register-and-login';
 import { WorkoutModule } from '../../../examples/workout/workout.module';
 
 interface PruneStatus {
@@ -15,6 +18,7 @@ interface PruneStatus {
 
 describe('prune', () => {
   let app: INestApplication<App>;
+  let admin: TestUser;
   let adminToken: string;
   let userToken: string;
 
@@ -25,7 +29,7 @@ describe('prune', () => {
     app = moduleRef.createNestApplication();
     await app.init();
 
-    const admin = await registerAndLogin(app);
+    admin = await registerAndLogin(app);
     await authPrismaClient.user.update({
       where: { id: admin.id },
       data: { role: 'admin' },
@@ -113,5 +117,15 @@ describe('prune', () => {
     expect(
       await authPrismaClient.workout.findUnique({ where: { id: recentId } }),
     ).not.toBeNull();
+
+    const entry = await authPrismaClient.auditLog.findFirst({
+      where: { tenantId: 'default', model: 'Workout', operation: 'prune' },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    expect(entry?.userId).toBe(admin.id);
+    expect((entry?.data as { count?: number } | null)?.count).toBe(
+      result.deletedCount,
+    );
   });
 });
