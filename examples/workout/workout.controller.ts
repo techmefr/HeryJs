@@ -22,7 +22,10 @@ import {
 } from '#technical/capabilities/capability.decorator';
 import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
 import { ok } from '#technical/http/envelope';
-import { parseSearchRequest } from '#technical/http/list-query';
+import {
+  parseSearchRequest,
+  searchRequestSchema,
+} from '#technical/http/list-query';
 import type { SearchRequestBody } from '#technical/http/list-query';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import { createWorkoutSchema, updateWorkoutSchema } from './workout.dto';
@@ -75,7 +78,7 @@ export class WorkoutController {
   async search(
     @Req() req: RequestWithUser,
     @Query('include') include: string | undefined,
-    @Body() body: SearchRequestBody,
+    @Body(new ZodValidationPipe(searchRequestSchema)) body: SearchRequestBody,
   ) {
     const query = parseSearchRequest(body, {
       sorts: ['createdAt'],

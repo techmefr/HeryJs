@@ -350,7 +350,7 @@ import {
 } from '#technical/capabilities/capability.decorator';
 import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
 import { ok } from '#technical/http/envelope';
-import { parseSearchRequest } from '#technical/http/list-query';
+import { parseSearchRequest, searchRequestSchema } from '#technical/http/list-query';
 import type { SearchRequestBody } from '#technical/http/list-query';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import { create${ctx.pascalName}Schema, update${ctx.pascalName}Schema } from './${ctx.kebabName}.dto';
@@ -408,7 +408,7 @@ export class ${ctx.pascalName}Controller {
   async search(
     @Req() req: RequestWithUser,
     @Query('include') include: string | undefined,
-    @Body() body: SearchRequestBody,
+    @Body(new ZodValidationPipe(searchRequestSchema)) body: SearchRequestBody,
   ) {
     const query = parseSearchRequest(body, {
       sorts: [${ctx.sorts.map((field) => `'${field}'`).join(', ')}],
@@ -546,11 +546,14 @@ export function resolverFile(ctx: ResourceContext): string {
     )
     .join('\n\n');
 
+  // Every field, hidden ones included -- hidden governs the read side
+  // (objectFields above), not what a caller may set on create. Filtering
+  // to required fields left every optional column unsettable at creation,
+  // and an @InputType with no fields at all when a blueprint had none.
   const createInputFields = ctx.fields
-    .filter((field) => !field.optional)
     .map(
       (field) =>
-        `  @Field(() => ${graphqlTypeFor(field)})\n  declare ${field.name}: ${tsTypeFor(field)};`,
+        `  @Field(() => ${graphqlTypeFor(field)}${field.optional ? ', { nullable: true }' : ''})\n  declare ${field.name}${field.optional ? '?' : ''}: ${tsTypeFor(field)};`,
     )
     .join('\n\n');
 
@@ -644,9 +647,11 @@ export class ${ctx.pascalName}Resolver {
       throw new CapabilityForbiddenException();
     }
 
-    return (await this.${ctx.camelName}s.search(subject)).map(
-      to${ctx.pascalName}View,
-    );
+    return (
+      await this.${ctx.camelName}s.search(subject, {
+        limit: ${ctx.pagination.default},
+      })
+    ).map(to${ctx.pascalName}View);
   }
 
   @Query(() => ${ctx.pascalName}Type, { name: '${ctx.camelName}' })
@@ -783,7 +788,9 @@ export class ${ctx.pascalName}McpToolRegistrar implements McpToolRegistrar {
           return deniedResult();
         }
 
-        const records = await this.${ctx.camelName}s.search(subject);
+        const records = await this.${ctx.camelName}s.search(subject, {
+          limit: ${ctx.pagination.default},
+        });
         return textResult(records.map(to${ctx.pascalName}View));
       },
     );
@@ -1170,8 +1177,18 @@ export function specFile(ctx: ResourceContext): string {
       ? `{ ${requiredFields.map((field) => `${field.name}: ${sampleValueFor(field)}`).join(', ')} }`
       : '{}';
   const primarySearchField = ctx.fields.find(
-    (field) => field.type === 'string',
+    (field) => field.type === 'string' && !field.hidden,
   );
+
+  // A preset of 'none' means the kernel returns { allowed: false } for
+  // everyone, the owner fixture included -- so any test that first has to
+  // create, update or delete a record to set up its own assertion can never
+  // get past that setup step under the matching preset. resolveCapability
+  // also excludes 'none' from CapabilityScope, which is what made the old
+  // hardcoded `{ allowed: true, scope: 'none' }` unsatisfiable by construction.
+  const canCreateAny = ctx.permissions.create !== 'none';
+  const canUpdateAny = ctx.permissions.update !== 'none';
+  const canDeleteAny = ctx.permissions.delete !== 'none';
 
   return `import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
@@ -1201,14 +1218,37 @@ describe('${ctx.pascalName} resource', () => {
 
     ownerToken = (await registerAndLogin(app)).token;
     strangerToken = (await registerAndLogin(app)).token;
-  });
+${
+  ownedByTeam(ctx)
+    ? `
+    // Distinct teams, not the same one: the parity test below proves a
+    // stranger is refused, and that only holds if the two fixtures do not
+    // already share a team. The session is re-resolved from the database on
+    // every request, so the tokens created above pick up the membership
+    // without being reissued.
+    await request(app.getHttpServer())
+      .post('/teams')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ name: 'Owner Team' })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .post('/teams')
+      .set('Authorization', \`Bearer \${strangerToken}\`)
+      .send({ name: 'Stranger Team' })
+      .expect(201);
+`
+    : ''
+}  });
 
   afterAll(async () => {
     await app.close();
     await prisma.$disconnect();
   });
 
-  it('creates a record owned by the current user, scoped to the current tenant', async () => {
+${
+  canCreateAny
+    ? `  it('creates a record owned by the current user, scoped to the current tenant', async () => {
     const response = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}')
       .set('Authorization', \`Bearer \${ownerToken}\`)
@@ -1220,7 +1260,9 @@ describe('${ctx.pascalName} resource', () => {
     ).toBe('default');
   });
 
-  it('describes its fields and create/update rules for a frontend to consume', async () => {
+`
+    : ''
+}  it('describes its fields and create/update rules for a frontend to consume', async () => {
     const response = await request(app.getHttpServer())
       .get('/${ctx.pluralKebabName}/describe')
       .set('Authorization', \`Bearer \${ownerToken}\`)
@@ -1248,7 +1290,9 @@ ${scopeParityTest(ctx, createBody)}
 
 ${trashParityTest(ctx, createBody)}
 
-  it('lists records with resolved capabilities via ?include=capabilities', async () => {
+${
+  canCreateAny && canUpdateAny
+    ? `  it('lists records with resolved capabilities via ?include=capabilities', async () => {
     await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}')
       .set('Authorization', \`Bearer \${ownerToken}\`)
@@ -1273,7 +1317,11 @@ ${trashParityTest(ctx, createBody)}
     });
   });
 
-  it('returns a real 403 when someone other than the owner tries to update it', async () => {
+`
+    : ''
+}${
+    canCreateAny
+      ? `  it('returns a real 403 when someone other than the owner tries to update it', async () => {
     const created = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}')
       .set('Authorization', \`Bearer \${ownerToken}\`)
@@ -1289,7 +1337,11 @@ ${trashParityTest(ctx, createBody)}
       .expect(403);
   });
 
-  it('soft-deletes then restores a record', async () => {
+`
+      : ''
+  }${
+    canCreateAny && canUpdateAny && canDeleteAny
+      ? `  it('soft-deletes then restores a record', async () => {
     const created = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}')
       .set('Authorization', \`Bearer \${ownerToken}\`)
@@ -1319,7 +1371,9 @@ ${trashParityTest(ctx, createBody)}
       .expect(200);
   });
 
-  it('never lets a different tenant see this tenant records', async () => {
+`
+      : ''
+  }  it('never lets a different tenant see this tenant records', async () => {
     const outsider = await registerAndLogin(app);
     await prisma.user.update({
       where: { email: outsider.email },
@@ -1445,7 +1499,7 @@ export function factoryFile(ctx: ResourceContext): string {
   return `import { faker } from '@faker-js/faker';
 
 export interface ${ctx.pascalName}FactoryOverrides {
-  ownerId: string;
+  ownerId: string;${ownedByTeam(ctx) ? '\n  teamId: string;' : ''}
   tenantId?: string;
 ${overrideLines}
   trashed?: boolean;
@@ -1458,7 +1512,7 @@ export interface ${ctx.pascalName}FactoryOptions {
 function build${ctx.pascalName}(overrides: ${ctx.pascalName}FactoryOverrides) {
   return {
 ${buildLines}
-    ownerId: overrides.ownerId,
+    ownerId: overrides.ownerId,${ownedByTeam(ctx) ? '\n    teamId: overrides.teamId,' : ''}
     ...(overrides.tenantId ? { tenantId: overrides.tenantId } : {}),
     deletedAt: overrides.trashed ? new Date() : null,
   };

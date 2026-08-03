@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { InvalidQueryException } from '#technical/errors/invalid-query.exception';
 
 export interface ListQueryContract {
@@ -7,14 +8,31 @@ export interface ListQueryContract {
   defaultLimit: number;
 }
 
-export interface SearchRequestBody {
-  limit?: number;
-  sort?: string;
-  filters?: Record<string, string>;
-  search?: { q?: string; engine?: string };
-  withTrashed?: boolean;
-  onlyTrashed?: boolean;
-}
+/**
+ * The same shape for every generated resource -- the allow-list check that
+ * makes a field name valid for a specific resource happens downstream in
+ * parseSearchRequest, against that resource's own contract. Defined once here
+ * rather than emitted per resource by the generator, since duplicating an
+ * identical schema into every controller would be pure repetition with
+ * nothing resource-specific to justify it.
+ *
+ * `filters` is `z.record(z.string(), z.string())` rather than
+ * `z.record(z.string(), z.unknown())`: a POST body carries arbitrary JSON, and
+ * without this an object value would be spread into the Prisma `where`
+ * clause as an operator instead of the documented plain equality check.
+ */
+export const searchRequestSchema = z.object({
+  limit: z.number().int().optional(),
+  sort: z.string().optional(),
+  filters: z.record(z.string(), z.string()).optional(),
+  search: z
+    .object({ q: z.string().optional(), engine: z.string().optional() })
+    .optional(),
+  withTrashed: z.boolean().optional(),
+  onlyTrashed: z.boolean().optional(),
+});
+
+export type SearchRequestBody = z.infer<typeof searchRequestSchema>;
 
 export interface ParsedListQuery {
   withTrashed: boolean;
@@ -51,7 +69,7 @@ export function parseSearchRequest(
   const filters: Record<string, string> = {};
 
   for (const [field, value] of Object.entries(body.filters ?? {})) {
-    if (!contract.filters.includes(field)) {
+    if (!contract.filters.includes(field) || typeof value !== 'string') {
       throw new InvalidQueryException('filter', contract.filters);
     }
 
