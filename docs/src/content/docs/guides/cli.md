@@ -18,6 +18,8 @@ The `hery` CLI is the only thing in this project that reads a blueprint. It is a
 | `search:reindex <Name>` | Rebuilds a resource's search index from Postgres. |
 | `up` | Checks that local dependencies are ready. |
 | `doctor` | One command for environment, config and infra together. |
+| `env pull` | Writes the resolved variables into `.env`. |
+| `env run -- <command>` | Runs a command with the resolved variables injected. |
 | `lint` | Scores the project against conventions eslint and the architecture linter do not reach. |
 | `console` | Boots the app into a REPL. |
 | `hosts` | Adds the local hostname to your hosts file. |
@@ -127,6 +129,28 @@ Everything `hery up` checks, plus the two config files a broken value in either 
 ```
 
 Both config checks go through `require()` inside a `try`/`catch` rather than a normal `import`, on purpose: `env.ts` and `hery-config.ts` both validate at import time and throw if the result is invalid, which is exactly the failure `doctor` exists to turn into a diagnosis instead of a crash.
+
+## `hery env pull` and `hery env run`
+
+The environment schema in `env.ts` is split into two halves. The server half (`env`) never leaves the process; the public half (`publicEnv`) is the short list of variables the admin dashboard's browser bundle is allowed to read, declared once so a typo in a name fails at startup instead of quietly shipping `http://localhost:3000` to production. `no-server-env-in-client` (part of `hery lint`) enforces the other direction: a client-side read of anything not in that list is a critical violation, because Astro inlines whatever it reads into the bundle it sends to the browser.
+
+Where the values themselves come from is a separate question, handled by a small contract rather than by wiring a provider into the app:
+
+```ts
+interface EnvSource {
+  name: string;
+  load(): Promise<Record<string, string>>;
+}
+```
+
+The only implementation shipped is `.env` itself. `env pull` resolves the configured source and writes the result into `.env`; `env run -- <command>` resolves it and runs a command with the values injected, without ever writing them to disk:
+
+```bash
+pnpm hery env pull
+pnpm hery env run -- pnpm start:dev
+```
+
+This is deliberately a CLI-only concern. `env.ts` reads `process.env` once, synchronously, at import time, and the rest of `technical/` depends on that as a plain value — making it async to accommodate a remote secrets manager (Infisical, Doppler, Vault, or one a team builds itself) would contaminate every module that reads `env` for a need that exists only at startup. Implementing `EnvSource` against a real provider and pointing `dotEnvSource` at it instead is enough to swap one in; nothing downstream of `.env` changes.
 
 ## `hery lint`
 
