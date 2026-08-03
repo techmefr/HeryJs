@@ -1,10 +1,16 @@
 import * as repl from 'node:repl';
 import { NestFactory } from '@nestjs/core';
 import type { Command } from 'commander';
-import { AppModule } from '#app.module';
-import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 
+/**
+ * The application module and the Prisma client are loaded inside the action,
+ * not imported at the top, because both reach `env.ts` -- which parses
+ * process.env in its module body and throws when it does not validate. A
+ * static import here runs when `hery.ts` registers its commands, so an invalid
+ * environment would take down every other command too: `hery doctor` could
+ * never report the problem it exists to report.
+ */
 export function registerConsoleCommand(program: Command): void {
   program
     .command('console')
@@ -13,6 +19,9 @@ export function registerConsoleCommand(program: Command): void {
     )
     .option('--tenant <tenantId>', 'tenant id to scope queries to', 'default')
     .action(async (options: { tenant: string }) => {
+      const { AppModule } = await import('#app.module');
+      const { PRISMA_CLIENT } = await import('#technical/prisma/prisma.client');
+
       const app = await NestFactory.createApplicationContext(AppModule, {
         logger: false,
       });

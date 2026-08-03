@@ -3,9 +3,6 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { Prisma, PrismaClient } from '@prisma/client';
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { AppModule } from '#app.module';
-import { heryConfig } from '#technical/config/hery-config';
-import { env } from '#technical/config/env';
 import { searchDriverToken } from '#technical/search/search-driver';
 import type { SearchDriver } from '#technical/search/search-driver';
 import { camelCase, kebabCase } from '../lib/naming';
@@ -31,6 +28,12 @@ interface ScopedRecord {
   [key: string]: unknown;
 }
 
+/**
+ * Loaded inside the action rather than imported at the top for the same reason
+ * the console command does it: all three throw at import time on a bad
+ * environment or a bad hery.config.ts, and command registration happens before
+ * any command runs, so a static import breaks every other command with them.
+ */
 export function registerSearchReindexCommand(program: Command): void {
   program
     .command('search:reindex <model>')
@@ -38,6 +41,10 @@ export function registerSearchReindexCommand(program: Command): void {
       'Backfill a search engine index from the database for one resource, e.g. after installing search-elasticsearch/search-meilisearch on data created before it',
     )
     .action(async (model: string) => {
+      const { AppModule } = await import('#app.module');
+      const { heryConfig } = await import('#technical/config/hery-config');
+      const { env } = await import('#technical/config/env');
+
       const app = await NestFactory.createApplicationContext(AppModule, {
         logger: false,
       });

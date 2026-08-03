@@ -1,5 +1,4 @@
-import { existsSync } from 'node:fs';
-import * as path from 'node:path';
+import '#technical/config/load-env';
 import { Command } from 'commander';
 import { registerConsoleCommand } from './commands/console';
 import { registerCreateBlueprintCommand } from './commands/create-blueprint';
@@ -16,12 +15,6 @@ import { registerNewCommand } from './commands/new';
 import { registerSearchReindexCommand } from './commands/search-reindex';
 import { registerUninstallCommand } from './commands/uninstall';
 import { registerUpCommand } from './commands/up';
-
-const envPath = path.resolve(process.cwd(), '.env');
-
-if (existsSync(envPath)) {
-  process.loadEnvFile(envPath);
-}
 
 const program = new Command();
 
