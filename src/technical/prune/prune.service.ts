@@ -1,0 +1,90 @@
+import { Injectable } from '@nestjs/common';
+import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { PruneNotConfiguredException } from '#technical/errors/prune-not-configured.exception';
+import { prunableModels } from './prunable-models';
+import { resolvePruneRule } from './prune.config';
+import type { ResolvedPruneRule } from './prune.config';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export interface PruneModelStatus extends ResolvedPruneRule {
+  model: string;
+}
+
+export interface PruneRunResult {
+  model: string;
+  deletedCount: number;
+}
+
+interface PrunableDelegate {
+  deleteMany(args: unknown): Promise<{ count: number }>;
+}
+
+function delegateFor(model: string): PrunableDelegate {
+  const key = model.charAt(0).toLowerCase() + model.slice(1);
+  // model always comes from prunableModels(), Prisma's own DMMF -- the
+  // delegate for a model it just named always exists on the client.
+  return (authPrismaClient as unknown as Record<string, PrunableDelegate>)[
+    key
+  ]!;
+}
+
+/**
+ * Hard-deletes rows already soft-deleted longer ago than the model's
+ * configured retention. This is the one place in the codebase allowed to
+ * bypass tenant scoping across every tenant at once -- pruning is a system
+ * job, not a request on anyone's behalf, so it runs on authPrismaClient the
+ * same way audit-log and impersonation writes do.
+ */
+@Injectable()
+export class PruneService {
+  status(): PruneModelStatus[] {
+    return prunableModels()
+      .map((model) => ({ model, rule: resolvePruneRule(model) }))
+      .filter(
+        (entry): entry is { model: string; rule: ResolvedPruneRule } =>
+          entry.rule !== null,
+      )
+      .map(({ model, rule }) => ({ model, ...rule }));
+  }
+
+  async pruneModel(
+    model: string,
+    rule: ResolvedPruneRule,
+  ): Promise<PruneRunResult> {
+    const cutoff = new Date(Date.now() - rule.retentionDays * DAY_MS);
+    const result = await delegateFor(model).deleteMany({
+      where: { deletedAt: { not: null, lt: cutoff } },
+    });
+    return { model, deletedCount: result.count };
+  }
+
+  async pruneNow(model: string): Promise<PruneRunResult> {
+    const rule = resolvePruneRule(model);
+
+    if (!prunableModels().includes(model) || !rule) {
+      throw new PruneNotConfiguredException(model);
+    }
+
+    return this.pruneModel(model, rule);
+  }
+
+  // The scheduler's own path: every prunable model with a rule, except one
+  // whose rule opts out of the automatic run -- `lock` means "an admin
+  // decides when", not "nobody may ever", so pruneNow still reaches it.
+  async pruneDue(): Promise<PruneRunResult[]> {
+    const results: PruneRunResult[] = [];
+
+    for (const model of prunableModels()) {
+      const rule = resolvePruneRule(model);
+
+      if (!rule || rule.lock) {
+        continue;
+      }
+
+      results.push(await this.pruneModel(model, rule));
+    }
+
+    return results;
+  }
+}

@@ -7,4 +7,7 @@ export default {
       prisma: { driver: 'prisma' },
     },
   },
+  prune: {
+    default: { retentionDays: 30 },
+  },
 } satisfies HeryConfig;

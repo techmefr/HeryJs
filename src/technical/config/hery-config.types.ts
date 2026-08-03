@@ -2,6 +2,11 @@ export interface HeryConfigSearchEngine {
   driver: string;
 }
 
+export interface HeryConfigPruneRule {
+  retentionDays: number;
+  lock?: boolean;
+}
+
 /**
  * `satisfies HeryConfig` at the config file's own export is the entire
  * contract mechanism: an unknown top-level key or a search engine missing
@@ -14,5 +19,9 @@ export interface HeryConfig {
   search?: {
     default: string;
     engines: Record<string, HeryConfigSearchEngine>;
+  };
+  prune?: {
+    default: HeryConfigPruneRule;
+    overrides?: Record<string, Partial<HeryConfigPruneRule>>;
   };
 }

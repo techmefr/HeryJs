@@ -14,6 +14,7 @@ import { JobsModule } from '#technical/jobs/jobs.module';
 import { MailModule } from '#modules/mail/mail.module';
 import { MonitoringModule } from '#technical/monitoring/monitoring.module';
 import { NotificationsModule } from '#technical/notifications/notifications.module';
+import { PruneModule } from '#technical/prune/prune.module';
 import { SchedulerModule } from '#technical/scheduler/scheduler.module';
 import { SeedersModule } from '#technical/seeders/seeders.module';
 import { StorageModule } from '#modules/storage/storage.module';
@@ -72,6 +73,7 @@ import { redactedRequestSerializer } from '#technical/logging/redacted-request-s
     MonitoringModule,
     NotificationsModule,
     PipelineModule,
+    PruneModule,
     SchedulerModule,
     SeedersModule.forRoot([]),
     SignalModule,
