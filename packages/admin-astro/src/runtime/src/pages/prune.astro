@@ -1,0 +1,110 @@
+---
+import Shell from '../layouts/Shell.astro';
+---
+
+<Shell title="Prune">
+  <h1>Prune</h1>
+  <p class="lede">
+    Every model that carries a soft delete, with the retention window configured
+    in hery.config.ts. A locked model waits for a manual run; everything else is
+    swept once a day.
+  </p>
+
+  <div class="output" id="output"></div>
+</Shell>
+
+<script>
+  import { ApiError, api } from '../lib/api';
+  import { icon, ICONS } from '../lib/icons';
+  import { pill, skeleton, state } from '../lib/render';
+
+  interface PruneStatus {
+    model: string;
+    retentionDays: number;
+    lock: boolean;
+  }
+
+  interface PruneRunResult {
+    model: string;
+    deletedCount: number;
+  }
+
+  const output = document.getElementById('output')!;
+  output.appendChild(skeleton(3));
+
+  function statusRow(entry: PruneStatus): HTMLElement {
+    const row = document.createElement('div');
+    row.className = 'card prune-row';
+
+    const name = document.createElement('span');
+    name.className = 'path';
+    name.textContent = entry.model;
+    row.appendChild(name);
+
+    row.appendChild(pill(entry.retentionDays + ' days', 'neutral'));
+    row.appendChild(
+      pill(entry.lock ? 'Locked' : 'Automatic', entry.lock ? 'warn' : 'ok'),
+    );
+
+    const result = document.createElement('span');
+    result.className = 'mono';
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'primary';
+    button.append(icon(ICONS.prune, 14), document.createTextNode('Prune now'));
+
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      result.textContent = 'Running…';
+
+      try {
+        const { data } = await api<PruneRunResult>(
+          '/prune/' + entry.model + '/run',
+          { method: 'POST' },
+        );
+        result.textContent = data.deletedCount + ' deleted';
+      } catch {
+        result.textContent = 'Failed';
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    row.append(button, result);
+
+    return row;
+  }
+
+  try {
+    const { data } = await api<PruneStatus[]>('/prune');
+
+    output.replaceChildren(
+      data.length === 0
+        ? state(
+            'Nothing to prune',
+            'No model declares a prune rule in hery.config.ts yet.',
+          )
+        : (() => {
+            const list = document.createElement('div');
+            list.className = 'traces';
+            list.append(...data.map(statusRow));
+            return list;
+          })(),
+    );
+  } catch (error) {
+    output.replaceChildren(
+      error instanceof ApiError && error.status === 403
+        ? state(
+            'Not available',
+            'Pruning is an admin-only operation.',
+            'denied',
+          )
+        : state(
+            'Could not load prune status',
+            'The request to /prune failed.',
+            'denied',
+          ),
+    );
+  }
+</script>

@@ -683,6 +683,35 @@ button.primary:hover {
   padding: 0.875rem 1.125rem;
 }
 
+/* Prune */
+
+.prune-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.875rem 1.125rem;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+}
+
+.prune-row .path {
+  color: var(--text);
+}
+
+.prune-row .primary {
+  margin-top: 0;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.prune-row .mono {
+  color: var(--muted);
+  min-width: 5.5rem;
+  text-align: right;
+}
+
 .step {
   display: flex;
   align-items: center;

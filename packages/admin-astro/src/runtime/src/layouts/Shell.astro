@@ -36,6 +36,7 @@ const { title, bare = false } = Astro.props;
               <h2>General</h2>
               <a class="item" href="/" id="overview-link" />
               <a class="item" href="/pipeline" id="pipeline-link" />
+              <a class="item" href="/prune" id="prune-link" />
             </nav>
 
             <nav class="group scrolls" id="sections">
@@ -109,6 +110,7 @@ const { title, bare = false } = Astro.props;
         ICONS.pipeline,
         'Pipeline',
       );
+      label(document.getElementById('prune-link'), ICONS.prune, 'Prune');
       label(document.getElementById('sign-out'), ICONS.signOut, 'Sign out');
 
       const apiUrl = document.getElementById('api-url');
