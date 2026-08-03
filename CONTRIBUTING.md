@@ -20,7 +20,7 @@ Open an issue describing the use case before writing code. HeryJs deliberately d
 
 - Keep it scoped to one change. A bug fix doesn't need a refactor riding along.
 - Prove it end-to-end. If you're touching the generator, generate a real (disposable) resource with your change, run its full generated test suite, and mention that in the PR description. This project holds itself to "prove it, then keep only what's proven" — the same standard applies to contributions.
-- Run the full gate before opening the PR: `pnpm lint`, `pnpm run typecheck`, `pnpm run arch:check`, `pnpm run lint:conventions`, `pnpm test`, `pnpm run build`. CI runs the same checks, but catching it locally first is faster for everyone. `lint:conventions` runs every convention check in one pass; pass a name (`pnpm run lint:conventions capabilities`) to run just one.
+- Run the full gate before opening the PR: `pnpm lint`, `pnpm run typecheck`, `pnpm run arch:check`, `pnpm run lint:conventions`, `pnpm run lint:hery`, `pnpm test`, `pnpm run build`. CI runs the same checks, but catching it locally first is faster for everyone. `lint:conventions` runs every convention check in one pass; pass a name (`pnpm run lint:conventions capabilities`) to run just one.
 - Match the existing conventions (`functional/`/`technical/` split, capability decorators on every mutating route, the response envelope) rather than introducing a parallel pattern.
 
 ## Code of conduct

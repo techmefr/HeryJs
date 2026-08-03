@@ -32,6 +32,7 @@ export interface CapabilitySubject {
   id: string;
   teamIds: string[];
   currentTeamId: string | null;
+  role: string;
 }
 ```
 

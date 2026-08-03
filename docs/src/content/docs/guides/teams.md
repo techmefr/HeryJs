@@ -42,6 +42,7 @@ const stored = await authPrismaClient.user.findUniqueOrThrow({
   select: {
     tenantId: true,
     currentTeamId: true,
+    role: true,
     memberships: { select: { teamId: true } },
   },
 });
@@ -75,6 +76,7 @@ export interface CapabilitySubject {
   id: string;
   teamIds: string[];
   currentTeamId: string | null;
+  role: string;
 }
 ```
 
@@ -86,13 +88,14 @@ export function subjectOf(user: AuthenticatedUser): CapabilitySubject {
     id: user.id,
     teamIds: user.teamIds,
     currentTeamId: user.currentTeamId,
+    role: user.role,
   };
 }
 ```
 
 This looks like ceremony around an object literal, and it is not. When each call site wrote its own literal, `teamIds` was hardcoded to `[]` in thirteen places, and the `team` preset therefore denied everybody — a permission model that silently answered "no" to every question instead of failing loudly.
 
-A single builder is only a real guarantee if nothing can go around it, so `pnpm lint:subject` (`scripts/check-subject-construction.ts`) walks every non-spec `.ts` file under `src/` and `cli/` and fails the build on a hand-written `teamIds:` property. Exactly two files are allow-listed: `subject.ts` itself, and `session-auth.provider.ts`, which assembles the session the subject derives from. Adding a fourth field to `CapabilitySubject` is now a one-file change instead of a hunt.
+A single builder is only a real guarantee if nothing can go around it, so `pnpm lint:subject` (`scripts/check-subject-construction.ts`) walks every non-spec `.ts` file under `src/` and `cli/` and fails the build on a hand-written `teamIds:` property. Exactly two files are allow-listed: `subject.ts` itself, and `session-auth.provider.ts`, which assembles the session the subject derives from. Adding a fifth field to `CapabilitySubject` is now a one-file change instead of a hunt.
 
 ## The `team` preset
 

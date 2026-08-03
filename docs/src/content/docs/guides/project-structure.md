@@ -12,15 +12,16 @@ src/
     auth/  capabilities/  teams/  tenancy/  prisma/  errors/  http/
     audit/  config/  describe/  dev-only/  feature-flags/  jobs/
     monitoring/  notifications/  scheduler/  search/  seeders/
-    signal/  validation/
+    signal/  tracing/  validation/
   modules/               optional — installed by hery install, removable
-    live/  mail/  storage/  stream/
+    impersonation/  live/  mail/  storage/  stream/
   devtools/              never ships to production
-    inspector/  testing/
+    inspector/  pipeline/  testing/
 cli/                     the generator
-  hery.ts  commands/  lib/  modules/
+  hery.ts  commands/  lib/
 admin/                   the Astro admin panel (its own workspace)
 blueprints/              one-time generator input
+packages/                templates for the modules under src/modules/
 prisma/
   schema.prisma
 ```
@@ -41,7 +42,7 @@ The kernel is **never optional**, and that is the property its rules protect. It
 
 ## `modules/` — the optional layer
 
-Code that arrives through `hery install` and can be taken out again: `live`, `mail`, `storage`, `stream`. Two rules keep "optional" honest.
+Code that arrives through `hery install` and can be taken out again: `impersonation`, `live`, `mail`, `storage`, `stream`. Two rules keep "optional" honest.
 
 **No module imports another module.** Otherwise uninstalling one would break the other, and "optional" would only hold for whichever module happened to be last in the dependency order. Shared logic goes to `technical/`.
 
@@ -81,6 +82,6 @@ Alongside them, each its own CI step:
 - `pnpm lint:scope-parity` — every `search()` in a `functional/` service goes through `scopeWhereFor(...)`.
 - `pnpm lint:subject` — every capability subject comes from `subjectOf(user)`.
 - `pnpm lint:dev-guard` — no controller hand-rolls its own production check instead of using `DevOnlyGuard`.
-- `pnpm lint:coverage` — a meta-check that every top-level directory is reached by *some* linter, so a newly added folder cannot quietly escape all of them. Exactly one root is allow-listed (`docs`, which ships its own toolchain), and the script describes that list as recorded debt rather than a licence.
+- `pnpm lint:coverage` — a meta-check that every top-level directory is reached by *some* linter, so a newly added folder cannot quietly escape all of them. Two roots are allow-listed (`docs`, which ships its own toolchain, and `packages/admin-astro/src/runtime`, the admin template whose copy is only verified for real once `hery install` writes it into `admin/`), plus two file types read by the tools that own them (`.cjs`, `.mjs`) — the script describes that list as recorded debt rather than a licence.
 
 All of this exists so the structure above is still true after months of hand-editing generated code, not just on day one.
