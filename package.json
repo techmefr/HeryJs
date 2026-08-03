@@ -34,6 +34,7 @@
     "lint:subject": "pnpm run lint:conventions subject",
     "lint:template-imports": "pnpm run lint:conventions template-imports",
     "lint:example": "pnpm run lint:conventions example-freshness",
+    "lint:hery": "NODE_OPTIONS=--conditions=development ts-node cli/hery.ts lint --min-score 100",
     "hery": "NODE_OPTIONS=--conditions=development ts-node cli/hery.ts"
   },
   "dependencies": {

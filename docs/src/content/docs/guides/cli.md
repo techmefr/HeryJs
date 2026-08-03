@@ -17,6 +17,8 @@ The `hery` CLI is the only thing in this project that reads a blueprint. It is a
 | `module:monitoring` | Scaffolds Prometheus, Grafana and Loki. |
 | `search:reindex <Name>` | Rebuilds a resource's search index from Postgres. |
 | `up` | Checks that local dependencies are ready. |
+| `doctor` | One command for environment, config and infra together. |
+| `lint` | Scores the project against conventions eslint and the architecture linter do not reach. |
 | `console` | Boots the app into a REPL. |
 | `hosts` | Adds the local hostname to your hosts file. |
 | `mcp:serve` | A read-only MCP server over stdio. |
@@ -54,6 +56,8 @@ Walks through interactive prompts (fields, permissions, pagination limits, sorta
 
 - `--yes` skips the prompts and takes sensible defaults — useful in scripts, or when trying the generator out.
 - `--all-options` skips the prompts and writes a fully commented blueprint listing every field type, every permission preset and every other option the generator understands, mostly commented out. A quick way to see the whole menu before trimming it to what you need.
+
+Every run also (re)writes `blueprints/schema.json` — a JSON Schema generated straight from the same zod schema `hery generate` parses a blueprint against, via zod's own `toJSONSchema` — and stamps the new file with a `# yaml-language-server: $schema=./schema.json` modeline. An editor with the [yaml-language-server](https://github.com/redhat-developer/yaml-language-server) extension picks that up on its own: autocompletion and inline validation for field types, permission presets and the rest, without opening a second file to check what is allowed.
 
 ## `hery generate <Name|path>`
 
@@ -110,7 +114,32 @@ Checks that the things the app needs are actually reachable — Postgres, Valkey
 
 `--start` brings the compose services up first and then does something more interesting: it reads back the **ports Docker actually assigned** and writes them into `.env`. The compose files publish container ports without fixing a host port, so several projects can run side by side without colliding, and `hery up --start` is what reconciles that with your configuration. It resolves `DATABASE_URL` and `REDIS_URL`, plus `ELASTICSEARCH_URL` or `MEILISEARCH_URL` if the matching search module is installed.
 
-## `hery console`
+## `hery doctor`
+
+Everything `hery up` checks, plus the two config files a broken value in either would otherwise crash the whole CLI on: environment variables (parsed against the same zod schema `env.ts` builds at startup) and `hery.config.ts` (loaded for real, then checked for one thing loading it does not catch on its own — that `search.default` actually names a key in `search.engines`).
+
+```
+✔ Environment variables
+✔ hery.config.ts
+✔ PostgreSQL (localhost:32769)
+✔ Valkey (localhost:32768)
+✔ Prisma migrations
+```
+
+Both config checks go through `require()` inside a `try`/`catch` rather than a normal `import`, on purpose: `env.ts` and `hery-config.ts` both validate at import time and throw if the result is invalid, which is exactly the failure `doctor` exists to turn into a diagnosis instead of a crash.
+
+## `hery lint`
+
+Scores the project out of 100 against conventions eslint and the architecture linter do not reach — forbidden patterns (`any`, a controller importing Prisma directly) and the shape a generated resource is supposed to keep (every file `hery generate` writes, present). A fresh install is never going to start at 100 for a codebase that predates the rule, so a baseline file grandfathers what already exists:
+
+```bash
+pnpm hery lint --write-baseline          # snapshot today's violations as known debt
+pnpm hery lint --min-score 100           # fail only on anything new
+```
+
+The baseline (`.hery/lint-baseline.json` by default, override with `--baseline <path>`) keys each grandfathered violation by the rule and a hash of the exact file content it was recorded against — never by path. Rename the file and the debt follows it; touch even one line and the file's violations count as new again. That is deliberate: a baseline immune to edits would let someone change a violating line for an unrelated reason and walk away having silently re-endorsed it.
+
+`--format json` prints `{ score, grandfathered, violations }` instead of the text report, for a script or an agent to act on.
 
 Boots the real application into a REPL with the DI container and the tenant-scoped Prisma client. `--tenant <id>` picks the tenant the whole session runs inside. See [Developer tooling](/guides/devtools/).
 

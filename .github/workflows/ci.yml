@@ -51,6 +51,8 @@ jobs:
 
       - run: pnpm run lint:conventions
 
+      - run: pnpm run lint:hery
+
       - run: pnpm test
 
       - run: pnpm run build

@@ -4,12 +4,16 @@ import type { Command } from 'commander';
 import * as yaml from 'js-yaml';
 import pc from 'picocolors';
 import prompts from 'prompts';
+import { blueprintJsonSchema } from '../lib/blueprint-schema';
 import { kebabCase } from '../lib/naming';
 import type {
   Blueprint,
   BlueprintField,
   PermissionPreset,
 } from '../lib/blueprint';
+
+const SCHEMA_FILENAME = 'schema.json';
+const SCHEMA_MODELINE = `# yaml-language-server: $schema=./${SCHEMA_FILENAME}\n`;
 
 const DEFAULT_PAGINATION: Blueprint['pagination'] = {
   limits: [10, 15, 20],
@@ -171,7 +175,7 @@ async function promptFilters(fieldNames: string[]): Promise<string[]> {
 }
 
 function allOptionsTemplate(name: string): string {
-  return `# Every option the generator understands, laid out and commented so you
+  return `${SCHEMA_MODELINE}# Every option the generator understands, laid out and commented so you
 # can see the full menu at once. Trim what you don't need, then run
 # "hery generate ${name}". Policies, controller, and middleware are not
 # blueprint options — they are plain NestJS code the generator writes for
@@ -245,6 +249,15 @@ export function registerCreateBlueprintCommand(program: Command): void {
           mkdirSync(blueprintsDir, { recursive: true });
         }
 
+        // Refreshed on every run rather than written once: it is derived
+        // entirely from blueprintSchema, so there is nothing project-specific
+        // in it to preserve, and a stale copy would silently stop matching
+        // the zod schema the moment that schema changes.
+        writeFileSync(
+          path.join(blueprintsDir, SCHEMA_FILENAME),
+          JSON.stringify(blueprintJsonSchema(), null, 2) + '\n',
+        );
+
         const filePath = path.join(blueprintsDir, `${kebabCase(name)}.yaml`);
 
         if (existsSync(filePath)) {
@@ -293,7 +306,15 @@ export function registerCreateBlueprintCommand(program: Command): void {
 
         writeFileSync(
           filePath,
-          yaml.dump({ name, fields, permissions, pagination, sorts, filters }),
+          SCHEMA_MODELINE +
+            yaml.dump({
+              name,
+              fields,
+              permissions,
+              pagination,
+              sorts,
+              filters,
+            }),
         );
         console.log(pc.green(`✔ Created ${filePath}`));
       },
