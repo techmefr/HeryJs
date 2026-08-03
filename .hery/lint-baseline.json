@@ -15,7 +15,7 @@
     },
     {
       "rule": "no-raw-process-env",
-      "hash": "7cf173fa72a2563bf3426c2884d522174d705f798ea96421d65703e1327df447",
+      "hash": "a4dca6823ee4069d2ed3a021aea0ad3ac65b0cb54d8396593fa686d0df96698d",
       "count": 1,
       "file": "src/main.ts"
     },
