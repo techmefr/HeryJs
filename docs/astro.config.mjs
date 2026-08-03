@@ -13,9 +13,18 @@ export default defineConfig({
 			social: [
 				{ icon: 'github', label: 'GitHub', href: 'https://github.com/techmefr/HeryJs' },
 			],
-			customCss: ['./src/styles/custom.css'],
+			customCss: [
+				'@fontsource-variable/familjen-grotesk',
+				'@fontsource-variable/jetbrains-mono',
+				'./src/styles/custom.css',
+			],
+			expressiveCode: {
+				// Every code block reads as a terminal window, not just shell snippets.
+				defaultProps: { frame: 'terminal' },
+			},
 			components: {
 				Sidebar: './src/components/Sidebar.astro',
+				Head: './src/components/Head.astro',
 			},
 			sidebar: [
 				{
