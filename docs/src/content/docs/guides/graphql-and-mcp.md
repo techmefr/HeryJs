@@ -32,7 +32,7 @@ Mounted at `/mcp` behind `SessionGuard`, over Streamable HTTP in stateless mode.
 | `update_workout` | `{ id, …update schema }` | updates |
 | `remove_workout` | `{ id }` | soft-deletes |
 
-`remove_*` is a soft delete. There is no hard-delete tool, which means an agent cannot destroy a row — the worst it can do is move it to the bin that `?onlyTrashed=true` and the restore route already know how to reach.
+`remove_*` is a soft delete. There is no hard-delete tool, which means an agent cannot destroy a row — the worst it can do is move it to the bin that `{ onlyTrashed: true }` and the restore route already know how to reach.
 
 ### The subject is captured, not passed
 

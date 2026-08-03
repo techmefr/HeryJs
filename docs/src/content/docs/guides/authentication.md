@@ -38,7 +38,8 @@ const { key } = created.body.data; // hery_ak_<prefix>.<secret> — shown once
 From then on, that key is used exactly like a session token:
 
 ```bash
-curl -H "Authorization: Bearer hery_ak_…" https://your-app/workouts
+curl -X POST -H "Authorization: Bearer hery_ak_…" -H "Content-Type: application/json" \
+  -d '{}' https://your-app/workouts/search
 ```
 
 ### How a key is stored and checked

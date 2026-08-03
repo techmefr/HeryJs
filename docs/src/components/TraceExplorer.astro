@@ -28,15 +28,18 @@ const examples: Example[] = [
 	{
 		id: 'list-ok',
 		label: 'List succeeds',
-		method: 'GET',
-		path: '/workouts?limit=15',
-		request: `GET /workouts?limit=15
-Authorization: Bearer <token>`,
+		method: 'POST',
+		path: '/workouts/search',
+		request: `POST /workouts/search
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{ "limit": 15 }`,
 		response: `{
   "data": [
     { "id": "cly8x7g9k0000abc123def456", "title": "Leg day" }
   ],
-  "meta": { "channels": ["acme:workout"] },
+  "meta": { "channels": ["workout"] },
   "messages": []
 }`,
 		steps: [
@@ -49,7 +52,7 @@ Authorization: Bearer <token>`,
 				durationMs: 1,
 				detail: { policy: 'canViewAnyWorkout', scope: 'own' },
 			},
-			{ stage: 'controller', label: 'WorkoutController.findAll', status: 'ok', durationMs: 0 },
+			{ stage: 'controller', label: 'WorkoutController.search', status: 'ok', durationMs: 0 },
 			{
 				stage: 'prisma',
 				label: 'workout.findMany',
@@ -71,8 +74,7 @@ Authorization: Bearer <token>`,
   "error": {
     "status": 403,
     "key": "capability.forbidden",
-    "message": "You cannot view this resource.",
-    "details": {}
+    "message": "You cannot view this resource."
   }
 }`,
 		steps: [

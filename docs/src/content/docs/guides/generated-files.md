@@ -49,18 +49,19 @@ Each mutation also publishes on the resource's signal channel and syncs the sear
 
 ## `task.controller.ts`
 
-The HTTP surface: six routes, each behind `SessionGuard` and `CapabilitiesGuard`, each response passed through `task.view.ts` before it leaves the process.
+The HTTP surface: seven routes, each behind `SessionGuard` and `CapabilitiesGuard`, each response passed through `task.view.ts` before it leaves the process.
 
 | Route | Capability | Loader |
 |---|---|---|
-| `GET /tasks` | `canViewAnyTask` | — |
+| `POST /tasks/search` | `canViewAnyTask` | — |
+| `GET /tasks/describe` | `canViewAnyTask` | — |
 | `GET /tasks/:id` | `canViewTask` | visible only |
 | `POST /tasks` | `canCreateTask` | — |
 | `PATCH /tasks/:id` | `canUpdateTask` | including trashed |
 | `DELETE /tasks/:id` | `canDeleteTask` | including trashed |
 | `POST /tasks/:id/restore` | `canUpdateTask` | including trashed |
 
-The collection route parses its query through the shared `parseListQuery` against the blueprint's contract, checks `canListTrashedTask` separately if the caller asked for trashed rows, and returns `meta.channels` so a client knows what to subscribe to for invalidation.
+The search route parses its body through the shared `parseSearchRequest` against the blueprint's contract, checks `canListTrashedTask` separately if the caller asked for trashed rows, and returns `meta.channels` so a client knows what to subscribe to for invalidation.
 
 ## `task.module.ts`
 
@@ -86,7 +87,7 @@ taskFactory({ ownerId: existingUser.id });   // "recycle" — just pass the exis
 
 ## `task.spec.ts`
 
-An end-to-end HTTP test, generated once and meant to be extended by hand. Five cases: creation is scoped to the current tenant, a non-owner gets a real 403 on update, soft-delete and restore round-trip, the list route and the detail route agree, and a different tenant never sees another tenant's records. See [Testing conventions](/guides/testing/).
+An end-to-end HTTP test, generated once and meant to be extended by hand. Eleven cases for the default permission presets: creation is scoped to the current tenant, the describe route reports the blueprint's fields and rules, the collection and detail routes agree on who may see a record, same for the trash, listing resolves each record's capabilities, a non-owner gets a real 403 on update, soft-delete and restore round-trip, a different tenant never sees another tenant's records, a client-supplied tenant header cannot spoof the tenant, and full-text search finds a record through the named default engine while an undeclared engine keyword is rejected. See [Testing conventions](/guides/testing/).
 
 ## Optional extras
 

@@ -91,7 +91,7 @@ export class SearchEngineRegistry implements OnModuleInit {
     const driver = this.drivers.get(keyword);
 
     if (!driver) {
-      throw new InvalidQueryException('search[engine]', this.knownKeywords);
+      throw new InvalidQueryException('search.engine', this.knownKeywords);
     }
 
     return driver;

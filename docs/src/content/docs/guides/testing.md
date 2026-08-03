@@ -39,35 +39,41 @@ A fresh random email per call is also what keeps specs isolated: there is no tru
 
 ## What the generated spec asserts
 
-Five cases, with two users — an owner and a stranger. Request bodies are built from the blueprint's required fields with sample values, so the spec compiles and runs against whatever fields you declared.
+Eleven cases for the default permission presets, with two users — an owner and a stranger. Request bodies are built from the blueprint's required fields with sample values, so the spec compiles and runs against whatever fields you declared.
 
 1. **Creates a record owned by the current user, scoped to the current tenant** — asserts the created record's `tenantId`, proving the boundary is stamped without the caller mentioning it.
-2. **Returns a real 403 when someone other than the owner tries to update it** — the stranger gets a 403, not a silently filtered response.
-3. **Soft-deletes then restores a record** — delete, confirm the detail route now 404s, restore, confirm it is readable again. The 404 in the middle is the interesting assertion: a trashed record must not resurface through a plain read.
-4. **Scope parity** — see below.
-5. **Never lets a different tenant see this tenant's records** — moves a user into another tenant directly in the database, then confirms the collection route answers with zero rows.
+2. **Describes its fields and create/update rules for a frontend to consume** — the `/describe` route reports the same fields and required list the blueprint declares.
+3. **Scope parity** — see below.
+4. **Trash parity** — see below.
+5. **Lists records with resolved capabilities via `?include=capabilities`** — each row and `meta` carry the resolved `{ allowed, scope }` decisions, not a plain boolean.
+6. **Returns a real 403 when someone other than the owner tries to update it** — the stranger gets a 403, not a silently filtered response.
+7. **Soft-deletes then restores a record** — delete, confirm the detail route now 404s, restore, confirm it is readable again. The 404 in the middle is the interesting assertion: a trashed record must not resurface through a plain read.
+8. **Never lets a different tenant see this tenant's records** — moves a user into another tenant directly in the database, then confirms the search route answers with zero rows.
+9. **Cannot be spoofed into another tenant via a client-supplied header** — a `x-tenant-id` header is ignored rather than honoured, since the tenant is resolved from the session, not a header.
+10. **Finds a record by text search through the explicitly named default engine.**
+11. **Rejects a search engine keyword `hery.config.ts` never declared** — a 400, not a silent fallback.
 
-Case 5 is the one that needs the raw client. The spec opens its own unextended `PrismaClient`, deliberately *not* the tenant-scoped one, because reassigning a user's tenant is exactly the operation the scoped client is built to prevent. Setting up an adversarial condition requires stepping outside the thing being tested.
+Cases 5, 7 and 8 disappear when the blueprint's presets make them unreachable — `create`/`update`/`delete: none` skips the write they depend on setting up — and 10-11 only appear when the blueprint has a visible string field to search on. Case 8 is the one that needs the raw client. The spec opens its own unextended `PrismaClient`, deliberately *not* the tenant-scoped one, because reassigning a user's tenant is exactly the operation the scoped client is built to prevent. Setting up an adversarial condition requires stepping outside the thing being tested.
 
-### The scope-parity case adapts to the blueprint
+### The scope-parity and trash-parity cases adapt to the blueprint
 
-Case 4 is generated in one of three forms, chosen by the resource's `view` preset, because the correct assertion differs:
+Case 3 is generated in one of three forms, chosen by the resource's `view` preset, because the correct assertion differs:
 
-- `view: own` or `team` → **keeps a record out of the list for anyone who cannot open it directly.** The stranger gets a 403 on the detail route, and the record's id is absent from the stranger's list.
+- `view: own` or `team` → **keeps a record out of the list for anyone who cannot open it directly.** The stranger gets a 403 on the detail route, and the record's id is absent from the stranger's search results.
 - `view: all` → **lists a record to anyone who can also open it directly.** The stranger gets a 200 on both.
 - `view: none` → **refuses the collection route outright, matching the view preset.**
 
-All three assert the same underlying property from whichever side applies: the detail route and the list route agree. That is the failure mode the capabilities design exists to make unwriteable, and this is where it stops being an argument and becomes a test.
+Case 4 follows the same shape, but branches on the `delete` preset instead, since `canListTrashed<Name>` follows delete, not view:
+
+- `delete: own` or `team` → **keeps a trashed record out of the bin of anyone who cannot open it.** The stranger gets a 200 on `{ onlyTrashed: true }`, with the record's id absent.
+- `delete: all` → **lists a trashed record to anyone who can also list the trash.** The stranger gets a 200 with the record's id present.
+- `delete: none` → **refuses to list the trash outright, matching the delete preset.**
+
+All six assert the same underlying property from whichever side applies: the detail route and the search route agree on who may see a record, live or trashed. That is the failure mode the capabilities design exists to make unwriteable, and this is where it stops being an argument and becomes a test.
 
 ## Extending it
 
-The generated spec is a floor, not a ceiling — it is written once and then owned, like everything else. The reference resource in `examples/workout/` shows what a filled-out version looks like, with cases the generator does not write:
-
-- listing the bin (`?onlyTrashed=true`) is refused to someone who cannot open the records in it;
-- `?include=capabilities` returns resolved decisions on each row and in `meta`;
-- a client-supplied `x-tenant-id` header is ignored rather than honoured.
-
-That last one is worth copying into any project that adds its own middleware. The tenant is resolved from the session; a test that proves a header cannot override it is cheap insurance against a future refactor that adds a convenience override.
+The generated spec is a floor, not a ceiling — it is written once and then owned, like everything else. The reference resource in `examples/workout/` shows what a filled-out version looks like.
 
 A factory is generated alongside the spec (`<name>.factory.ts`, faker-backed, with a `trashed` override and a `count` option) for seeding rows directly. The generated spec does not use it, going through HTTP instead — reach for the factory when you need a hundred rows or an awkward state, not for the paths a client would exercise.
 

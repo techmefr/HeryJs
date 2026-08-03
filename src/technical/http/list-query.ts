@@ -70,7 +70,7 @@ export function parseSearchRequest(
 
   for (const [field, value] of Object.entries(body.filters ?? {})) {
     if (!contract.filters.includes(field) || typeof value !== 'string') {
-      throw new InvalidQueryException('filter', contract.filters);
+      throw new InvalidQueryException('filters', contract.filters);
     }
 
     filters[field] = value;

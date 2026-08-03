@@ -53,24 +53,27 @@ Choosing `team` anywhere changes the generated resource structurally: the Prisma
 This is the part that goes beyond validating input: it bounds *output* too.
 
 - `pagination.limits` is the exhaustive list of page sizes a client is allowed to request; anything else is rejected with a 400.
-- `sorts` is the allow-list of fields a client can sort by — via `?sort=field` or `?sort=-field` for descending.
-- `filters` is the allow-list of fields a client can filter on — via `?filter[field]=value`.
+- `sorts` is the allow-list of fields a client can sort by — `sort` in the body, prefixed with `-` for descending.
+- `filters` is the allow-list of fields a client can filter on — one entry per field under `filters` in the body.
 
-The generated controller enforces this through a single shared helper, `parseListQuery`, so every resource validates its query the same way, and no resource can silently expose a field for filtering that was never meant to be queryable.
+The generated controller enforces this through a single shared helper, `parseSearchRequest`, so every resource validates its search body the same way, and no resource can silently expose a field for filtering that was never meant to be queryable.
 
 ```
-GET /workouts?limit=20&sort=-title&filter[title]=foo
-GET /workouts?limit=999
+POST /workouts/search
+{ "limit": 20, "sort": "-title", "filters": { "title": "foo" } }
+
+POST /workouts/search
+{ "limit": 999 }
 → 400 { "error": { "key": "query.invalid", "message": "Invalid value for \"limit\". Allowed: 10, 15, 20." } }
 ```
 
-### The parameters that need no declaration
+### The fields that need no declaration
 
 Three more are understood by every collection route, and none of them appears in the blueprint because none of them names a field:
 
-- `?q=` — free-text search across the resource's string fields. See [Full-text search](/guides/search/).
-- `?withTrashed=true` — include soft-deleted rows alongside live ones.
-- `?onlyTrashed=true` — the bin, and nothing else.
+- `search.q` — free-text search across the resource's string fields. See [Full-text search](/guides/search/).
+- `withTrashed` — include soft-deleted rows alongside live ones.
+- `onlyTrashed` — the bin, and nothing else.
 
 The two trashed parameters are not just filters: asking for either one is checked against `canListTrashed<Name>`, which follows the `delete` preset. Opening the bin is treated as a moderation action rather than a read, so a user who may see a record is not automatically allowed to browse deleted ones. The rows that come back are still narrowed by the view scope — the gate answers "may I look at the bin", the scope answers "which rows I may see in it".
 

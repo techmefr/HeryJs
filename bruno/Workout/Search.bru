@@ -4,13 +4,17 @@ meta {
   seq: 1
 }
 
-get {
-  url: {{baseUrl}}/workouts
-  body: none
+post {
+  url: {{baseUrl}}/workouts/search
+  body: json
   auth: none
 }
 
 headers {
   Authorization: Bearer {{token}}
   x-tenant-id: bruno-local
+}
+
+body:json {
+  {}
 }
