@@ -83,7 +83,11 @@ export class ImpersonationService {
         targetEmail: target.email,
       },
       userId: admin.id,
-      impersonatedBy: null,
+      // If the caller starting this session is itself an impersonation, the
+      // real human behind the chain is admin.impersonatedBy, not null --
+      // hardcoding null here collapsed a nested impersonation down to its
+      // intermediate identity and dropped the human from the trail.
+      impersonatedBy: admin.impersonatedBy,
     });
 
     return {

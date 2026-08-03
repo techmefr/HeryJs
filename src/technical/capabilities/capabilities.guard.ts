@@ -6,6 +6,7 @@ import { RecordNotFoundException } from '#technical/errors/record-not-found.exce
 import {
   CAPABILITY_CHECK,
   CAPABILITY_RECORD_LOADER,
+  CAPABILITY_RECORD_NOT_FOUND_RESOURCE,
 } from './capability.decorator';
 import type { PolicyCheck, RecordLoader } from './capability-check';
 import { subjectOf } from './subject';
@@ -64,7 +65,11 @@ export class CapabilitiesGuard implements CanActivate {
           durationMs: durationMs(),
           detail: { reason: 'record not found' },
         });
-        throw new RecordNotFoundException('record');
+        const resource = this.reflector.get<string | undefined>(
+          CAPABILITY_RECORD_NOT_FOUND_RESOURCE,
+          context.getHandler(),
+        );
+        throw new RecordNotFoundException(resource ?? 'record');
       }
 
       request.record = record;

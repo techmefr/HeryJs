@@ -456,7 +456,7 @@ export class ${ctx.pascalName}Controller {
 
   @Get(':id')
   @Capability(canView${ctx.pascalName})
-  @LoadRecordWith(${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER)
+  @LoadRecordWith(${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER, '${ctx.kebabName}')
   findOne(@Req() req: RequestWith${ctx.pascalName}) {
     return ok(to${ctx.pascalName}View(req.record));
   }
@@ -473,7 +473,7 @@ export class ${ctx.pascalName}Controller {
 
   @Patch(':id')
   @Capability(canUpdate${ctx.pascalName})
-  @LoadRecordWith(${ctx.pascalName.toUpperCase()}_RECORD_LOADER)
+  @LoadRecordWith(${ctx.pascalName.toUpperCase()}_RECORD_LOADER, '${ctx.kebabName}')
   async update(
     @Req() req: RequestWith${ctx.pascalName},
     @Body(new ZodValidationPipe(update${ctx.pascalName}Schema)) body: Update${ctx.pascalName}Input,
@@ -483,14 +483,14 @@ export class ${ctx.pascalName}Controller {
 
   @Delete(':id')
   @Capability(canDelete${ctx.pascalName})
-  @LoadRecordWith(${ctx.pascalName.toUpperCase()}_RECORD_LOADER)
+  @LoadRecordWith(${ctx.pascalName.toUpperCase()}_RECORD_LOADER, '${ctx.kebabName}')
   async remove(@Req() req: RequestWith${ctx.pascalName}) {
     return ok(to${ctx.pascalName}View(await this.${ctx.camelName}s.softDelete(req.record)));
   }
 
   @Post(':id/restore')
   @Capability(canUpdate${ctx.pascalName})
-  @LoadRecordWith(${ctx.pascalName.toUpperCase()}_RECORD_LOADER)
+  @LoadRecordWith(${ctx.pascalName.toUpperCase()}_RECORD_LOADER, '${ctx.kebabName}')
   async restore(@Req() req: RequestWith${ctx.pascalName}) {
     return ok(to${ctx.pascalName}View(await this.${ctx.camelName}s.restore(req.record)));
   }
@@ -912,7 +912,7 @@ export class ${ctx.pascalName}StreamController {
 
   @Post('publish-token')
   @Capability(canUpdate${ctx.pascalName})
-  @LoadRecordWith(${ctx.pascalName.toUpperCase()}_RECORD_LOADER)
+  @LoadRecordWith(${ctx.pascalName.toUpperCase()}_RECORD_LOADER, '${ctx.kebabName}')
   async publishToken(@Req() req: RequestWith${ctx.pascalName}) {
     const room = roomFor(req.record.id);
     await this.stream.ensureRoom(room);
@@ -922,7 +922,7 @@ export class ${ctx.pascalName}StreamController {
 
   @Post('viewer-token')
   @Capability(canView${ctx.pascalName})
-  @LoadRecordWith(${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER)
+  @LoadRecordWith(${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER, '${ctx.kebabName}')
   async viewerToken(@Req() req: RequestWith${ctx.pascalName}) {
     const room = roomFor(req.record.id);
     const token = await this.stream.viewerToken(room, req.user.id);

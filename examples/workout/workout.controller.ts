@@ -126,7 +126,7 @@ export class WorkoutController {
 
   @Get(':id')
   @Capability(canViewWorkout)
-  @LoadRecordWith(WORKOUT_VISIBLE_RECORD_LOADER)
+  @LoadRecordWith(WORKOUT_VISIBLE_RECORD_LOADER, 'workout')
   findOne(@Req() req: RequestWithWorkout) {
     return ok(toWorkoutView(req.record));
   }
@@ -143,7 +143,7 @@ export class WorkoutController {
 
   @Patch(':id')
   @Capability(canUpdateWorkout)
-  @LoadRecordWith(WORKOUT_RECORD_LOADER)
+  @LoadRecordWith(WORKOUT_RECORD_LOADER, 'workout')
   async update(
     @Req() req: RequestWithWorkout,
     @Body(new ZodValidationPipe(updateWorkoutSchema)) body: UpdateWorkoutInput,
@@ -153,14 +153,14 @@ export class WorkoutController {
 
   @Delete(':id')
   @Capability(canDeleteWorkout)
-  @LoadRecordWith(WORKOUT_RECORD_LOADER)
+  @LoadRecordWith(WORKOUT_RECORD_LOADER, 'workout')
   async remove(@Req() req: RequestWithWorkout) {
     return ok(toWorkoutView(await this.workouts.softDelete(req.record)));
   }
 
   @Post(':id/restore')
   @Capability(canUpdateWorkout)
-  @LoadRecordWith(WORKOUT_RECORD_LOADER)
+  @LoadRecordWith(WORKOUT_RECORD_LOADER, 'workout')
   async restore(@Req() req: RequestWithWorkout) {
     return ok(toWorkoutView(await this.workouts.restore(req.record)));
   }

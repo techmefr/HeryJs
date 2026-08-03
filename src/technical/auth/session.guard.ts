@@ -7,6 +7,7 @@ import {
 import { Request } from 'express';
 import { AUTH_PROVIDER } from './auth.types';
 import type { AuthenticatedUser, AuthProvider } from './auth.types';
+import { ApiKeyService } from './api-key.service';
 import { resolveCaller } from './resolve-caller';
 import {
   MissingSessionException,
@@ -14,7 +15,12 @@ import {
 } from '#technical/errors/invalid-session.exception';
 import { TraceContextStorage } from '#technical/tracing/trace-context';
 
-export type RequestWithUser = Request & { user: AuthenticatedUser };
+export type CredentialKind = 'session' | 'apiKey';
+
+export type RequestWithUser = Request & {
+  user: AuthenticatedUser;
+  credential: CredentialKind;
+};
 
 @Injectable()
 export class SessionGuard implements CanActivate {
@@ -58,6 +64,9 @@ export class SessionGuard implements CanActivate {
     }
 
     (request as RequestWithUser).user = user;
+    (request as RequestWithUser).credential = ApiKeyService.isApiKey(token)
+      ? 'apiKey'
+      : 'session';
 
     TraceContextStorage.pushStep({
       stage: 'guard',

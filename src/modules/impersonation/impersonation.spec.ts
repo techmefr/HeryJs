@@ -8,6 +8,7 @@ import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 import type { TestUser } from '#devtools/testing/register-and-login';
 import { WorkoutModule } from '../../../examples/workout/workout.module';
+import { ImpersonationService } from './impersonation.service';
 
 describe('Impersonation', () => {
   let app: INestApplication<App>;
@@ -159,6 +160,44 @@ describe('Impersonation', () => {
     });
     expect(entry?.userId).toBe(target.id);
     expect(entry?.impersonatedBy).toBe(admin.id);
+  });
+
+  it('carries the real human forward through a nested impersonation instead of the intermediate identity', async () => {
+    // The HTTP route can never actually reach this: canImpersonate requires
+    // the caller's role to be 'admin', and starting an impersonation refuses
+    // an admin target outright, so a caller authenticated as someone already
+    // being impersonated never has role 'admin'. That guard is a property of
+    // the route, not of ImpersonationService.start() itself -- calling the
+    // service directly is what actually exercises the fixed line.
+    const admin = await registerAndLogin(app);
+    await promoteToAdmin(admin.id);
+    const target = await registerAndLogin(app);
+
+    const impersonationService = app.get(ImpersonationService);
+    const originalAdminId = randomUUID();
+
+    await impersonationService.start(
+      {
+        id: admin.id,
+        email: admin.email,
+        tenantId: 'default',
+        teamIds: [],
+        currentTeamId: null,
+        role: 'admin',
+        impersonatedBy: originalAdminId,
+      },
+      admin.token,
+      target.id,
+    );
+
+    const entry = await authPrismaClient.auditLog.findFirst({
+      where: {
+        model: 'Impersonation',
+        operation: 'start',
+        recordId: target.id,
+      },
+    });
+    expect(entry?.impersonatedBy).toBe(originalAdminId);
   });
 
   it('refuses to end a session that never started one', async () => {

@@ -23,6 +23,7 @@ import { PipelineMiddleware } from '#devtools/pipeline/pipeline.middleware';
 import { SignalModule } from '#technical/signal/signal.module';
 import { TenantMiddleware } from '#technical/tenancy/tenant.middleware';
 import { DomainExceptionFilter } from '#technical/errors/domain-exception.filter';
+import { redactedRequestSerializer } from '#technical/logging/redacted-request-serializer';
 
 @Module({
   imports: [
@@ -43,10 +44,20 @@ import { DomainExceptionFilter } from '#technical/errors/domain-exception.filter
         // impersonation session) -- logging it verbatim on every request is
         // equivalent to logging the password. redact() below drops the value
         // rather than the whole header, so the rest of pino-http's default
-        // request serializer is unaffected.
+        // request serializer is unaffected. redact only reaches structured
+        // fields, never req.url itself, which is why the signal and storage
+        // credentials carried as query params need the serializer below too.
         redact: {
-          paths: ['req.headers.authorization', 'req.headers.cookie'],
+          paths: [
+            'req.headers.authorization',
+            'req.headers.cookie',
+            'req.query.token',
+            'req.query.sig',
+          ],
           censor: '[redacted]',
+        },
+        serializers: {
+          req: redactedRequestSerializer,
         },
       },
     }),

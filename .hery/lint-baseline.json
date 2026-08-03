@@ -3,7 +3,7 @@
   "entries": [
     {
       "rule": "no-raw-process-env",
-      "hash": "81539f7ab5968e00783149ba0b23b575ae9f1baceaeffa7103fb2592e3308eba",
+      "hash": "6b36024ab9accd31ec239eb9130b2d5a85803758b0556e408958a5e2bcb90f51",
       "count": 4,
       "file": "src/app.module.ts"
     },
