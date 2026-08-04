@@ -33,6 +33,45 @@ export type Create${ctx.pascalName}Input = z.infer<typeof create${ctx.pascalName
 
 export const update${ctx.pascalName}Schema = create${ctx.pascalName}Schema.partial();
 export type Update${ctx.pascalName}Input = z.infer<typeof update${ctx.pascalName}Schema>;
+
+// Every mutating verb separates the target (what it acts on) from the
+// setting (how it acts) -- data/ids is always an array, even for a single
+// record, so the response shape never has to differ between one and many.
+export const create${ctx.pascalName}RequestSchema = z.object({
+  data: z.array(create${ctx.pascalName}Schema),
+});
+export type Create${ctx.pascalName}RequestBody = z.infer<
+  typeof create${ctx.pascalName}RequestSchema
+>;
+
+export const update${ctx.pascalName}RequestSchema = z.object({
+  data: z.array(update${ctx.pascalName}Schema.extend({ id: z.string() })),
+});
+export type Update${ctx.pascalName}RequestBody = z.infer<
+  typeof update${ctx.pascalName}RequestSchema
+>;
+
+export const DELETE_MODES = ['soft', 'hard'] as const;
+export type Delete${ctx.pascalName}Mode = (typeof DELETE_MODES)[number];
+
+export const delete${ctx.pascalName}RequestSchema = z.object({
+  ids: z.array(z.string()),
+  mode: z.enum(DELETE_MODES).default('soft'),
+});
+export type Delete${ctx.pascalName}RequestBody = z.infer<
+  typeof delete${ctx.pascalName}RequestSchema
+>;
+
+export const restore${ctx.pascalName}RequestSchema = z.object({
+  ids: z.array(z.string()),
+  // A short, scoped patch to reapply on restore -- not a second update, so
+  // it reuses the update schema's own field whitelist rather than inventing
+  // a narrower one.
+  patch: update${ctx.pascalName}Schema.optional(),
+});
+export type Restore${ctx.pascalName}RequestBody = z.infer<
+  typeof restore${ctx.pascalName}RequestSchema
+>;
 `;
 }
 
@@ -61,10 +100,34 @@ export const canUpdate${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike
   record,
 ) => (record ? resolveCapability('${ctx.permissions.update}', subject, record) : { allowed: false });
 
+// The outer gate on the bulk update/restore routes -- there is no single
+// record yet to check against, so this is the same broad pass the collection
+// search route takes, before update/restore/canUpdate${ctx.pascalName} narrows
+// per record inside the handler.
+export const canUpdateAny${ctx.pascalName}: PolicyCheck = (subject) =>
+  resolveCollectionCapability('${ctx.permissions.update}', subject);
+
 export const canDelete${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike> = (
   subject,
   record,
 ) => (record ? resolveCapability('${ctx.permissions.delete}', subject, record) : { allowed: false });
+
+// Same reasoning as canUpdateAny${ctx.pascalName}, for the bulk delete route.
+export const canDeleteAny${ctx.pascalName}: PolicyCheck = (subject) =>
+  resolveCollectionCapability('${ctx.permissions.delete}', subject);
+
+// Hard delete is not a scope on the delete preset -- own/team/all/none answer
+// "whose records", not "how permanently". It is its own admin-only capability,
+// checked in addition to (never instead of) the delete preset above.
+export const canHardDelete${ctx.pascalName}: PolicyCheck = (subject) =>
+  subject.role === 'admin' ? { allowed: true, scope: 'all' } : { allowed: false };
+
+// Purge has no route today -- only the future admin decorator system reaches
+// it -- but it is still gated by its own capability rather than reusing
+// canHardDelete${ctx.pascalName}, because a route may one day expose it under rules
+// stricter than "any admin" (e.g. a second admin's approval).
+export const canPurge${ctx.pascalName}: PolicyCheck = (subject) =>
+  subject.role === 'admin' ? { allowed: true, scope: 'all' } : { allowed: false };
 
 export const canView${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike> = (
   subject,
@@ -166,6 +229,8 @@ import { scopeWhereFor } from '#technical/capabilities/scope-where';${ownedByTea
 import { SignalService } from '#technical/signal/signal.service';
 import { SearchEngineRegistry } from '#technical/search/search-engine.registry';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
+import { writeAuditLog } from '#technical/audit/audit-log';
+import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { Create${ctx.pascalName}Input, Update${ctx.pascalName}Input } from './${ctx.kebabName}.dto';
 
 const SEARCHABLE_FIELDS = [${searchableFields.map((name) => `'${name}'`).join(', ')}] as const;
@@ -208,13 +273,13 @@ export class ${ctx.pascalName}Service {
   // them, so a write has to reach all of them, and one engine being down
   // must not stop the others from getting the update.
   private async syncSearchIndex(record: ${ctx.pascalName}) {
+    if (record.deletedAt) {
+      await this.removeFromSearchIndex(record.id, record.tenantId);
+      return;
+    }
+
     for (const driver of this.searchEngines.externalDrivers) {
       try {
-        if (record.deletedAt) {
-          await driver.remove(SEARCH_COLLECTION, record.id, record.tenantId);
-          continue;
-        }
-
         const document = Object.fromEntries(
           SEARCHABLE_FIELDS.map((field) => [field, record[field]]),
         );
@@ -227,6 +292,21 @@ export class ${ctx.pascalName}Service {
       } catch (error) {
         this.logger.warn(
           \`search index out of sync for \${SEARCH_COLLECTION}:\${record.id}: \${(error as Error).message}\`,
+        );
+      }
+    }
+  }
+
+  // Shared by soft delete (via syncSearchIndex above) and hard delete: a
+  // hard-deleted row has no updated record to read deletedAt off, only the
+  // id and tenant it used to have.
+  private async removeFromSearchIndex(id: string, tenantId: string) {
+    for (const driver of this.searchEngines.externalDrivers) {
+      try {
+        await driver.remove(SEARCH_COLLECTION, id, tenantId);
+      } catch (error) {
+        this.logger.warn(
+          \`search index out of sync for \${SEARCH_COLLECTION}:\${id}: \${(error as Error).message}\`,
         );
       }
     }
@@ -312,55 +392,88 @@ ${
     return updated;
   }
 
-  async restore(record: ${ctx.pascalName}) {
+  async restore(record: ${ctx.pascalName}, patch?: Update${ctx.pascalName}Input) {
     const updated = await this.prisma.${ctx.camelName}.update({
       where: { id: record.id },
-      data: { deletedAt: null },
+      data: { ...patch, deletedAt: null },
     });
     this.notify();
     await this.syncSearchIndex(updated);
     return updated;
+  }
+
+  // Distinct from softDelete: this removes the row rather than flagging it,
+  // and is reached only once the caller already holds the separate hard-delete
+  // capability. Runs on the same tenant-scoped client as every other write, so
+  // the audit extension records it exactly like any other audited delete.
+  async hardDelete(record: ${ctx.pascalName}) {
+    await this.prisma.${ctx.camelName}.delete({ where: { id: record.id } });
+    this.notify();
+    await this.removeFromSearchIndex(record.id, record.tenantId);
+  }
+
+  // Distinct from hardDelete: purge has no route, only the future admin
+  // decorator system can reach it, and it is gated by its own capability
+  // rather than the delete preset. The audit entry is written before the row
+  // is gone rather than relying on the tenant-scoped client's automatic
+  // after-the-fact extension, because a purge is exactly the operation an
+  // audit trail exists to prove happened even if the write that follows it
+  // never completes.
+  async purge(record: ${ctx.pascalName}) {
+    await writeAuditLog(authPrismaClient, {
+      tenantId: record.tenantId,
+      model: '${ctx.pascalName}',
+      operation: 'purge',
+      recordId: record.id,
+      data: {},
+      userId: TenantContextStorage.getUserId(),
+      impersonatedBy: TenantContextStorage.getImpersonatedBy(),
+    });
+    await authPrismaClient.${ctx.camelName}.delete({ where: { id: record.id } });
+    this.notify();
+    await this.removeFromSearchIndex(record.id, record.tenantId);
   }
 }
 `;
 }
 
 export function controllerFile(ctx: ResourceContext): string {
-  return `import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  HttpCode,
-  Patch,
-  Post,
-  Query,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
-import type { ${ctx.pascalName} } from '@prisma/client';
+  return `import { Body, Controller, Get, HttpCode, Inject, Post, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import { SessionGuard } from '#technical/auth/session.guard';
 import type { RequestWithUser } from '#technical/auth/session.guard';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { subjectOf } from '#technical/capabilities/subject';
-import {
-  Capability,
-  LoadRecordWith,
-} from '#technical/capabilities/capability.decorator';
+import { Capability } from '#technical/capabilities/capability.decorator';
 import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
+import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
+import { AlreadyRestoredException } from '#technical/errors/already-restored.exception';
 import { ok } from '#technical/http/envelope';
 import { parseSearchRequest, searchRequestSchema } from '#technical/http/list-query';
 import type { SearchRequestBody } from '#technical/http/list-query';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
-import { create${ctx.pascalName}Schema, update${ctx.pascalName}Schema } from './${ctx.kebabName}.dto';
-import type { Create${ctx.pascalName}Input, Update${ctx.pascalName}Input } from './${ctx.kebabName}.dto';
+import {
+  create${ctx.pascalName}RequestSchema,
+  create${ctx.pascalName}Schema,
+  delete${ctx.pascalName}RequestSchema,
+  restore${ctx.pascalName}RequestSchema,
+  update${ctx.pascalName}RequestSchema,
+  update${ctx.pascalName}Schema,
+} from './${ctx.kebabName}.dto';
+import type {
+  Create${ctx.pascalName}RequestBody,
+  Delete${ctx.pascalName}RequestBody,
+  Restore${ctx.pascalName}RequestBody,
+  Update${ctx.pascalName}RequestBody,
+} from './${ctx.kebabName}.dto';
 import {
   canCreate${ctx.pascalName},
   canDelete${ctx.pascalName},
+  canDeleteAny${ctx.pascalName},
+  canHardDelete${ctx.pascalName},
   canListTrashed${ctx.pascalName},
   canUpdate${ctx.pascalName},
-  canView${ctx.pascalName},
+  canUpdateAny${ctx.pascalName},
   canViewAny${ctx.pascalName},
   ${ctx.pascalName}Policy,
 } from './${ctx.kebabName}.policy';
@@ -368,13 +481,9 @@ import {
   ${ctx.pascalName.toUpperCase()}_SIGNAL_CHANNEL,
   ${ctx.pascalName}Service,
 } from './${ctx.kebabName}.service';
-import {
-  ${ctx.pascalName.toUpperCase()}_RECORD_LOADER,
-  ${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER,
-} from './${ctx.kebabName}-record.loader';
+import { ${ctx.pascalName.toUpperCase()}_RECORD_LOADER } from './${ctx.kebabName}-record.loader';
+import type { ${ctx.pascalName}RecordLoader } from './${ctx.kebabName}-record.loader';
 import { to${ctx.pascalName}View } from './${ctx.kebabName}.view';
-
-type RequestWith${ctx.pascalName} = RequestWithUser & { record: ${ctx.pascalName} };
 
 // Computed once at module load, not per request: the blueprint's shape never
 // changes at runtime, and the Zod schemas already own the create/update
@@ -400,19 +509,49 @@ export class ${ctx.pascalName}Controller {
   constructor(
     private readonly ${ctx.camelName}s: ${ctx.pascalName}Service,
     private readonly policy: ${ctx.pascalName}Policy,
+    @Inject(${ctx.pascalName.toUpperCase()}_RECORD_LOADER)
+    private readonly loader: ${ctx.pascalName}RecordLoader,
   ) {}
+
+  // Reused by update/delete/restore: each loads every targeted record, then
+  // fails the whole call on the first one that does not exist or is denied,
+  // rather than applying the operation to some and silently skipping others.
+  private async loadAndAuthorize(
+    ids: string[],
+    subject: ReturnType<typeof subjectOf>,
+    check: (subject: ReturnType<typeof subjectOf>, record: unknown) => { allowed: boolean },
+  ) {
+    const records = [];
+
+    for (const id of ids) {
+      const record = await this.loader.load(id);
+
+      if (!record) {
+        throw new RecordNotFoundException('${ctx.kebabName}');
+      }
+
+      const decision = check(subject, record);
+
+      if (!decision.allowed) {
+        throw new CapabilityForbiddenException(decision);
+      }
+
+      records.push(record);
+    }
+
+    return records;
+  }
 
   @Post('search')
   @HttpCode(200)
   @Capability(canViewAny${ctx.pascalName})
   async search(
     @Req() req: RequestWithUser,
-    @Query('include') include: string | undefined,
     @Body(new ZodValidationPipe(searchRequestSchema)) body: SearchRequestBody,
   ) {
     const query = parseSearchRequest(body, {
       sorts: [${ctx.sorts.map((field) => `'${field}'`).join(', ')}],
-      filters: [${ctx.filters.map((field) => `'${field}'`).join(', ')}],
+      filters: ['id', ${ctx.filters.map((field) => `'${field}'`).join(', ')}],
       limits: [${ctx.pagination.limits.join(', ')}],
       defaultLimit: ${ctx.pagination.default},
     });
@@ -427,18 +566,26 @@ export class ${ctx.pascalName}Controller {
     }
 
     const records = await this.${ctx.camelName}s.search(subject, query);
+    const capabilities = body.capabilities ?? [];
 
-    if (include !== 'capabilities') {
+    if (capabilities.length === 0) {
       return ok(records.map(to${ctx.pascalName}View), {
         channels: [${ctx.pascalName.toUpperCase()}_SIGNAL_CHANNEL],
       });
     }
 
     return ok(
-      records.map((record) => ({
-        ...to${ctx.pascalName}View(record),
-        capabilities: this.policy.recordCapabilities(subject, record),
-      })),
+      records.map((record) => {
+        const resolved = this.policy.recordCapabilities(subject, record);
+        return {
+          ...to${ctx.pascalName}View(record),
+          capabilities: Object.fromEntries(
+            Object.entries(resolved).filter(([key]) =>
+              capabilities.includes(key),
+            ),
+          ),
+        };
+      }),
       {
         capabilities: this.policy.metaCapabilities(subject),
         channels: [${ctx.pascalName.toUpperCase()}_SIGNAL_CHANNEL],
@@ -446,53 +593,117 @@ export class ${ctx.pascalName}Controller {
     );
   }
 
-  // Registered ahead of :id -- Nest matches routes in declaration order, so
-  // a static segment after the dynamic one would be swallowed as an id.
   @Get('describe')
   @Capability(canViewAny${ctx.pascalName})
   describe() {
     return ok(${ctx.pascalName.toUpperCase()}_DESCRIBE);
   }
 
-  @Get(':id')
-  @Capability(canView${ctx.pascalName})
-  @LoadRecordWith(${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER, '${ctx.kebabName}')
-  findOne(@Req() req: RequestWith${ctx.pascalName}) {
-    return ok(to${ctx.pascalName}View(req.record));
-  }
-
-  @Post()
+  @Post('create')
   @Capability(canCreate${ctx.pascalName})
   async create(
     @Req() req: RequestWithUser,
-    @Body(new ZodValidationPipe(create${ctx.pascalName}Schema)) body: Create${ctx.pascalName}Input,
+    @Body(new ZodValidationPipe(create${ctx.pascalName}RequestSchema))
+    body: Create${ctx.pascalName}RequestBody,
   ) {
     const subject = subjectOf(req.user);
-    return ok(to${ctx.pascalName}View(await this.${ctx.camelName}s.create(subject, body)));
+    const created = [];
+
+    for (const item of body.data) {
+      created.push(await this.${ctx.camelName}s.create(subject, item));
+    }
+
+    return ok(created.map(to${ctx.pascalName}View));
   }
 
-  @Patch(':id')
-  @Capability(canUpdate${ctx.pascalName})
-  @LoadRecordWith(${ctx.pascalName.toUpperCase()}_RECORD_LOADER, '${ctx.kebabName}')
+  @Post('update')
+  @Capability(canUpdateAny${ctx.pascalName})
   async update(
-    @Req() req: RequestWith${ctx.pascalName},
-    @Body(new ZodValidationPipe(update${ctx.pascalName}Schema)) body: Update${ctx.pascalName}Input,
+    @Req() req: RequestWithUser,
+    @Body(new ZodValidationPipe(update${ctx.pascalName}RequestSchema))
+    body: Update${ctx.pascalName}RequestBody,
   ) {
-    return ok(to${ctx.pascalName}View(await this.${ctx.camelName}s.update(req.record, body)));
+    const subject = subjectOf(req.user);
+    const records = await this.loadAndAuthorize(
+      body.data.map((item) => item.id),
+      subject,
+      (s, record) => canUpdate${ctx.pascalName}(s, record as never),
+    );
+
+    const updated = [];
+
+    for (const [index, record] of records.entries()) {
+      const { id: _id, ...data } = body.data[index]!;
+      updated.push(await this.${ctx.camelName}s.update(record, data));
+    }
+
+    return ok(updated.map(to${ctx.pascalName}View));
   }
 
-  @Delete(':id')
-  @Capability(canDelete${ctx.pascalName})
-  @LoadRecordWith(${ctx.pascalName.toUpperCase()}_RECORD_LOADER, '${ctx.kebabName}')
-  async remove(@Req() req: RequestWith${ctx.pascalName}) {
-    return ok(to${ctx.pascalName}View(await this.${ctx.camelName}s.softDelete(req.record)));
+  @Post('delete')
+  @Capability(canDeleteAny${ctx.pascalName})
+  async remove(
+    @Req() req: RequestWithUser,
+    @Body(new ZodValidationPipe(delete${ctx.pascalName}RequestSchema))
+    body: Delete${ctx.pascalName}RequestBody,
+  ) {
+    const subject = subjectOf(req.user);
+    const records = await this.loadAndAuthorize(
+      body.ids,
+      subject,
+      (s, record) => canDelete${ctx.pascalName}(s, record as never),
+    );
+
+    if (body.mode === 'hard') {
+      const hardDecision = canHardDelete${ctx.pascalName}(subject);
+
+      if (!hardDecision.allowed) {
+        throw new CapabilityForbiddenException(hardDecision);
+      }
+    }
+
+    if (body.mode === 'hard') {
+      for (const record of records) {
+        await this.${ctx.camelName}s.hardDelete(record);
+      }
+
+      return ok([]);
+    }
+
+    const removed = [];
+
+    for (const record of records) {
+      removed.push(await this.${ctx.camelName}s.softDelete(record));
+    }
+
+    return ok(removed.map(to${ctx.pascalName}View));
   }
 
-  @Post(':id/restore')
-  @Capability(canUpdate${ctx.pascalName})
-  @LoadRecordWith(${ctx.pascalName.toUpperCase()}_RECORD_LOADER, '${ctx.kebabName}')
-  async restore(@Req() req: RequestWith${ctx.pascalName}) {
-    return ok(to${ctx.pascalName}View(await this.${ctx.camelName}s.restore(req.record)));
+  @Post('restore')
+  @Capability(canUpdateAny${ctx.pascalName})
+  async restore(
+    @Req() req: RequestWithUser,
+    @Body(new ZodValidationPipe(restore${ctx.pascalName}RequestSchema))
+    body: Restore${ctx.pascalName}RequestBody,
+  ) {
+    const subject = subjectOf(req.user);
+    const records = await this.loadAndAuthorize(
+      body.ids,
+      subject,
+      (s, record) => canUpdate${ctx.pascalName}(s, record as never),
+    );
+
+    const restored = [];
+
+    for (const record of records) {
+      if (!record.deletedAt) {
+        throw new AlreadyRestoredException('${ctx.kebabName}');
+      }
+
+      restored.push(await this.${ctx.camelName}s.restore(record, body.patch));
+    }
+
+    return ok(restored.map(to${ctx.pascalName}View));
   }
 }
 `;
@@ -1039,21 +1250,28 @@ export class ${ctx.pascalName}LiveGateway implements OnGatewayConnection {
 
 // The collection route and the detail route answer the same question with two
 // different mechanisms, so each preset gets the test that proves they agree.
+// There is no more GET-by-id route: "can this user open the record directly"
+// is now the same search endpoint filtered down to its id, so list scope and
+// detail scope are provably the same check rather than two routes that could
+// drift apart.
 function scopeParityTest(ctx: ResourceContext, createBody: string): string {
   if (ctx.permissions.view === 'own' || ctx.permissions.view === 'team') {
-    return `  it('keeps a record out of the list for anyone who cannot open it directly', async () => {
+    return `  it('keeps a record out of the results for anyone who cannot open it directly', async () => {
     const created = await request(app.getHttpServer())
-      .post('/${ctx.pluralKebabName}')
+      .post('/${ctx.pluralKebabName}/create')
       .set('Authorization', \`Bearer \${ownerToken}\`)
-      .send(${createBody})
+      .send({ data: [${createBody}] })
       .expect(201);
 
-    const recordId = (created.body as { data: { id: string } }).data.id;
+    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
 
-    await request(app.getHttpServer())
-      .get(\`/${ctx.pluralKebabName}/\${recordId}\`)
+    const detail = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/search')
       .set('Authorization', \`Bearer \${strangerToken}\`)
-      .expect(403);
+      .send({ filters: { id: recordId } })
+      .expect(200);
+
+    expect((detail.body as { data: unknown[] }).data).toHaveLength(0);
 
     const list = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}/search')
@@ -1068,19 +1286,24 @@ function scopeParityTest(ctx: ResourceContext, createBody: string): string {
   }
 
   if (ctx.permissions.view === 'all') {
-    return `  it('lists a record to anyone who can also open it directly', async () => {
+    return `  it('finds a record to anyone who can also list it', async () => {
     const created = await request(app.getHttpServer())
-      .post('/${ctx.pluralKebabName}')
+      .post('/${ctx.pluralKebabName}/create')
       .set('Authorization', \`Bearer \${ownerToken}\`)
-      .send(${createBody})
+      .send({ data: [${createBody}] })
       .expect(201);
 
-    const recordId = (created.body as { data: { id: string } }).data.id;
+    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
 
-    await request(app.getHttpServer())
-      .get(\`/${ctx.pluralKebabName}/\${recordId}\`)
+    const detail = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/search')
       .set('Authorization', \`Bearer \${strangerToken}\`)
+      .send({ filters: { id: recordId } })
       .expect(200);
+
+    expect(
+      (detail.body as { data: { id: string }[] }).data.map((record) => record.id),
+    ).toContain(recordId);
 
     const list = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}/search')
@@ -1110,17 +1333,18 @@ function trashParityTest(ctx: ResourceContext, createBody: string): string {
   if (ctx.permissions.delete === 'own' || ctx.permissions.delete === 'team') {
     return `  it('keeps a trashed record out of the bin of anyone who cannot open it', async () => {
     const created = await request(app.getHttpServer())
-      .post('/${ctx.pluralKebabName}')
+      .post('/${ctx.pluralKebabName}/create')
       .set('Authorization', \`Bearer \${ownerToken}\`)
-      .send(${createBody})
+      .send({ data: [${createBody}] })
       .expect(201);
 
-    const recordId = (created.body as { data: { id: string } }).data.id;
+    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
 
     await request(app.getHttpServer())
-      .delete(\`/${ctx.pluralKebabName}/\${recordId}\`)
+      .post('/${ctx.pluralKebabName}/delete')
       .set('Authorization', \`Bearer \${ownerToken}\`)
-      .expect(200);
+      .send({ ids: [recordId] })
+      .expect(201);
 
     const bin = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}/search')
@@ -1137,17 +1361,18 @@ function trashParityTest(ctx: ResourceContext, createBody: string): string {
   if (ctx.permissions.delete === 'all') {
     return `  it('lists a trashed record to anyone who can also list the trash', async () => {
     const created = await request(app.getHttpServer())
-      .post('/${ctx.pluralKebabName}')
+      .post('/${ctx.pluralKebabName}/create')
       .set('Authorization', \`Bearer \${ownerToken}\`)
-      .send(${createBody})
+      .send({ data: [${createBody}] })
       .expect(201);
 
-    const recordId = (created.body as { data: { id: string } }).data.id;
+    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
 
     await request(app.getHttpServer())
-      .delete(\`/${ctx.pluralKebabName}/\${recordId}\`)
+      .post('/${ctx.pluralKebabName}/delete')
       .set('Authorization', \`Bearer \${ownerToken}\`)
-      .expect(200);
+      .send({ ids: [recordId] })
+      .expect(201);
 
     const bin = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}/search')
@@ -1248,15 +1473,15 @@ ${
 
 ${
   canCreateAny
-    ? `  it('creates a record owned by the current user, scoped to the current tenant', async () => {
+    ? `  it('creates records owned by the current user, scoped to the current tenant', async () => {
     const response = await request(app.getHttpServer())
-      .post('/${ctx.pluralKebabName}')
+      .post('/${ctx.pluralKebabName}/create')
       .set('Authorization', \`Bearer \${ownerToken}\`)
-      .send(${createBody})
+      .send({ data: [${createBody}] })
       .expect(201);
 
     expect(
-      (response.body as { data: { tenantId: string } }).data.tenantId,
+      (response.body as { data: { tenantId: string }[] }).data[0]!.tenantId,
     ).toBe('default');
   });
 
@@ -1292,16 +1517,16 @@ ${trashParityTest(ctx, createBody)}
 
 ${
   canCreateAny && canUpdateAny
-    ? `  it('lists records with resolved capabilities via ?include=capabilities', async () => {
+    ? `  it('lists records with the capabilities named in the request body', async () => {
     await request(app.getHttpServer())
-      .post('/${ctx.pluralKebabName}')
+      .post('/${ctx.pluralKebabName}/create')
       .set('Authorization', \`Bearer \${ownerToken}\`)
-      .send(${createBody})
+      .send({ data: [${createBody}] })
       .expect(201);
 
     const response = await request(app.getHttpServer())
-      .post('/${ctx.pluralKebabName}/search?include=capabilities')
-      .send({})
+      .post('/${ctx.pluralKebabName}/search')
+      .send({ capabilities: ['update'] })
       .set('Authorization', \`Bearer \${ownerToken}\`)
       .expect(200);
 
@@ -1320,20 +1545,20 @@ ${
 `
     : ''
 }${
-    canCreateAny
+    canCreateAny && canUpdateAny
       ? `  it('returns a real 403 when someone other than the owner tries to update it', async () => {
     const created = await request(app.getHttpServer())
-      .post('/${ctx.pluralKebabName}')
+      .post('/${ctx.pluralKebabName}/create')
       .set('Authorization', \`Bearer \${ownerToken}\`)
-      .send(${createBody})
+      .send({ data: [${createBody}] })
       .expect(201);
 
-    const recordId = (created.body as { data: { id: string } }).data.id;
+    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
 
     await request(app.getHttpServer())
-      .patch(\`/${ctx.pluralKebabName}/\${recordId}\`)
+      .post('/${ctx.pluralKebabName}/update')
       .set('Authorization', \`Bearer \${strangerToken}\`)
-      .send(${createBody})
+      .send({ data: [{ id: recordId, ...${createBody} }] })
       .expect(403);
   });
 
@@ -1343,32 +1568,58 @@ ${
     canCreateAny && canUpdateAny && canDeleteAny
       ? `  it('soft-deletes then restores a record', async () => {
     const created = await request(app.getHttpServer())
-      .post('/${ctx.pluralKebabName}')
+      .post('/${ctx.pluralKebabName}/create')
       .set('Authorization', \`Bearer \${ownerToken}\`)
-      .send(${createBody})
+      .send({ data: [${createBody}] })
       .expect(201);
 
-    const recordId = (created.body as { data: { id: string } }).data.id;
+    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
 
     await request(app.getHttpServer())
-      .delete(\`/${ctx.pluralKebabName}/\${recordId}\`)
+      .post('/${ctx.pluralKebabName}/delete')
       .set('Authorization', \`Bearer \${ownerToken}\`)
-      .expect(200);
-
-    await request(app.getHttpServer())
-      .get(\`/${ctx.pluralKebabName}/\${recordId}\`)
-      .set('Authorization', \`Bearer \${ownerToken}\`)
-      .expect(404);
-
-    await request(app.getHttpServer())
-      .post(\`/${ctx.pluralKebabName}/\${recordId}/restore\`)
-      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ ids: [recordId] })
       .expect(201);
 
-    await request(app.getHttpServer())
-      .get(\`/${ctx.pluralKebabName}/\${recordId}\`)
+    const trashed = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/search')
       .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ filters: { id: recordId } })
       .expect(200);
+
+    expect((trashed.body as { data: unknown[] }).data).toHaveLength(0);
+
+    await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/restore')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ ids: [recordId] })
+      .expect(201);
+
+    const restored = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/search')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ filters: { id: recordId } })
+      .expect(200);
+
+    expect(
+      (restored.body as { data: { id: string }[] }).data.map((record) => record.id),
+    ).toContain(recordId);
+  });
+
+  it('refuses to restore a record that is not trashed', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/create')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ data: [${createBody}] })
+      .expect(201);
+
+    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
+
+    await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/restore')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ ids: [recordId] })
+      .expect(409);
   });
 
 `
@@ -1408,12 +1659,12 @@ ${
     ? `
   it('finds a record by text search through the explicitly named default engine', async () => {
     const created = await request(app.getHttpServer())
-      .post('/${ctx.pluralKebabName}')
+      .post('/${ctx.pluralKebabName}/create')
       .set('Authorization', \`Bearer \${ownerToken}\`)
-      .send(${createBody})
+      .send({ data: [${createBody}] })
       .expect(201);
 
-    const record = (created.body as { data: Record<string, unknown> }).data;
+    const record = (created.body as { data: Record<string, unknown>[] }).data[0]!;
     const term = String(record.${primarySearchField.name});
 
     const found = await request(app.getHttpServer())

@@ -30,6 +30,11 @@ export const searchRequestSchema = z.object({
     .optional(),
   withTrashed: z.boolean().optional(),
   onlyTrashed: z.boolean().optional(),
+  // Which per-record capability decisions to attach to each result -- the
+  // caller names them explicitly rather than always getting every preset
+  // the resource has, the same way `filters` names which fields it wants to
+  // narrow on rather than exposing every column.
+  capabilities: z.array(z.string()).optional(),
 });
 
 export type SearchRequestBody = z.infer<typeof searchRequestSchema>;

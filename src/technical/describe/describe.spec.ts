@@ -63,10 +63,10 @@ describe('Resource description', () => {
     // binding, which would claim a read route requires update rights.
     expect(capabilities).toMatchObject({
       search: 'canViewAnyWorkout',
-      findOne: 'canViewWorkout',
       create: 'canCreateWorkout',
-      update: 'canUpdateWorkout',
-      remove: 'canDeleteWorkout',
+      update: 'canUpdateAnyWorkout',
+      remove: 'canDeleteAnyWorkout',
+      restore: 'canUpdateAnyWorkout',
     });
   });
 

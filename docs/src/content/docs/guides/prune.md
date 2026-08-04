@@ -84,6 +84,10 @@ A hard delete is the one thing the audit log cannot skip, so pruning does not go
 
 The actor differs by path. `pruneNow` is always called from a request, so it attributes the entry to whoever is signed in — `TenantContextStorage.getUserId()` and `getImpersonatedBy()`, the same session-derived pair every other write in the codebase uses. The scheduled `pruneDue` run has no caller behind it at all, so its entries carry a `null` actor rather than inventing one.
 
+## Purge is the same operation, reached a different way
+
+Every generated service also carries a `purge(record)` method: it writes the audit entry first, then hard-deletes through `authPrismaClient`, the same unscoped client `pruneDue` runs on. It is the single-record version of what pruning already does in bulk on a schedule — not a second hard-delete mechanism. Unlike `hardDelete`, it has no route: purge is reserved for the admin decorator system a resource can opt into later, gated by its own `canPurge{Resource}` capability rather than `canHardDelete{Resource}`, so a future route can impose stricter rules (a second admin's approval, say) without touching the delete route's own contract.
+
 ## The admin page
 
 Installing the admin module gives you a dedicated `/prune` page: one row per configured model, its retention window, whether it is locked or automatic, and a **Prune now** button that calls the manual-trigger route directly. It is not part of the generic auto-discovered resource list — `GET /prune` is deliberately excluded from that list the same way `/pipeline/traces` is, so it gets this page instead of the flat data table every other resource gets.

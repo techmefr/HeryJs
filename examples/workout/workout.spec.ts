@@ -34,15 +34,15 @@ describe('Workout resource', () => {
     await prisma.$disconnect();
   });
 
-  it('creates a record owned by the current user, scoped to the current tenant', async () => {
+  it('creates records owned by the current user, scoped to the current tenant', async () => {
     const response = await request(app.getHttpServer())
-      .post('/workouts')
+      .post('/workouts/create')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ title: 'title-value' })
+      .send({ data: [{ title: 'title-value' }] })
       .expect(201);
 
     expect(
-      (response.body as { data: { tenantId: string } }).data.tenantId,
+      (response.body as { data: { tenantId: string }[] }).data[0]!.tenantId,
     ).toBe('default');
   });
 
@@ -64,19 +64,22 @@ describe('Workout resource', () => {
     expect(body.data.rules.create.required).toEqual(['title']);
   });
 
-  it('keeps a record out of the list for anyone who cannot open it directly', async () => {
+  it('keeps a record out of the results for anyone who cannot open it directly', async () => {
     const created = await request(app.getHttpServer())
-      .post('/workouts')
+      .post('/workouts/create')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ title: 'title-value' })
+      .send({ data: [{ title: 'title-value' }] })
       .expect(201);
 
-    const recordId = (created.body as { data: { id: string } }).data.id;
+    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
 
-    await request(app.getHttpServer())
-      .get(`/workouts/${recordId}`)
+    const detail = await request(app.getHttpServer())
+      .post('/workouts/search')
       .set('Authorization', `Bearer ${strangerToken}`)
-      .expect(403);
+      .send({ filters: { id: recordId } })
+      .expect(200);
+
+    expect((detail.body as { data: unknown[] }).data).toHaveLength(0);
 
     const list = await request(app.getHttpServer())
       .post('/workouts/search')
@@ -91,17 +94,18 @@ describe('Workout resource', () => {
 
   it('keeps a trashed record out of the bin of anyone who cannot open it', async () => {
     const created = await request(app.getHttpServer())
-      .post('/workouts')
+      .post('/workouts/create')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ title: 'title-value' })
+      .send({ data: [{ title: 'title-value' }] })
       .expect(201);
 
-    const recordId = (created.body as { data: { id: string } }).data.id;
+    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
 
     await request(app.getHttpServer())
-      .delete(`/workouts/${recordId}`)
+      .post('/workouts/delete')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .expect(200);
+      .send({ ids: [recordId] })
+      .expect(201);
 
     const bin = await request(app.getHttpServer())
       .post('/workouts/search')
@@ -114,16 +118,16 @@ describe('Workout resource', () => {
     ).not.toContain(recordId);
   });
 
-  it('lists records with resolved capabilities via ?include=capabilities', async () => {
+  it('lists records with the capabilities named in the request body', async () => {
     await request(app.getHttpServer())
-      .post('/workouts')
+      .post('/workouts/create')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ title: 'title-value' })
+      .send({ data: [{ title: 'title-value' }] })
       .expect(201);
 
     const response = await request(app.getHttpServer())
-      .post('/workouts/search?include=capabilities')
-      .send({})
+      .post('/workouts/search')
+      .send({ capabilities: ['update'] })
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(200);
 
@@ -141,48 +145,76 @@ describe('Workout resource', () => {
 
   it('returns a real 403 when someone other than the owner tries to update it', async () => {
     const created = await request(app.getHttpServer())
-      .post('/workouts')
+      .post('/workouts/create')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ title: 'title-value' })
+      .send({ data: [{ title: 'title-value' }] })
       .expect(201);
 
-    const recordId = (created.body as { data: { id: string } }).data.id;
+    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
 
     await request(app.getHttpServer())
-      .patch(`/workouts/${recordId}`)
+      .post('/workouts/update')
       .set('Authorization', `Bearer ${strangerToken}`)
-      .send({ title: 'title-value' })
+      .send({ data: [{ id: recordId, ...{ title: 'title-value' } }] })
       .expect(403);
   });
 
   it('soft-deletes then restores a record', async () => {
     const created = await request(app.getHttpServer())
-      .post('/workouts')
+      .post('/workouts/create')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ title: 'title-value' })
+      .send({ data: [{ title: 'title-value' }] })
       .expect(201);
 
-    const recordId = (created.body as { data: { id: string } }).data.id;
+    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
 
     await request(app.getHttpServer())
-      .delete(`/workouts/${recordId}`)
+      .post('/workouts/delete')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .expect(200);
-
-    await request(app.getHttpServer())
-      .get(`/workouts/${recordId}`)
-      .set('Authorization', `Bearer ${ownerToken}`)
-      .expect(404);
-
-    await request(app.getHttpServer())
-      .post(`/workouts/${recordId}/restore`)
-      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ ids: [recordId] })
       .expect(201);
 
-    await request(app.getHttpServer())
-      .get(`/workouts/${recordId}`)
+    const trashed = await request(app.getHttpServer())
+      .post('/workouts/search')
       .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ filters: { id: recordId } })
       .expect(200);
+
+    expect((trashed.body as { data: unknown[] }).data).toHaveLength(0);
+
+    await request(app.getHttpServer())
+      .post('/workouts/restore')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ ids: [recordId] })
+      .expect(201);
+
+    const restored = await request(app.getHttpServer())
+      .post('/workouts/search')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ filters: { id: recordId } })
+      .expect(200);
+
+    expect(
+      (restored.body as { data: { id: string }[] }).data.map(
+        (record) => record.id,
+      ),
+    ).toContain(recordId);
+  });
+
+  it('refuses to restore a record that is not trashed', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/workouts/create')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ data: [{ title: 'title-value' }] })
+      .expect(201);
+
+    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
+
+    await request(app.getHttpServer())
+      .post('/workouts/restore')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ ids: [recordId] })
+      .expect(409);
   });
 
   it('never lets a different tenant see this tenant records', async () => {
@@ -218,12 +250,13 @@ describe('Workout resource', () => {
 
   it('finds a record by text search through the explicitly named default engine', async () => {
     const created = await request(app.getHttpServer())
-      .post('/workouts')
+      .post('/workouts/create')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ title: 'title-value' })
+      .send({ data: [{ title: 'title-value' }] })
       .expect(201);
 
-    const record = (created.body as { data: Record<string, unknown> }).data;
+    const record = (created.body as { data: Record<string, unknown>[] })
+      .data[0]!;
     const term = String(record.title);
 
     const found = await request(app.getHttpServer())

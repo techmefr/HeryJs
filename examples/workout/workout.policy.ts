@@ -22,10 +22,38 @@ export const canUpdateWorkout: PolicyCheck<WorkoutRecordLike> = (
   record,
 ) => (record ? resolveCapability('own', subject, record) : { allowed: false });
 
+// The outer gate on the bulk update/restore routes -- there is no single
+// record yet to check against, so this is the same broad pass the collection
+// search route takes, before update/restore/canUpdateWorkout narrows
+// per record inside the handler.
+export const canUpdateAnyWorkout: PolicyCheck = (subject) =>
+  resolveCollectionCapability('own', subject);
+
 export const canDeleteWorkout: PolicyCheck<WorkoutRecordLike> = (
   subject,
   record,
 ) => (record ? resolveCapability('own', subject, record) : { allowed: false });
+
+// Same reasoning as canUpdateAnyWorkout, for the bulk delete route.
+export const canDeleteAnyWorkout: PolicyCheck = (subject) =>
+  resolveCollectionCapability('own', subject);
+
+// Hard delete is not a scope on the delete preset -- own/team/all/none answer
+// "whose records", not "how permanently". It is its own admin-only capability,
+// checked in addition to (never instead of) the delete preset above.
+export const canHardDeleteWorkout: PolicyCheck = (subject) =>
+  subject.role === 'admin'
+    ? { allowed: true, scope: 'all' }
+    : { allowed: false };
+
+// Purge has no route today -- only the future admin decorator system reaches
+// it -- but it is still gated by its own capability rather than reusing
+// canHardDeleteWorkout, because a route may one day expose it under rules
+// stricter than "any admin" (e.g. a second admin's approval).
+export const canPurgeWorkout: PolicyCheck = (subject) =>
+  subject.role === 'admin'
+    ? { allowed: true, scope: 'all' }
+    : { allowed: false };
 
 export const canViewWorkout: PolicyCheck<WorkoutRecordLike> = (
   subject,

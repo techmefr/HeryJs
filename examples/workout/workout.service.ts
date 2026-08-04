@@ -7,6 +7,8 @@ import { scopeWhereFor } from '#technical/capabilities/scope-where';
 import { SignalService } from '#technical/signal/signal.service';
 import { SearchEngineRegistry } from '#technical/search/search-engine.registry';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
+import { writeAuditLog } from '#technical/audit/audit-log';
+import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { CreateWorkoutInput, UpdateWorkoutInput } from './workout.dto';
 
 const SEARCHABLE_FIELDS = ['title'] as const;
@@ -49,13 +51,13 @@ export class WorkoutService {
   // them, so a write has to reach all of them, and one engine being down
   // must not stop the others from getting the update.
   private async syncSearchIndex(record: Workout) {
+    if (record.deletedAt) {
+      await this.removeFromSearchIndex(record.id, record.tenantId);
+      return;
+    }
+
     for (const driver of this.searchEngines.externalDrivers) {
       try {
-        if (record.deletedAt) {
-          await driver.remove(SEARCH_COLLECTION, record.id, record.tenantId);
-          continue;
-        }
-
         const document = Object.fromEntries(
           SEARCHABLE_FIELDS.map((field) => [field, record[field]]),
         );
@@ -68,6 +70,21 @@ export class WorkoutService {
       } catch (error) {
         this.logger.warn(
           `search index out of sync for ${SEARCH_COLLECTION}:${record.id}: ${(error as Error).message}`,
+        );
+      }
+    }
+  }
+
+  // Shared by soft delete (via syncSearchIndex above) and hard delete: a
+  // hard-deleted row has no updated record to read deletedAt off, only the
+  // id and tenant it used to have.
+  private async removeFromSearchIndex(id: string, tenantId: string) {
+    for (const driver of this.searchEngines.externalDrivers) {
+      try {
+        await driver.remove(SEARCH_COLLECTION, id, tenantId);
+      } catch (error) {
+        this.logger.warn(
+          `search index out of sync for ${SEARCH_COLLECTION}:${id}: ${(error as Error).message}`,
         );
       }
     }
@@ -147,13 +164,45 @@ export class WorkoutService {
     return updated;
   }
 
-  async restore(record: Workout) {
+  async restore(record: Workout, patch?: UpdateWorkoutInput) {
     const updated = await this.prisma.workout.update({
       where: { id: record.id },
-      data: { deletedAt: null },
+      data: { ...patch, deletedAt: null },
     });
     this.notify();
     await this.syncSearchIndex(updated);
     return updated;
+  }
+
+  // Distinct from softDelete: this removes the row rather than flagging it,
+  // and is reached only once the caller already holds the separate hard-delete
+  // capability. Runs on the same tenant-scoped client as every other write, so
+  // the audit extension records it exactly like any other audited delete.
+  async hardDelete(record: Workout) {
+    await this.prisma.workout.delete({ where: { id: record.id } });
+    this.notify();
+    await this.removeFromSearchIndex(record.id, record.tenantId);
+  }
+
+  // Distinct from hardDelete: purge has no route, only the future admin
+  // decorator system can reach it, and it is gated by its own capability
+  // rather than the delete preset. The audit entry is written before the row
+  // is gone rather than relying on the tenant-scoped client's automatic
+  // after-the-fact extension, because a purge is exactly the operation an
+  // audit trail exists to prove happened even if the write that follows it
+  // never completes.
+  async purge(record: Workout) {
+    await writeAuditLog(authPrismaClient, {
+      tenantId: record.tenantId,
+      model: 'Workout',
+      operation: 'purge',
+      recordId: record.id,
+      data: {},
+      userId: TenantContextStorage.getUserId(),
+      impersonatedBy: TenantContextStorage.getImpersonatedBy(),
+    });
+    await authPrismaClient.workout.delete({ where: { id: record.id } });
+    this.notify();
+    await this.removeFromSearchIndex(record.id, record.tenantId);
   }
 }

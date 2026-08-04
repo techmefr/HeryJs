@@ -80,12 +80,13 @@ describe('prune', () => {
   it('hard-deletes rows soft-deleted longer ago than the retention window, and leaves recent ones alone', async () => {
     const create = (title: string) =>
       request(app.getHttpServer())
-        .post('/workouts')
+        .post('/workouts/create')
         .set('Authorization', `Bearer ${userToken}`)
-        .send({ title })
+        .send({ data: [{ title }] })
         .expect(201)
         .then(
-          (response) => (response.body as { data: { id: string } }).data.id,
+          (response) =>
+            (response.body as { data: { id: string }[] }).data[0]!.id,
         );
 
     const overdueId = await create('overdue');
