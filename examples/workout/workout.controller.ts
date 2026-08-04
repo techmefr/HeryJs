@@ -97,15 +97,16 @@ export class WorkoutController {
     ) => { allowed: boolean },
   ) {
     const entries: Array<
-      | { id: string; ok: true; record: Workout }
-      | { id: string; ok: false; error: ResolvedError }
+      | { index: number; id: string; ok: true; record: Workout }
+      | { index: number; id: string; ok: false; error: ResolvedError }
     > = [];
 
-    for (const id of ids) {
+    for (const [index, id] of ids.entries()) {
       const record = await this.loader.load(id);
 
       if (!record) {
         entries.push({
+          index,
           id,
           ok: false,
           error: resolveDomainError(new RecordNotFoundException('workout')),
@@ -117,6 +118,7 @@ export class WorkoutController {
 
       if (!decision.allowed) {
         entries.push({
+          index,
           id,
           ok: false,
           error: resolveDomainError(new CapabilityForbiddenException(decision)),
@@ -124,7 +126,7 @@ export class WorkoutController {
         continue;
       }
 
-      entries.push({ id, ok: true, record });
+      entries.push({ index, id, ok: true, record });
     }
 
     return entries;
@@ -236,6 +238,7 @@ export class WorkoutController {
     for (const [index, entry] of loaded.entries()) {
       if (!entry.ok) {
         results.push({
+          index,
           id: entry.id,
           status: 'error' as const,
           error: entry.error,
@@ -248,12 +251,14 @@ export class WorkoutController {
       try {
         const updated = await this.workouts.update(entry.record, data);
         results.push({
+          index,
           id: entry.id,
           status: 'ok' as const,
           data: toWorkoutView(updated),
         });
       } catch (error) {
         results.push({
+          index,
           id: entry.id,
           status: 'error' as const,
           error: resolveDomainError(error),
@@ -286,9 +291,10 @@ export class WorkoutController {
 
     const results = [];
 
-    for (const entry of loaded) {
+    for (const [index, entry] of loaded.entries()) {
       if (!entry.ok) {
         results.push({
+          index,
           id: entry.id,
           status: 'error' as const,
           error: entry.error,
@@ -299,10 +305,16 @@ export class WorkoutController {
       try {
         if (body.mode === 'hard') {
           await this.workouts.hardDelete(entry.record);
-          results.push({ id: entry.id, status: 'ok' as const, data: null });
+          results.push({
+            index,
+            id: entry.id,
+            status: 'ok' as const,
+            data: null,
+          });
         } else {
           const removed = await this.workouts.softDelete(entry.record);
           results.push({
+            index,
             id: entry.id,
             status: 'ok' as const,
             data: toWorkoutView(removed),
@@ -310,6 +322,7 @@ export class WorkoutController {
         }
       } catch (error) {
         results.push({
+          index,
           id: entry.id,
           status: 'error' as const,
           error: resolveDomainError(error),
@@ -334,9 +347,10 @@ export class WorkoutController {
 
     const results = [];
 
-    for (const entry of loaded) {
+    for (const [index, entry] of loaded.entries()) {
       if (!entry.ok) {
         results.push({
+          index,
           id: entry.id,
           status: 'error' as const,
           error: entry.error,
@@ -351,12 +365,14 @@ export class WorkoutController {
 
         const restored = await this.workouts.restore(entry.record, body.patch);
         results.push({
+          index,
           id: entry.id,
           status: 'ok' as const,
           data: toWorkoutView(restored),
         });
       } catch (error) {
         results.push({
+          index,
           id: entry.id,
           status: 'error' as const,
           error: resolveDomainError(error),

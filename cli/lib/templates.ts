@@ -540,15 +540,16 @@ export class ${ctx.pascalName}Controller {
     check: (subject: ReturnType<typeof subjectOf>, record: unknown) => { allowed: boolean },
   ) {
     const entries: Array<
-      | { id: string; ok: true; record: ${ctx.pascalName} }
-      | { id: string; ok: false; error: ResolvedError }
+      | { index: number; id: string; ok: true; record: ${ctx.pascalName} }
+      | { index: number; id: string; ok: false; error: ResolvedError }
     > = [];
 
-    for (const id of ids) {
+    for (const [index, id] of ids.entries()) {
       const record = await this.loader.load(id);
 
       if (!record) {
         entries.push({
+          index,
           id,
           ok: false,
           error: resolveDomainError(new RecordNotFoundException('${ctx.kebabName}')),
@@ -560,6 +561,7 @@ export class ${ctx.pascalName}Controller {
 
       if (!decision.allowed) {
         entries.push({
+          index,
           id,
           ok: false,
           error: resolveDomainError(new CapabilityForbiddenException(decision)),
@@ -567,7 +569,7 @@ export class ${ctx.pascalName}Controller {
         continue;
       }
 
-      entries.push({ id, ok: true, record });
+      entries.push({ index, id, ok: true, record });
     }
 
     return entries;
@@ -670,7 +672,7 @@ export class ${ctx.pascalName}Controller {
 
     for (const [index, entry] of loaded.entries()) {
       if (!entry.ok) {
-        results.push({ id: entry.id, status: 'error' as const, error: entry.error });
+        results.push({ index, id: entry.id, status: 'error' as const, error: entry.error });
         continue;
       }
 
@@ -678,9 +680,9 @@ export class ${ctx.pascalName}Controller {
 
       try {
         const updated = await this.${ctx.camelName}s.update(entry.record, data);
-        results.push({ id: entry.id, status: 'ok' as const, data: to${ctx.pascalName}View(updated) });
+        results.push({ index, id: entry.id, status: 'ok' as const, data: to${ctx.pascalName}View(updated) });
       } catch (error) {
-        results.push({ id: entry.id, status: 'error' as const, error: resolveDomainError(error) });
+        results.push({ index, id: entry.id, status: 'error' as const, error: resolveDomainError(error) });
       }
     }
 
@@ -711,22 +713,22 @@ export class ${ctx.pascalName}Controller {
 
     const results = [];
 
-    for (const entry of loaded) {
+    for (const [index, entry] of loaded.entries()) {
       if (!entry.ok) {
-        results.push({ id: entry.id, status: 'error' as const, error: entry.error });
+        results.push({ index, id: entry.id, status: 'error' as const, error: entry.error });
         continue;
       }
 
       try {
         if (body.mode === 'hard') {
           await this.${ctx.camelName}s.hardDelete(entry.record);
-          results.push({ id: entry.id, status: 'ok' as const, data: null });
+          results.push({ index, id: entry.id, status: 'ok' as const, data: null });
         } else {
           const removed = await this.${ctx.camelName}s.softDelete(entry.record);
-          results.push({ id: entry.id, status: 'ok' as const, data: to${ctx.pascalName}View(removed) });
+          results.push({ index, id: entry.id, status: 'ok' as const, data: to${ctx.pascalName}View(removed) });
         }
       } catch (error) {
-        results.push({ id: entry.id, status: 'error' as const, error: resolveDomainError(error) });
+        results.push({ index, id: entry.id, status: 'error' as const, error: resolveDomainError(error) });
       }
     }
 
@@ -749,9 +751,9 @@ export class ${ctx.pascalName}Controller {
 
     const results = [];
 
-    for (const entry of loaded) {
+    for (const [index, entry] of loaded.entries()) {
       if (!entry.ok) {
-        results.push({ id: entry.id, status: 'error' as const, error: entry.error });
+        results.push({ index, id: entry.id, status: 'error' as const, error: entry.error });
         continue;
       }
 
@@ -761,9 +763,9 @@ export class ${ctx.pascalName}Controller {
         }
 
         const restored = await this.${ctx.camelName}s.restore(entry.record, body.patch);
-        results.push({ id: entry.id, status: 'ok' as const, data: to${ctx.pascalName}View(restored) });
+        results.push({ index, id: entry.id, status: 'ok' as const, data: to${ctx.pascalName}View(restored) });
       } catch (error) {
-        results.push({ id: entry.id, status: 'error' as const, error: resolveDomainError(error) });
+        results.push({ index, id: entry.id, status: 'error' as const, error: resolveDomainError(error) });
       }
     }
 
