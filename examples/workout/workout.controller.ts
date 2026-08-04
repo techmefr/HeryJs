@@ -66,7 +66,7 @@ import { toWorkoutView } from './workout.view';
 const WORKOUT_DESCRIBE = {
   fields: [{ name: 'title', type: 'string', optional: false }],
   sorts: ['createdAt'],
-  filters: [],
+  filters: ['title'],
   selects: ['id', 'ownerId', 'title', 'createdAt', 'updatedAt', 'deletedAt'],
   limits: [10, 15, 20],
   defaultLimit: 15,
@@ -142,7 +142,7 @@ export class WorkoutController {
   ) {
     const query = parseSearchRequest(body, {
       sorts: ['createdAt'],
-      filters: ['id'],
+      filters: ['id', 'title'],
       selects: [
         'id',
         'ownerId',

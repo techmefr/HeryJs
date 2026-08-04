@@ -1,0 +1,235 @@
+---
+title: Search
+description: List a resource with pagination, ordered sorts, an operator-based filter grammar and full-text search — the contract, the allow-lists behind it, and what the response looks like.
+---
+
+import EndpointPlayground from '../../../../components/EndpointPlayground.astro';
+
+export const scenarios = [
+  {
+    id: 'filter',
+    label: 'Filtrer sur le titre',
+    method: 'POST',
+    path: '/workouts/search',
+    request: `POST /workouts/search
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "filters": [
+    { "field": "title", "operator": "like", "value": "leg" }
+  ]
+}`,
+    response: `{
+  "data": [
+    { "id": "cly8x7g9k0000abc123def456", "title": "Leg day" }
+  ],
+  "meta": { "channels": ["workout"], "page": 1, "limit": 15, "total": 1, "last_page": 1 },
+  "messages": []
+}`,
+    flow: [
+      { stage: 'middleware', label: 'tenant resolution', status: 'ok', durationMs: 1 },
+      { stage: 'guard', label: 'session', status: 'ok', durationMs: 0 },
+      { stage: 'guard', label: 'capability', status: 'ok', durationMs: 1, detail: { policy: 'canViewAnyWorkout', scope: 'own' } },
+      { stage: 'controller', label: 'parseSearchRequest', status: 'ok', durationMs: 0, detail: { field: 'title', operator: 'like', allowedFilters: ['id', 'title'] } },
+      { stage: 'prisma', label: 'workout.findMany', status: 'ok', durationMs: 3, detail: { sql: 'SELECT * FROM "Workout" WHERE "ownerId" = $1 AND "title" LIKE $2', params: ['user_9f8e7d6c', '%leg%'] } },
+    ],
+  },
+  {
+    id: 'sort-paginate',
+    label: 'Trier et paginer',
+    method: 'POST',
+    path: '/workouts/search',
+    request: `POST /workouts/search
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "sorts": [{ "field": "createdAt", "direction": "desc" }],
+  "page": 1,
+  "limit": 10
+}`,
+    response: `{
+  "data": [
+    { "id": "cly8x9k...", "title": "Leg day" },
+    { "id": "cly8x8j...", "title": "Push day" },
+    { "id": "cly8x7g...", "title": "Pull day" }
+  ],
+  "meta": { "channels": ["workout"], "page": 1, "limit": 10, "total": 3, "last_page": 1 },
+  "messages": []
+}`,
+    flow: [
+      { stage: 'middleware', label: 'tenant resolution', status: 'ok', durationMs: 1 },
+      { stage: 'guard', label: 'session', status: 'ok', durationMs: 0 },
+      { stage: 'guard', label: 'capability', status: 'ok', durationMs: 1, detail: { policy: 'canViewAnyWorkout', scope: 'own' } },
+      { stage: 'controller', label: 'parseSearchRequest', status: 'ok', durationMs: 0, detail: { sorts: [{ field: 'createdAt', direction: 'desc' }], page: 1, limit: 10 } },
+      { stage: 'prisma', label: 'workout.findMany + workout.count', status: 'ok', durationMs: 4, detail: { sql: 'SELECT * FROM "Workout" WHERE "ownerId" = $1 ORDER BY "createdAt" DESC LIMIT 10 OFFSET 0', params: ['user_9f8e7d6c'] } },
+    ],
+  },
+  {
+    id: 'by-id',
+    label: 'Chercher par identifiant',
+    method: 'POST',
+    path: '/workouts/search',
+    request: `POST /workouts/search
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "filters": [{ "field": "id", "value": "cly8x7g9k0000abc123def456" }]
+}`,
+    response: `{
+  "data": [
+    { "id": "cly8x7g9k0000abc123def456", "title": "Leg day" }
+  ],
+  "meta": { "channels": ["workout"], "page": 1, "limit": 15, "total": 1, "last_page": 1 },
+  "messages": []
+}`,
+    flow: [
+      { stage: 'middleware', label: 'tenant resolution', status: 'ok', durationMs: 1 },
+      { stage: 'guard', label: 'session', status: 'ok', durationMs: 0 },
+      { stage: 'guard', label: 'capability', status: 'ok', durationMs: 1, detail: { policy: 'canViewAnyWorkout', scope: 'own' } },
+      { stage: 'controller', label: 'parseSearchRequest', status: 'ok', durationMs: 0, detail: { field: 'id', operator: '= (default)', fragment: { equals: 'cly8x7g9k0000abc123def456' } } },
+      { stage: 'prisma', label: 'workout.findMany', status: 'ok', durationMs: 2, detail: { sql: 'SELECT * FROM "Workout" WHERE "ownerId" = $1 AND "id" = $2', params: ['user_9f8e7d6c', 'cly8x7g9k0000abc123def456'] } },
+    ],
+  },
+];
+
+Every generated resource exposes one search route instead of a detail route: there is no `GET /workouts/:id` — asking for one record is a filter on `id` that happens to return a single row, not a separate contract to learn.
+
+<EndpointPlayground scenarios={scenarios}>
+  <Fragment slot="spec">
+    ## Body fields
+
+    | Field | Type | What it does |
+    |---|---|---|
+    | `filters` | array | Each entry: `field` (must be in the blueprint's `filters` list, plus `id`), `operator` (default `=`), `value`, `type` (`and`/`or`, default `and`), `nested` (a sub-group evaluated as one condition) |
+    | `sorts` | array | Each entry: `field` (must be in the blueprint's `sorts` list), `direction` (`asc`/`desc`, default `asc`) — applied in the order given |
+    | `selects` | array | Each entry: `field` (must be an exposed field) — trims the response down to just these |
+    | `page` | number | Defaults to `1` |
+    | `limit` | number | Must be one of the blueprint's `pagination.limits` |
+    | `search.q` / `search.engine` | string | Free-text search — see [Full-text search](/guides/search/) |
+    | `withTrashed` / `onlyTrashed` | boolean | Gated behind the delete permission, not the read one |
+    | `capabilities` | array | Which per-record capability decisions to attach — see below |
+
+    ## Operators
+
+    A closed list — `=` `!=` `>` `>=` `<` `<=` `like` `not like` `in` `not in`. Nothing else parses. `in` / `not in` require an array `value`; anything else is a 400.
+
+    Every field named in a filter, a sort or a select is checked against the resource's own allow-list before it touches the database. Ask for something outside it and you get a 400, not a silently ignored field:
+
+    ```
+    POST /workouts/search
+    { "limit": 999 }
+    ```
+
+    ```json
+    {
+      "error": {
+        "status": 400,
+        "key": "query.invalid",
+        "message": "Invalid value for \"limit\". Allowed: 10, 15, 20.",
+        "details": { "param": "limit", "allowed": [10, 15, 20] }
+      }
+    }
+    ```
+
+    To know a resource's actual allow-lists ahead of time instead of guessing from a 400, see the [Details](/guides/endpoints/details/) page.
+
+    ## Response meta
+
+    ```json
+    { "meta": { "channels": ["workout"], "page": 1, "limit": 15, "total": 3, "last_page": 1 } }
+    ```
+
+    `channels` is what a live UI subscribes to — see [Realtime](/guides/realtime/) — to know when to refetch, instead of polling. `page`/`limit`/`total`/`last_page` are the real pagination window, not a truncated guess.
+
+    ## Capabilities in the response
+
+    Name capabilities in the body and each record grows a `capabilities` object describing what the current caller may do with it — no need to attempt an update just to find out it will fail:
+
+    ```
+    POST /workouts/search
+    { "capabilities": ["update"] }
+    ```
+
+    ```json
+    {
+      "data": [
+        {
+          "id": "cly8x7g9k0000abc123def456",
+          "title": "Leg day",
+          "capabilities": { "update": { "allowed": true, "scope": "own" } }
+        }
+      ],
+      "messages": []
+    }
+    ```
+
+    There is no `view` key: seeing the record in this response already answered that question. `scope` names which rule let the write through (`own`, `team` or `all`), and is absent when `allowed` is `false`. Use this to decide whether to render an edit button, not as a substitute for handling the 403 the server still returns if you ignore it.
+  </Fragment>
+
+  <Fragment slot="resource">
+    The real generated handler, from `examples/workout/workout.controller.ts` — every resource gets the same shape, only the allow-lists change:
+
+    ```ts
+    {`@Post('search')
+    @HttpCode(200)
+    @Capability(canViewAnyWorkout)
+    async search(
+      @Req() req: RequestWithUser,
+      @Body(new ZodValidationPipe(searchRequestSchema)) body: SearchRequestBody,
+    ) {
+      const query = parseSearchRequest(body, {
+        sorts: ['createdAt'],
+        filters: ['id', 'title'],
+        selects: ['id', 'ownerId', 'title', 'createdAt', 'updatedAt', 'deletedAt'],
+        limits: [10, 15, 20],
+        defaultLimit: 15,
+      });
+      const subject = subjectOf(req.user);
+
+      if (query.withTrashed || query.onlyTrashed) {
+        const trashedDecision = canListTrashedWorkout(subject);
+        if (!trashedDecision.allowed) {
+          throw new CapabilityForbiddenException(trashedDecision);
+        }
+      }
+
+      const { records, total } = await this.workouts.search(subject, query);
+      const capabilities = body.capabilities ?? [];
+      const select = query.select;
+      const project = (view: Record<string, unknown>) =>
+        select
+          ? Object.fromEntries(Object.entries(view).filter(([key]) => key in select))
+          : view;
+      const meta = {
+        channels: [WORKOUT_SIGNAL_CHANNEL],
+        page: query.page,
+        limit: query.limit,
+        total,
+        last_page: Math.max(1, Math.ceil(total / query.limit)),
+      };
+
+      if (capabilities.length === 0) {
+        return ok(records.map((record) => project(toWorkoutView(record))), meta);
+      }
+
+      return ok(
+        records.map((record) => {
+          const resolved = this.policy.recordCapabilities(subject, record);
+          return {
+            ...project(toWorkoutView(record)),
+            capabilities: Object.fromEntries(
+              Object.entries(resolved).filter(([key]) => capabilities.includes(key)),
+            ),
+          };
+        }),
+        { ...meta, capabilities: this.policy.metaCapabilities(subject) },
+      );
+    }`}
+    ```
+
+    `parseSearchRequest` is the one place that ever reads `body.filters`/`body.sorts`/`body.selects` — it checks every field against this resource's own allow-list and builds the Prisma `where` fragment from the validated operator, never from the raw client value, before the controller sees any of it. See `src/technical/http/list-query.ts` for that logic — it is shared, not regenerated per resource.
+  </Fragment>
+</EndpointPlayground>

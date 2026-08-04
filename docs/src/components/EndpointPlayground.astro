@@ -1,0 +1,292 @@
+---
+// Frozen fixtures, no backend -- picking a scenario swaps the payload, and
+// the response/flow stay hidden behind their own button until asked for, so
+// switching scenarios never flashes a stale answer on screen. Curated,
+// non-combinatorial: each scenario is a whole request/response/flow captured
+// once, not built by composing the checkboxes together.
+interface PlaygroundStep {
+	stage: 'middleware' | 'guard' | 'controller' | 'prisma';
+	label: string;
+	status: 'ok' | 'blocked' | 'error';
+	durationMs: number;
+	detail?: unknown;
+}
+
+interface PlaygroundScenario {
+	id: string;
+	label: string;
+	method: string;
+	path: string;
+	request: string;
+	response: string;
+	flow: PlaygroundStep[];
+}
+
+interface Props {
+	scenarios: PlaygroundScenario[];
+}
+
+const { scenarios } = Astro.props;
+---
+
+<div class="endpoint-playground" data-scenarios={JSON.stringify(scenarios)}>
+	<div class="ep-tabs" role="tablist">
+		<button type="button" class="ep-tab" data-tab="example" aria-selected="true">Exemple</button>
+		<button type="button" class="ep-tab" data-tab="spec" aria-selected="false">Spec</button>
+		<button type="button" class="ep-tab" data-tab="resource" aria-selected="false">Ressource</button>
+	</div>
+
+	<div class="ep-panel" data-panel="example">
+		<div class="ep-picks">
+			{
+				scenarios.map((scenario, index) => (
+					<label class="ep-pick">
+						<input type="checkbox" class="ep-pick-input" data-index={index} checked={index === 0} />
+						<span>{scenario.label}</span>
+					</label>
+				))
+			}
+		</div>
+
+		<pre class="ep-payload"><code>{scenarios[0]?.request}</code></pre>
+
+		<div class="ep-actions">
+			<button type="button" class="ep-action" data-action="response">Voir la réponse</button>
+			<button type="button" class="ep-action" data-action="flow">Voir le flux</button>
+		</div>
+
+		<pre class="ep-result" data-result="response" hidden><code></code></pre>
+		<ol class="ep-result ep-flow" data-result="flow" hidden></ol>
+	</div>
+
+	<div class="ep-panel" data-panel="spec" hidden>
+		<slot name="spec" />
+	</div>
+
+	<div class="ep-panel" data-panel="resource" hidden>
+		<slot name="resource" />
+	</div>
+</div>
+
+<script>
+	function init(root: HTMLElement) {
+		const scenarios = JSON.parse(root.dataset.scenarios ?? '[]');
+		const checkboxes = root.querySelectorAll<HTMLInputElement>('.ep-pick-input');
+		const payloadCode = root.querySelector('.ep-payload code')!;
+		const responseView = root.querySelector<HTMLElement>('[data-result="response"]')!;
+		const responseCode = responseView.querySelector('code')!;
+		const flowView = root.querySelector<HTMLElement>('[data-result="flow"]')!;
+		const actions = root.querySelectorAll<HTMLButtonElement>('.ep-action');
+		const tabs = root.querySelectorAll<HTMLButtonElement>('.ep-tab');
+		const panels = root.querySelectorAll<HTMLElement>('.ep-panel');
+
+		function renderFlow(scenario: (typeof scenarios)[number]) {
+			flowView.innerHTML = '';
+			scenario.flow.forEach((step: any, index: number) => {
+				const item = document.createElement('li');
+				item.className = `ep-flow-step ep-flow-step-${step.status}`;
+				const detail = step.detail ? `<pre>${JSON.stringify(step.detail, null, 2)}</pre>` : '';
+				item.innerHTML = `
+					<div class="ep-flow-head">
+						<span class="ep-flow-stage">${step.stage}</span>
+						<span class="ep-flow-status">${step.status}</span>
+						<span class="ep-flow-duration">${step.durationMs}ms</span>
+					</div>
+					<div class="ep-flow-label">${step.label}</div>
+					${detail}
+				`;
+				flowView.appendChild(item);
+			});
+		}
+
+		function select(index: number) {
+			const scenario = scenarios[index];
+			checkboxes.forEach((box, boxIndex) => {
+				box.checked = boxIndex === index;
+			});
+			payloadCode.textContent = scenario.request;
+			responseCode.textContent = scenario.response;
+			renderFlow(scenario);
+			responseView.hidden = true;
+			flowView.hidden = true;
+		}
+
+		checkboxes.forEach((box, index) =>
+			box.addEventListener('change', () => select(index)),
+		);
+
+		actions.forEach((action) =>
+			action.addEventListener('click', () => {
+				if (action.dataset.action === 'response') {
+					responseView.hidden = !responseView.hidden;
+				} else {
+					flowView.hidden = !flowView.hidden;
+				}
+			}),
+		);
+
+		tabs.forEach((tab) =>
+			tab.addEventListener('click', () => {
+				tabs.forEach((other) => other.setAttribute('aria-selected', String(other === tab)));
+				panels.forEach((panel) => {
+					panel.hidden = panel.dataset.panel !== tab.dataset.tab;
+				});
+			}),
+		);
+
+		select(0);
+	}
+
+	document.querySelectorAll<HTMLElement>('.endpoint-playground').forEach(init);
+</script>
+
+<style>
+	.endpoint-playground {
+		margin: 1.5rem 0;
+		border: 2px solid var(--sl-color-hairline);
+		border-radius: 0.75rem;
+		overflow: hidden;
+	}
+
+	.ep-tabs {
+		display: flex;
+		gap: 0.25rem;
+		padding: 0 1rem;
+		background: var(--sl-color-gray-6);
+		border-bottom: 2px solid var(--sl-color-hairline);
+	}
+
+	.ep-tab {
+		padding: 0.65rem 0.75rem;
+		border: none;
+		background: transparent;
+		color: var(--sl-color-gray-3);
+		cursor: pointer;
+		font-size: var(--sl-text-sm);
+		border-bottom: 2px solid transparent;
+	}
+
+	.ep-tab[aria-selected='true'] {
+		color: var(--sl-color-white);
+		border-bottom-color: var(--sl-color-accent);
+		font-weight: 600;
+	}
+
+	.ep-panel {
+		padding: 1rem;
+	}
+
+	.ep-picks {
+		display: flex;
+		flex-direction: column;
+		gap: 0.4rem;
+		margin-bottom: 0.75rem;
+	}
+
+	.ep-pick {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		font-size: var(--sl-text-sm);
+		cursor: pointer;
+	}
+
+	.ep-payload {
+		margin: 0 0 0.75rem;
+		font-size: var(--sl-text-sm);
+		white-space: pre-wrap;
+	}
+
+	.ep-actions {
+		display: flex;
+		gap: 0.5rem;
+		margin-bottom: 0.75rem;
+	}
+
+	.ep-action {
+		padding: 0.5rem 0.85rem;
+		border: 1px solid var(--sl-color-hairline);
+		border-radius: 0.5rem;
+		background: var(--sl-color-gray-6);
+		color: var(--sl-color-white);
+		cursor: pointer;
+		font-size: var(--sl-text-sm);
+	}
+
+	.ep-result {
+		margin: 0;
+	}
+
+	pre.ep-result {
+		font-size: var(--sl-text-sm);
+		white-space: pre-wrap;
+	}
+
+	.ep-flow {
+		list-style: none;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.ep-flow-step {
+		border: 1px solid var(--sl-color-hairline-light);
+		border-radius: 0.5rem;
+		padding: 0.5rem 0.75rem;
+	}
+
+	.ep-flow-step-blocked,
+	.ep-flow-step-error {
+		border-color: var(--sl-color-red, #e04848);
+		background: color-mix(in srgb, var(--sl-color-red, #e04848) 10%, transparent);
+	}
+
+	.ep-flow-head {
+		display: flex;
+		gap: 0.5rem;
+		align-items: baseline;
+		font-size: var(--sl-text-xs);
+	}
+
+	.ep-flow-stage {
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: var(--sl-color-accent);
+		font-weight: 700;
+	}
+
+	.ep-flow-status {
+		color: var(--sl-color-gray-3);
+	}
+
+	.ep-flow-duration {
+		margin-inline-start: auto;
+		color: var(--sl-color-gray-3);
+	}
+
+	.ep-flow-label {
+		font-weight: 600;
+		margin-top: 0.15rem;
+	}
+
+	.ep-flow-step pre {
+		margin: 0.4rem 0 0;
+		font-size: var(--sl-text-xs);
+		white-space: pre-wrap;
+	}
+
+	@media (max-width: 640px) {
+		.ep-actions {
+			position: sticky;
+			bottom: 0;
+			background: var(--sl-color-black);
+			padding-top: 0.5rem;
+			margin-bottom: 0;
+		}
+
+		.ep-action {
+			flex: 1;
+		}
+	}
+</style>

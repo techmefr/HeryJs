@@ -13,7 +13,8 @@ permissions:
 sorts:
   - createdAt
 
-filters: []
+filters:
+  - title
 
 pagination:
   limits: [10, 15, 20]
