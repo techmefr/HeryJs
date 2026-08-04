@@ -42,7 +42,11 @@ describe('Workout resource', () => {
       .expect(201);
 
     expect(
-      (response.body as { data: { tenantId: string }[] }).data[0]!.tenantId,
+      (
+        response.body as {
+          data: { status: string; data: { tenantId: string } }[];
+        }
+      ).data[0]!.data.tenantId,
     ).toBe('default');
   });
 
@@ -71,7 +75,9 @@ describe('Workout resource', () => {
       .send({ data: [{ title: 'title-value' }] })
       .expect(201);
 
-    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
+    const recordId = (
+      created.body as { data: { status: string; data: { id: string } }[] }
+    ).data[0]!.data.id;
 
     const detail = await request(app.getHttpServer())
       .post('/workouts/search')
@@ -99,7 +105,9 @@ describe('Workout resource', () => {
       .send({ data: [{ title: 'title-value' }] })
       .expect(201);
 
-    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
+    const recordId = (
+      created.body as { data: { status: string; data: { id: string } }[] }
+    ).data[0]!.data.id;
 
     await request(app.getHttpServer())
       .post('/workouts/delete')
@@ -150,13 +158,26 @@ describe('Workout resource', () => {
       .send({ data: [{ title: 'title-value' }] })
       .expect(201);
 
-    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
+    const recordId = (
+      created.body as { data: { status: string; data: { id: string } }[] }
+    ).data[0]!.data.id;
 
-    await request(app.getHttpServer())
+    const response = await request(app.getHttpServer())
       .post('/workouts/update')
       .set('Authorization', `Bearer ${strangerToken}`)
       .send({ data: [{ id: recordId, ...{ title: 'title-value' } }] })
-      .expect(403);
+      .expect(201);
+
+    const results = (
+      response.body as {
+        data: { id: string; status: string; error?: { status: number } }[];
+      }
+    ).data;
+    expect(results[0]).toMatchObject({
+      id: recordId,
+      status: 'error',
+      error: { status: 403 },
+    });
   });
 
   it('soft-deletes then restores a record', async () => {
@@ -166,7 +187,9 @@ describe('Workout resource', () => {
       .send({ data: [{ title: 'title-value' }] })
       .expect(201);
 
-    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
+    const recordId = (
+      created.body as { data: { status: string; data: { id: string } }[] }
+    ).data[0]!.data.id;
 
     await request(app.getHttpServer())
       .post('/workouts/delete')
@@ -208,13 +231,26 @@ describe('Workout resource', () => {
       .send({ data: [{ title: 'title-value' }] })
       .expect(201);
 
-    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
+    const recordId = (
+      created.body as { data: { status: string; data: { id: string } }[] }
+    ).data[0]!.data.id;
 
-    await request(app.getHttpServer())
+    const response = await request(app.getHttpServer())
       .post('/workouts/restore')
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({ ids: [recordId] })
-      .expect(409);
+      .expect(201);
+
+    const results = (
+      response.body as {
+        data: { id: string; status: string; error?: { status: number } }[];
+      }
+    ).data;
+    expect(results[0]).toMatchObject({
+      id: recordId,
+      status: 'error',
+      error: { status: 409 },
+    });
   });
 
   it('never lets a different tenant see this tenant records', async () => {
@@ -255,8 +291,11 @@ describe('Workout resource', () => {
       .send({ data: [{ title: 'title-value' }] })
       .expect(201);
 
-    const record = (created.body as { data: Record<string, unknown>[] })
-      .data[0]!;
+    const record = (
+      created.body as {
+        data: { status: string; data: Record<string, unknown> }[];
+      }
+    ).data[0]!.data;
     const term = String(record.title);
 
     const found = await request(app.getHttpServer())

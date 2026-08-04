@@ -66,7 +66,7 @@ describe('Resource description', () => {
       create: 'canCreateWorkout',
       update: 'canUpdateAnyWorkout',
       remove: 'canDeleteAnyWorkout',
-      restore: 'canUpdateAnyWorkout',
+      restore: 'canRestoreAnyWorkout',
     });
   });
 

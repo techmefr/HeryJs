@@ -86,7 +86,11 @@ describe('prune', () => {
         .expect(201)
         .then(
           (response) =>
-            (response.body as { data: { id: string }[] }).data[0]!.id,
+            (
+              response.body as {
+                data: { status: string; data: { id: string } }[];
+              }
+            ).data[0]!.data.id,
         );
 
     const overdueId = await create('overdue');

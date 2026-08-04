@@ -153,7 +153,9 @@ describe('Impersonation', () => {
       .set('Authorization', `Bearer ${data.token}`)
       .send({ data: [{ title: 'title-value' }] })
       .expect(201);
-    const workoutId = (created.body as { data: { id: string }[] }).data[0]!.id;
+    const workoutId = (
+      created.body as { data: { status: string; data: { id: string } }[] }
+    ).data[0]!.data.id;
 
     const entry = await authPrismaClient.auditLog.findFirst({
       where: { model: 'Workout', recordId: workoutId },

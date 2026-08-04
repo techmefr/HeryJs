@@ -100,10 +100,9 @@ export const canUpdate${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike
   record,
 ) => (record ? resolveCapability('${ctx.permissions.update}', subject, record) : { allowed: false });
 
-// The outer gate on the bulk update/restore routes -- there is no single
-// record yet to check against, so this is the same broad pass the collection
-// search route takes, before update/restore/canUpdate${ctx.pascalName} narrows
-// per record inside the handler.
+// The outer gate on the bulk update route -- there is no single record yet
+// to check against, so this is the same broad pass the collection search
+// route takes, before canUpdate${ctx.pascalName} narrows per record inside the handler.
 export const canUpdateAny${ctx.pascalName}: PolicyCheck = (subject) =>
   resolveCollectionCapability('${ctx.permissions.update}', subject);
 
@@ -114,6 +113,20 @@ export const canDelete${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike
 
 // Same reasoning as canUpdateAny${ctx.pascalName}, for the bulk delete route.
 export const canDeleteAny${ctx.pascalName}: PolicyCheck = (subject) =>
+  resolveCollectionCapability('${ctx.permissions.delete}', subject);
+
+// Restore is the inverse of delete, not a kind of update -- whoever can
+// delete a record decides whether it comes back, the same way
+// canListTrashed${ctx.pascalName} already derives from the delete preset rather than
+// the view preset. Its own capability rather than reusing canDelete${ctx.pascalName}
+// so a route can diverge later (e.g. restore always requiring 'all' even on
+// an 'own'-scoped delete preset).
+export const canRestore${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike> = (
+  subject,
+  record,
+) => (record ? resolveCapability('${ctx.permissions.delete}', subject, record) : { allowed: false });
+
+export const canRestoreAny${ctx.pascalName}: PolicyCheck = (subject) =>
   resolveCollectionCapability('${ctx.permissions.delete}', subject);
 
 // Hard delete is not a scope on the delete preset -- own/team/all/none answer
@@ -439,6 +452,7 @@ ${
 
 export function controllerFile(ctx: ResourceContext): string {
   return `import { Body, Controller, Get, HttpCode, Inject, Post, Req, UseGuards } from '@nestjs/common';
+import type { ${ctx.pascalName} } from '@prisma/client';
 import { z } from 'zod';
 import { SessionGuard } from '#technical/auth/session.guard';
 import type { RequestWithUser } from '#technical/auth/session.guard';
@@ -448,6 +462,8 @@ import { Capability } from '#technical/capabilities/capability.decorator';
 import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
 import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
 import { AlreadyRestoredException } from '#technical/errors/already-restored.exception';
+import { resolveDomainError } from '#technical/errors/domain-exception.filter';
+import type { ResolvedError } from '#technical/errors/domain-exception.filter';
 import { ok } from '#technical/http/envelope';
 import { parseSearchRequest, searchRequestSchema } from '#technical/http/list-query';
 import type { SearchRequestBody } from '#technical/http/list-query';
@@ -472,6 +488,8 @@ import {
   canDeleteAny${ctx.pascalName},
   canHardDelete${ctx.pascalName},
   canListTrashed${ctx.pascalName},
+  canRestore${ctx.pascalName},
+  canRestoreAny${ctx.pascalName},
   canUpdate${ctx.pascalName},
   canUpdateAny${ctx.pascalName},
   canViewAny${ctx.pascalName},
@@ -513,33 +531,46 @@ export class ${ctx.pascalName}Controller {
     private readonly loader: ${ctx.pascalName}RecordLoader,
   ) {}
 
-  // Reused by update/delete/restore: each loads every targeted record, then
-  // fails the whole call on the first one that does not exist or is denied,
-  // rather than applying the operation to some and silently skipping others.
+  // Reused by update/delete/restore: each id is loaded and checked on its
+  // own, and a missing record or a denied one becomes that id's entry in the
+  // batch result rather than aborting every other id in the same request.
   private async loadAndAuthorize(
     ids: string[],
     subject: ReturnType<typeof subjectOf>,
     check: (subject: ReturnType<typeof subjectOf>, record: unknown) => { allowed: boolean },
   ) {
-    const records = [];
+    const entries: Array<
+      | { id: string; ok: true; record: ${ctx.pascalName} }
+      | { id: string; ok: false; error: ResolvedError }
+    > = [];
 
     for (const id of ids) {
       const record = await this.loader.load(id);
 
       if (!record) {
-        throw new RecordNotFoundException('${ctx.kebabName}');
+        entries.push({
+          id,
+          ok: false,
+          error: resolveDomainError(new RecordNotFoundException('${ctx.kebabName}')),
+        });
+        continue;
       }
 
       const decision = check(subject, record);
 
       if (!decision.allowed) {
-        throw new CapabilityForbiddenException(decision);
+        entries.push({
+          id,
+          ok: false,
+          error: resolveDomainError(new CapabilityForbiddenException(decision)),
+        });
+        continue;
       }
 
-      records.push(record);
+      entries.push({ id, ok: true, record });
     }
 
-    return records;
+    return entries;
   }
 
   @Post('search')
@@ -607,13 +638,18 @@ export class ${ctx.pascalName}Controller {
     body: Create${ctx.pascalName}RequestBody,
   ) {
     const subject = subjectOf(req.user);
-    const created = [];
+    const results = [];
 
-    for (const item of body.data) {
-      created.push(await this.${ctx.camelName}s.create(subject, item));
+    for (const [index, item] of body.data.entries()) {
+      try {
+        const created = await this.${ctx.camelName}s.create(subject, item);
+        results.push({ index, status: 'ok' as const, data: to${ctx.pascalName}View(created) });
+      } catch (error) {
+        results.push({ index, status: 'error' as const, error: resolveDomainError(error) });
+      }
     }
 
-    return ok(created.map(to${ctx.pascalName}View));
+    return ok(results);
   }
 
   @Post('update')
@@ -624,20 +660,31 @@ export class ${ctx.pascalName}Controller {
     body: Update${ctx.pascalName}RequestBody,
   ) {
     const subject = subjectOf(req.user);
-    const records = await this.loadAndAuthorize(
+    const loaded = await this.loadAndAuthorize(
       body.data.map((item) => item.id),
       subject,
       (s, record) => canUpdate${ctx.pascalName}(s, record as never),
     );
 
-    const updated = [];
+    const results = [];
 
-    for (const [index, record] of records.entries()) {
+    for (const [index, entry] of loaded.entries()) {
+      if (!entry.ok) {
+        results.push({ id: entry.id, status: 'error' as const, error: entry.error });
+        continue;
+      }
+
       const { id: _id, ...data } = body.data[index]!;
-      updated.push(await this.${ctx.camelName}s.update(record, data));
+
+      try {
+        const updated = await this.${ctx.camelName}s.update(entry.record, data);
+        results.push({ id: entry.id, status: 'ok' as const, data: to${ctx.pascalName}View(updated) });
+      } catch (error) {
+        results.push({ id: entry.id, status: 'error' as const, error: resolveDomainError(error) });
+      }
     }
 
-    return ok(updated.map(to${ctx.pascalName}View));
+    return ok(results);
   }
 
   @Post('delete')
@@ -648,7 +695,7 @@ export class ${ctx.pascalName}Controller {
     body: Delete${ctx.pascalName}RequestBody,
   ) {
     const subject = subjectOf(req.user);
-    const records = await this.loadAndAuthorize(
+    const loaded = await this.loadAndAuthorize(
       body.ids,
       subject,
       (s, record) => canDelete${ctx.pascalName}(s, record as never),
@@ -662,48 +709,65 @@ export class ${ctx.pascalName}Controller {
       }
     }
 
-    if (body.mode === 'hard') {
-      for (const record of records) {
-        await this.${ctx.camelName}s.hardDelete(record);
+    const results = [];
+
+    for (const entry of loaded) {
+      if (!entry.ok) {
+        results.push({ id: entry.id, status: 'error' as const, error: entry.error });
+        continue;
       }
 
-      return ok([]);
+      try {
+        if (body.mode === 'hard') {
+          await this.${ctx.camelName}s.hardDelete(entry.record);
+          results.push({ id: entry.id, status: 'ok' as const, data: null });
+        } else {
+          const removed = await this.${ctx.camelName}s.softDelete(entry.record);
+          results.push({ id: entry.id, status: 'ok' as const, data: to${ctx.pascalName}View(removed) });
+        }
+      } catch (error) {
+        results.push({ id: entry.id, status: 'error' as const, error: resolveDomainError(error) });
+      }
     }
 
-    const removed = [];
-
-    for (const record of records) {
-      removed.push(await this.${ctx.camelName}s.softDelete(record));
-    }
-
-    return ok(removed.map(to${ctx.pascalName}View));
+    return ok(results);
   }
 
   @Post('restore')
-  @Capability(canUpdateAny${ctx.pascalName})
+  @Capability(canRestoreAny${ctx.pascalName})
   async restore(
     @Req() req: RequestWithUser,
     @Body(new ZodValidationPipe(restore${ctx.pascalName}RequestSchema))
     body: Restore${ctx.pascalName}RequestBody,
   ) {
     const subject = subjectOf(req.user);
-    const records = await this.loadAndAuthorize(
+    const loaded = await this.loadAndAuthorize(
       body.ids,
       subject,
-      (s, record) => canUpdate${ctx.pascalName}(s, record as never),
+      (s, record) => canRestore${ctx.pascalName}(s, record as never),
     );
 
-    const restored = [];
+    const results = [];
 
-    for (const record of records) {
-      if (!record.deletedAt) {
-        throw new AlreadyRestoredException('${ctx.kebabName}');
+    for (const entry of loaded) {
+      if (!entry.ok) {
+        results.push({ id: entry.id, status: 'error' as const, error: entry.error });
+        continue;
       }
 
-      restored.push(await this.${ctx.camelName}s.restore(record, body.patch));
+      try {
+        if (!entry.record.deletedAt) {
+          throw new AlreadyRestoredException('${ctx.kebabName}');
+        }
+
+        const restored = await this.${ctx.camelName}s.restore(entry.record, body.patch);
+        results.push({ id: entry.id, status: 'ok' as const, data: to${ctx.pascalName}View(restored) });
+      } catch (error) {
+        results.push({ id: entry.id, status: 'error' as const, error: resolveDomainError(error) });
+      }
     }
 
-    return ok(restored.map(to${ctx.pascalName}View));
+    return ok(results);
   }
 }
 `;
@@ -1263,7 +1327,9 @@ function scopeParityTest(ctx: ResourceContext, createBody: string): string {
       .send({ data: [${createBody}] })
       .expect(201);
 
-    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
+    const recordId = (
+      created.body as { data: { status: string; data: { id: string } }[] }
+    ).data[0]!.data.id;
 
     const detail = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}/search')
@@ -1293,7 +1359,9 @@ function scopeParityTest(ctx: ResourceContext, createBody: string): string {
       .send({ data: [${createBody}] })
       .expect(201);
 
-    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
+    const recordId = (
+      created.body as { data: { status: string; data: { id: string } }[] }
+    ).data[0]!.data.id;
 
     const detail = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}/search')
@@ -1338,7 +1406,9 @@ function trashParityTest(ctx: ResourceContext, createBody: string): string {
       .send({ data: [${createBody}] })
       .expect(201);
 
-    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
+    const recordId = (
+      created.body as { data: { status: string; data: { id: string } }[] }
+    ).data[0]!.data.id;
 
     await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}/delete')
@@ -1366,7 +1436,9 @@ function trashParityTest(ctx: ResourceContext, createBody: string): string {
       .send({ data: [${createBody}] })
       .expect(201);
 
-    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
+    const recordId = (
+      created.body as { data: { status: string; data: { id: string } }[] }
+    ).data[0]!.data.id;
 
     await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}/delete')
@@ -1481,7 +1553,11 @@ ${
       .expect(201);
 
     expect(
-      (response.body as { data: { tenantId: string }[] }).data[0]!.tenantId,
+      (
+        response.body as {
+          data: { status: string; data: { tenantId: string } }[];
+        }
+      ).data[0]!.data.tenantId,
     ).toBe('default');
   });
 
@@ -1553,13 +1629,24 @@ ${
       .send({ data: [${createBody}] })
       .expect(201);
 
-    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
+    const recordId = (
+      created.body as { data: { status: string; data: { id: string } }[] }
+    ).data[0]!.data.id;
 
-    await request(app.getHttpServer())
+    const response = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}/update')
       .set('Authorization', \`Bearer \${strangerToken}\`)
       .send({ data: [{ id: recordId, ...${createBody} }] })
-      .expect(403);
+      .expect(201);
+
+    const results = (
+      response.body as { data: { id: string; status: string; error?: { status: number } }[] }
+    ).data;
+    expect(results[0]).toMatchObject({
+      id: recordId,
+      status: 'error',
+      error: { status: 403 },
+    });
   });
 
 `
@@ -1573,7 +1660,9 @@ ${
       .send({ data: [${createBody}] })
       .expect(201);
 
-    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
+    const recordId = (
+      created.body as { data: { status: string; data: { id: string } }[] }
+    ).data[0]!.data.id;
 
     await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}/delete')
@@ -1613,13 +1702,24 @@ ${
       .send({ data: [${createBody}] })
       .expect(201);
 
-    const recordId = (created.body as { data: { id: string }[] }).data[0]!.id;
+    const recordId = (
+      created.body as { data: { status: string; data: { id: string } }[] }
+    ).data[0]!.data.id;
 
-    await request(app.getHttpServer())
+    const response = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}/restore')
       .set('Authorization', \`Bearer \${ownerToken}\`)
       .send({ ids: [recordId] })
-      .expect(409);
+      .expect(201);
+
+    const results = (
+      response.body as { data: { id: string; status: string; error?: { status: number } }[] }
+    ).data;
+    expect(results[0]).toMatchObject({
+      id: recordId,
+      status: 'error',
+      error: { status: 409 },
+    });
   });
 
 `
@@ -1664,7 +1764,9 @@ ${
       .send({ data: [${createBody}] })
       .expect(201);
 
-    const record = (created.body as { data: Record<string, unknown>[] }).data[0]!;
+    const record = (
+      created.body as { data: { status: string; data: Record<string, unknown> }[] }
+    ).data[0]!.data;
     const term = String(record.${primarySearchField.name});
 
     const found = await request(app.getHttpServer())

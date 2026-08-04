@@ -8,6 +8,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import type { Workout } from '@prisma/client';
 import { z } from 'zod';
 import { SessionGuard } from '#technical/auth/session.guard';
 import type { RequestWithUser } from '#technical/auth/session.guard';
@@ -17,6 +18,8 @@ import { Capability } from '#technical/capabilities/capability.decorator';
 import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
 import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
 import { AlreadyRestoredException } from '#technical/errors/already-restored.exception';
+import { resolveDomainError } from '#technical/errors/domain-exception.filter';
+import type { ResolvedError } from '#technical/errors/domain-exception.filter';
 import { ok } from '#technical/http/envelope';
 import {
   parseSearchRequest,
@@ -44,6 +47,8 @@ import {
   canDeleteAnyWorkout,
   canHardDeleteWorkout,
   canListTrashedWorkout,
+  canRestoreWorkout,
+  canRestoreAnyWorkout,
   canUpdateWorkout,
   canUpdateAnyWorkout,
   canViewAnyWorkout,
@@ -80,9 +85,9 @@ export class WorkoutController {
     private readonly loader: WorkoutRecordLoader,
   ) {}
 
-  // Reused by update/delete/restore: each loads every targeted record, then
-  // fails the whole call on the first one that does not exist or is denied,
-  // rather than applying the operation to some and silently skipping others.
+  // Reused by update/delete/restore: each id is loaded and checked on its
+  // own, and a missing record or a denied one becomes that id's entry in the
+  // batch result rather than aborting every other id in the same request.
   private async loadAndAuthorize(
     ids: string[],
     subject: ReturnType<typeof subjectOf>,
@@ -91,25 +96,38 @@ export class WorkoutController {
       record: unknown,
     ) => { allowed: boolean },
   ) {
-    const records = [];
+    const entries: Array<
+      | { id: string; ok: true; record: Workout }
+      | { id: string; ok: false; error: ResolvedError }
+    > = [];
 
     for (const id of ids) {
       const record = await this.loader.load(id);
 
       if (!record) {
-        throw new RecordNotFoundException('workout');
+        entries.push({
+          id,
+          ok: false,
+          error: resolveDomainError(new RecordNotFoundException('workout')),
+        });
+        continue;
       }
 
       const decision = check(subject, record);
 
       if (!decision.allowed) {
-        throw new CapabilityForbiddenException(decision);
+        entries.push({
+          id,
+          ok: false,
+          error: resolveDomainError(new CapabilityForbiddenException(decision)),
+        });
+        continue;
       }
 
-      records.push(record);
+      entries.push({ id, ok: true, record });
     }
 
-    return records;
+    return entries;
   }
 
   @Post('search')
@@ -177,13 +195,26 @@ export class WorkoutController {
     body: CreateWorkoutRequestBody,
   ) {
     const subject = subjectOf(req.user);
-    const created = [];
+    const results = [];
 
-    for (const item of body.data) {
-      created.push(await this.workouts.create(subject, item));
+    for (const [index, item] of body.data.entries()) {
+      try {
+        const created = await this.workouts.create(subject, item);
+        results.push({
+          index,
+          status: 'ok' as const,
+          data: toWorkoutView(created),
+        });
+      } catch (error) {
+        results.push({
+          index,
+          status: 'error' as const,
+          error: resolveDomainError(error),
+        });
+      }
     }
 
-    return ok(created.map(toWorkoutView));
+    return ok(results);
   }
 
   @Post('update')
@@ -194,20 +225,43 @@ export class WorkoutController {
     body: UpdateWorkoutRequestBody,
   ) {
     const subject = subjectOf(req.user);
-    const records = await this.loadAndAuthorize(
+    const loaded = await this.loadAndAuthorize(
       body.data.map((item) => item.id),
       subject,
       (s, record) => canUpdateWorkout(s, record as never),
     );
 
-    const updated = [];
+    const results = [];
 
-    for (const [index, record] of records.entries()) {
+    for (const [index, entry] of loaded.entries()) {
+      if (!entry.ok) {
+        results.push({
+          id: entry.id,
+          status: 'error' as const,
+          error: entry.error,
+        });
+        continue;
+      }
+
       const { id: _id, ...data } = body.data[index]!;
-      updated.push(await this.workouts.update(record, data));
+
+      try {
+        const updated = await this.workouts.update(entry.record, data);
+        results.push({
+          id: entry.id,
+          status: 'ok' as const,
+          data: toWorkoutView(updated),
+        });
+      } catch (error) {
+        results.push({
+          id: entry.id,
+          status: 'error' as const,
+          error: resolveDomainError(error),
+        });
+      }
     }
 
-    return ok(updated.map(toWorkoutView));
+    return ok(results);
   }
 
   @Post('delete')
@@ -218,10 +272,8 @@ export class WorkoutController {
     body: DeleteWorkoutRequestBody,
   ) {
     const subject = subjectOf(req.user);
-    const records = await this.loadAndAuthorize(
-      body.ids,
-      subject,
-      (s, record) => canDeleteWorkout(s, record as never),
+    const loaded = await this.loadAndAuthorize(body.ids, subject, (s, record) =>
+      canDeleteWorkout(s, record as never),
     );
 
     if (body.mode === 'hard') {
@@ -232,47 +284,86 @@ export class WorkoutController {
       }
     }
 
-    if (body.mode === 'hard') {
-      for (const record of records) {
-        await this.workouts.hardDelete(record);
+    const results = [];
+
+    for (const entry of loaded) {
+      if (!entry.ok) {
+        results.push({
+          id: entry.id,
+          status: 'error' as const,
+          error: entry.error,
+        });
+        continue;
       }
 
-      return ok([]);
+      try {
+        if (body.mode === 'hard') {
+          await this.workouts.hardDelete(entry.record);
+          results.push({ id: entry.id, status: 'ok' as const, data: null });
+        } else {
+          const removed = await this.workouts.softDelete(entry.record);
+          results.push({
+            id: entry.id,
+            status: 'ok' as const,
+            data: toWorkoutView(removed),
+          });
+        }
+      } catch (error) {
+        results.push({
+          id: entry.id,
+          status: 'error' as const,
+          error: resolveDomainError(error),
+        });
+      }
     }
 
-    const removed = [];
-
-    for (const record of records) {
-      removed.push(await this.workouts.softDelete(record));
-    }
-
-    return ok(removed.map(toWorkoutView));
+    return ok(results);
   }
 
   @Post('restore')
-  @Capability(canUpdateAnyWorkout)
+  @Capability(canRestoreAnyWorkout)
   async restore(
     @Req() req: RequestWithUser,
     @Body(new ZodValidationPipe(restoreWorkoutRequestSchema))
     body: RestoreWorkoutRequestBody,
   ) {
     const subject = subjectOf(req.user);
-    const records = await this.loadAndAuthorize(
-      body.ids,
-      subject,
-      (s, record) => canUpdateWorkout(s, record as never),
+    const loaded = await this.loadAndAuthorize(body.ids, subject, (s, record) =>
+      canRestoreWorkout(s, record as never),
     );
 
-    const restored = [];
+    const results = [];
 
-    for (const record of records) {
-      if (!record.deletedAt) {
-        throw new AlreadyRestoredException('workout');
+    for (const entry of loaded) {
+      if (!entry.ok) {
+        results.push({
+          id: entry.id,
+          status: 'error' as const,
+          error: entry.error,
+        });
+        continue;
       }
 
-      restored.push(await this.workouts.restore(record, body.patch));
+      try {
+        if (!entry.record.deletedAt) {
+          throw new AlreadyRestoredException('workout');
+        }
+
+        const restored = await this.workouts.restore(entry.record, body.patch);
+        results.push({
+          id: entry.id,
+          status: 'ok' as const,
+          data: toWorkoutView(restored),
+        });
+      } catch (error) {
+        results.push({
+          id: entry.id,
+          status: 'error' as const,
+          error: resolveDomainError(error),
+        });
+      }
     }
 
-    return ok(restored.map(toWorkoutView));
+    return ok(results);
   }
 }

@@ -22,10 +22,9 @@ export const canUpdateWorkout: PolicyCheck<WorkoutRecordLike> = (
   record,
 ) => (record ? resolveCapability('own', subject, record) : { allowed: false });
 
-// The outer gate on the bulk update/restore routes -- there is no single
-// record yet to check against, so this is the same broad pass the collection
-// search route takes, before update/restore/canUpdateWorkout narrows
-// per record inside the handler.
+// The outer gate on the bulk update route -- there is no single record yet
+// to check against, so this is the same broad pass the collection search
+// route takes, before canUpdateWorkout narrows per record inside the handler.
 export const canUpdateAnyWorkout: PolicyCheck = (subject) =>
   resolveCollectionCapability('own', subject);
 
@@ -36,6 +35,20 @@ export const canDeleteWorkout: PolicyCheck<WorkoutRecordLike> = (
 
 // Same reasoning as canUpdateAnyWorkout, for the bulk delete route.
 export const canDeleteAnyWorkout: PolicyCheck = (subject) =>
+  resolveCollectionCapability('own', subject);
+
+// Restore is the inverse of delete, not a kind of update -- whoever can
+// delete a record decides whether it comes back, the same way
+// canListTrashedWorkout already derives from the delete preset rather than
+// the view preset. Its own capability rather than reusing canDeleteWorkout
+// so a route can diverge later (e.g. restore always requiring 'all' even on
+// an 'own'-scoped delete preset).
+export const canRestoreWorkout: PolicyCheck<WorkoutRecordLike> = (
+  subject,
+  record,
+) => (record ? resolveCapability('own', subject, record) : { allowed: false });
+
+export const canRestoreAnyWorkout: PolicyCheck = (subject) =>
   resolveCollectionCapability('own', subject);
 
 // Hard delete is not a scope on the delete preset -- own/team/all/none answer
