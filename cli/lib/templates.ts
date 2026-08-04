@@ -252,10 +252,11 @@ const SEARCH_COLLECTION = '${ctx.kebabName}';
 export interface ${ctx.pascalName}SearchOptions {
   withTrashed?: boolean;
   onlyTrashed?: boolean;
-  sort?: { field: string; direction: 'asc' | 'desc' };
-  filters?: Record<string, string>;
+  sorts?: { field: string; direction: 'asc' | 'desc' }[];
+  where?: Record<string, unknown>;
   search?: string;
   searchEngine?: string;
+  page?: number;
   limit?: number;
 }
 
@@ -352,19 +353,32 @@ export class ${ctx.pascalName}Service {
 
     // The scope clause sits in its own AND branch so a declared filter can
     // never widen it back, whatever the caller passes in the query string.
-    return this.prisma.${ctx.camelName}.findMany({
-      where: {
-        AND: [
-          scopeWhereFor('${ctx.permissions.view}', subject),
-          trashedWhere,
-          { ...options.filters, ...searchWhere },
-        ],
-      },
-      orderBy: options.sort
-        ? { [options.sort.field]: options.sort.direction }
-        : { createdAt: 'desc' },
-      take: options.limit,
-    });
+    const where = {
+      AND: [
+        scopeWhereFor('${ctx.permissions.view}', subject),
+        trashedWhere,
+        ...(options.where ? [options.where] : []),
+        ...(searchWhere ? [searchWhere] : []),
+      ],
+    };
+
+    const page = options.page ?? 1;
+    const limit = options.limit;
+
+    const [records, total] = await Promise.all([
+      this.prisma.${ctx.camelName}.findMany({
+        where,
+        orderBy:
+          options.sorts && options.sorts.length > 0
+            ? options.sorts.map((sort) => ({ [sort.field]: sort.direction }))
+            : { createdAt: 'desc' },
+        skip: limit ? (page - 1) * limit : undefined,
+        take: limit,
+      }),
+      this.prisma.${ctx.camelName}.count({ where }),
+    ]);
+
+    return { records, total };
   }
 
   async create(subject: CapabilitySubject, data: Create${ctx.pascalName}Input) {
@@ -451,6 +465,16 @@ ${
 }
 
 export function controllerFile(ctx: ResourceContext): string {
+  const selectableFields = [
+    'id',
+    'ownerId',
+    ...(ownedByTeam(ctx) ? ['teamId'] : []),
+    ...ctx.fields.filter((field) => !field.hidden).map((field) => field.name),
+    'createdAt',
+    'updatedAt',
+    'deletedAt',
+  ];
+
   return `import { Body, Controller, Get, HttpCode, Inject, Post, Req, UseGuards } from '@nestjs/common';
 import type { ${ctx.pascalName} } from '@prisma/client';
 import { z } from 'zod';
@@ -513,6 +537,7 @@ ${ctx.fields.map((field) => `    { name: '${field.name}', type: '${field.type}',
   ],
   sorts: [${ctx.sorts.map((field) => `'${field}'`).join(', ')}],
   filters: [${ctx.filters.map((field) => `'${field}'`).join(', ')}],
+  selects: [${selectableFields.map((field) => `'${field}'`).join(', ')}],
   limits: [${ctx.pagination.limits.join(', ')}],
   defaultLimit: ${ctx.pagination.default},
   rules: {
@@ -585,6 +610,7 @@ export class ${ctx.pascalName}Controller {
     const query = parseSearchRequest(body, {
       sorts: [${ctx.sorts.map((field) => `'${field}'`).join(', ')}],
       filters: ['id', ${ctx.filters.map((field) => `'${field}'`).join(', ')}],
+      selects: [${selectableFields.map((field) => `'${field}'`).join(', ')}],
       limits: [${ctx.pagination.limits.join(', ')}],
       defaultLimit: ${ctx.pagination.default},
     });
@@ -598,20 +624,35 @@ export class ${ctx.pascalName}Controller {
       }
     }
 
-    const records = await this.${ctx.camelName}s.search(subject, query);
+    const { records, total } = await this.${ctx.camelName}s.search(subject, query);
     const capabilities = body.capabilities ?? [];
+    const select = query.select;
+    const project = (view: Record<string, unknown>) =>
+      select
+        ? Object.fromEntries(
+            Object.entries(view).filter(([key]) => key in select),
+          )
+        : view;
+    const meta = {
+      channels: [${ctx.pascalName.toUpperCase()}_SIGNAL_CHANNEL],
+      page: query.page,
+      limit: query.limit,
+      total,
+      last_page: Math.max(1, Math.ceil(total / query.limit)),
+    };
 
     if (capabilities.length === 0) {
-      return ok(records.map(to${ctx.pascalName}View), {
-        channels: [${ctx.pascalName.toUpperCase()}_SIGNAL_CHANNEL],
-      });
+      return ok(
+        records.map((record) => project(to${ctx.pascalName}View(record))),
+        meta,
+      );
     }
 
     return ok(
       records.map((record) => {
         const resolved = this.policy.recordCapabilities(subject, record);
         return {
-          ...to${ctx.pascalName}View(record),
+          ...project(to${ctx.pascalName}View(record)),
           capabilities: Object.fromEntries(
             Object.entries(resolved).filter(([key]) =>
               capabilities.includes(key),
@@ -620,8 +661,8 @@ export class ${ctx.pascalName}Controller {
         };
       }),
       {
+        ...meta,
         capabilities: this.policy.metaCapabilities(subject),
-        channels: [${ctx.pascalName.toUpperCase()}_SIGNAL_CHANNEL],
       },
     );
   }
@@ -924,11 +965,11 @@ export class ${ctx.pascalName}Resolver {
       throw new CapabilityForbiddenException();
     }
 
-    return (
-      await this.${ctx.camelName}s.search(subject, {
-        limit: ${ctx.pagination.default},
-      })
-    ).map(to${ctx.pascalName}View);
+    const { records } = await this.${ctx.camelName}s.search(subject, {
+      limit: ${ctx.pagination.default},
+    });
+
+    return records.map(to${ctx.pascalName}View);
   }
 
   @Query(() => ${ctx.pascalName}Type, { name: '${ctx.camelName}' })
@@ -1065,7 +1106,7 @@ export class ${ctx.pascalName}McpToolRegistrar implements McpToolRegistrar {
           return deniedResult();
         }
 
-        const records = await this.${ctx.camelName}s.search(subject, {
+        const { records } = await this.${ctx.camelName}s.search(subject, {
           limit: ${ctx.pagination.default},
         });
         return textResult(records.map(to${ctx.pascalName}View));
@@ -1336,7 +1377,7 @@ function scopeParityTest(ctx: ResourceContext, createBody: string): string {
     const detail = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}/search')
       .set('Authorization', \`Bearer \${strangerToken}\`)
-      .send({ filters: { id: recordId } })
+      .send({ filters: [{ field: 'id', value: recordId }] })
       .expect(200);
 
     expect((detail.body as { data: unknown[] }).data).toHaveLength(0);
@@ -1368,7 +1409,7 @@ function scopeParityTest(ctx: ResourceContext, createBody: string): string {
     const detail = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}/search')
       .set('Authorization', \`Bearer \${strangerToken}\`)
-      .send({ filters: { id: recordId } })
+      .send({ filters: [{ field: 'id', value: recordId }] })
       .expect(200);
 
     expect(
@@ -1614,7 +1655,7 @@ ${
     };
     expect(body.data.length).toBeGreaterThan(0);
     expect(body.data[0]?.capabilities.update.allowed).toBe(true);
-    expect(body.meta).toEqual({
+    expect(body.meta).toMatchObject({
       capabilities: { create: { allowed: true, scope: '${ctx.permissions.create}' } },
       channels: ['${ctx.kebabName}'],
     });
@@ -1675,7 +1716,7 @@ ${
     const trashed = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}/search')
       .set('Authorization', \`Bearer \${ownerToken}\`)
-      .send({ filters: { id: recordId } })
+      .send({ filters: [{ field: 'id', value: recordId }] })
       .expect(200);
 
     expect((trashed.body as { data: unknown[] }).data).toHaveLength(0);
@@ -1689,7 +1730,7 @@ ${
     const restored = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}/search')
       .set('Authorization', \`Bearer \${ownerToken}\`)
-      .send({ filters: { id: recordId } })
+      .send({ filters: [{ field: 'id', value: recordId }] })
       .expect(200);
 
     expect(
@@ -1755,6 +1796,28 @@ ${
         (record) => record.tenantId === 'default',
       ),
     ).toBe(true);
+  });
+
+  it('reports pagination meta alongside the results', async () => {
+    await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/create')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ data: [${createBody}] })
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/search')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({})
+      .expect(200);
+
+    const { meta } = response.body as {
+      meta: { page: number; limit: number; total: number; last_page: number };
+    };
+    expect(meta.page).toBe(1);
+    expect(meta.limit).toBe(${ctx.pagination.default});
+    expect(meta.total).toBeGreaterThan(0);
+    expect(meta.last_page).toBeGreaterThanOrEqual(1);
   });
 ${
   primarySearchField

@@ -82,7 +82,7 @@ describe('Workout resource', () => {
     const detail = await request(app.getHttpServer())
       .post('/workouts/search')
       .set('Authorization', `Bearer ${strangerToken}`)
-      .send({ filters: { id: recordId } })
+      .send({ filters: [{ field: 'id', value: recordId }] })
       .expect(200);
 
     expect((detail.body as { data: unknown[] }).data).toHaveLength(0);
@@ -145,7 +145,7 @@ describe('Workout resource', () => {
     };
     expect(body.data.length).toBeGreaterThan(0);
     expect(body.data[0]?.capabilities.update.allowed).toBe(true);
-    expect(body.meta).toEqual({
+    expect(body.meta).toMatchObject({
       capabilities: { create: { allowed: true, scope: 'own' } },
       channels: ['workout'],
     });
@@ -200,7 +200,7 @@ describe('Workout resource', () => {
     const trashed = await request(app.getHttpServer())
       .post('/workouts/search')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ filters: { id: recordId } })
+      .send({ filters: [{ field: 'id', value: recordId }] })
       .expect(200);
 
     expect((trashed.body as { data: unknown[] }).data).toHaveLength(0);
@@ -214,7 +214,7 @@ describe('Workout resource', () => {
     const restored = await request(app.getHttpServer())
       .post('/workouts/search')
       .set('Authorization', `Bearer ${ownerToken}`)
-      .send({ filters: { id: recordId } })
+      .send({ filters: [{ field: 'id', value: recordId }] })
       .expect(200);
 
     expect(
@@ -282,6 +282,28 @@ describe('Workout resource', () => {
         (record) => record.tenantId === 'default',
       ),
     ).toBe(true);
+  });
+
+  it('reports pagination meta alongside the results', async () => {
+    await request(app.getHttpServer())
+      .post('/workouts/create')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ data: [{ title: 'title-value' }] })
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .post('/workouts/search')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({})
+      .expect(200);
+
+    const { meta } = response.body as {
+      meta: { page: number; limit: number; total: number; last_page: number };
+    };
+    expect(meta.page).toBe(1);
+    expect(meta.limit).toBe(15);
+    expect(meta.total).toBeGreaterThan(0);
+    expect(meta.last_page).toBeGreaterThanOrEqual(1);
   });
 
   it('finds a record by text search through the explicitly named default engine', async () => {

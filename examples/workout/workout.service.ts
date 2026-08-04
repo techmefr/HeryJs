@@ -17,10 +17,11 @@ const SEARCH_COLLECTION = 'workout';
 export interface WorkoutSearchOptions {
   withTrashed?: boolean;
   onlyTrashed?: boolean;
-  sort?: { field: string; direction: 'asc' | 'desc' };
-  filters?: Record<string, string>;
+  sorts?: { field: string; direction: 'asc' | 'desc' }[];
+  where?: Record<string, unknown>;
   search?: string;
   searchEngine?: string;
+  page?: number;
   limit?: number;
 }
 
@@ -116,19 +117,32 @@ export class WorkoutService {
 
     // The scope clause sits in its own AND branch so a declared filter can
     // never widen it back, whatever the caller passes in the query string.
-    return this.prisma.workout.findMany({
-      where: {
-        AND: [
-          scopeWhereFor('own', subject),
-          trashedWhere,
-          { ...options.filters, ...searchWhere },
-        ],
-      },
-      orderBy: options.sort
-        ? { [options.sort.field]: options.sort.direction }
-        : { createdAt: 'desc' },
-      take: options.limit,
-    });
+    const where = {
+      AND: [
+        scopeWhereFor('own', subject),
+        trashedWhere,
+        ...(options.where ? [options.where] : []),
+        ...(searchWhere ? [searchWhere] : []),
+      ],
+    };
+
+    const page = options.page ?? 1;
+    const limit = options.limit;
+
+    const [records, total] = await Promise.all([
+      this.prisma.workout.findMany({
+        where,
+        orderBy:
+          options.sorts && options.sorts.length > 0
+            ? options.sorts.map((sort) => ({ [sort.field]: sort.direction }))
+            : { createdAt: 'desc' },
+        skip: limit ? (page - 1) * limit : undefined,
+        take: limit,
+      }),
+      this.prisma.workout.count({ where }),
+    ]);
+
+    return { records, total };
   }
 
   async create(subject: CapabilitySubject, data: CreateWorkoutInput) {

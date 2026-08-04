@@ -67,6 +67,7 @@ const WORKOUT_DESCRIBE = {
   fields: [{ name: 'title', type: 'string', optional: false }],
   sorts: ['createdAt'],
   filters: [],
+  selects: ['id', 'ownerId', 'title', 'createdAt', 'updatedAt', 'deletedAt'],
   limits: [10, 15, 20],
   defaultLimit: 15,
   rules: {
@@ -142,6 +143,14 @@ export class WorkoutController {
     const query = parseSearchRequest(body, {
       sorts: ['createdAt'],
       filters: ['id'],
+      selects: [
+        'id',
+        'ownerId',
+        'title',
+        'createdAt',
+        'updatedAt',
+        'deletedAt',
+      ],
       limits: [10, 15, 20],
       defaultLimit: 15,
     });
@@ -155,20 +164,35 @@ export class WorkoutController {
       }
     }
 
-    const records = await this.workouts.search(subject, query);
+    const { records, total } = await this.workouts.search(subject, query);
     const capabilities = body.capabilities ?? [];
+    const select = query.select;
+    const project = (view: Record<string, unknown>) =>
+      select
+        ? Object.fromEntries(
+            Object.entries(view).filter(([key]) => key in select),
+          )
+        : view;
+    const meta = {
+      channels: [WORKOUT_SIGNAL_CHANNEL],
+      page: query.page,
+      limit: query.limit,
+      total,
+      last_page: Math.max(1, Math.ceil(total / query.limit)),
+    };
 
     if (capabilities.length === 0) {
-      return ok(records.map(toWorkoutView), {
-        channels: [WORKOUT_SIGNAL_CHANNEL],
-      });
+      return ok(
+        records.map((record) => project(toWorkoutView(record))),
+        meta,
+      );
     }
 
     return ok(
       records.map((record) => {
         const resolved = this.policy.recordCapabilities(subject, record);
         return {
-          ...toWorkoutView(record),
+          ...project(toWorkoutView(record)),
           capabilities: Object.fromEntries(
             Object.entries(resolved).filter(([key]) =>
               capabilities.includes(key),
@@ -177,8 +201,8 @@ export class WorkoutController {
         };
       }),
       {
+        ...meta,
         capabilities: this.policy.metaCapabilities(subject),
-        channels: [WORKOUT_SIGNAL_CHANNEL],
       },
     );
   }
