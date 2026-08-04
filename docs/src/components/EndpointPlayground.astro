@@ -69,6 +69,46 @@ const { scenarios } = Astro.props;
 </div>
 
 <script>
+	function escapeHtml(text: string) {
+		return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+	}
+
+	function highlightJson(text: string) {
+		return escapeHtml(text).replace(
+			/("(?:\\.|[^"\\])*"(?=\s*:))|("(?:\\.|[^"\\])*")|(-?\d+\.?\d*)|\b(true|false|null)\b|([{}[\],:])/g,
+			(match, key, str, num, bool, punct) => {
+				if (key) return `<span class="tok-key">${key}</span>`;
+				if (str) return `<span class="tok-string">${str}</span>`;
+				if (num) return `<span class="tok-number">${num}</span>`;
+				if (bool) return `<span class="tok-bool">${bool}</span>`;
+				if (punct) return `<span class="tok-punct">${punct}</span>`;
+				return match;
+			},
+		);
+	}
+
+	function highlightHttpRequest(text: string) {
+		const blankAt = text.indexOf('\n\n');
+		const head = blankAt === -1 ? text : text.slice(0, blankAt);
+		const body = blankAt === -1 ? '' : text.slice(blankAt + 2);
+
+		const headHtml = head
+			.split('\n')
+			.map((line, index) => {
+				if (index === 0) {
+					const spaceAt = line.indexOf(' ');
+					if (spaceAt === -1) return escapeHtml(line);
+					return `<span class="tok-method">${escapeHtml(line.slice(0, spaceAt))}</span>${escapeHtml(line.slice(spaceAt))}`;
+				}
+				const colonAt = line.indexOf(':');
+				if (colonAt === -1) return escapeHtml(line);
+				return `<span class="tok-header-key">${escapeHtml(line.slice(0, colonAt))}</span>${escapeHtml(line.slice(colonAt))}`;
+			})
+			.join('\n');
+
+		return body ? `${headHtml}\n\n${highlightJson(body)}` : headHtml;
+	}
+
 	function init(root: HTMLElement) {
 		const scenarios = JSON.parse(root.dataset.scenarios ?? '[]');
 		const checkboxes = root.querySelectorAll<HTMLInputElement>('.ep-pick-input');
@@ -85,7 +125,9 @@ const { scenarios } = Astro.props;
 			scenario.flow.forEach((step: any, index: number) => {
 				const item = document.createElement('li');
 				item.className = `ep-flow-step ep-flow-step-${step.status}`;
-				const detail = step.detail ? `<pre>${JSON.stringify(step.detail, null, 2)}</pre>` : '';
+				const detail = step.detail
+					? `<pre>${highlightJson(JSON.stringify(step.detail, null, 2))}</pre>`
+					: '';
 				item.innerHTML = `
 					<div class="ep-flow-head">
 						<span class="ep-flow-stage">${step.stage}</span>
@@ -104,8 +146,8 @@ const { scenarios } = Astro.props;
 			checkboxes.forEach((box, boxIndex) => {
 				box.checked = boxIndex === index;
 			});
-			payloadCode.textContent = scenario.request;
-			responseCode.textContent = scenario.response;
+			payloadCode.innerHTML = highlightHttpRequest(scenario.request);
+			responseCode.innerHTML = highlightJson(scenario.response);
 			renderFlow(scenario);
 			responseView.hidden = true;
 			flowView.hidden = true;
@@ -142,10 +184,43 @@ const { scenarios } = Astro.props;
 
 <style>
 	.endpoint-playground {
+		--ep-code-key: #1d5c8a;
+		--ep-code-string: var(--sl-color-accent-high);
+		--ep-code-number: #a15c00;
+		--ep-code-bool: #6b4fa0;
+		--ep-code-keyword: #a13d3d;
+		--ep-code-punct: var(--sl-color-gray-3);
+
 		margin: 1.5rem 0;
 		border: 2px solid var(--sl-color-hairline);
 		border-radius: 0.75rem;
 		overflow: hidden;
+	}
+
+	:root[data-theme='dark'] .endpoint-playground {
+		--ep-code-key: #8ecbea;
+		--ep-code-number: #e0b673;
+		--ep-code-bool: #c9b6f0;
+		--ep-code-keyword: #e0a3a3;
+		--ep-code-punct: var(--sl-color-gray-2);
+	}
+
+	@media (prefers-color-scheme: dark) {
+		.endpoint-playground {
+			--ep-code-key: #8ecbea;
+			--ep-code-number: #e0b673;
+			--ep-code-bool: #c9b6f0;
+			--ep-code-keyword: #e0a3a3;
+			--ep-code-punct: var(--sl-color-gray-2);
+		}
+	}
+
+	:root[data-theme='light'] .endpoint-playground {
+		--ep-code-key: #1d5c8a;
+		--ep-code-number: #a15c00;
+		--ep-code-bool: #6b4fa0;
+		--ep-code-keyword: #a13d3d;
+		--ep-code-punct: var(--sl-color-gray-3);
 	}
 
 	.ep-tabs {
@@ -195,6 +270,34 @@ const { scenarios } = Astro.props;
 		margin: 0 0 0.75rem;
 		font-size: var(--sl-text-sm);
 		white-space: pre-wrap;
+	}
+
+	/* :global -- the token spans below are injected via innerHTML by the
+	   client script, so they never carry Astro's build-time scope class. */
+	:global(.tok-key) {
+		color: var(--ep-code-key);
+	}
+
+	:global(.tok-string) {
+		color: var(--ep-code-string);
+	}
+
+	:global(.tok-number) {
+		color: var(--ep-code-number);
+	}
+
+	:global(.tok-bool) {
+		color: var(--ep-code-bool);
+	}
+
+	:global(.tok-punct) {
+		color: var(--ep-code-punct);
+	}
+
+	:global(.tok-method),
+	:global(.tok-header-key) {
+		color: var(--ep-code-keyword);
+		font-weight: 600;
 	}
 
 	.ep-actions {

@@ -173,7 +173,7 @@ Every generated resource exposes one search route instead of a detail route: the
     The real generated handler, from `examples/workout/workout.controller.ts` — every resource gets the same shape, only the allow-lists change:
 
     ```ts
-    {`@Post('search')
+    @Post('search')
     @HttpCode(200)
     @Capability(canViewAnyWorkout)
     async search(
@@ -227,7 +227,7 @@ Every generated resource exposes one search route instead of a detail route: the
         }),
         { ...meta, capabilities: this.policy.metaCapabilities(subject) },
       );
-    }`}
+    }
     ```
 
     `parseSearchRequest` is the one place that ever reads `body.filters`/`body.sorts`/`body.selects` — it checks every field against this resource's own allow-list and builds the Prisma `where` fragment from the validated operator, never from the raw client value, before the controller sees any of it. See `src/technical/http/list-query.ts` for that logic — it is shared, not regenerated per resource.
