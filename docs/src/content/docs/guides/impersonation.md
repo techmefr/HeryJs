@@ -16,7 +16,9 @@ DELETE /impersonation           // stop
 
 `POST /impersonation/:userId` returns a bearer token for the target user. Use it exactly like any other session token — every subsequent request authenticates as the target, tenant and capabilities included. `DELETE /impersonation`, called with that same token, ends the session. There is nothing to restore: the admin's own token was never touched by starting the impersonation, so going back to it is just a matter of using it again.
 
-The session this returns is short-lived on purpose — `impersonationSessionDuration` on Better Auth's `admin()` plugin bounds it to 30 minutes, so a support session that is never explicitly stopped does not linger indefinitely. An admin cannot impersonate another admin either: Better Auth's own admin plugin refuses that server-side, surfaced here as a 403.
+The session this returns is short-lived on purpose — `impersonationSessionDuration` on Better Auth's `admin()` plugin bounds it to `IMPERSONATION_SESSION_SECONDS` (30 minutes by default), so a support session that is never explicitly stopped does not linger indefinitely. An admin cannot impersonate another admin either: Better Auth's own admin plugin refuses that server-side, surfaced here as a 403.
+
+A session past that bound is not merely ignored — `ImpersonationExpiryTask` sweeps expired impersonation sessions once a minute, deletes the row outright and writes an `expire` audit entry, the same shape as an explicit `stop`. The token stops working either way; the sweep is what turns "expired" into "revoked and on the record" instead of a row that just happens to fail its next lookup.
 
 ## Why there is no restore step
 

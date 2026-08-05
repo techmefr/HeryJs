@@ -32,6 +32,11 @@ export function buildServerSchema(nodeEnv: string | undefined) {
       .string()
       .default('false')
       .transform((value) => value === 'true'),
+    IMPERSONATION_SESSION_SECONDS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(30 * 60),
   });
 }
 

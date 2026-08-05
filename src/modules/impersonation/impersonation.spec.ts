@@ -8,6 +8,7 @@ import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 import type { TestUser } from '#devtools/testing/register-and-login';
 import { BlogPostModule } from '../../../examples/blog-post/blog-post.module';
+import { ImpersonationExpiryTask } from './impersonation-expiry.task';
 import { ImpersonationService } from './impersonation.service';
 
 describe('Impersonation', () => {
@@ -210,5 +211,46 @@ describe('Impersonation', () => {
       .delete('/impersonation')
       .set('Authorization', `Bearer ${admin.token}`)
       .expect(400);
+  });
+
+  it('revokes an impersonation session past its expiry and audits it like an explicit stop', async () => {
+    const admin = await registerAndLogin(app);
+    await promoteToAdmin(admin.id);
+    const target = await registerAndLogin(app);
+
+    const started = await startImpersonating(admin, target.id).expect(201);
+    const { data } = started.body as { data: { token: string } };
+
+    await authPrismaClient.session.update({
+      where: { token: data.token },
+      data: { expiresAt: new Date(Date.now() - 1000) },
+    });
+
+    const expiryTask = app.get(ImpersonationExpiryTask);
+    await expiryTask.run();
+
+    const session = await authPrismaClient.session.findUnique({
+      where: { token: data.token },
+    });
+    expect(session).toBeNull();
+
+    await request(app.getHttpServer())
+      .get('/teams')
+      .set('Authorization', `Bearer ${data.token}`)
+      .expect(401);
+    await request(app.getHttpServer())
+      .get('/teams')
+      .set('Authorization', `Bearer ${admin.token}`)
+      .expect(200);
+
+    const trail = await authPrismaClient.auditLog.findMany({
+      where: { model: 'Impersonation', recordId: target.id },
+      orderBy: { createdAt: 'asc' },
+    });
+    expect(trail.map((entry) => entry.operation)).toEqual(['start', 'expire']);
+    expect(trail.map((entry) => entry.impersonatedBy)).toEqual([
+      null,
+      admin.id,
+    ]);
   });
 });
