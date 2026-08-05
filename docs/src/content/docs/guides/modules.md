@@ -3,7 +3,7 @@ title: The module system
 description: hery install — the optional layer, à la carte or as a full package, and why it never edits your app module.
 ---
 
-The kernel in `technical/` is what every project gets. Everything beyond it — search engines, GraphQL, WebSockets, mail, storage, an admin panel — arrives through `hery install` and lands in `src/modules/`, where it can be removed again.
+The kernel in `technical/` is what every project gets. Everything beyond it — search engines, GraphQL, WebSockets, mail, storage, webhooks, an admin panel — arrives through `hery install` and lands in `src/modules/`, where it can be removed again.
 
 A module is an installer, not a dependency. It runs once, writes real files into your project, and disappears. There is no module resident at runtime, no plugin lifecycle, no hook system: the same "generate once, own your code" bargain as `hery generate`, applied to infrastructure instead of resources.
 
@@ -34,8 +34,9 @@ Running `pnpm hery install` with no arguments prints `nothing to install` and ex
 | `storage`              | File storage behind a swappable provider — local disk by default, S3-compatible via `STORAGE_DRIVER=s3`. |
 | `admin-astro`          | An admin panel built with Astro, discovering its sections from `GET /introspect`.                          |
 | `impersonation`        | Let an admin act as another user, tenant-bounded and audit-logged, via a bearer token for the target.     |
+| `webhooks`             | Receive inbound webhooks with HMAC-SHA256 signature verification and run each one through Event, Job, Notification, Audit and Signal. |
 
-Five of them have a runtime half in `src/modules/`: `live`, `stream`, `mail`, `storage`, `impersonation`. The search drivers install into the existing `technical/search/` folder, because they implement a contract the kernel already owns.
+Six of them have a runtime half in `src/modules/`: `live`, `stream`, `mail`, `storage`, `impersonation`, `webhooks`. The search drivers install into the existing `technical/search/` folder, because they implement a contract the kernel already owns.
 
 `hery module:monitoring` looks like a module but is a separate command: it scaffolds Prometheus, Grafana and Loki as a local compose stack. It is not in the registry, so it does not appear in `module:list` and `--all` does not cover it.
 
@@ -78,7 +79,7 @@ src/modules/storage/storage.module.ts already exists, skipping.
 
 Nothing is overwritten and nothing is re-templated, so a file you have edited by hand survives a re-install untouched. There is no `--force` on `install`, unlike `generate`.
 
-The modules that patch an existing file guard on content rather than existence: `mail` skips if `prisma/schema.prisma` already contains `model MailLog`, `admin-astro` skips if `pnpm-workspace.yaml` already lists `admin`, and `impersonation` skips each of its four kernel-file patches independently, once its own marker is already there.
+The modules that patch an existing file guard on content rather than existence: `mail` skips if `prisma/schema.prisma` already contains `model MailLog`, `webhooks` skips the same file if it already has `model WebhookEndpoint`, `admin-astro` skips if `pnpm-workspace.yaml` already lists `admin`, and `impersonation` skips each of its four kernel-file patches independently, once its own marker is already there.
 
 Be aware of what this does _not_ give you. There is no record anywhere of which modules are installed — no manifest, no marker in `package.json`. "Installed" is inferred one file at a time, at write time.
 
@@ -94,7 +95,7 @@ One consequence of the unconditional dependency step: `pnpm add -w` runs on ever
 
 ## `install` never edits your app module
 
-This is deliberate and consistent across all ten. Every module that needs wiring ends its output with a numbered list telling you what to add, and where:
+This is deliberate and consistent across all eleven. Every module that needs wiring ends its output with a numbered list telling you what to add, and where:
 
 ```
 Next steps:
@@ -108,7 +109,7 @@ Two modules wire into a _resource_ module rather than the app module, because th
 
 ## Schema and environment
 
-`mail` and `impersonation` are the two that touch `prisma/schema.prisma` — `mail` appends a whole new `MailLog` model, `impersonation` adds fields to the existing `User` and `Session` models instead, since it needs columns on a model it does not own. Both leave you one migration behind, which is why their next steps start with `pnpm hery migrate --name add_mail_log` or `add_impersonation`. `hery install` never runs Prisma itself.
+`mail`, `webhooks` and `impersonation` are the three that touch `prisma/schema.prisma` — `mail` and `webhooks` each append their own new models (`MailLog`, and `WebhookEndpoint`/`WebhookEvent`), `impersonation` adds fields to the existing `User` and `Session` models instead, since it needs columns on a model it does not own. All three leave you one migration behind, which is why their next steps start with `pnpm hery migrate --name add_mail_log`, `add_webhooks` or `add_impersonation`. `hery install` never runs Prisma itself.
 
 **No module writes to `.env`.** Module configuration is read straight off `process.env` inside the generated code, each variable with a development default, so a fresh install runs without any configuration at all. The flip side is that a typo in a variable name degrades silently to the default instead of failing at boot — module variables are not part of the validated env schema in `technical/config/env.ts`.
 
@@ -131,6 +132,7 @@ Every variable below has a working development default, and none of them are wri
 | `stream`                         | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`                                                                                                    |
 | `storage`                        | `STORAGE_URL_SECRET`, `STORAGE_DRIVER`, `STORAGE_S3_BUCKET`, `STORAGE_S3_REGION`, `STORAGE_S3_ENDPOINT`, `STORAGE_S3_ACCESS_KEY`, `STORAGE_S3_SECRET_KEY` |
 | `admin-astro`                    | `PUBLIC_API_URL`                                                                                                                                          |
+| `webhooks`                       | `WEBHOOK_SIGNATURE_TOLERANCE_SECONDS`                                                                                                                     |
 | `graphql`, `mcp`, `live`, `mail`, `impersonation` | none                                                                                                                                    |
 
 The development defaults are development defaults in the literal sense — the LiveKit dev keys are `devkey`/`secret` and the MinIO credentials are `heryjs`/`heryjs-dev-secret`. Set every one of them before a deployment sees traffic.

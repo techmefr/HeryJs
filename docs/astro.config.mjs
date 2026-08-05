@@ -66,6 +66,7 @@ export default defineConfig({
 								{ label: 'Realtime', slug: 'guides/realtime' },
 								{ label: 'Mail and storage', slug: 'guides/mail-and-storage' },
 								{ label: 'Impersonation', slug: 'guides/impersonation' },
+								{ label: 'Webhooks', slug: 'guides/webhooks' },
 								{ label: 'GraphQL and MCP', slug: 'guides/graphql-and-mcp' },
 							],
 						},

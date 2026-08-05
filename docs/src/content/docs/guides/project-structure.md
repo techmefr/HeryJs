@@ -10,11 +10,11 @@ src/
     blog-post/
   technical/             the kernel — always present
     auth/  capabilities/  teams/  tenancy/  prisma/  errors/  http/
-    audit/  config/  describe/  dev-only/  feature-flags/  jobs/
+    audit/  config/  dev-only/  feature-flags/  introspection/  jobs/
     monitoring/  notifications/  scheduler/  search/  seeders/
     signal/  tracing/  validation/
   modules/               optional — installed by hery install, removable
-    impersonation/  live/  mail/  storage/  stream/
+    impersonation/  live/  mail/  storage/  stream/  webhooks/
   devtools/              never ships to production
     inspector/  pipeline/  testing/
 cli/                     the generator
@@ -42,7 +42,7 @@ The kernel is **never optional**, and that is the property its rules protect. It
 
 ## `modules/` — the optional layer
 
-Code that arrives through `hery install` and can be taken out again: `impersonation`, `live`, `mail`, `storage`, `stream`. Two rules keep "optional" honest.
+Code that arrives through `hery install` and can be taken out again: `impersonation`, `live`, `mail`, `storage`, `stream`, `webhooks`. Two rules keep "optional" honest.
 
 **No module imports another module.** Otherwise uninstalling one would break the other, and "optional" would only hold for whichever module happened to be last in the dependency order. Shared logic goes to `technical/`.
 

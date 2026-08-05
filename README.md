@@ -87,7 +87,7 @@ pnpm hery module:list
 pnpm hery install <module>
 ```
 
-Search (Prisma, Elasticsearch, Meilisearch), GraphQL, MCP (read and write), real-time (`live`, WebSocket), streaming (LiveKit), mail, file storage, admin impersonation, and an admin dashboard (`admin-astro`) that every module contributes a section to automatically, with no registry to maintain.
+Search (Prisma, Elasticsearch, Meilisearch), GraphQL, MCP (read and write), real-time (`live`, WebSocket), streaming (LiveKit), mail, file storage, admin impersonation, inbound webhooks with HMAC signature verification, and an admin dashboard (`admin-astro`) that every module contributes a section to automatically, with no registry to maintain.
 
 ## What it deliberately does not do
 
