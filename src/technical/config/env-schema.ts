@@ -37,6 +37,11 @@ export function buildServerSchema(nodeEnv: string | undefined) {
       .int()
       .positive()
       .default(30 * 60),
+    WEBHOOK_SIGNATURE_TOLERANCE_SECONDS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(5 * 60),
   });
 }
 

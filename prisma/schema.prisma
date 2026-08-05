@@ -233,3 +233,34 @@ model MailLog {
 
   @@index([tenantId])
 }
+
+// The secret must stay readable in plaintext -- verifying an inbound
+// signature means recomputing the same HMAC the sender used, so this cannot
+// be a one-way hash the way a password or an API key is.
+model WebhookEndpoint {
+  id        String   @id @default(cuid())
+  tenantId  String
+  source    String
+  secret    String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  events WebhookEvent[]
+
+  @@index([tenantId])
+}
+
+model WebhookEvent {
+  id          String    @id @default(cuid())
+  endpointId  String
+  tenantId    String
+  source      String
+  payload     Json
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+
+  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([endpointId])
+}

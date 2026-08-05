@@ -19,6 +19,7 @@ import { SchedulerModule } from '#technical/scheduler/scheduler.module';
 import { SeedersModule } from '#technical/seeders/seeders.module';
 import { StorageModule } from '#modules/storage/storage.module';
 import { TeamsModule } from '#technical/teams/teams.module';
+import { WebhooksModule } from '#modules/webhooks/webhooks.module';
 import { InspectorMiddleware } from '#devtools/inspector/inspector.middleware';
 import { PipelineMiddleware } from '#devtools/pipeline/pipeline.middleware';
 import { SignalModule } from '#technical/signal/signal.module';
@@ -79,6 +80,7 @@ import { redactedRequestSerializer } from '#technical/logging/redacted-request-s
     SignalModule,
     StorageModule,
     TeamsModule,
+    WebhooksModule,
   ],
   controllers: [AppController],
   providers: [
