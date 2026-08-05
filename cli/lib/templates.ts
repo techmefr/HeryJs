@@ -262,11 +262,11 @@ import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import type { RecordLoader } from '#technical/capabilities/capability-check';
 import type { ${ctx.pascalName}RecordLike } from './${ctx.kebabName}.policy';
 
-export const ${ctx.pascalName.toUpperCase()}_RECORD_LOADER = Symbol(
-  '${ctx.pascalName.toUpperCase()}_RECORD_LOADER',
+export const ${ctx.screamingSnakeName}_RECORD_LOADER = Symbol(
+  '${ctx.screamingSnakeName}_RECORD_LOADER',
 );
-export const ${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER = Symbol(
-  '${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER',
+export const ${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER = Symbol(
+  '${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER',
 );
 
 // Update/delete/restore all need to find a record regardless of its
@@ -341,7 +341,7 @@ export interface ${ctx.pascalName}SearchOptions {
   limit?: number;
 }
 
-export const ${ctx.pascalName.toUpperCase()}_SIGNAL_CHANNEL = '${ctx.camelName}';
+export const ${ctx.screamingSnakeName}_SIGNAL_CHANNEL = '${ctx.camelName}';
 
 @Injectable()
 export class ${ctx.pascalName}Service {
@@ -355,7 +355,7 @@ export class ${ctx.pascalName}Service {
 
   private notify() {
     void this.signal.publish(
-      \`\${TenantContextStorage.getTenantId()}:\${${ctx.pascalName.toUpperCase()}_SIGNAL_CHANNEL}\`,
+      \`\${TenantContextStorage.getTenantId()}:\${${ctx.screamingSnakeName}_SIGNAL_CHANNEL}\`,
     );
   }
 
@@ -699,10 +699,10 @@ import {${ctx.relations
   ${ctx.pascalName}Policy,
 } from './${ctx.kebabName}.policy';
 import {
-  ${ctx.pascalName.toUpperCase()}_SIGNAL_CHANNEL,
+  ${ctx.screamingSnakeName}_SIGNAL_CHANNEL,
   ${ctx.pascalName}Service,
 } from './${ctx.kebabName}.service';
-import { ${ctx.pascalName.toUpperCase()}_RECORD_LOADER } from './${ctx.kebabName}-record.loader';
+import { ${ctx.screamingSnakeName}_RECORD_LOADER } from './${ctx.kebabName}-record.loader';
 import type { ${ctx.pascalName}RecordLoader } from './${ctx.kebabName}-record.loader';
 import { to${ctx.pascalName}View } from './${ctx.kebabName}.view';
 
@@ -710,7 +710,7 @@ import { to${ctx.pascalName}View } from './${ctx.kebabName}.view';
 // changes at runtime, and the Zod schemas already own the create/update
 // contract, so their JSON Schema is the rules a frontend needs -- reflected
 // straight off the DTO rather than duplicated by hand.
-const ${ctx.pascalName.toUpperCase()}_DESCRIBE = {
+const ${ctx.screamingSnakeName}_DESCRIBE = {
   fields: [
 ${ctx.fields.map((field) => `    { name: '${field.name}', type: '${field.type}', optional: ${field.optional} },`).join('\n')}
   ],
@@ -733,7 +733,7 @@ export class ${ctx.pascalName}Controller {
   constructor(
     private readonly ${ctx.camelName}s: ${ctx.pascalName}Service,
     private readonly policy: ${ctx.pascalName}Policy,
-    @Inject(${ctx.pascalName.toUpperCase()}_RECORD_LOADER)
+    @Inject(${ctx.screamingSnakeName}_RECORD_LOADER)
     private readonly loader: ${ctx.pascalName}RecordLoader,
   ) {}
 
@@ -817,7 +817,7 @@ export class ${ctx.pascalName}Controller {
           )
         : view;
     const meta = {
-      channels: [${ctx.pascalName.toUpperCase()}_SIGNAL_CHANNEL],
+      channels: [${ctx.screamingSnakeName}_SIGNAL_CHANNEL],
       page: query.page,
       limit: query.limit,
       total,
@@ -855,7 +855,7 @@ export class ${ctx.pascalName}Controller {
   @Get('describe')
   @Capability(canViewAny${ctx.pascalName})
   describe() {
-    return ok(${ctx.pascalName.toUpperCase()}_DESCRIBE);
+    return ok(${ctx.screamingSnakeName}_DESCRIBE);
   }
 
   @Post('create')
@@ -1051,8 +1051,8 @@ import { ${ctx.pascalName}Controller } from './${ctx.kebabName}.controller';
 import { ${ctx.pascalName}Policy } from './${ctx.kebabName}.policy';
 import { ${ctx.pascalName}Service } from './${ctx.kebabName}.service';
 import {
-  ${ctx.pascalName.toUpperCase()}_RECORD_LOADER,
-  ${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER,
+  ${ctx.screamingSnakeName}_RECORD_LOADER,
+  ${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER,
   ${ctx.pascalName}RecordLoader,
   ${ctx.pascalName}VisibleRecordLoader,
 } from './${ctx.kebabName}-record.loader';
@@ -1064,9 +1064,9 @@ import {
     ${ctx.pascalName}Service,
     ${ctx.pascalName}Policy,
     CapabilitiesService,
-    { provide: ${ctx.pascalName.toUpperCase()}_RECORD_LOADER, useClass: ${ctx.pascalName}RecordLoader },
+    { provide: ${ctx.screamingSnakeName}_RECORD_LOADER, useClass: ${ctx.pascalName}RecordLoader },
     {
-      provide: ${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER,
+      provide: ${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER,
       useClass: ${ctx.pascalName}VisibleRecordLoader,
     },
   ],
@@ -1146,8 +1146,8 @@ import {
 } from './${ctx.kebabName}.policy';
 import { ${ctx.pascalName}Service } from './${ctx.kebabName}.service';
 import {
-  ${ctx.pascalName.toUpperCase()}_RECORD_LOADER,
-  ${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER,
+  ${ctx.screamingSnakeName}_RECORD_LOADER,
+  ${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER,
 } from './${ctx.kebabName}-record.loader';
 import type { ${ctx.pascalName}RecordLoader } from './${ctx.kebabName}-record.loader';
 import { to${ctx.pascalName}View } from './${ctx.kebabName}.view';
@@ -1175,9 +1175,9 @@ ${updateInputFields}
 export class ${ctx.pascalName}Resolver {
   constructor(
     private readonly ${ctx.camelName}s: ${ctx.pascalName}Service,
-    @Inject(${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER)
+    @Inject(${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER)
     private readonly visibleLoader: ${ctx.pascalName}RecordLoader,
-    @Inject(${ctx.pascalName.toUpperCase()}_RECORD_LOADER)
+    @Inject(${ctx.screamingSnakeName}_RECORD_LOADER)
     private readonly loader: ${ctx.pascalName}RecordLoader,
   ) {}
 
@@ -1291,8 +1291,8 @@ import {
 } from './${ctx.kebabName}.policy';
 import { ${ctx.pascalName}Service } from './${ctx.kebabName}.service';
 import {
-  ${ctx.pascalName.toUpperCase()}_RECORD_LOADER,
-  ${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER,
+  ${ctx.screamingSnakeName}_RECORD_LOADER,
+  ${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER,
 } from './${ctx.kebabName}-record.loader';
 import type { ${ctx.pascalName}RecordLoader } from './${ctx.kebabName}-record.loader';
 import { to${ctx.pascalName}View } from './${ctx.kebabName}.view';
@@ -1311,9 +1311,9 @@ function deniedResult() {
 export class ${ctx.pascalName}McpToolRegistrar implements McpToolRegistrar {
   constructor(
     private readonly ${ctx.camelName}s: ${ctx.pascalName}Service,
-    @Inject(${ctx.pascalName.toUpperCase()}_RECORD_LOADER)
+    @Inject(${ctx.screamingSnakeName}_RECORD_LOADER)
     private readonly loader: ${ctx.pascalName}RecordLoader,
-    @Inject(${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER)
+    @Inject(${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER)
     private readonly visibleLoader: ${ctx.pascalName}RecordLoader,
   ) {}
 
@@ -1437,8 +1437,8 @@ import { ok } from '#technical/http/envelope';
 import { StreamService } from '#modules/stream/stream.service';
 import { canUpdate${ctx.pascalName}, canView${ctx.pascalName} } from './${ctx.kebabName}.policy';
 import {
-  ${ctx.pascalName.toUpperCase()}_RECORD_LOADER,
-  ${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER,
+  ${ctx.screamingSnakeName}_RECORD_LOADER,
+  ${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER,
 } from './${ctx.kebabName}-record.loader';
 
 type RequestWith${ctx.pascalName} = RequestWithUser & { record: ${ctx.pascalName} };
@@ -1454,7 +1454,7 @@ export class ${ctx.pascalName}StreamController {
 
   @Post('publish-token')
   @Capability(canUpdate${ctx.pascalName})
-  @LoadRecordWith(${ctx.pascalName.toUpperCase()}_RECORD_LOADER, '${ctx.kebabName}')
+  @LoadRecordWith(${ctx.screamingSnakeName}_RECORD_LOADER, '${ctx.kebabName}')
   async publishToken(@Req() req: RequestWith${ctx.pascalName}) {
     const room = roomFor(req.record.id);
     await this.stream.ensureRoom(room);
@@ -1464,7 +1464,7 @@ export class ${ctx.pascalName}StreamController {
 
   @Post('viewer-token')
   @Capability(canView${ctx.pascalName})
-  @LoadRecordWith(${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER, '${ctx.kebabName}')
+  @LoadRecordWith(${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER, '${ctx.kebabName}')
   async viewerToken(@Req() req: RequestWith${ctx.pascalName}) {
     const room = roomFor(req.record.id);
     const token = await this.stream.viewerToken(room, req.user.id);
@@ -1494,7 +1494,7 @@ import type { LiveSocket } from '#modules/live/live-auth.guard';
 import { withTenant } from '#modules/live/with-tenant';
 import { canUpdate${ctx.pascalName}, canView${ctx.pascalName} } from './${ctx.kebabName}.policy';
 import {
-  ${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER,
+  ${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER,
 } from './${ctx.kebabName}-record.loader';
 import type { ${ctx.pascalName}RecordLoader } from './${ctx.kebabName}-record.loader';
 
@@ -1506,7 +1506,7 @@ function room(id: string): string {
 @UseGuards(LiveAuthGuard)
 export class ${ctx.pascalName}LiveGateway implements OnGatewayConnection {
   constructor(
-    @Inject(${ctx.pascalName.toUpperCase()}_VISIBLE_RECORD_LOADER)
+    @Inject(${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER)
     private readonly visibleLoader: ${ctx.pascalName}RecordLoader,
     @Inject(AUTH_PROVIDER) private readonly authProvider: AuthProvider,
   ) {}
@@ -1952,7 +1952,7 @@ ${
     expect(body.data[0]?.capabilities.update.allowed).toBe(true);
     expect(body.meta).toMatchObject({
       capabilities: { create: { allowed: true, scope: '${ctx.permissions.create}' } },
-      channels: ['${ctx.kebabName}'],
+      channels: ['${ctx.camelName}'],
     });
   });
 

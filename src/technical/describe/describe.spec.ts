@@ -3,7 +3,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
-import { WorkoutModule } from '../../../examples/workout/workout.module';
+import { BlogPostModule } from '../../../examples/blog-post/blog-post.module';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 import type { DescribedController } from './describe.service';
 
@@ -13,7 +13,7 @@ describe('Resource description', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [AppModule, WorkoutModule],
+      imports: [AppModule, BlogPostModule],
     }).compile();
     app = moduleRef.createNestApplication();
     await app.init();
@@ -42,18 +42,18 @@ describe('Resource description', () => {
     const controllers = await describeAll();
     const paths = controllers.map((controller) => controller.basePath);
 
-    expect(paths).toContain('/workouts');
+    expect(paths).toContain('/blog-posts');
     expect(paths).toContain('/describe');
   });
 
   it('names the capability guarding each route of a resource', async () => {
     const controllers = await describeAll();
-    const workouts = controllers.find(
-      (controller) => controller.basePath === '/workouts',
+    const blogPosts = controllers.find(
+      (controller) => controller.basePath === '/blog-posts',
     );
 
     const capabilities = Object.fromEntries(
-      (workouts?.routes ?? []).map((route) => [
+      (blogPosts?.routes ?? []).map((route) => [
         route.handler,
         route.capability,
       ]),
@@ -62,20 +62,20 @@ describe('Resource description', () => {
     // An aliased policy (canViewX = canUpdateX) reports the name of the first
     // binding, which would claim a read route requires update rights.
     expect(capabilities).toMatchObject({
-      search: 'canViewAnyWorkout',
-      create: 'canCreateWorkout',
-      update: 'canUpdateAnyWorkout',
-      remove: 'canDeleteAnyWorkout',
-      restore: 'canRestoreAnyWorkout',
+      search: 'canViewAnyBlogPost',
+      create: 'canCreateBlogPost',
+      update: 'canUpdateAnyBlogPost',
+      remove: 'canDeleteAnyBlogPost',
+      restore: 'canRestoreAnyBlogPost',
     });
   });
 
   it('leaves no resource route unguarded', async () => {
     const controllers = await describeAll();
-    const workouts = controllers.find(
-      (controller) => controller.basePath === '/workouts',
+    const blogPosts = controllers.find(
+      (controller) => controller.basePath === '/blog-posts',
     );
 
-    expect(workouts?.routes.every((route) => route.capability)).toBe(true);
+    expect(blogPosts?.routes.every((route) => route.capability)).toBe(true);
   });
 });

@@ -122,7 +122,7 @@ pnpm hery console --tenant acme
 Boots the real application — the full DI container, Prisma, auth, jobs — and drops you at a prompt. No HTTP server is started; this is `NestFactory.createApplicationContext`, not a running app.
 
 ```
-hery> await prisma.workout.findMany()
+hery> await prisma.blog-post.findMany()
 ```
 
 Three bindings are pre-loaded, and that is all:
@@ -136,7 +136,7 @@ Three bindings are pre-loaded, and that is all:
 `get` is the useful one — anything in the container is reachable:
 
 ```
-hery> const workouts = get(WorkoutService)
+hery> const blogPosts = get(BlogPostService)
 ```
 
 ### The whole session runs inside a tenant

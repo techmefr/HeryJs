@@ -8,7 +8,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import type { Workout } from '@prisma/client';
+import type { BlogPost } from '@prisma/client';
 import { z } from 'zod';
 import { SessionGuard } from '#technical/auth/session.guard';
 import type { RequestWithUser } from '#technical/auth/session.guard';
@@ -29,44 +29,44 @@ import {
 import type { SearchRequestBody } from '#technical/http/list-query';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import {
-  createWorkoutRequestSchema,
-  createWorkoutSchema,
-  deleteWorkoutRequestSchema,
-  restoreWorkoutRequestSchema,
-  updateWorkoutRequestSchema,
-  updateWorkoutSchema,
-} from './workout.dto';
+  createBlogPostRequestSchema,
+  createBlogPostSchema,
+  deleteBlogPostRequestSchema,
+  restoreBlogPostRequestSchema,
+  updateBlogPostRequestSchema,
+  updateBlogPostSchema,
+} from './blog-post.dto';
 import type {
-  CreateWorkoutRequestBody,
-  DeleteWorkoutRequestBody,
-  RestoreWorkoutRequestBody,
-  UpdateWorkoutRequestBody,
-} from './workout.dto';
+  CreateBlogPostRequestBody,
+  DeleteBlogPostRequestBody,
+  RestoreBlogPostRequestBody,
+  UpdateBlogPostRequestBody,
+} from './blog-post.dto';
 import {
-  canAttachTagsToWorkout,
-  canCreateWorkout,
-  canDeleteWorkout,
-  canDeleteAnyWorkout,
-  canDetachTagsFromWorkout,
-  canHardDeleteWorkout,
-  canListTrashedWorkout,
-  canRestoreWorkout,
-  canRestoreAnyWorkout,
-  canUpdateWorkout,
-  canUpdateAnyWorkout,
-  canViewAnyWorkout,
-  WorkoutPolicy,
-} from './workout.policy';
-import { WORKOUT_SIGNAL_CHANNEL, WorkoutService } from './workout.service';
-import { WORKOUT_RECORD_LOADER } from './workout-record.loader';
-import type { WorkoutRecordLoader } from './workout-record.loader';
-import { toWorkoutView } from './workout.view';
+  canAttachTagsToBlogPost,
+  canCreateBlogPost,
+  canDeleteBlogPost,
+  canDeleteAnyBlogPost,
+  canDetachTagsFromBlogPost,
+  canHardDeleteBlogPost,
+  canListTrashedBlogPost,
+  canRestoreBlogPost,
+  canRestoreAnyBlogPost,
+  canUpdateBlogPost,
+  canUpdateAnyBlogPost,
+  canViewAnyBlogPost,
+  BlogPostPolicy,
+} from './blog-post.policy';
+import { BLOG_POST_SIGNAL_CHANNEL, BlogPostService } from './blog-post.service';
+import { BLOG_POST_RECORD_LOADER } from './blog-post-record.loader';
+import type { BlogPostRecordLoader } from './blog-post-record.loader';
+import { toBlogPostView } from './blog-post.view';
 
 // Computed once at module load, not per request: the blueprint's shape never
 // changes at runtime, and the Zod schemas already own the create/update
 // contract, so their JSON Schema is the rules a frontend needs -- reflected
 // straight off the DTO rather than duplicated by hand.
-const WORKOUT_DESCRIBE = {
+const BLOG_POST_DESCRIBE = {
   fields: [{ name: 'title', type: 'string', optional: false }],
   sorts: ['createdAt'],
   filters: ['title'],
@@ -74,8 +74,8 @@ const WORKOUT_DESCRIBE = {
   includes: {
     notes: {
       type: 'hasMany',
-      foreignKey: 'workoutId',
-      childDelegate: 'workoutNote',
+      foreignKey: 'blogPostId',
+      childDelegate: 'blogPostNote',
       filters: ['body'],
       sorts: ['createdAt'],
       selects: ['id', 'body', 'rating', 'createdAt'],
@@ -84,7 +84,7 @@ const WORKOUT_DESCRIBE = {
       type: 'morphMany',
       foreignKey: 'commentableId',
       discriminator: 'commentableType',
-      discriminatorValue: 'Workout',
+      discriminatorValue: 'BlogPost',
       childDelegate: 'comment',
       filters: ['body'],
       sorts: ['createdAt'],
@@ -94,8 +94,8 @@ const WORKOUT_DESCRIBE = {
   aggregates: {
     notes: {
       type: 'hasMany',
-      foreignKey: 'workoutId',
-      childDelegate: 'workoutNote',
+      foreignKey: 'blogPostId',
+      childDelegate: 'blogPostNote',
       filters: ['body'],
       fields: ['rating'],
     },
@@ -103,7 +103,7 @@ const WORKOUT_DESCRIBE = {
       type: 'morphMany',
       foreignKey: 'commentableId',
       discriminator: 'commentableType',
-      discriminatorValue: 'Workout',
+      discriminatorValue: 'BlogPost',
       childDelegate: 'comment',
       filters: ['body'],
       fields: [],
@@ -112,19 +112,19 @@ const WORKOUT_DESCRIBE = {
   limits: [10, 15, 20],
   defaultLimit: 15,
   rules: {
-    create: z.toJSONSchema(createWorkoutSchema),
-    update: z.toJSONSchema(updateWorkoutSchema),
+    create: z.toJSONSchema(createBlogPostSchema),
+    update: z.toJSONSchema(updateBlogPostSchema),
   },
 };
 
-@Controller('workouts')
+@Controller('blog-posts')
 @UseGuards(SessionGuard, CapabilitiesGuard)
-export class WorkoutController {
+export class BlogPostController {
   constructor(
-    private readonly workouts: WorkoutService,
-    private readonly policy: WorkoutPolicy,
-    @Inject(WORKOUT_RECORD_LOADER)
-    private readonly loader: WorkoutRecordLoader,
+    private readonly blogPosts: BlogPostService,
+    private readonly policy: BlogPostPolicy,
+    @Inject(BLOG_POST_RECORD_LOADER)
+    private readonly loader: BlogPostRecordLoader,
   ) {}
 
   // Reused by update/delete/restore: each id is loaded and checked on its
@@ -139,7 +139,7 @@ export class WorkoutController {
     ) => { allowed: boolean },
   ) {
     const entries: Array<
-      | { index: number; id: string; ok: true; record: Workout }
+      | { index: number; id: string; ok: true; record: BlogPost }
       | { index: number; id: string; ok: false; error: ResolvedError }
     > = [];
 
@@ -151,7 +151,7 @@ export class WorkoutController {
           index,
           id,
           ok: false,
-          error: resolveDomainError(new RecordNotFoundException('workout')),
+          error: resolveDomainError(new RecordNotFoundException('blog-post')),
         });
         continue;
       }
@@ -176,7 +176,7 @@ export class WorkoutController {
 
   @Post('search')
   @HttpCode(200)
-  @Capability(canViewAnyWorkout)
+  @Capability(canViewAnyBlogPost)
   async search(
     @Req() req: RequestWithUser,
     @Body(new ZodValidationPipe(searchRequestSchema)) body: SearchRequestBody,
@@ -195,8 +195,8 @@ export class WorkoutController {
       includes: {
         notes: {
           type: 'hasMany',
-          foreignKey: 'workoutId',
-          childDelegate: 'workoutNote',
+          foreignKey: 'blogPostId',
+          childDelegate: 'blogPostNote',
           filters: ['body'],
           sorts: ['createdAt'],
           selects: ['id', 'body', 'rating', 'createdAt'],
@@ -205,7 +205,7 @@ export class WorkoutController {
           type: 'morphMany',
           foreignKey: 'commentableId',
           discriminator: 'commentableType',
-          discriminatorValue: 'Workout',
+          discriminatorValue: 'BlogPost',
           childDelegate: 'comment',
           filters: ['body'],
           sorts: ['createdAt'],
@@ -215,8 +215,8 @@ export class WorkoutController {
       aggregates: {
         notes: {
           type: 'hasMany',
-          foreignKey: 'workoutId',
-          childDelegate: 'workoutNote',
+          foreignKey: 'blogPostId',
+          childDelegate: 'blogPostNote',
           filters: ['body'],
           fields: ['rating'],
         },
@@ -224,7 +224,7 @@ export class WorkoutController {
           type: 'morphMany',
           foreignKey: 'commentableId',
           discriminator: 'commentableType',
-          discriminatorValue: 'Workout',
+          discriminatorValue: 'BlogPost',
           childDelegate: 'comment',
           filters: ['body'],
           fields: [],
@@ -236,14 +236,14 @@ export class WorkoutController {
     const subject = subjectOf(req.user);
 
     if (query.withTrashed || query.onlyTrashed) {
-      const trashedDecision = canListTrashedWorkout(subject);
+      const trashedDecision = canListTrashedBlogPost(subject);
 
       if (!trashedDecision.allowed) {
         throw new CapabilityForbiddenException(trashedDecision);
       }
     }
 
-    const { records, total } = await this.workouts.search(subject, query);
+    const { records, total } = await this.blogPosts.search(subject, query);
     const capabilities = body.capabilities ?? [];
     const select = query.select;
     const project = (view: Record<string, unknown>) =>
@@ -253,7 +253,7 @@ export class WorkoutController {
           )
         : view;
     const meta = {
-      channels: [WORKOUT_SIGNAL_CHANNEL],
+      channels: [BLOG_POST_SIGNAL_CHANNEL],
       page: query.page,
       limit: query.limit,
       total,
@@ -264,7 +264,7 @@ export class WorkoutController {
       return ok(
         records.map((record) =>
           withIncludesAndAggregates(
-            project(toWorkoutView(record)),
+            project(toBlogPostView(record)),
             record,
             query,
           ),
@@ -278,7 +278,7 @@ export class WorkoutController {
         const resolved = this.policy.recordCapabilities(subject, record);
         return {
           ...withIncludesAndAggregates(
-            project(toWorkoutView(record)),
+            project(toBlogPostView(record)),
             record,
             query,
           ),
@@ -297,28 +297,28 @@ export class WorkoutController {
   }
 
   @Get('describe')
-  @Capability(canViewAnyWorkout)
+  @Capability(canViewAnyBlogPost)
   describe() {
-    return ok(WORKOUT_DESCRIBE);
+    return ok(BLOG_POST_DESCRIBE);
   }
 
   @Post('create')
-  @Capability(canCreateWorkout)
+  @Capability(canCreateBlogPost)
   async create(
     @Req() req: RequestWithUser,
-    @Body(new ZodValidationPipe(createWorkoutRequestSchema))
-    body: CreateWorkoutRequestBody,
+    @Body(new ZodValidationPipe(createBlogPostRequestSchema))
+    body: CreateBlogPostRequestBody,
   ) {
     const subject = subjectOf(req.user);
     const results = [];
 
     for (const [index, item] of body.data.entries()) {
       try {
-        const created = await this.workouts.create(subject, item);
+        const created = await this.blogPosts.create(subject, item);
         results.push({
           index,
           status: 'ok' as const,
-          data: toWorkoutView(created),
+          data: toBlogPostView(created),
         });
       } catch (error) {
         results.push({
@@ -333,17 +333,17 @@ export class WorkoutController {
   }
 
   @Post('update')
-  @Capability(canUpdateAnyWorkout)
+  @Capability(canUpdateAnyBlogPost)
   async update(
     @Req() req: RequestWithUser,
-    @Body(new ZodValidationPipe(updateWorkoutRequestSchema))
-    body: UpdateWorkoutRequestBody,
+    @Body(new ZodValidationPipe(updateBlogPostRequestSchema))
+    body: UpdateBlogPostRequestBody,
   ) {
     const subject = subjectOf(req.user);
     const loaded = await this.loadAndAuthorize(
       body.data.map((item) => item.id),
       subject,
-      (s, record) => canUpdateWorkout(s, record as never),
+      (s, record) => canUpdateBlogPost(s, record as never),
     );
 
     const results = [];
@@ -362,27 +362,27 @@ export class WorkoutController {
       const { id: _id, relations, ...data } = body.data[index]!;
 
       try {
-        const updated = await this.workouts.update(entry.record, data);
+        const updated = await this.blogPosts.update(entry.record, data);
         const relationResults: Record<string, string[]> = {};
 
         if (relations?.tags) {
           const { attach, detach, sync } = relations.tags;
 
           if ((attach && attach.length > 0) || sync) {
-            const decision = canAttachTagsToWorkout(subject, entry.record);
+            const decision = canAttachTagsToBlogPost(subject, entry.record);
             if (!decision.allowed) {
               throw new CapabilityForbiddenException(decision);
             }
           }
 
           if ((detach && detach.length > 0) || sync) {
-            const decision = canDetachTagsFromWorkout(subject, entry.record);
+            const decision = canDetachTagsFromBlogPost(subject, entry.record);
             if (!decision.allowed) {
               throw new CapabilityForbiddenException(decision);
             }
           }
 
-          relationResults.tags = await this.workouts.syncTags(
+          relationResults.tags = await this.blogPosts.syncTags(
             entry.record,
             relations.tags,
           );
@@ -392,7 +392,7 @@ export class WorkoutController {
           index,
           id: entry.id,
           status: 'ok' as const,
-          data: { ...toWorkoutView(updated), ...relationResults },
+          data: { ...toBlogPostView(updated), ...relationResults },
         });
       } catch (error) {
         results.push({
@@ -408,19 +408,19 @@ export class WorkoutController {
   }
 
   @Post('delete')
-  @Capability(canDeleteAnyWorkout)
+  @Capability(canDeleteAnyBlogPost)
   async remove(
     @Req() req: RequestWithUser,
-    @Body(new ZodValidationPipe(deleteWorkoutRequestSchema))
-    body: DeleteWorkoutRequestBody,
+    @Body(new ZodValidationPipe(deleteBlogPostRequestSchema))
+    body: DeleteBlogPostRequestBody,
   ) {
     const subject = subjectOf(req.user);
     const loaded = await this.loadAndAuthorize(body.ids, subject, (s, record) =>
-      canDeleteWorkout(s, record as never),
+      canDeleteBlogPost(s, record as never),
     );
 
     if (body.mode === 'hard') {
-      const hardDecision = canHardDeleteWorkout(subject);
+      const hardDecision = canHardDeleteBlogPost(subject);
 
       if (!hardDecision.allowed) {
         throw new CapabilityForbiddenException(hardDecision);
@@ -442,7 +442,7 @@ export class WorkoutController {
 
       try {
         if (body.mode === 'hard') {
-          await this.workouts.hardDelete(entry.record);
+          await this.blogPosts.hardDelete(entry.record);
           results.push({
             index,
             id: entry.id,
@@ -450,12 +450,12 @@ export class WorkoutController {
             data: null,
           });
         } else {
-          const removed = await this.workouts.softDelete(entry.record);
+          const removed = await this.blogPosts.softDelete(entry.record);
           results.push({
             index,
             id: entry.id,
             status: 'ok' as const,
-            data: toWorkoutView(removed),
+            data: toBlogPostView(removed),
           });
         }
       } catch (error) {
@@ -472,15 +472,15 @@ export class WorkoutController {
   }
 
   @Post('restore')
-  @Capability(canRestoreAnyWorkout)
+  @Capability(canRestoreAnyBlogPost)
   async restore(
     @Req() req: RequestWithUser,
-    @Body(new ZodValidationPipe(restoreWorkoutRequestSchema))
-    body: RestoreWorkoutRequestBody,
+    @Body(new ZodValidationPipe(restoreBlogPostRequestSchema))
+    body: RestoreBlogPostRequestBody,
   ) {
     const subject = subjectOf(req.user);
     const loaded = await this.loadAndAuthorize(body.ids, subject, (s, record) =>
-      canRestoreWorkout(s, record as never),
+      canRestoreBlogPost(s, record as never),
     );
 
     const results = [];
@@ -498,15 +498,15 @@ export class WorkoutController {
 
       try {
         if (!entry.record.deletedAt) {
-          throw new AlreadyRestoredException('workout');
+          throw new AlreadyRestoredException('blog-post');
         }
 
-        const restored = await this.workouts.restore(entry.record, body.patch);
+        const restored = await this.blogPosts.restore(entry.record, body.patch);
         results.push({
           index,
           id: entry.id,
           status: 'ok' as const,
-          data: toWorkoutView(restored),
+          data: toBlogPostView(restored),
         });
       } catch (error) {
         results.push({

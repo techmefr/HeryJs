@@ -24,9 +24,9 @@ describe('redactedRequestSerializer', () => {
 
   it('leaves a url with no sensitive query params untouched', () => {
     const serialized = redactedRequestSerializer(
-      fakeRequest('/workouts?limit=10'),
+      fakeRequest('/blog-posts?limit=10'),
     );
 
-    expect(serialized.url).toBe('/workouts?limit=10');
+    expect(serialized.url).toBe('/blog-posts?limit=10');
   });
 });

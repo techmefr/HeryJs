@@ -5,7 +5,7 @@ import { resolvePruneRule } from './prune.config';
 // models actually carry deletedAt. Filtering that is prunableModels()'s job.
 describe('resolvePruneRule', () => {
   it("resolves the project's configured default retention", () => {
-    expect(resolvePruneRule('Workout')).toEqual({
+    expect(resolvePruneRule('BlogPost')).toEqual({
       retentionDays: 30,
       lock: false,
     });

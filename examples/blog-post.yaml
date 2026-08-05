@@ -1,4 +1,4 @@
-name: Workout
+name: BlogPost
 
 fields:
   - name: title
@@ -18,33 +18,33 @@ filters:
 
 includes:
   - relation: notes
-    resource: WorkoutNote
+    resource: BlogPostNote
     type: hasMany
-    foreignKey: workoutId
+    foreignKey: blogPostId
   - relation: comments
     resource: Comment
     type: morphMany
     foreignKey: commentableId
     discriminator: commentableType
-    discriminatorValue: Workout
+    discriminatorValue: BlogPost
 
 aggregates:
   - relation: notes
-    resource: WorkoutNote
+    resource: BlogPostNote
     type: hasMany
-    foreignKey: workoutId
+    foreignKey: blogPostId
   - relation: comments
     resource: Comment
     type: morphMany
     foreignKey: commentableId
     discriminator: commentableType
-    discriminatorValue: Workout
+    discriminatorValue: BlogPost
 
 relations:
   - relation: tags
     resource: Tag
-    pivotTable: WorkoutTag
-    foreignKey: workoutId
+    pivotTable: BlogPostTag
+    foreignKey: blogPostId
     relatedKey: tagId
 
 pagination:

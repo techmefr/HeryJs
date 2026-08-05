@@ -4,13 +4,13 @@ description: What a partial update accepts, what comes back, and what a caller w
 ---
 
 ```
-POST /workouts/update
+POST /blog-posts/update
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
   "data": [
-    { "id": "cly8x7g9k0000abc123def456", "title": "Leg day (heavy)" }
+    { "id": "cly8x7g9k0000abc123def456", "title": "Hello world (v2)" }
   ]
 }
 ```
@@ -28,7 +28,7 @@ Content-Type: application/json
         "id": "cly8x7g9k0000abc123def456",
         "tenantId": "acme",
         "ownerId": "user_9f8e7d6c",
-        "title": "Leg day (heavy)",
+        "title": "Hello world (v2)",
         "createdAt": "2026-07-31T09:12:03.000Z",
         "updatedAt": "2026-07-31T09:20:11.000Z",
         "deletedAt": null
@@ -54,7 +54,7 @@ Same shape as [Create](/guides/endpoints/create/) — `details` mirrors the fiel
 A resource whose blueprint declares a `relations` entry (a belongsToMany relation through a pivot table) accepts an extra `relations` key per entry, alongside its own fields:
 
 ```
-POST /workouts/update
+POST /blog-posts/update
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -83,7 +83,7 @@ The response echoes the relation's resolved state — the full list of related i
       "status": "ok",
       "data": {
         "id": "cly8x7g9k0000abc123def456",
-        "title": "Leg day (heavy)",
+        "title": "Hello world (v2)",
         "tags": ["tag_1", "tag_2"]
       }
     }

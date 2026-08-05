@@ -69,7 +69,7 @@ The argument is a name resolved under `blueprints/`, or a path to a YAML file if
 
 ```bash
 pnpm hery generate Task
-pnpm hery generate examples/workout.yaml
+pnpm hery generate examples/blog-post.yaml
 ```
 
 It also patches `prisma/schema.prisma` (the new model plus its inverse relation on `User`), `prisma.client.ts` (adding the model to the tenant-scoped set) and `audit-log.ts` (adding it to the audited set), then prints the two manual steps it deliberately does not take for you: importing the module into `src/app.module.ts`, and running the migration.

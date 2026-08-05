@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
 import { canonicalJson } from './canonical-json';
 
-export const AUDITED_MODELS = new Set(['Workout']);
+export const AUDITED_MODELS = new Set(['BlogPost']);
 // A bulk operation is still a mutation of an audited model -- `updateMany`/
 // `deleteMany`/`upsert` used to be absent from this set, so a single call
 // could rewrite or erase every row for a tenant with zero trace in the

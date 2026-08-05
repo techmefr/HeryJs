@@ -28,10 +28,10 @@ export interface DescribedController {
 {
   "data": [
     {
-      "name": "WorkoutController",
-      "basePath": "/workouts",
+      "name": "BlogPostController",
+      "basePath": "/blog-posts",
       "routes": [
-        { "method": "POST", "path": "/search", "handler": "search", "capability": "canViewAnyWorkout" }
+        { "method": "POST", "path": "/search", "handler": "search", "capability": "canViewAnyBlogPost" }
       ]
     }
   ],
@@ -80,7 +80,7 @@ A `GET` with no path parameter is something that can be listed without knowing a
 
 Note that "argument-free" is a test on **path parameters only**. A GET route that requires a query parameter is still listed, and will render whatever it answers when called without one.
 
-This is why the panel needs no per-resource work. `/workouts/search` appears because it was generated; `/teams`, `/notifications`, `/audit-logs`, `/feature-flags` appear because the kernel ships them; `/scheduler/tasks` and `/inspector/requests` appear because they are GET routes like any other. Install `mail` and `/mail` appears too.
+This is why the panel needs no per-resource work. `/blog-posts/search` appears because it was generated; `/teams`, `/notifications`, `/audit-logs`, `/feature-flags` appear because the kernel ships them; `/scheduler/tasks` and `/inspector/requests` appear because they are GET routes like any other. Install `mail` and `/mail` appears too.
 
 ### Columns come from the payload
 

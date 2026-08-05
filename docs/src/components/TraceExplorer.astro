@@ -29,17 +29,17 @@ const examples: Example[] = [
 		id: 'list-ok',
 		label: 'List succeeds',
 		method: 'POST',
-		path: '/workouts/search',
-		request: `POST /workouts/search
+		path: '/blog-posts/search',
+		request: `POST /blog-posts/search
 Authorization: Bearer <token>
 Content-Type: application/json
 
 { "limit": 15 }`,
 		response: `{
   "data": [
-    { "id": "cly8x7g9k0000abc123def456", "title": "Leg day" }
+    { "id": "cly8x7g9k0000abc123def456", "title": "Hello world" }
   ],
-  "meta": { "channels": ["workout"] },
+  "meta": { "channels": ["blogPost"] },
   "messages": []
 }`,
 		steps: [
@@ -50,15 +50,15 @@ Content-Type: application/json
 				label: 'capability',
 				status: 'ok',
 				durationMs: 1,
-				detail: { policy: 'canViewAnyWorkout', scope: 'own' },
+				detail: { policy: 'canViewAnyBlogPost', scope: 'own' },
 			},
-			{ stage: 'controller', label: 'WorkoutController.search', status: 'ok', durationMs: 0 },
+			{ stage: 'controller', label: 'BlogPostController.search', status: 'ok', durationMs: 0 },
 			{
 				stage: 'prisma',
-				label: 'workout.findMany',
+				label: 'blog-post.findMany',
 				status: 'ok',
 				durationMs: 4,
-				detail: { sql: 'SELECT * FROM "Workout" WHERE "ownerId" = $1 LIMIT 15', params: ['user_9f8e7d6c'] },
+				detail: { sql: 'SELECT * FROM "BlogPost" WHERE "ownerId" = $1 LIMIT 15', params: ['user_9f8e7d6c'] },
 			},
 		],
 		blockedStepIndex: null,
@@ -94,8 +94,8 @@ Authorization: Bearer <token>`,
 		id: 'validation-failed',
 		label: 'Validation fails',
 		method: 'POST',
-		path: '/workouts',
-		request: `POST /workouts
+		path: '/blog-posts',
+		request: `POST /blog-posts
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -116,7 +116,7 @@ Content-Type: application/json
 				label: 'capability',
 				status: 'ok',
 				durationMs: 1,
-				detail: { policy: 'canCreateWorkout', scope: 'own' },
+				detail: { policy: 'canCreateBlogPost', scope: 'own' },
 			},
 			{
 				stage: 'controller',

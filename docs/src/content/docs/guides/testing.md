@@ -73,7 +73,7 @@ All six assert the same underlying property from whichever side applies: the det
 
 ## Extending it
 
-The generated spec is a floor, not a ceiling — it is written once and then owned, like everything else. The reference resource in `examples/workout/` shows what a filled-out version looks like.
+The generated spec is a floor, not a ceiling — it is written once and then owned, like everything else. The reference resource in `examples/blog-post/` shows what a filled-out version looks like.
 
 A factory is generated alongside the spec (`<name>.factory.ts`, faker-backed, with a `trashed` override and a `count` option) for seeding rows directly. The generated spec does not use it, going through HTTP instead — reach for the factory when you need a hundred rows or an awkward state, not for the paths a client would exercise.
 

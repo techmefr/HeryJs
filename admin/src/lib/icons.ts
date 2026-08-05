@@ -47,7 +47,7 @@ const BY_ROUTE: Record<string, IconNode | undefined> = {
   '/notifications': Bell,
   '/scheduler/tasks': Clock,
   '/seeders': Sprout,
-  '/workouts': Table2,
+  '/blog-posts': Table2,
 };
 
 /**

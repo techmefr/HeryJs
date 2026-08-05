@@ -88,7 +88,7 @@ function dropExampleFreshnessCheck(destRoot: string): void {
 
 /**
  * Two kernel specs need a real resource to exercise (describe/inspector both
- * introspect whatever routes exist) and reach for examples/workout for one,
+ * introspect whatever routes exist) and reach for examples/blog-post for one,
  * since this repository always has it. A fresh project has no resource yet,
  * and does not need to re-prove that introspection works with one — that is
  * this framework's own test suite's job, not a downstream project's.

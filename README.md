@@ -46,8 +46,8 @@ pnpm start:dev
 `hery new` scaffolds a fresh, standalone project: the kernel, the CLI, the default modules, none of HeryJs's own demo or docs. From there, generate your first resource:
 
 ```bash
-pnpm hery create:blueprint Workout
-pnpm hery generate blueprints/workout.yaml
+pnpm hery create:blueprint BlogPost
+pnpm hery generate blueprints/blog-post.yaml
 ```
 
 ## What it generates
@@ -56,13 +56,13 @@ A resource in HeryJs starts as a short blueprint describing intent — fields, r
 
 ```
 functional/
-  workout/
-    workout.module.ts
-    workout.controller.ts
-    workout.service.ts
-    workout.policy.ts
-    workout.dto.ts
-    workout.spec.ts
+  blog-post/
+    blog-post.module.ts
+    blog-post.controller.ts
+    blog-post.service.ts
+    blog-post.policy.ts
+    blog-post.dto.ts
+    blog-post.spec.ts
 prisma/
   schema.prisma
 ```

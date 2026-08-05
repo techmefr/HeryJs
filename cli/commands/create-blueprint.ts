@@ -249,7 +249,7 @@ export function registerCreateBlueprintCommand(program: Command): void {
         // outside blueprints/ in the first place.
         if (!/^[A-Z][a-zA-Z0-9]*$/.test(name)) {
           console.error(
-            pc.red('a resource name must be PascalCase, e.g. WorkoutSession'),
+            pc.red('a resource name must be PascalCase, e.g. BlogCategory'),
           );
           process.exitCode = 1;
           return;

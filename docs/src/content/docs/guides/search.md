@@ -6,7 +6,7 @@ description: A closed list of named engines declared in hery.config.ts, Prisma a
 Every generated resource accepts a free-text query in its search route's body:
 
 ```
-POST /workouts/search
+POST /blog-posts/search
 { "search": { "q": "squat" } }
 ```
 
@@ -51,7 +51,7 @@ Declaring more than one non-Prisma engine at once is supported — `elasticsearc
 ## Selecting an engine per request
 
 ```
-POST /workouts/search
+POST /blog-posts/search
 { "search": { "q": "squat", "engine": "elasticsearch" } }
 ```
 
@@ -115,7 +115,7 @@ Because it is a plain constant in a file you own, narrowing it is an edit, not a
 This is the part that has to be right. The generated `search()` composes three independent clauses:
 
 ```ts
-return this.prisma.workout.findMany({
+return this.prisma.blog-post.findMany({
   where: {
     AND: [
       scopeWhereFor('own', subject),
@@ -142,7 +142,7 @@ Tenancy is enforced a layer lower still, by the tenant-scoping Prisma extension,
 The generated service syncs the index inside the same request as the write, after the database has committed, wrapped in its own `try`/`catch`:
 
 ```ts
-private async syncSearchIndex(record: Workout) {
+private async syncSearchIndex(record: BlogPost) {
   for (const driver of this.searchEngines.externalDrivers) {
     try {
       if (record.deletedAt) {
@@ -165,7 +165,7 @@ Called from `create`, `update`, `softDelete` and `restore`. An unreachable engin
 ## Backfilling an existing dataset
 
 ```bash
-pnpm hery search:reindex Workout
+pnpm hery search:reindex BlogPost
 ```
 
 Installing a search module on an existing dataset does not retroactively index anything written before it — only writes made afterwards go through `syncSearchIndex`. `search:reindex <model>` walks every row of that Prisma model, across every tenant, and calls `index()` or `remove()` on whatever driver is installed, deriving the searchable fields from the same rule the generator itself uses (every scalar `String` field, minus the reserved ones like `id`/`tenantId`/timestamps). It bypasses the tenant-scoped Prisma client entirely — the same way `prisma/seed.ts` does — because a backfill has no single request's tenant to scope by; it needs every tenant's rows in one pass.

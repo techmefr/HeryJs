@@ -18,7 +18,7 @@ Every generated collection route already tells the client which channel to watch
 ```json
 {
   "data": [ … ],
-  "meta": { "channels": ["workout"] },
+  "meta": { "channels": ["blogPost"] },
   "messages": []
 }
 ```
@@ -26,10 +26,10 @@ Every generated collection route already tells the client which channel to watch
 The generated service publishes on that channel after every mutation. A subscriber gets a nudge, not the record:
 
 ```json
-{ "channel": "workout", "at": 1730000000000 }
+{ "channel": "blogPost", "at": 1730000000000 }
 ```
 
-That is the whole payload, and it is deliberate. If the event carried the data, the event would need its own permission check, its own view stripping and its own tenant scoping — a second, parallel read path with the same rules to keep in sync as the first. Instead the client hears "workouts changed" and refetches through the ordinary route, which already resolves capabilities, applies the scope filter and strips hidden fields. One read path, one set of rules.
+That is the whole payload, and it is deliberate. If the event carried the data, the event would need its own permission check, its own view stripping and its own tenant scoping — a second, parallel read path with the same rules to keep in sync as the first. Instead the client hears "blog posts changed" and refetches through the ordinary route, which already resolves capabilities, applies the scope filter and strips hidden fields. One read path, one set of rules.
 
 ### Subscribing
 
@@ -37,16 +37,16 @@ An `EventSource` cannot set an `Authorization` header, so the flow is two steps:
 
 ```
 POST /signal/token                        → { "data": { "token": "…" } }
-GET  /signal/stream?token=…&channels=workout
+GET  /signal/stream?token=…&channels=blogPost
 ```
 
-The security property is in how the channel name is assembled. The client sends a bare channel (`workout`); the server prefixes it with the tenant taken **from the token**, not from the query string:
+The security property is in how the channel name is assembled. The client sends a bare channel (`blogPost`); the server prefixes it with the tenant taken **from the token**, not from the query string:
 
 ```ts
 .map((channel) => `${CHANNEL_PREFIX}${payload.tenantId}:${channel}`)
 ```
 
-So `channels=workout` subscribes to `signal:<your-tenant>:workout` and there is no way to spell another tenant's channel — the tenant segment is not yours to write. A missing or invalid token is a 401; no channels at all is a 400.
+So `channels=blogPost` subscribes to `signal:<your-tenant>:blogPost` and there is no way to spell another tenant's channel — the tenant segment is not yours to write. A missing or invalid token is a 401; no channels at all is a 400.
 
 Because it is Redis pub/sub, this works across processes: an instance that handles a write reaches subscribers connected to every other instance.
 
@@ -54,19 +54,19 @@ Because it is Redis pub/sub, this works across processes: an instance that handl
 
 ```bash
 pnpm hery install live
-pnpm hery generate Workout --live
+pnpm hery generate BlogPost --live
 ```
 
 The generator writes a gateway per resource, on its own Socket.IO namespace:
 
 ```ts
-@WebSocketGateway({ namespace: '/live/workout' })
+@WebSocketGateway({ namespace: '/live/blog-post' })
 ```
 
 Clients connect with the same bearer token they use for REST, in the handshake:
 
 ```js
-io('/live/workout', { auth: { token } });
+io('/live/blog-post', { auth: { token } });
 ```
 
 Three inbound events — `join`, `leave` and `message`, all keyed by record id — and one outbound `message`.
@@ -88,7 +88,7 @@ export function withTenant<T>(client: LiveSocket, fn: () => Promise<T>): Promise
 }
 ```
 
-Capabilities are re-checked per event, not once at connection: `join` resolves `canViewWorkout` against the loaded record, `message` resolves `canUpdateWorkout`. A denied event answers with `{ error: 'capability denied' }` in the acknowledgement rather than throwing.
+Capabilities are re-checked per event, not once at connection: `join` resolves `canViewBlogPost` against the loaded record, `message` resolves `canUpdateBlogPost`. A denied event answers with `{ error: 'capability denied' }` in the acknowledgement rather than throwing.
 
 Authentication happens twice on purpose — `handleConnection` disconnects an unauthenticated socket outright, and a guard on the gateway class covers each event after that.
 
@@ -103,15 +103,15 @@ Also note the generated gateway has no server-side emitter — it relays message
 ```bash
 pnpm hery install stream
 docker compose -f docker-compose.stream.yml up -d
-pnpm hery generate Workout --stream
+pnpm hery generate BlogPost --stream
 ```
 
 LiveKit does the media work; HeryJs only decides who may get a token. Two routes per resource, one room per record:
 
 | Route | Capability | Token grants |
 |---|---|---|
-| `POST /workouts/:id/stream/publish-token` | `canUpdateWorkout` | publish, no subscribe |
-| `POST /workouts/:id/stream/viewer-token` | `canViewWorkout` | subscribe, no publish |
+| `POST /blog-posts/:id/stream/publish-token` | `canUpdateBlogPost` | publish, no subscribe |
+| `POST /blog-posts/:id/stream/viewer-token` | `canViewBlogPost` | subscribe, no publish |
 
 Both return `ok({ room, token })`.
 
@@ -119,6 +119,6 @@ The gate is on **issuing** the token, and it is the ordinary `CapabilitiesGuard`
 
 Scope is deliberately narrow: one publisher per room, any number of subscribe-only viewers. The service does room creation, room deletion and token minting — there is no recording, no egress and no participant administration.
 
-Room names are derived from the record (`workout:<id>`) and are not tenant-prefixed; isolation comes from the record loader being tenant-scoped, so a caller cannot reach a record — and therefore cannot obtain a token — outside its own tenant.
+Room names are derived from the record (`blog-post:<id>`) and are not tenant-prefixed; isolation comes from the record loader being tenant-scoped, so a caller cannot reach a record — and therefore cannot obtain a token — outside its own tenant.
 
 The compose file runs LiveKit in dev mode with the well-known `devkey` / `secret` credentials. `LIVEKIT_URL`, `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` all have development defaults matching it, which means a deployment that forgets to set them is running on published credentials. Set all three.

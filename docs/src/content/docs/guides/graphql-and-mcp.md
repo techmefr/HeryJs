@@ -11,7 +11,7 @@ Both raise the same question, and it is the only one that really matters: **a se
 
 `CapabilitiesGuard` is HTTP-only. It reaches for the request through `context.switchToHttp()`, which is meaningless for a GraphQL resolver invoked through a different execution context, and for an MCP tool call that is not a route at all.
 
-So neither module reuses the guard. Both reuse the **policy functions** instead — the same exported `canViewWorkout`, `canUpdateWorkout`, `canDeleteWorkout` that the REST controller declares. That is precisely why those are plain exported functions rather than methods on an injected class: a plain function can be called from a guard, a resolver, a socket handler or a tool registrar without any of them needing to be a route.
+So neither module reuses the guard. Both reuse the **policy functions** instead — the same exported `canViewBlogPost`, `canUpdateBlogPost`, `canDeleteBlogPost` that the REST controller declares. That is precisely why those are plain exported functions rather than methods on an injected class: a plain function can be called from a guard, a resolver, a socket handler or a tool registrar without any of them needing to be a route.
 
 The generated resource remains the single source of truth for its rules. What changes between protocols is only *who calls them*.
 
@@ -19,18 +19,18 @@ The generated resource remains the single source of truth for its rules. What ch
 
 ```bash
 pnpm hery install mcp
-pnpm hery generate Workout --mcp
+pnpm hery generate BlogPost --mcp
 ```
 
 Mounted at `/mcp` behind `SessionGuard`, over Streamable HTTP in stateless mode. Each generated resource contributes five tools:
 
 | Tool | Input | Effect |
 |---|---|---|
-| `search_workout` | — | reads, scoped to the caller |
-| `get_workout` | `{ id }` | reads one |
-| `create_workout` | the resource's create schema | creates |
-| `update_workout` | `{ id, …update schema }` | updates |
-| `remove_workout` | `{ id }` | soft-deletes |
+| `search_blog-post` | — | reads, scoped to the caller |
+| `get_blog-post` | `{ id }` | reads one |
+| `create_blog-post` | the resource's create schema | creates |
+| `update_blog-post` | `{ id, …update schema }` | updates |
+| `remove_blog-post` | `{ id }` | soft-deletes |
 
 `remove_*` is a soft delete. There is no hard-delete tool, which means an agent cannot destroy a row — the worst it can do is move it to the bin that `{ onlyTrashed: true }` and the restore route already know how to reach.
 
@@ -51,7 +51,7 @@ There is no subject parameter on any tool. An agent cannot ask to act as someone
 Every tool then re-checks the same policy as REST:
 
 ```ts
-const decision = canDeleteWorkout(subject, record);
+const decision = canDeleteBlogPost(subject, record);
 if (!decision.allowed) {
   return deniedResult();
 }
@@ -99,7 +99,7 @@ Per-resource resolvers are generated with `hery generate <Name> --graphql`, prod
 
 ```ts
 const subject = subjectOf(req.user);
-const decision = canUpdateWorkout(subject, record);
+const decision = canUpdateBlogPost(subject, record);
 if (!decision.allowed) {
   throw new CapabilityForbiddenException();
 }

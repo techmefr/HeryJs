@@ -26,7 +26,7 @@ model User {
 
   sessions      Session[]
   accounts      Account[]
-  workouts      Workout[]
+  blogPosts     BlogPost[]
   notifications AppNotification[]
   memberships   TeamMember[]
   apiKeys       ApiKey[]
@@ -154,7 +154,7 @@ model AuditLog {
   @@unique([tenantId, previousHash])
 }
 
-model Workout {
+model BlogPost {
   id        String    @id @default(cuid())
   tenantId  String
   ownerId   String
@@ -163,27 +163,27 @@ model Workout {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  owner User          @relation(fields: [ownerId], references: [id])
-  notes WorkoutNote[]
-  tags  WorkoutTag[]
+  owner User           @relation(fields: [ownerId], references: [id])
+  notes BlogPostNote[]
+  tags  BlogPostTag[]
 
   @@index([tenantId])
 }
 
-// A belongsToMany relation, unlike WorkoutNote's hasMany: a tag does not
-// belong to one workout, so attaching or detaching one never creates or
+// A belongsToMany relation, unlike BlogPostNote's hasMany: a tag does not
+// belong to one blog post, so attaching or detaching one never creates or
 // deletes a Tag row, only a row in this pivot table -- see
 // relation-mutations.ts, the shared resolver every generated attach/detach/
 // sync route goes through.
-model WorkoutTag {
-  workoutId String
-  tagId     String
-  createdAt DateTime @default(now())
+model BlogPostTag {
+  blogPostId String
+  tagId      String
+  createdAt  DateTime @default(now())
 
-  workout Workout @relation(fields: [workoutId], references: [id], onDelete: Cascade)
-  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  blogPost BlogPost @relation(fields: [blogPostId], references: [id], onDelete: Cascade)
+  tag      Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
-  @@id([workoutId, tagId])
+  @@id([blogPostId, tagId])
 }
 
 model Tag {
@@ -191,19 +191,19 @@ model Tag {
   name      String
   createdAt DateTime @default(now())
 
-  workouts WorkoutTag[]
+  blogPosts BlogPostTag[]
 }
 
-model WorkoutNote {
-  id        String   @id @default(cuid())
-  workoutId String
-  body      String
-  rating    Int?
-  createdAt DateTime @default(now())
+model BlogPostNote {
+  id         String   @id @default(cuid())
+  blogPostId String
+  body       String
+  rating     Int?
+  createdAt  DateTime @default(now())
 
-  workout Workout @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  blogPost BlogPost @relation(fields: [blogPostId], references: [id], onDelete: Cascade)
 
-  @@index([workoutId])
+  @@index([blogPostId])
 }
 
 // Attachable to more than one resource type, so there is no single parent to

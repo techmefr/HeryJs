@@ -15,7 +15,7 @@ interface PrismaQueryEvent {
   duration: number;
 }
 
-const TENANT_SCOPED_MODELS = new Set(['Team', 'TeamMember', 'Workout']);
+const TENANT_SCOPED_MODELS = new Set(['Team', 'TeamMember', 'BlogPost']);
 
 type TenantHandling =
   'stamp-data' | 'stamp-entries' | 'stamp-and-filter' | 'filter';

@@ -26,14 +26,14 @@ describe('tenant scoping across every Prisma operation', () => {
     });
     ownerId = owner.id;
 
-    const record = await rawClient.workout.create({
+    const record = await rawClient.blogPost.create({
       data: { title: 'tenant A secret', ownerId, tenantId: tenantA },
     });
     tenantARecordId = record.id;
   });
 
   afterAll(async () => {
-    await rawClient.workout.deleteMany({ where: { ownerId } });
+    await rawClient.blogPost.deleteMany({ where: { ownerId } });
     await rawClient.user.delete({ where: { id: ownerId } });
     await rawClient.$disconnect();
   });
@@ -46,7 +46,7 @@ describe('tenant scoping across every Prisma operation', () => {
   it('does not let findUniqueOrThrow read another tenant record', async () => {
     await expect(
       asTenantB(() =>
-        scopedClient.workout.findUniqueOrThrow({
+        scopedClient.blogPost.findUniqueOrThrow({
           where: { id: tenantARecordId },
         }),
       ),
@@ -55,7 +55,7 @@ describe('tenant scoping across every Prisma operation', () => {
 
   it('does not let aggregate count another tenant rows', async () => {
     const result = await asTenantB(() =>
-      scopedClient.workout.aggregate({ _count: { _all: true } }),
+      scopedClient.blogPost.aggregate({ _count: { _all: true } }),
     );
 
     expect(result._count._all).toBe(0);
@@ -63,7 +63,7 @@ describe('tenant scoping across every Prisma operation', () => {
 
   it('does not let groupBy see another tenant rows', async () => {
     const groups = await asTenantB(() =>
-      scopedClient.workout.groupBy({
+      scopedClient.blogPost.groupBy({
         by: ['tenantId'],
         _count: { _all: true },
       }),
@@ -74,18 +74,18 @@ describe('tenant scoping across every Prisma operation', () => {
 
   it('does not let upsert take over another tenant record', async () => {
     await asTenantB(() =>
-      scopedClient.workout.upsert({
+      scopedClient.blogPost.upsert({
         where: { id: tenantARecordId },
         update: { title: 'stolen by tenant B' },
         // tenantId is stamped by the extension, so callers never pass it.
         create: { title: 'created by tenant B', ownerId } as unknown as Omit<
-          Prisma.WorkoutCreateInput,
+          Prisma.BlogPostCreateInput,
           'owner'
         > & { ownerId: string },
       }),
     );
 
-    const stored = await rawClient.workout.findUnique({
+    const stored = await rawClient.blogPost.findUnique({
       where: { id: tenantARecordId },
     });
 

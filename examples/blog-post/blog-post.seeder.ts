@@ -7,12 +7,12 @@ import type {
   SeederContext,
   SeederOptions,
 } from '#technical/seeders/seeder.types';
-import { workoutFactory } from './workout.factory';
+import { blogPostFactory } from './blog-post.factory';
 
 @Injectable()
-export class WorkoutSeeder implements Seeder {
-  name = 'workouts';
-  description = 'Create sample workouts for the current tenant';
+export class BlogPostSeeder implements Seeder {
+  name = 'blogPosts';
+  description = 'Create sample blog posts for the current tenant';
   defaultCount = 3;
   maxCount = 100;
 
@@ -23,11 +23,11 @@ export class WorkoutSeeder implements Seeder {
   async run(context: SeederContext, options?: SeederOptions) {
     const count = options?.count ?? this.defaultCount;
 
-    await this.prisma.workout.createMany({
-      data: workoutFactory(
+    await this.prisma.blogPost.createMany({
+      data: blogPostFactory(
         { ownerId: context.ownerId, tenantId: context.tenantId },
         { count },
-      ) as unknown as Prisma.WorkoutCreateManyInput[],
+      ) as unknown as Prisma.BlogPostCreateManyInput[],
     });
 
     return { count };

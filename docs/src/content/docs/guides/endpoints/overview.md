@@ -5,18 +5,18 @@ description: What every generated endpoint shares — the seven routes, the enve
 
 Every resource `hery generate` produces exposes the same seven routes, shaped by the same envelope. Once you have read one resource's endpoints, you have effectively read all of them — the only things that change from one resource to the next are the URL segment and the fields inside `data`.
 
-The pages in this section walk through a real one, `Workout`, end to end. Each page covers one endpoint: what to send, and exactly what comes back.
+The pages in this section walk through a real one, `BlogPost`, end to end. Each page covers one endpoint: what to send, and exactly what comes back.
 
 ## The seven routes
 
 | Method | Path                  | What it does                                                          | Documented in                          |
 | ------ | --------------------- | ---------------------------------------------------------------------- | --------------------------------------- |
-| `POST` | `/workouts/search`    | List, with search, sort, filter, pagination — also how one record is read, filtered to its id | [Search](/guides/endpoints/search/), [Details](/guides/endpoints/details/) |
-| `GET`  | `/workouts/describe`  | The resource's contract — fields, limits, validation rules            | [Details](/guides/endpoints/details/)  |
-| `POST` | `/workouts/create`    | Create one or many records in one call                                | [Create](/guides/endpoints/create/)    |
-| `POST` | `/workouts/update`    | Update one or many records in one call, including relations           | [Update](/guides/endpoints/update/)    |
-| `POST` | `/workouts/delete`    | Soft-delete (or hard-delete with `mode: "hard"`) one or many records  | [Delete](/guides/endpoints/delete/)    |
-| `POST` | `/workouts/restore`   | Undo a soft-delete for one or many records                            | [Restore](/guides/endpoints/restore/)  |
+| `POST` | `/blog-posts/search`    | List, with search, sort, filter, pagination — also how one record is read, filtered to its id | [Search](/guides/endpoints/search/), [Details](/guides/endpoints/details/) |
+| `GET`  | `/blog-posts/describe`  | The resource's contract — fields, limits, validation rules            | [Details](/guides/endpoints/details/)  |
+| `POST` | `/blog-posts/create`    | Create one or many records in one call                                | [Create](/guides/endpoints/create/)    |
+| `POST` | `/blog-posts/update`    | Update one or many records in one call, including relations           | [Update](/guides/endpoints/update/)    |
+| `POST` | `/blog-posts/delete`    | Soft-delete (or hard-delete with `mode: "hard"`) one or many records  | [Delete](/guides/endpoints/delete/)    |
+| `POST` | `/blog-posts/restore`   | Undo a soft-delete for one or many records                            | [Restore](/guides/endpoints/restore/)  |
 
 Every mutating route takes an array — `data` for create/update, `ids` for delete/restore — even for a single record, and answers with one result per entry, each carrying its own `status`. One entry failing never blocks the others in the same request.
 
@@ -28,7 +28,7 @@ Three keys, always: `data`, `meta` (only when there is something to say about th
 
 ```json
 {
-  "data": { "id": "cly8x7g9k0000abc123def456", "title": "Leg day" },
+  "data": { "id": "cly8x7g9k0000abc123def456", "title": "Hello world" },
   "messages": []
 }
 ```

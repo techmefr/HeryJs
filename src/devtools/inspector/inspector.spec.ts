@@ -3,7 +3,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
-import { WorkoutModule } from '../../../examples/workout/workout.module';
+import { BlogPostModule } from '../../../examples/blog-post/blog-post.module';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 
 interface InspectedRequest {
@@ -17,7 +17,7 @@ describe('request inspector', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [AppModule, WorkoutModule],
+      imports: [AppModule, BlogPostModule],
     }).compile();
     app = moduleRef.createNestApplication();
     await app.init();
@@ -31,16 +31,16 @@ describe('request inspector', () => {
     const { token } = await registerAndLogin(app);
 
     await request(app.getHttpServer())
-      .get('/workouts/describe')
+      .get('/blog-posts/describe')
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
     await request(app.getHttpServer())
-      .get('/workouts/does-not-exist')
+      .get('/blog-posts/does-not-exist')
       .set('Authorization', `Bearer ${token}`)
       .expect(404);
 
-    await request(app.getHttpServer()).get('/workouts/describe').expect(401);
+    await request(app.getHttpServer()).get('/blog-posts/describe').expect(401);
 
     const response = await request(app.getHttpServer())
       .get('/inspector/requests')
@@ -52,21 +52,21 @@ describe('request inspector', () => {
     expect(entries).toContainEqual(
       expect.objectContaining({
         method: 'GET',
-        path: '/workouts/describe',
+        path: '/blog-posts/describe',
         status: 200,
       }),
     );
     expect(entries).toContainEqual(
       expect.objectContaining({
         method: 'GET',
-        path: '/workouts/does-not-exist',
+        path: '/blog-posts/does-not-exist',
         status: 404,
       }),
     );
     expect(entries).toContainEqual(
       expect.objectContaining({
         method: 'GET',
-        path: '/workouts/describe',
+        path: '/blog-posts/describe',
         status: 401,
       }),
     );

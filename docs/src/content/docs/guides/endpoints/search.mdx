@@ -10,37 +10,36 @@ export const scenarios = [
     id: 'filter',
     label: 'Filtrer sur le titre',
     method: 'POST',
-    path: '/workouts/search',
-    request: `POST /workouts/search
+    path: '/blog-posts/search',
+    request: `POST /blog-posts/search
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
   "filters": [
-    { "field": "title", "operator": "like", "value": "leg" }
+    { "field": "title", "operator": "like", "value": "hello" }
   ]
 }`,
     response: `{
   "data": [
-    { "id": "cly8x7g9k0000abc123def456", "title": "Leg day" }
+    { "id": "cly8x7g9k0000abc123def456", "title": "Hello world" }
   ],
-  "meta": { "channels": ["workout"], "page": 1, "limit": 15, "total": 1, "last_page": 1 },
+  "meta": { "channels": ["blogPost"], "page": 1, "limit": 15, "total": 1, "last_page": 1 },
   "messages": []
 }`,
     flow: [
       { stage: 'middleware', label: 'tenant resolution', status: 'ok', durationMs: 1 },
-      { stage: 'guard', label: 'session', status: 'ok', durationMs: 0 },
-      { stage: 'guard', label: 'capability', status: 'ok', durationMs: 1, detail: { policy: 'canViewAnyWorkout', scope: 'own' } },
+      { stage: 'guard', label: 'session', status: 'ok', durationMs: 1, detail: { policy: 'canViewAnyBlogPost', scope: 'own' } },
       { stage: 'controller', label: 'parseSearchRequest', status: 'ok', durationMs: 0, detail: { field: 'title', operator: 'like', allowedFilters: ['id', 'title'] } },
-      { stage: 'prisma', label: 'workout.findMany', status: 'ok', durationMs: 3, detail: { sql: 'SELECT * FROM "Workout" WHERE "ownerId" = $1 AND "title" LIKE $2', params: ['user_9f8e7d6c', '%leg%'] } },
+      { stage: 'prisma', label: 'blogPost.findMany', status: 'ok', durationMs: 3, detail: { sql: 'SELECT * FROM "BlogPost" WHERE "ownerId" = $1 AND "title" LIKE $2', params: ['user_9f8e7d6c', '%hello%'] } },
     ],
   },
   {
     id: 'sort-paginate',
     label: 'Trier et paginer',
     method: 'POST',
-    path: '/workouts/search',
-    request: `POST /workouts/search
+    path: '/blog-posts/search',
+    request: `POST /blog-posts/search
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -51,27 +50,27 @@ Content-Type: application/json
 }`,
     response: `{
   "data": [
-    { "id": "cly8x9k...", "title": "Leg day" },
-    { "id": "cly8x8j...", "title": "Push day" },
-    { "id": "cly8x7g...", "title": "Pull day" }
+    { "id": "cly8x9k...", "title": "Hello world" },
+    { "id": "cly8x8j...", "title": "Release notes" },
+    { "id": "cly8x7g...", "title": "Changelog" }
   ],
-  "meta": { "channels": ["workout"], "page": 1, "limit": 10, "total": 3, "last_page": 1 },
+  "meta": { "channels": ["blogPost"], "page": 1, "limit": 10, "total": 3, "last_page": 1 },
   "messages": []
 }`,
     flow: [
       { stage: 'middleware', label: 'tenant resolution', status: 'ok', durationMs: 1 },
       { stage: 'guard', label: 'session', status: 'ok', durationMs: 0 },
-      { stage: 'guard', label: 'capability', status: 'ok', durationMs: 1, detail: { policy: 'canViewAnyWorkout', scope: 'own' } },
+      { stage: 'guard', label: 'capability', status: 'ok', durationMs: 1, detail: { policy: 'canViewAnyBlogPost', scope: 'own' } },
       { stage: 'controller', label: 'parseSearchRequest', status: 'ok', durationMs: 0, detail: { sorts: [{ field: 'createdAt', direction: 'desc' }], page: 1, limit: 10 } },
-      { stage: 'prisma', label: 'workout.findMany + workout.count', status: 'ok', durationMs: 4, detail: { sql: 'SELECT * FROM "Workout" WHERE "ownerId" = $1 ORDER BY "createdAt" DESC LIMIT 10 OFFSET 0', params: ['user_9f8e7d6c'] } },
+      { stage: 'prisma', label: 'blogPost.findMany + blogPost.count', status: 'ok', durationMs: 4, detail: { sql: 'SELECT * FROM "BlogPost" WHERE "ownerId" = $1 ORDER BY "createdAt" DESC LIMIT 10 OFFSET 0', params: ['user_9f8e7d6c'] } },
     ],
   },
   {
     id: 'by-id',
     label: 'Chercher par identifiant',
     method: 'POST',
-    path: '/workouts/search',
-    request: `POST /workouts/search
+    path: '/blog-posts/search',
+    request: `POST /blog-posts/search
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -80,22 +79,22 @@ Content-Type: application/json
 }`,
     response: `{
   "data": [
-    { "id": "cly8x7g9k0000abc123def456", "title": "Leg day" }
+    { "id": "cly8x7g9k0000abc123def456", "title": "Hello world" }
   ],
-  "meta": { "channels": ["workout"], "page": 1, "limit": 15, "total": 1, "last_page": 1 },
+  "meta": { "channels": ["blogPost"], "page": 1, "limit": 15, "total": 1, "last_page": 1 },
   "messages": []
 }`,
     flow: [
       { stage: 'middleware', label: 'tenant resolution', status: 'ok', durationMs: 1 },
       { stage: 'guard', label: 'session', status: 'ok', durationMs: 0 },
-      { stage: 'guard', label: 'capability', status: 'ok', durationMs: 1, detail: { policy: 'canViewAnyWorkout', scope: 'own' } },
+      { stage: 'guard', label: 'capability', status: 'ok', durationMs: 1, detail: { policy: 'canViewAnyBlogPost', scope: 'own' } },
       { stage: 'controller', label: 'parseSearchRequest', status: 'ok', durationMs: 0, detail: { field: 'id', operator: '= (default)', fragment: { equals: 'cly8x7g9k0000abc123def456' } } },
-      { stage: 'prisma', label: 'workout.findMany', status: 'ok', durationMs: 2, detail: { sql: 'SELECT * FROM "Workout" WHERE "ownerId" = $1 AND "id" = $2', params: ['user_9f8e7d6c', 'cly8x7g9k0000abc123def456'] } },
+      { stage: 'prisma', label: 'blogPost.findMany', status: 'ok', durationMs: 2, detail: { sql: 'SELECT * FROM "BlogPost" WHERE "ownerId" = $1 AND "id" = $2', params: ['user_9f8e7d6c', 'cly8x7g9k0000abc123def456'] } },
     ],
   },
 ];
 
-Every generated resource exposes one search route instead of a detail route: there is no `GET /workouts/:id` — asking for one record is a filter on `id` that happens to return a single row, not a separate contract to learn.
+Every generated resource exposes one search route instead of a detail route: there is no `GET /blog-posts/:id` — asking for one record is a filter on `id` that happens to return a single row, not a separate contract to learn.
 
 <EndpointPlayground scenarios={scenarios}>
   <Fragment slot="spec">
@@ -121,14 +120,14 @@ Every generated resource exposes one search route instead of a detail route: the
     ```yaml
     includes:
       - relation: notes
-        resource: WorkoutNote
+        resource: BlogPostNote
         type: hasMany
-        foreignKey: workoutId
+        foreignKey: blogPostId
     aggregates:
       - relation: notes
-        resource: WorkoutNote
+        resource: BlogPostNote
         type: hasMany
-        foreignKey: workoutId
+        foreignKey: blogPostId
     ```
 
     `filters`/`sorts`/`selects` (or `filters`/`fields` for an aggregate) are derived once, at generation time, from the referenced resource's own blueprint — nothing is hand-typed twice. The referenced resource must be declared `routed: false`: it exists only to describe its shape to whoever includes/aggregates it, and gets no controller, no service, no capabilities of its own.
@@ -136,12 +135,12 @@ Every generated resource exposes one search route instead of a detail route: the
     `type` is one of:
 
     - `hasMany` — a real Prisma relation. Needs `foreignKey`.
-    - `morphMany` — a polymorphic relation, which Prisma has no native concept of. Needs `foreignKey`, `discriminator` and `discriminatorValue` (the column and value that mark "this row belongs to a Workout" on the other side).
+    - `morphMany` — a polymorphic relation, which Prisma has no native concept of. Needs `foreignKey`, `discriminator` and `discriminatorValue` (the column and value that mark "this row belongs to a BlogPost" on the other side).
 
     A hasMany `count`/`exists` aggregate resolves through Prisma's own filtered `_count`, in the same query as the page itself — the cheapest path available. Everything else — `avg`/`sum`/`min`/`max` on any relation, or any aggregate at all on a `morphMany` relation, which Prisma cannot express through `include` — resolves as one extra batched query per aggregate (a `groupBy` or `findMany` keyed by the foreign key), never one query per row:
 
     ```
-    POST /workouts/search
+    POST /blog-posts/search
     {
       "includes": [{ "relation": "notes" }, { "relation": "comments" }],
       "aggregates": [
@@ -176,7 +175,7 @@ Every generated resource exposes one search route instead of a detail route: the
     Every field named in a filter, a sort or a select is checked against the resource's own allow-list before it touches the database. Ask for something outside it and you get a 400, not a silently ignored field:
 
     ```
-    POST /workouts/search
+    POST /blog-posts/search
     { "limit": 999 }
     ```
 
@@ -196,7 +195,7 @@ Every generated resource exposes one search route instead of a detail route: the
     ## Response meta
 
     ```json
-    { "meta": { "channels": ["workout"], "page": 1, "limit": 15, "total": 3, "last_page": 1 } }
+    { "meta": { "channels": ["blogPost"], "page": 1, "limit": 15, "total": 3, "last_page": 1 } }
     ```
 
     `channels` is what a live UI subscribes to — see [Realtime](/guides/realtime/) — to know when to refetch, instead of polling. `page`/`limit`/`total`/`last_page` are the real pagination window, not a truncated guess.
@@ -206,7 +205,7 @@ Every generated resource exposes one search route instead of a detail route: the
     Name capabilities in the body and each record grows a `capabilities` object describing what the current caller may do with it — no need to attempt an update just to find out it will fail:
 
     ```
-    POST /workouts/search
+    POST /blog-posts/search
     { "capabilities": ["update"] }
     ```
 
@@ -215,7 +214,7 @@ Every generated resource exposes one search route instead of a detail route: the
       "data": [
         {
           "id": "cly8x7g9k0000abc123def456",
-          "title": "Leg day",
+          "title": "Hello world",
           "capabilities": { "update": { "allowed": true, "scope": "own" } }
         }
       ],
@@ -227,12 +226,12 @@ Every generated resource exposes one search route instead of a detail route: the
   </Fragment>
 
   <Fragment slot="resource">
-    The real generated handler, from `examples/workout/workout.controller.ts` — every resource gets the same shape, only the allow-lists change:
+    The real generated handler, from `examples/blog-post/blog-post.controller.ts` — every resource gets the same shape, only the allow-lists change:
 
     ```ts
     @Post('search')
     @HttpCode(200)
-    @Capability(canViewAnyWorkout)
+    @Capability(canViewAnyBlogPost)
     async search(
       @Req() req: RequestWithUser,
       @Body(new ZodValidationPipe(searchRequestSchema)) body: SearchRequestBody,
@@ -247,13 +246,13 @@ Every generated resource exposes one search route instead of a detail route: the
       const subject = subjectOf(req.user);
 
       if (query.withTrashed || query.onlyTrashed) {
-        const trashedDecision = canListTrashedWorkout(subject);
+        const trashedDecision = canListTrashedBlogPost(subject);
         if (!trashedDecision.allowed) {
           throw new CapabilityForbiddenException(trashedDecision);
         }
       }
 
-      const { records, total } = await this.workouts.search(subject, query);
+      const { records, total } = await this.blogPosts.search(subject, query);
       const capabilities = body.capabilities ?? [];
       const select = query.select;
       const project = (view: Record<string, unknown>) =>
@@ -261,7 +260,7 @@ Every generated resource exposes one search route instead of a detail route: the
           ? Object.fromEntries(Object.entries(view).filter(([key]) => key in select))
           : view;
       const meta = {
-        channels: [WORKOUT_SIGNAL_CHANNEL],
+        channels: [BLOG_POST_SIGNAL_CHANNEL],
         page: query.page,
         limit: query.limit,
         total,
@@ -269,14 +268,14 @@ Every generated resource exposes one search route instead of a detail route: the
       };
 
       if (capabilities.length === 0) {
-        return ok(records.map((record) => project(toWorkoutView(record))), meta);
+        return ok(records.map((record) => project(toBlogPostView(record))), meta);
       }
 
       return ok(
         records.map((record) => {
           const resolved = this.policy.recordCapabilities(subject, record);
           return {
-            ...project(toWorkoutView(record)),
+            ...project(toBlogPostView(record)),
             capabilities: Object.fromEntries(
               Object.entries(resolved).filter(([key]) => capabilities.includes(key)),
             ),

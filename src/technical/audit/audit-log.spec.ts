@@ -27,7 +27,7 @@ describe('writeAuditLog concurrency (real database)', () => {
     await Promise.all([
       writeAuditLog(client, {
         tenantId,
-        model: 'Workout',
+        model: 'BlogPost',
         operation: 'create',
         recordId: 'record-a',
         data: { title: 'a' },
@@ -36,7 +36,7 @@ describe('writeAuditLog concurrency (real database)', () => {
       }),
       writeAuditLog(client, {
         tenantId,
-        model: 'Workout',
+        model: 'BlogPost',
         operation: 'create',
         recordId: 'record-b',
         data: { title: 'b' },

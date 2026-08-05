@@ -2,7 +2,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import type { Prisma } from '@prisma/client';
 import { PrismaClient } from '@prisma/client';
 import { env } from '#technical/config/env';
-import { workoutFactory } from '../examples/workout/workout.factory';
+import { blogPostFactory } from '../examples/blog-post/blog-post.factory';
 
 const DEMO_TENANT_ID = 'demo-tenant';
 const DEMO_EMAIL = 'demo@heryjs.local';
@@ -38,15 +38,15 @@ async function main() {
     data: { tenantId: DEMO_TENANT_ID },
   });
 
-  await prisma.workout.createMany({
-    data: workoutFactory(
+  await prisma.blogPost.createMany({
+    data: blogPostFactory(
       { ownerId: owner.id, tenantId: DEMO_TENANT_ID },
       { count: 3 },
-    ) as unknown as Prisma.WorkoutCreateManyInput[],
+    ) as unknown as Prisma.BlogPostCreateManyInput[],
   });
 
   console.log(
-    `Seeded demo user ${DEMO_EMAIL} (password: ${DEMO_PASSWORD}) with 3 workouts.`,
+    `Seeded demo user ${DEMO_EMAIL} (password: ${DEMO_PASSWORD}) with 3 blog posts.`,
   );
 
   await prisma.$disconnect();

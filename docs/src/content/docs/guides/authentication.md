@@ -39,7 +39,7 @@ From then on, that key is used exactly like a session token:
 
 ```bash
 curl -X POST -H "Authorization: Bearer hery_ak_…" -H "Content-Type: application/json" \
-  -d '{}' https://your-app/workouts/search
+  -d '{}' https://your-app/blog-posts/search
 ```
 
 ### How a key is stored and checked

@@ -8,7 +8,7 @@ description: Read one record, and fetch a resource's full contract — fields, l
 There is no dedicated single-record route — a resource is read the same way it is listed, through [Search](/guides/endpoints/search/), filtered down to one id:
 
 ```
-POST /workouts/search
+POST /blog-posts/search
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -22,13 +22,13 @@ Content-Type: application/json
       "id": "cly8x7g9k0000abc123def456",
       "tenantId": "acme",
       "ownerId": "user_9f8e7d6c",
-      "title": "Leg day",
+      "title": "Hello world",
       "createdAt": "2026-07-31T09:12:03.000Z",
       "updatedAt": "2026-07-31T09:12:03.000Z",
       "deletedAt": null
     }
   ],
-  "meta": { "channels": ["workout"], "page": 1, "limit": 15, "total": 1, "last_page": 1 },
+  "meta": { "channels": ["blogPost"], "page": 1, "limit": 15, "total": 1, "last_page": 1 },
   "messages": []
 }
 ```
@@ -38,7 +38,7 @@ A record that does not exist, is soft-deleted, belongs to another tenant, or tha
 ## The resource's contract
 
 ```
-GET /workouts/describe
+GET /blog-posts/describe
 Authorization: Bearer <token>
 ```
 

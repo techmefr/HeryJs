@@ -7,7 +7,7 @@ import { AppModule } from '#app.module';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 import type { TestUser } from '#devtools/testing/register-and-login';
-import { WorkoutModule } from '../../../examples/workout/workout.module';
+import { BlogPostModule } from '../../../examples/blog-post/blog-post.module';
 import { ImpersonationService } from './impersonation.service';
 
 describe('Impersonation', () => {
@@ -15,7 +15,7 @@ describe('Impersonation', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [AppModule, WorkoutModule],
+      imports: [AppModule, BlogPostModule],
     }).compile();
     app = moduleRef.createNestApplication();
     await app.init();
@@ -149,16 +149,16 @@ describe('Impersonation', () => {
     const { data } = started.body as { data: { token: string } };
 
     const created = await request(app.getHttpServer())
-      .post('/workouts/create')
+      .post('/blog-posts/create')
       .set('Authorization', `Bearer ${data.token}`)
       .send({ data: [{ title: 'title-value' }] })
       .expect(201);
-    const workoutId = (
+    const blogPostId = (
       created.body as { data: { status: string; data: { id: string } }[] }
     ).data[0]!.data.id;
 
     const entry = await authPrismaClient.auditLog.findFirst({
-      where: { model: 'Workout', recordId: workoutId },
+      where: { model: 'BlogPost', recordId: blogPostId },
     });
     expect(entry?.userId).toBe(target.id);
     expect(entry?.impersonatedBy).toBe(admin.id);

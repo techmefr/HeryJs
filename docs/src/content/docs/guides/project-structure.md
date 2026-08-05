@@ -7,7 +7,7 @@ description: The four layers of a HeryJs project, the import rules between them,
 src/
   app.module.ts          the only place the layers are composed
   functional/            business domains
-    workout/
+    blog-post/
   technical/             the kernel — always present
     auth/  capabilities/  teams/  tenancy/  prisma/  errors/  http/
     audit/  config/  describe/  dev-only/  feature-flags/  jobs/

@@ -13,7 +13,7 @@ function delegateWith(overrides: {
   ) => Promise<Record<string, unknown>[]>;
 }): PrismaRelationClient {
   return {
-    workoutNote: {
+    blogPostNote: {
       findMany: overrides.findMany ?? (() => Promise.resolve([])),
       groupBy: overrides.groupBy ?? (() => Promise.resolve([])),
     },
@@ -33,9 +33,9 @@ describe('resolveRelationInstructions', () => {
     const records: Record<string, unknown>[] = [{ id: 'a' }, { id: 'b' }];
     const findMany = jest.fn(() =>
       Promise.resolve([
-        { id: 'n1', workoutId: 'a', body: 'first' },
-        { id: 'n2', workoutId: 'a', body: 'second' },
-        { id: 'n3', workoutId: 'b', body: 'third' },
+        { id: 'n1', blogPostId: 'a', body: 'first' },
+        { id: 'n2', blogPostId: 'a', body: 'second' },
+        { id: 'n3', blogPostId: 'b', body: 'third' },
       ]),
     );
     const instructions: RelationInstruction[] = [
@@ -43,8 +43,8 @@ describe('resolveRelationInstructions', () => {
         kind: 'include',
         relation: 'notes',
         relationType: 'hasMany',
-        foreignKey: 'workoutId',
-        childDelegate: 'workoutNote',
+        foreignKey: 'blogPostId',
+        childDelegate: 'blogPostNote',
       },
     ];
 
@@ -55,14 +55,14 @@ describe('resolveRelationInstructions', () => {
     );
 
     expect(findMany).toHaveBeenCalledWith({
-      where: { workoutId: { in: ['a', 'b'] } },
+      where: { blogPostId: { in: ['a', 'b'] } },
     });
     expect(records[0]!.notes).toEqual([
-      { id: 'n1', workoutId: 'a', body: 'first' },
-      { id: 'n2', workoutId: 'a', body: 'second' },
+      { id: 'n1', blogPostId: 'a', body: 'first' },
+      { id: 'n2', blogPostId: 'a', body: 'second' },
     ]);
     expect(records[1]!.notes).toEqual([
-      { id: 'n3', workoutId: 'b', body: 'third' },
+      { id: 'n3', blogPostId: 'b', body: 'third' },
     ]);
   });
 
@@ -73,8 +73,8 @@ describe('resolveRelationInstructions', () => {
         kind: 'include',
         relation: 'notes',
         relationType: 'hasMany',
-        foreignKey: 'workoutId',
-        childDelegate: 'workoutNote',
+        foreignKey: 'blogPostId',
+        childDelegate: 'blogPostNote',
       },
     ];
 
@@ -93,8 +93,8 @@ describe('resolveRelationInstructions', () => {
         relationType: 'morphMany',
         foreignKey: 'commentableId',
         discriminator: 'commentableType',
-        discriminatorValue: 'Workout',
-        childDelegate: 'workoutNote',
+        discriminatorValue: 'BlogPost',
+        childDelegate: 'blogPostNote',
       },
     ];
 
@@ -107,7 +107,7 @@ describe('resolveRelationInstructions', () => {
     expect(findMany).toHaveBeenCalledWith({
       where: {
         commentableId: { in: ['a'] },
-        commentableType: 'Workout',
+        commentableType: 'BlogPost',
       },
     });
   });
@@ -115,7 +115,7 @@ describe('resolveRelationInstructions', () => {
   it('resolves a count-like aggregate via groupBy and writes the count into _aggregates', async () => {
     const records: Record<string, unknown>[] = [{ id: 'a' }, { id: 'b' }];
     const groupBy = jest.fn(() =>
-      Promise.resolve([{ workoutId: 'a', _count: { _all: 2 } }]),
+      Promise.resolve([{ blogPostId: 'a', _count: { _all: 2 } }]),
     );
     const instructions: RelationInstruction[] = [
       {
@@ -124,8 +124,8 @@ describe('resolveRelationInstructions', () => {
         aggregateKey: 'notes:count',
         aggregateType: 'count',
         relationType: 'hasMany',
-        foreignKey: 'workoutId',
-        childDelegate: 'workoutNote',
+        foreignKey: 'blogPostId',
+        childDelegate: 'blogPostNote',
       },
     ];
 
@@ -136,8 +136,8 @@ describe('resolveRelationInstructions', () => {
     );
 
     expect(groupBy).toHaveBeenCalledWith({
-      by: ['workoutId'],
-      where: { workoutId: { in: ['a', 'b'] } },
+      by: ['blogPostId'],
+      where: { blogPostId: { in: ['a', 'b'] } },
       _count: { _all: true },
     });
     expect(records[0]!._aggregates).toEqual({ 'notes:count': 2 });
@@ -147,7 +147,7 @@ describe('resolveRelationInstructions', () => {
   it('resolves an avg aggregate via groupBy, defaulting a parent with no rows to null', async () => {
     const records: Record<string, unknown>[] = [{ id: 'a' }, { id: 'b' }];
     const groupBy = jest.fn(() =>
-      Promise.resolve([{ workoutId: 'a', _avg: { likes: 4.5 } }]),
+      Promise.resolve([{ blogPostId: 'a', _avg: { likes: 4.5 } }]),
     );
     const instructions: RelationInstruction[] = [
       {
@@ -157,8 +157,8 @@ describe('resolveRelationInstructions', () => {
         aggregateType: 'avg',
         field: 'likes',
         relationType: 'hasMany',
-        foreignKey: 'workoutId',
-        childDelegate: 'workoutNote',
+        foreignKey: 'blogPostId',
+        childDelegate: 'blogPostNote',
       },
     ];
 
@@ -169,8 +169,8 @@ describe('resolveRelationInstructions', () => {
     );
 
     expect(groupBy).toHaveBeenCalledWith({
-      by: ['workoutId'],
-      where: { workoutId: { in: ['a', 'b'] } },
+      by: ['blogPostId'],
+      where: { blogPostId: { in: ['a', 'b'] } },
       _avg: { likes: true },
     });
     expect(records[0]!._aggregates).toEqual({ 'notes:avg': 4.5 });
@@ -185,7 +185,7 @@ describe('resolveRelationInstructions', () => {
         aggregateKey: 'notes:count',
         aggregateType: 'count',
         relationType: 'hasMany',
-        foreignKey: 'workoutId',
+        foreignKey: 'blogPostId',
         childDelegate: 'doesNotExist',
       },
     ];

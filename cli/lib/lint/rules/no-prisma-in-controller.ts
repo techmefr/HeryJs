@@ -11,7 +11,7 @@ import type { LintRule, Violation } from '../types';
 // to delegate to and nothing to leak a security decision into.
 const ROOTS = ['src/functional', 'examples'];
 
-// A type-only import of a Prisma model (`import type { Workout } from
+// A type-only import of a Prisma model (`import type { BlogPost } from
 // '@prisma/client'`) is not a leak -- it names a shape, the same way the view
 // and the service already do, and carries no query capability with it. Only
 // a value import of the client or its runtime namespace does.

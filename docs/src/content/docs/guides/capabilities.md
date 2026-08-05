@@ -20,8 +20,8 @@ The `team` preset resolves against a `teamId` column, which the generator adds f
 
 ## Two levels: collection and record
 
-- **Collection-level** (`resolveCollectionCapability`) answers questions like "can this user create a Workout at all," where there is no specific record to check against yet.
-- **Record-level** (`resolveCapability`) answers "can this user update *this* Workout," given the record.
+- **Collection-level** (`resolveCollectionCapability`) answers questions like "can this user create a BlogPost at all," where there is no specific record to check against yet.
+- **Record-level** (`resolveCapability`) answers "can this user update *this* BlogPost," given the record.
 
 ## The subject
 
@@ -82,16 +82,16 @@ Listing soft-deleted rows follows the `delete` preset instead of the read one (`
 A controller route declares its policy as a plain, exported function — not a class method:
 
 ```ts
-export const canUpdateWorkout: PolicyCheck<WorkoutRecordLike> = (subject, record) =>
+export const canUpdateBlogPost: PolicyCheck<BlogPostRecordLike> = (subject, record) =>
   record ? resolveCapability('own', subject, record) : { allowed: false };
 ```
 
 ```ts
 @Patch(':id')
-@Capability(canUpdateWorkout)
-@LoadRecordWith(WORKOUT_RECORD_LOADER)
-async update(@Req() req: RequestWithWorkout, @Body() body: UpdateWorkoutInput) {
-  return ok(await this.workouts.update(req.record, body));
+@Capability(canUpdateBlogPost)
+@LoadRecordWith(BLOG_POST_RECORD_LOADER)
+async update(@Req() req: RequestWithBlogPost, @Body() body: UpdateBlogPostInput) {
+  return ok(await this.blogPosts.update(req.record, body));
 }
 ```
 
@@ -99,7 +99,7 @@ async update(@Req() req: RequestWithWorkout, @Body() body: UpdateWorkoutInput) {
 
 Policy functions are plain functions rather than injected class methods on purpose: a decorator is evaluated at import time, before Nest's dependency injection has run, so anything it references has to already exist independently of the DI container.
 
-Being plain functions has a second payoff. `CapabilitiesGuard` only works for HTTP — it reaches for the request through `switchToHttp()`. A GraphQL resolver, a WebSocket event handler and an MCP tool call cannot use the guard, but they can all call `canUpdateWorkout(subject, record)` directly, which is exactly what they do. One set of rules, several protocols, no second permission model.
+Being plain functions has a second payoff. `CapabilitiesGuard` only works for HTTP — it reaches for the request through `switchToHttp()`. A GraphQL resolver, a WebSocket event handler and an MCP tool call cannot use the guard, but they can all call `canUpdateBlogPost(subject, record)` directly, which is exactly what they do. One set of rules, several protocols, no second permission model.
 
 ## Enforced in CI
 

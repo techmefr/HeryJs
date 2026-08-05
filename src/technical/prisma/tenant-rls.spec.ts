@@ -3,7 +3,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import { env } from '#technical/config/env';
 
-describe('row-level security on Workout (opt-in, real database)', () => {
+describe('row-level security on BlogPost (opt-in, real database)', () => {
   const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
   const superuserClient = new PrismaClient({ adapter });
 
@@ -11,7 +11,7 @@ describe('row-level security on Workout (opt-in, real database)', () => {
   const tenantA = `tenant-a-${randomUUID()}`;
   const tenantB = `tenant-b-${randomUUID()}`;
   let ownerId: string;
-  let tenantBWorkoutId: string;
+  let tenantBBlogPostId: string;
   let restrictedClient: PrismaClient;
 
   beforeAll(async () => {
@@ -22,13 +22,13 @@ describe('row-level security on Workout (opt-in, real database)', () => {
     });
     ownerId = owner.id;
 
-    await superuserClient.workout.create({
-      data: { title: 'tenant A workout', ownerId, tenantId: tenantA },
+    await superuserClient.blogPost.create({
+      data: { title: 'tenant A blogPost', ownerId, tenantId: tenantA },
     });
-    const tenantBWorkout = await superuserClient.workout.create({
-      data: { title: 'tenant B workout', ownerId, tenantId: tenantB },
+    const tenantBBlogPost = await superuserClient.blogPost.create({
+      data: { title: 'tenant B blogPost', ownerId, tenantId: tenantB },
     });
-    tenantBWorkoutId = tenantBWorkout.id;
+    tenantBBlogPostId = tenantBBlogPost.id;
 
     await superuserClient.$executeRawUnsafe(
       `CREATE ROLE "${roleName}" LOGIN PASSWORD 'test' NOSUPERUSER NOBYPASSRLS`,
@@ -37,7 +37,7 @@ describe('row-level security on Workout (opt-in, real database)', () => {
       `GRANT USAGE ON SCHEMA public TO "${roleName}"`,
     );
     await superuserClient.$executeRawUnsafe(
-      `GRANT SELECT, INSERT, UPDATE, DELETE ON "Workout" TO "${roleName}"`,
+      `GRANT SELECT, INSERT, UPDATE, DELETE ON "BlogPost" TO "${roleName}"`,
     );
 
     const restrictedUrl = new URL(env.DATABASE_URL);
@@ -52,10 +52,10 @@ describe('row-level security on Workout (opt-in, real database)', () => {
 
   afterAll(async () => {
     await restrictedClient.$disconnect();
-    await superuserClient.workout.deleteMany({ where: { ownerId } });
+    await superuserClient.blogPost.deleteMany({ where: { ownerId } });
     await superuserClient.user.delete({ where: { id: ownerId } });
     await superuserClient.$executeRawUnsafe(
-      `REVOKE ALL ON "Workout" FROM "${roleName}"`,
+      `REVOKE ALL ON "BlogPost" FROM "${roleName}"`,
     );
     await superuserClient.$executeRawUnsafe(
       `REVOKE ALL ON SCHEMA public FROM "${roleName}"`,
@@ -65,7 +65,7 @@ describe('row-level security on Workout (opt-in, real database)', () => {
   });
 
   it('hides every row from a restricted role that never sets the tenant session variable', async () => {
-    const rows = await restrictedClient.workout.findMany({
+    const rows = await restrictedClient.blogPost.findMany({
       where: { ownerId },
     });
 
@@ -76,7 +76,7 @@ describe('row-level security on Workout (opt-in, real database)', () => {
     await restrictedClient.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantA}, true)`;
 
-      const rows = await tx.workout.findMany({ where: { ownerId } });
+      const rows = await tx.blogPost.findMany({ where: { ownerId } });
 
       expect(rows).toHaveLength(1);
       expect(rows[0]?.tenantId).toBe(tenantA);
@@ -85,7 +85,7 @@ describe('row-level security on Workout (opt-in, real database)', () => {
     await restrictedClient.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantB}, true)`;
 
-      const rows = await tx.workout.findMany({ where: { ownerId } });
+      const rows = await tx.blogPost.findMany({ where: { ownerId } });
 
       expect(rows).toHaveLength(1);
       expect(rows[0]?.tenantId).toBe(tenantB);
@@ -97,8 +97,8 @@ describe('row-level security on Workout (opt-in, real database)', () => {
       restrictedClient.$transaction(async (tx) => {
         await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantA}, true)`;
 
-        return tx.workout.update({
-          where: { id: tenantBWorkoutId },
+        return tx.blogPost.update({
+          where: { id: tenantBBlogPostId },
           data: { title: 'smuggled update' },
         });
       }),

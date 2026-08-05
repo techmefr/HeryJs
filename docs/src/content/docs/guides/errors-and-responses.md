@@ -52,7 +52,7 @@ Successful responses share the same shape on the way out, and `ok()` is overload
 ```ts
 ok(record)                                  // { data, messages: [] }
 ok(record, ['Team created.'])               // { data, messages }
-ok(records, { channels: ['workout'] })      // { data, meta, messages: [] }
+ok(records, { channels: ['blogPost'] })     // { data, meta, messages: [] }
 ok(records, { currentTeamId }, ['Saved.'])  // all three
 ```
 

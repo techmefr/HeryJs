@@ -30,8 +30,8 @@ describe('audit logging under RLS_ENABLED=true (real database)', () => {
   });
 
   afterAll(async () => {
-    await rawClient.workout.deleteMany({ where: { ownerId } });
-    await rawClient.auditLog.deleteMany({ where: { model: 'Workout' } });
+    await rawClient.blogPost.deleteMany({ where: { ownerId } });
+    await rawClient.auditLog.deleteMany({ where: { model: 'BlogPost' } });
     await rawClient.user.delete({ where: { id: ownerId } });
     await rawClient.$disconnect();
 
@@ -72,19 +72,19 @@ describe('audit logging under RLS_ENABLED=true (real database)', () => {
 
     const tenantId = `tenant-rls-audit-${randomUUID()}`;
 
-    const workout = await TenantContextStorage.run({ tenantId }, async () => {
-      return scopedClient.workout.create({
+    const blogPost = await TenantContextStorage.run({ tenantId }, async () => {
+      return scopedClient.blogPost.create({
         data: {
           title: 'audited under RLS',
           ownerId,
-        } as Prisma.WorkoutUncheckedCreateInput,
+        } as Prisma.BlogPostUncheckedCreateInput,
       });
     });
 
     await scopedClient.$disconnect();
 
     const entries = await rawClient.auditLog.findMany({
-      where: { tenantId, model: 'Workout', recordId: workout.id },
+      where: { tenantId, model: 'BlogPost', recordId: blogPost.id },
     });
 
     expect(entries).toHaveLength(1);

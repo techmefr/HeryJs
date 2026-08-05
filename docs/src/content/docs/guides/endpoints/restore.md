@@ -4,7 +4,7 @@ description: Undoing a soft-delete — what to call, and what comes back.
 ---
 
 ```
-POST /workouts/restore
+POST /blog-posts/restore
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -22,7 +22,7 @@ Content-Type: application/json
       "status": "ok",
       "data": {
         "id": "cly8x7g9k0000abc123def456",
-        "title": "Leg day",
+        "title": "Hello world",
         "deletedAt": null
       }
     }
@@ -36,5 +36,5 @@ A record that was never deleted, or one you don't have `delete` on, answers `err
 An optional `patch` reapplies a short, scoped update in the same call, reusing the resource's own update field whitelist rather than a second round trip:
 
 ```json
-{ "ids": ["cly8x7g9k0000abc123def456"], "patch": { "title": "Leg day (restored)" } }
+{ "ids": ["cly8x7g9k0000abc123def456"], "patch": { "title": "Hello world (restored)" } }
 ```

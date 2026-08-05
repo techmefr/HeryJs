@@ -1,6 +1,6 @@
 # Examples
 
-`workout/` is a reference resource. It is not part of the application: `app.module.ts`
+`blog-post/` is a reference resource. It is not part of the application: `app.module.ts`
 does not import it and `tsconfig.build.json` excludes it, so nothing here ships. It
 exists to be read, and to be the thing the framework's own tests exercise when they
 need a real resource with real routes.
@@ -17,11 +17,11 @@ preset. Read as a showcase, it advertised a weaker framework than the one that e
 
 ## It is generated, not maintained
 
-`workout.yaml` is the blueprint, and everything except the two files named below is
+`blog-post.yaml` is the blueprint, and everything except the two files named below is
 regenerated from it:
 
 ```
-pnpm hery generate examples/workout.yaml --force
+pnpm hery generate examples/blog-post.yaml --force
 ```
 
 `pnpm lint:example` then asserts that what is committed is byte-for-byte what the
@@ -36,12 +36,12 @@ example is stale; regenerate and commit.
 
 ## The one hand-owned file
 
-`workout.seeder.ts` is not something `hery generate` produces at all. It lives here
+`blog-post.seeder.ts` is not something `hery generate` produces at all. It lives here
 rather than in `technical/` because a seeder for a domain is part of that domain, and
 putting it in shared infrastructure would make infrastructure depend on a business
 model — which the architecture linter refuses.
 
-`workout.spec.ts` used to be hand-owned too: it started from the generated spec and
+`blog-post.spec.ts` used to be hand-owned too: it started from the generated spec and
 added four proofs the template didn't write — collection scope parity, the trashed
 bin, resolved capabilities on a list, and tenant spoofing through a client-supplied
 header. The generator now writes all four itself, so the spec is generated like

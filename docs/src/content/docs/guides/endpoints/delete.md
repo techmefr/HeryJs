@@ -4,7 +4,7 @@ description: Soft-deleting a record — what changes, what a client sees afterwa
 ---
 
 ```
-POST /workouts/delete
+POST /blog-posts/delete
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -22,7 +22,7 @@ Content-Type: application/json
       "status": "ok",
       "data": {
         "id": "cly8x7g9k0000abc123def456",
-        "title": "Leg day",
+        "title": "Hello world",
         "deletedAt": "2026-07-31T09:20:11.000Z"
       }
     }
@@ -38,7 +38,7 @@ To undo this, see [Restore](/guides/endpoints/restore/).
 ## Hard delete
 
 ```
-POST /workouts/delete
+POST /blog-posts/delete
 Authorization: Bearer <token>
 Content-Type: application/json
 

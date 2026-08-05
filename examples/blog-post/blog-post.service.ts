@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import type { Prisma, Workout } from '@prisma/client';
+import type { Prisma, BlogPost } from '@prisma/client';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import { CapabilitySubject } from '#technical/capabilities/capabilities.types';
@@ -15,15 +15,15 @@ import type { RelationInstruction } from '#technical/http/list-query';
 import { applyRelationMutation } from '#technical/http/relation-mutations';
 import type { PivotDelegate } from '#technical/http/relation-mutations';
 import {
-  CreateWorkoutInput,
+  CreateBlogPostInput,
   RelationMutationInput,
-  UpdateWorkoutInput,
-} from './workout.dto';
+  UpdateBlogPostInput,
+} from './blog-post.dto';
 
 const SEARCHABLE_FIELDS = ['title'] as const;
-const SEARCH_COLLECTION = 'workout';
+const SEARCH_COLLECTION = 'blog-post';
 
-export interface WorkoutSearchOptions {
+export interface BlogPostSearchOptions {
   withTrashed?: boolean;
   onlyTrashed?: boolean;
   sorts?: { field: string; direction: 'asc' | 'desc' }[];
@@ -36,11 +36,11 @@ export interface WorkoutSearchOptions {
   limit?: number;
 }
 
-export const WORKOUT_SIGNAL_CHANNEL = 'workout';
+export const BLOG_POST_SIGNAL_CHANNEL = 'blogPost';
 
 @Injectable()
-export class WorkoutService {
-  private readonly logger = new Logger(WorkoutService.name);
+export class BlogPostService {
+  private readonly logger = new Logger(BlogPostService.name);
 
   constructor(
     @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,
@@ -50,7 +50,7 @@ export class WorkoutService {
 
   private notify() {
     void this.signal.publish(
-      `${TenantContextStorage.getTenantId()}:${WORKOUT_SIGNAL_CHANNEL}`,
+      `${TenantContextStorage.getTenantId()}:${BLOG_POST_SIGNAL_CHANNEL}`,
     );
   }
 
@@ -62,7 +62,7 @@ export class WorkoutService {
   // not just one -- search[engine] lets a later request read through any of
   // them, so a write has to reach all of them, and one engine being down
   // must not stop the others from getting the update.
-  private async syncSearchIndex(record: Workout) {
+  private async syncSearchIndex(record: BlogPost) {
     if (record.deletedAt) {
       await this.removeFromSearchIndex(record.id, record.tenantId);
       return;
@@ -102,7 +102,10 @@ export class WorkoutService {
     }
   }
 
-  async search(subject: CapabilitySubject, options: WorkoutSearchOptions = {}) {
+  async search(
+    subject: CapabilitySubject,
+    options: BlogPostSearchOptions = {},
+  ) {
     const trashedWhere = options.onlyTrashed
       ? { deletedAt: { not: null } }
       : options.withTrashed
@@ -141,7 +144,7 @@ export class WorkoutService {
     const limit = options.limit;
 
     const [records, total] = await Promise.all([
-      this.prisma.workout.findMany({
+      this.prisma.blogPost.findMany({
         where,
         orderBy:
           options.sorts && options.sorts.length > 0
@@ -149,9 +152,9 @@ export class WorkoutService {
             : { createdAt: 'desc' },
         skip: limit ? (page - 1) * limit : undefined,
         take: limit,
-        include: options.include as Prisma.WorkoutInclude | undefined,
+        include: options.include as Prisma.BlogPostInclude | undefined,
       }),
-      this.prisma.workout.count({ where }),
+      this.prisma.blogPost.count({ where }),
     ]);
 
     await resolveRelationInstructions(
@@ -163,21 +166,21 @@ export class WorkoutService {
     return { records, total };
   }
 
-  async create(subject: CapabilitySubject, data: CreateWorkoutInput) {
-    const record = await this.prisma.workout.create({
+  async create(subject: CapabilitySubject, data: CreateBlogPostInput) {
+    const record = await this.prisma.blogPost.create({
       // tenantId is injected by the tenant-scoping Prisma extension, invisible to callers by design.
       data: {
         ...data,
         ownerId: subject.id,
-      } as unknown as Prisma.WorkoutCreateInput,
+      } as unknown as Prisma.BlogPostCreateInput,
     });
     this.notify();
     await this.syncSearchIndex(record);
     return record;
   }
 
-  async update(record: Workout, data: UpdateWorkoutInput) {
-    const updated = await this.prisma.workout.update({
+  async update(record: BlogPost, data: UpdateBlogPostInput) {
+    const updated = await this.prisma.blogPost.update({
       where: { id: record.id },
       data,
     });
@@ -186,18 +189,18 @@ export class WorkoutService {
     return updated;
   }
 
-  async syncTags(record: Workout, input: RelationMutationInput) {
+  async syncTags(record: BlogPost, input: RelationMutationInput) {
     return applyRelationMutation(
-      this.prisma.workoutTag as unknown as PivotDelegate,
-      'workoutId',
+      this.prisma.blogPostTag as unknown as PivotDelegate,
+      'blogPostId',
       'tagId',
       record.id,
       input,
     );
   }
 
-  async softDelete(record: Workout) {
-    const updated = await this.prisma.workout.update({
+  async softDelete(record: BlogPost) {
+    const updated = await this.prisma.blogPost.update({
       where: { id: record.id },
       data: { deletedAt: new Date() },
     });
@@ -206,8 +209,8 @@ export class WorkoutService {
     return updated;
   }
 
-  async restore(record: Workout, patch?: UpdateWorkoutInput) {
-    const updated = await this.prisma.workout.update({
+  async restore(record: BlogPost, patch?: UpdateBlogPostInput) {
+    const updated = await this.prisma.blogPost.update({
       where: { id: record.id },
       data: { ...patch, deletedAt: null },
     });
@@ -220,8 +223,8 @@ export class WorkoutService {
   // and is reached only once the caller already holds the separate hard-delete
   // capability. Runs on the same tenant-scoped client as every other write, so
   // the audit extension records it exactly like any other audited delete.
-  async hardDelete(record: Workout) {
-    await this.prisma.workout.delete({ where: { id: record.id } });
+  async hardDelete(record: BlogPost) {
+    await this.prisma.blogPost.delete({ where: { id: record.id } });
     this.notify();
     await this.removeFromSearchIndex(record.id, record.tenantId);
   }
@@ -233,17 +236,17 @@ export class WorkoutService {
   // after-the-fact extension, because a purge is exactly the operation an
   // audit trail exists to prove happened even if the write that follows it
   // never completes.
-  async purge(record: Workout) {
+  async purge(record: BlogPost) {
     await writeAuditLog(authPrismaClient, {
       tenantId: record.tenantId,
-      model: 'Workout',
+      model: 'BlogPost',
       operation: 'purge',
       recordId: record.id,
       data: {},
       userId: TenantContextStorage.getUserId(),
       impersonatedBy: TenantContextStorage.getImpersonatedBy(),
     });
-    await authPrismaClient.workout.delete({ where: { id: record.id } });
+    await authPrismaClient.blogPost.delete({ where: { id: record.id } });
     this.notify();
     await this.removeFromSearchIndex(record.id, record.tenantId);
   }

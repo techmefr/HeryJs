@@ -1,10 +1,17 @@
-import { camelCase, kebabCase, pascalCase, pluralize } from './naming';
+import {
+  camelCase,
+  kebabCase,
+  pascalCase,
+  pluralize,
+  screamingSnakeCase,
+} from './naming';
 import type { Blueprint } from './blueprint';
 
 export interface ResourceContext {
   pascalName: string;
   camelName: string;
   kebabName: string;
+  screamingSnakeName: string;
   pluralCamelName: string;
   pluralKebabName: string;
   fields: Blueprint['fields'];
@@ -25,6 +32,7 @@ export function buildResourceContext(blueprint: Blueprint): ResourceContext {
     pascalName,
     camelName,
     kebabName: kebabCase(pascalName),
+    screamingSnakeName: screamingSnakeCase(pascalName),
     pluralCamelName: pluralize(camelName),
     pluralKebabName: pluralize(kebabCase(pascalName)),
     fields: blueprint.fields,

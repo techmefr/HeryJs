@@ -8,8 +8,8 @@ import {
   TenantScopedPrismaClient,
 } from './prisma.client';
 
-type WorkoutInputWithoutTenantId = Omit<
-  Prisma.WorkoutUncheckedCreateInput,
+type BlogPostInputWithoutTenantId = Omit<
+  Prisma.BlogPostUncheckedCreateInput,
   'tenantId'
 >;
 
@@ -27,9 +27,9 @@ describe('tenant-scoped Prisma client (real database)', () => {
    * scoping extension is that callers never supply one. Widening happens once
    * here so every field the tests do pass stays type-checked.
    */
-  const createWorkout = (data: WorkoutInputWithoutTenantId) =>
-    scopedClient.workout.create({
-      data: data as Prisma.WorkoutUncheckedCreateInput,
+  const createBlogPost = (data: BlogPostInputWithoutTenantId) =>
+    scopedClient.blogPost.create({
+      data: data as Prisma.BlogPostUncheckedCreateInput,
     });
 
   beforeAll(async () => {
@@ -46,7 +46,7 @@ describe('tenant-scoped Prisma client (real database)', () => {
   });
 
   afterAll(async () => {
-    await rawClient.workout.deleteMany({ where: { ownerId } });
+    await rawClient.blogPost.deleteMany({ where: { ownerId } });
     await rawClient.user.delete({ where: { id: ownerId } });
     await rawClient.$disconnect();
     await scopedClient.$disconnect();
@@ -54,39 +54,39 @@ describe('tenant-scoped Prisma client (real database)', () => {
 
   it('injects the current tenant id on create without the caller passing it', async () => {
     await TenantContextStorage.run({ tenantId: tenantA }, async () => {
-      await createWorkout({ title: 'from tenant A', ownerId });
+      await createBlogPost({ title: 'from tenant A', ownerId });
     });
 
-    const stored = await rawClient.workout.findMany({ where: { ownerId } });
+    const stored = await rawClient.blogPost.findMany({ where: { ownerId } });
     expect(stored).toHaveLength(1);
     expect(stored[0]?.tenantId).toBe(tenantA);
   });
 
   it('never lets tenant B read a record created under tenant A', async () => {
     await TenantContextStorage.run({ tenantId: tenantA }, async () => {
-      await createWorkout({ title: 'still tenant A', ownerId });
+      await createBlogPost({ title: 'still tenant A', ownerId });
     });
     await TenantContextStorage.run({ tenantId: tenantB }, async () => {
-      await createWorkout({ title: 'tenant B', ownerId });
+      await createBlogPost({ title: 'tenant B', ownerId });
     });
 
     const asTenantA = await TenantContextStorage.run(
       { tenantId: tenantA },
       async () => {
-        return await scopedClient.workout.findMany({});
+        return await scopedClient.blogPost.findMany({});
       },
     );
     const asTenantB = await TenantContextStorage.run(
       { tenantId: tenantB },
       async () => {
-        return await scopedClient.workout.findMany({});
+        return await scopedClient.blogPost.findMany({});
       },
     );
 
-    expect(asTenantA.every((workout) => workout.tenantId === tenantA)).toBe(
+    expect(asTenantA.every((blogPost) => blogPost.tenantId === tenantA)).toBe(
       true,
     );
-    expect(asTenantB.every((workout) => workout.tenantId === tenantB)).toBe(
+    expect(asTenantB.every((blogPost) => blogPost.tenantId === tenantB)).toBe(
       true,
     );
     expect(asTenantA).toHaveLength(2);

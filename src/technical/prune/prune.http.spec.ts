@@ -8,7 +8,7 @@ import {
   registerAndLogin,
   type TestUser,
 } from '#devtools/testing/register-and-login';
-import { WorkoutModule } from '../../../examples/workout/workout.module';
+import { BlogPostModule } from '../../../examples/blog-post/blog-post.module';
 
 interface PruneStatus {
   model: string;
@@ -24,7 +24,7 @@ describe('prune', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [AppModule, WorkoutModule],
+      imports: [AppModule, BlogPostModule],
     }).compile();
     app = moduleRef.createNestApplication();
     await app.init();
@@ -50,12 +50,12 @@ describe('prune', () => {
       .expect(403);
 
     await request(app.getHttpServer())
-      .post('/prune/Workout/run')
+      .post('/prune/BlogPost/run')
       .set('Authorization', `Bearer ${userToken}`)
       .expect(403);
   });
 
-  it("lists Workout with the project's configured retention", async () => {
+  it("lists BlogPost with the project's configured retention", async () => {
     const response = await request(app.getHttpServer())
       .post('/prune/status')
       .set('Authorization', `Bearer ${adminToken}`)
@@ -64,7 +64,7 @@ describe('prune', () => {
     const status = (response.body as { data: PruneStatus[] }).data;
 
     expect(status).toContainEqual({
-      model: 'Workout',
+      model: 'BlogPost',
       retentionDays: 30,
       lock: false,
     });
@@ -80,7 +80,7 @@ describe('prune', () => {
   it('hard-deletes rows soft-deleted longer ago than the retention window, and leaves recent ones alone', async () => {
     const create = (title: string) =>
       request(app.getHttpServer())
-        .post('/workouts/create')
+        .post('/blog-posts/create')
         .set('Authorization', `Bearer ${userToken}`)
         .send({ data: [{ title }] })
         .expect(201)
@@ -99,17 +99,17 @@ describe('prune', () => {
     const overdue = new Date();
     overdue.setDate(overdue.getDate() - 31);
 
-    await authPrismaClient.workout.update({
+    await authPrismaClient.blogPost.update({
       where: { id: overdueId },
       data: { deletedAt: overdue },
     });
-    await authPrismaClient.workout.update({
+    await authPrismaClient.blogPost.update({
       where: { id: recentId },
       data: { deletedAt: new Date() },
     });
 
     const response = await request(app.getHttpServer())
-      .post('/prune/Workout/run')
+      .post('/prune/BlogPost/run')
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(201);
 
@@ -117,14 +117,14 @@ describe('prune', () => {
     expect(result.deletedCount).toBeGreaterThanOrEqual(1);
 
     expect(
-      await authPrismaClient.workout.findUnique({ where: { id: overdueId } }),
+      await authPrismaClient.blogPost.findUnique({ where: { id: overdueId } }),
     ).toBeNull();
     expect(
-      await authPrismaClient.workout.findUnique({ where: { id: recentId } }),
+      await authPrismaClient.blogPost.findUnique({ where: { id: recentId } }),
     ).not.toBeNull();
 
     const entry = await authPrismaClient.auditLog.findFirst({
-      where: { tenantId: 'default', model: 'Workout', operation: 'prune' },
+      where: { tenantId: 'default', model: 'BlogPost', operation: 'prune' },
       orderBy: { createdAt: 'desc' },
     });
 

@@ -3,7 +3,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
-import { WorkoutModule } from '../../../examples/workout/workout.module';
+import { BlogPostModule } from '../../../examples/blog-post/blog-post.module';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 
 interface TraceStep {
@@ -25,7 +25,7 @@ describe('pipeline trace', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [AppModule, WorkoutModule],
+      imports: [AppModule, BlogPostModule],
     }).compile();
     app = moduleRef.createNestApplication();
     await app.init();
@@ -39,7 +39,7 @@ describe('pipeline trace', () => {
     const { token } = await registerAndLogin(app);
 
     await request(app.getHttpServer())
-      .post('/workouts/search')
+      .post('/blog-posts/search')
       .set('Authorization', `Bearer ${token}`)
       .send({})
       .expect(200);
@@ -52,7 +52,7 @@ describe('pipeline trace', () => {
     const traces = (response.body as { data: TraceRecord[] }).data;
     const trace = traces.find(
       (candidate) =>
-        candidate.path === '/workouts/search' && candidate.status === 200,
+        candidate.path === '/blog-posts/search' && candidate.status === 200,
     );
 
     expect(trace).toBeDefined();
@@ -78,7 +78,7 @@ describe('pipeline trace', () => {
   });
 
   it('marks the guard step that blocked a rejected request', async () => {
-    await request(app.getHttpServer()).get('/workouts/describe').expect(401);
+    await request(app.getHttpServer()).get('/blog-posts/describe').expect(401);
 
     const { token } = await registerAndLogin(app);
     const response = await request(app.getHttpServer())
@@ -89,7 +89,7 @@ describe('pipeline trace', () => {
     const traces = (response.body as { data: TraceRecord[] }).data;
     const trace = traces.find(
       (candidate) =>
-        candidate.path === '/workouts/describe' && candidate.status === 401,
+        candidate.path === '/blog-posts/describe' && candidate.status === 401,
     );
 
     expect(trace).toBeDefined();
