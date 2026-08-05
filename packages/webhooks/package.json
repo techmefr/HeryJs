@@ -1,0 +1,14 @@
+{
+  "name": "webhooks",
+  "private": true,
+  "version": "0.0.1",
+  "devDependencies": {
+    "@nestjs/bullmq": "^11.0.4",
+    "@nestjs/common": "^11.0.1",
+    "@types/express": "^5.0.0",
+    "bullmq": "^5.81.2",
+    "picocolors": "^1.1.1",
+    "typescript": "^5.7.3",
+    "zod": "^4.4.3"
+  }
+}
