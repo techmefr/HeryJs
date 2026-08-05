@@ -1,0 +1,14 @@
+name: Tag
+routed: false
+
+fields:
+  - name: name
+    type: string
+  - name: createdAt
+    type: datetime
+
+sorts:
+  - createdAt
+
+filters:
+  - name

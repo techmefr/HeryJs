@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import * as yaml from 'js-yaml';
 import { z } from 'zod';
-import { kebabCase } from './naming';
+import { camelCase, kebabCase } from './naming';
 
 export const permissionPresetSchema = z.enum(['own', 'team', 'all', 'none']);
 
@@ -45,6 +45,23 @@ export const blueprintRelationLinkSchema = z
 
 export type BlueprintRelationLink = z.infer<typeof blueprintRelationLinkSchema>;
 
+// belongsToMany is the one relation shape hasMany/morphMany cannot express:
+// neither side owns the other, so attaching or detaching never touches the
+// related row itself, only a row in the pivot table -- foreignKey/relatedKey
+// are that pivot's two columns, pointing at this resource and the referenced
+// one respectively.
+export const blueprintMutableRelationSchema = z.object({
+  relation: fieldNameSchema,
+  resource: resourceNameSchema,
+  pivotTable: resourceNameSchema,
+  foreignKey: fieldNameSchema,
+  relatedKey: fieldNameSchema,
+});
+
+export type BlueprintMutableRelation = z.infer<
+  typeof blueprintMutableRelationSchema
+>;
+
 export const blueprintSchema = z.object({
   name: z.string().regex(/^[A-Z][a-zA-Z0-9]*$/),
   // A resource the generator never routes: no controller, no service, no
@@ -74,6 +91,7 @@ export const blueprintSchema = z.object({
   filters: z.array(z.string().regex(/^[a-z][a-zA-Z0-9]*$/)).default([]),
   includes: z.array(blueprintRelationLinkSchema).default([]),
   aggregates: z.array(blueprintRelationLinkSchema).default([]),
+  relations: z.array(blueprintMutableRelationSchema).default([]),
 });
 
 type RawBlueprint = z.infer<typeof blueprintSchema>;
@@ -94,15 +112,28 @@ export interface ResolvedAggregate extends BlueprintRelationLink {
   fields: readonly string[];
 }
 
+// Resolved the same way includes/aggregates derive childDelegate from the
+// referenced resource's name -- pivotDelegate is the Prisma model name for
+// pivotTable, camelCased the same way Prisma's own generated client property
+// names are.
+export interface ResolvedMutableRelation extends BlueprintMutableRelation {
+  childDelegate: string;
+  pivotDelegate: string;
+  // The referenced resource's required fields, so a generated spec can seed a
+  // row to attach without knowing anything about that resource beyond its name.
+  childRequiredFields: BlueprintField[];
+}
+
 export type PermissionPreset = z.infer<typeof permissionPresetSchema>;
 export type BlueprintField = z.infer<typeof blueprintFieldSchema>;
 
 export interface Blueprint extends Omit<
   RawBlueprint,
-  'includes' | 'aggregates'
+  'includes' | 'aggregates' | 'relations'
 > {
   includes: ResolvedInclude[];
   aggregates: ResolvedAggregate[];
+  relations: ResolvedMutableRelation[];
 }
 
 // Columns the generator owns. A blueprint declaring one of them would put a
@@ -191,6 +222,7 @@ function assertRelationsAreUnique(
   for (const [kind, entries] of [
     ['include', blueprint.includes.map((entry) => entry.relation)],
     ['aggregate', blueprint.aggregates.map((entry) => entry.relation)],
+    ['relation', blueprint.relations.map((entry) => entry.relation)],
   ] as const) {
     const seen = new Set<string>();
 
@@ -299,6 +331,30 @@ function resolveRelationLinks(
   return { includes, aggregates };
 }
 
+function resolveMutableRelations(
+  blueprint: RawBlueprint,
+  dir: string,
+  problems: string[],
+): ResolvedMutableRelation[] {
+  const relations: ResolvedMutableRelation[] = [];
+
+  for (const link of blueprint.relations) {
+    const referenced = loadReferencedBlueprint(link.resource, dir, problems);
+    if (!referenced) {
+      continue;
+    }
+
+    relations.push({
+      ...link,
+      childDelegate: camelCase(link.resource),
+      pivotDelegate: camelCase(link.pivotTable),
+      childRequiredFields: referenced.fields.filter((field) => !field.optional),
+    });
+  }
+
+  return relations;
+}
+
 export function loadBlueprint(filePath: string): Blueprint {
   const raw = yaml.load(readFileSync(filePath, 'utf8'));
   const blueprint = blueprintSchema.parse(raw);
@@ -315,6 +371,11 @@ export function loadBlueprint(filePath: string): Blueprint {
     path.dirname(filePath),
     problems,
   );
+  const relations = resolveMutableRelations(
+    blueprint,
+    path.dirname(filePath),
+    problems,
+  );
 
   if (problems.length > 0) {
     throw new Error(
@@ -322,5 +383,5 @@ export function loadBlueprint(filePath: string): Blueprint {
     );
   }
 
-  return { ...blueprint, includes, aggregates };
+  return { ...blueprint, includes, aggregates, relations };
 }

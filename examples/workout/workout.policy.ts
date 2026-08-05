@@ -28,6 +28,21 @@ export const canUpdateWorkout: PolicyCheck<WorkoutRecordLike> = (
 export const canUpdateAnyWorkout: PolicyCheck = (subject) =>
   resolveCollectionCapability('own', subject);
 
+// Distinct from canUpdateWorkout, not an alias of it: being able to edit a
+// workout's own fields does not automatically mean being able to attach or
+// detach whatever this relation points at -- see the relation capabilities
+// doctrine. Both default to the same preset today, but each is its own
+// PolicyCheck so one can diverge from update later without touching it.
+export const canAttachTagsToWorkout: PolicyCheck<WorkoutRecordLike> = (
+  subject,
+  record,
+) => (record ? resolveCapability('own', subject, record) : { allowed: false });
+
+export const canDetachTagsFromWorkout: PolicyCheck<WorkoutRecordLike> = (
+  subject,
+  record,
+) => (record ? resolveCapability('own', subject, record) : { allowed: false });
+
 export const canDeleteWorkout: PolicyCheck<WorkoutRecordLike> = (
   subject,
   record,

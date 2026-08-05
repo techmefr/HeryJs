@@ -354,4 +354,62 @@ describe('Workout resource', () => {
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(400);
   });
+
+  it('attaches, syncs, and detaches tags through the update route', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/workouts/create')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ data: [{ title: 'title-value' }] })
+      .expect(201);
+
+    const recordId = (
+      created.body as { data: { status: string; data: { id: string } }[] }
+    ).data[0]!.data.id;
+
+    const childA = await prisma.tag.create({
+      data: { name: 'name-value', createdAt: new Date().toISOString() },
+    });
+    const childB = await prisma.tag.create({
+      data: { name: 'name-value', createdAt: new Date().toISOString() },
+    });
+
+    const attached = await request(app.getHttpServer())
+      .post('/workouts/update')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({
+        data: [{ id: recordId, relations: { tags: { attach: [childA.id] } } }],
+      })
+      .expect(201);
+
+    expect(
+      (attached.body as { data: { data: { tags: string[] } }[] }).data[0]!.data
+        .tags,
+    ).toEqual([childA.id]);
+
+    const synced = await request(app.getHttpServer())
+      .post('/workouts/update')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({
+        data: [{ id: recordId, relations: { tags: { sync: [childB.id] } } }],
+      })
+      .expect(201);
+
+    expect(
+      (synced.body as { data: { data: { tags: string[] } }[] }).data[0]!.data
+        .tags,
+    ).toEqual([childB.id]);
+
+    const detached = await request(app.getHttpServer())
+      .post('/workouts/update')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({
+        data: [{ id: recordId, relations: { tags: { detach: [childB.id] } } }],
+      })
+      .expect(201);
+
+    expect(
+      (detached.body as { data: { data: { tags: string[] } }[] }).data[0]!.data
+        .tags,
+    ).toEqual([]);
+  });
 });

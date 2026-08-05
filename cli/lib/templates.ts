@@ -18,13 +18,57 @@ function ownedByTeam(ctx: ResourceContext): boolean {
   return Object.values(ctx.permissions).includes('team');
 }
 
+function pascalRelationName(relation: { relation: string }): string {
+  return relation.relation[0]!.toUpperCase() + relation.relation.slice(1);
+}
+
 function fieldLines(ctx: ResourceContext, indent: string): string {
   return ctx.fields
     .map((field) => `${indent}${field.name}: ${zodTypeFor(field)},`)
     .join('\n');
 }
 
+function relationSchemaBlock(ctx: ResourceContext): string {
+  if (ctx.relations.length === 0) {
+    return '';
+  }
+
+  const fields = ctx.relations
+    .map(
+      (relation) =>
+        `  ${relation.relation}: relationMutationSchema.optional(),`,
+    )
+    .join('\n');
+
+  return `
+// attach adds, detach removes, sync replaces the whole set in one call --
+// never combined with attach/detach in the same request, since "replace with
+// exactly this set" and "add/remove from whatever is there" are different
+// intents that would otherwise race on the same pivot row.
+const relationMutationSchema = z
+  .object({
+    attach: z.array(z.string()).optional(),
+    detach: z.array(z.string()).optional(),
+    sync: z.array(z.string()).optional(),
+  })
+  .refine(
+    (input) => !input.sync || (!input.attach && !input.detach),
+    { message: 'sync cannot be combined with attach or detach' },
+  );
+export type RelationMutationInput = z.infer<typeof relationMutationSchema>;
+
+const update${ctx.pascalName}RelationsSchema = z.object({
+${fields}
+});
+export type Update${ctx.pascalName}RelationsInput = z.infer<
+  typeof update${ctx.pascalName}RelationsSchema
+>;
+`;
+}
+
 export function dtoFile(ctx: ResourceContext): string {
+  const hasRelations = ctx.relations.length > 0;
+
   return `import { z } from 'zod';
 
 export const create${ctx.pascalName}Schema = z.object({
@@ -34,7 +78,7 @@ export type Create${ctx.pascalName}Input = z.infer<typeof create${ctx.pascalName
 
 export const update${ctx.pascalName}Schema = create${ctx.pascalName}Schema.partial();
 export type Update${ctx.pascalName}Input = z.infer<typeof update${ctx.pascalName}Schema>;
-
+${relationSchemaBlock(ctx)}
 // Every mutating verb separates the target (what it acts on) from the
 // setting (how it acts) -- data/ids is always an array, even for a single
 // record, so the response shape never has to differ between one and many.
@@ -46,7 +90,11 @@ export type Create${ctx.pascalName}RequestBody = z.infer<
 >;
 
 export const update${ctx.pascalName}RequestSchema = z.object({
-  data: z.array(update${ctx.pascalName}Schema.extend({ id: z.string() })),
+  data: z.array(
+    update${ctx.pascalName}Schema.extend({
+      id: z.string(),${hasRelations ? `\n      relations: update${ctx.pascalName}RelationsSchema.optional(),` : ''}
+    }),
+  ),
 });
 export type Update${ctx.pascalName}RequestBody = z.infer<
   typeof update${ctx.pascalName}RequestSchema
@@ -74,6 +122,30 @@ export type Restore${ctx.pascalName}RequestBody = z.infer<
   typeof restore${ctx.pascalName}RequestSchema
 >;
 `;
+}
+
+function relationPolicyBlock(ctx: ResourceContext): string {
+  return ctx.relations
+    .map((relation) => {
+      const pascalRelation = pascalRelationName(relation);
+      return `
+// Distinct from canUpdate${ctx.pascalName}, not an alias of it: being able to edit a
+// ${ctx.camelName}'s own fields does not automatically mean being able to attach or
+// detach whatever this relation points at -- see the relation capabilities
+// doctrine. Both default to the same preset today, but each is its own
+// PolicyCheck so one can diverge from update later without touching it.
+export const canAttach${pascalRelation}To${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike> = (
+  subject,
+  record,
+) => (record ? resolveCapability('${ctx.permissions.update}', subject, record) : { allowed: false });
+
+export const canDetach${pascalRelation}From${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike> = (
+  subject,
+  record,
+) => (record ? resolveCapability('${ctx.permissions.update}', subject, record) : { allowed: false });
+`;
+    })
+    .join('');
 }
 
 export function policyFile(ctx: ResourceContext): string {
@@ -106,7 +178,7 @@ export const canUpdate${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike
 // route takes, before canUpdate${ctx.pascalName} narrows per record inside the handler.
 export const canUpdateAny${ctx.pascalName}: PolicyCheck = (subject) =>
   resolveCollectionCapability('${ctx.permissions.update}', subject);
-
+${relationPolicyBlock(ctx)}
 export const canDelete${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike> = (
   subject,
   record,
@@ -247,8 +319,11 @@ import { writeAuditLog } from '#technical/audit/audit-log';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { resolveRelationInstructions } from '#technical/http/relation-resolver';
 import type { PrismaRelationClient } from '#technical/http/relation-resolver';
-import type { RelationInstruction } from '#technical/http/list-query';
-import { Create${ctx.pascalName}Input, Update${ctx.pascalName}Input } from './${ctx.kebabName}.dto';
+import type { RelationInstruction } from '#technical/http/list-query';${ctx.relations.length > 0 ? `\nimport { applyRelationMutation } from '#technical/http/relation-mutations';\nimport type { PivotDelegate } from '#technical/http/relation-mutations';` : ''}
+import {
+  Create${ctx.pascalName}Input,${ctx.relations.length > 0 ? `\n  RelationMutationInput,` : ''}
+  Update${ctx.pascalName}Input,
+} from './${ctx.kebabName}.dto';
 
 const SEARCHABLE_FIELDS = [${searchableFields.map((name) => `'${name}'`).join(', ')}] as const;
 const SEARCH_COLLECTION = '${ctx.kebabName}';
@@ -421,7 +496,21 @@ ${
     await this.syncSearchIndex(updated);
     return updated;
   }
-
+${ctx.relations
+  .map(
+    (relation) => `
+  async sync${pascalRelationName(relation)}(record: ${ctx.pascalName}, input: RelationMutationInput) {
+    return applyRelationMutation(
+      this.prisma.${relation.pivotDelegate} as unknown as PivotDelegate,
+      '${relation.foreignKey}',
+      '${relation.relatedKey}',
+      record.id,
+      input,
+    );
+  }
+`,
+  )
+  .join('')}
   async softDelete(record: ${ctx.pascalName}) {
     const updated = await this.prisma.${ctx.camelName}.update({
       where: { id: record.id },
@@ -586,10 +675,20 @@ import type {
   Restore${ctx.pascalName}RequestBody,
   Update${ctx.pascalName}RequestBody,
 } from './${ctx.kebabName}.dto';
-import {
+import {${ctx.relations
+    .map(
+      (relation) =>
+        `\n  canAttach${pascalRelationName(relation)}To${ctx.pascalName},`,
+    )
+    .join('')}
   canCreate${ctx.pascalName},
   canDelete${ctx.pascalName},
-  canDeleteAny${ctx.pascalName},
+  canDeleteAny${ctx.pascalName},${ctx.relations
+    .map(
+      (relation) =>
+        `\n  canDetach${pascalRelationName(relation)}From${ctx.pascalName},`,
+    )
+    .join('')}
   canHardDelete${ctx.pascalName},
   canListTrashed${ctx.pascalName},
   canRestore${ctx.pascalName},
@@ -803,11 +902,50 @@ export class ${ctx.pascalName}Controller {
         continue;
       }
 
-      const { id: _id, ...data } = body.data[index]!;
+      const { id: _id,${ctx.relations.length > 0 ? ' relations,' : ''} ...data } = body.data[index]!;
 
       try {
         const updated = await this.${ctx.camelName}s.update(entry.record, data);
-        results.push({ index, id: entry.id, status: 'ok' as const, data: to${ctx.pascalName}View(updated) });
+${
+  ctx.relations.length === 0
+    ? ''
+    : `        const relationResults: Record<string, string[]> = {};
+
+${ctx.relations
+  .map((relation) => {
+    const pascalRelation = pascalRelationName(relation);
+    return `        if (relations?.${relation.relation}) {
+          const { attach, detach, sync } = relations.${relation.relation};
+
+          if ((attach && attach.length > 0) || sync) {
+            const decision = canAttach${pascalRelation}To${ctx.pascalName}(subject, entry.record);
+            if (!decision.allowed) {
+              throw new CapabilityForbiddenException(decision);
+            }
+          }
+
+          if ((detach && detach.length > 0) || sync) {
+            const decision = canDetach${pascalRelation}From${ctx.pascalName}(subject, entry.record);
+            if (!decision.allowed) {
+              throw new CapabilityForbiddenException(decision);
+            }
+          }
+
+          relationResults.${relation.relation} = await this.${ctx.camelName}s.sync${pascalRelation}(
+            entry.record,
+            relations.${relation.relation},
+          );
+        }
+
+`;
+  })
+  .join('')}`
+}        results.push({
+          index,
+          id: entry.id,
+          status: 'ok' as const,
+          data: { ...to${ctx.pascalName}View(updated)${ctx.relations.length > 0 ? ', ...relationResults' : ''} },
+        });
       } catch (error) {
         results.push({ index, id: entry.id, status: 'error' as const, error: resolveDomainError(error) });
       }
@@ -1596,6 +1734,77 @@ function trashParityTest(ctx: ResourceContext, createBody: string): string {
   });`;
 }
 
+function relationSpecBlock(ctx: ResourceContext, createBody: string): string {
+  if (ctx.relations.length === 0) {
+    return '';
+  }
+
+  return ctx.relations
+    .map((relation) => {
+      const childBody =
+        relation.childRequiredFields.length > 0
+          ? `{ ${relation.childRequiredFields.map((field) => `${field.name}: ${sampleValueFor(field)}`).join(', ')} }`
+          : '{}';
+
+      return `
+  it('attaches, syncs, and detaches ${relation.relation} through the update route', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/create')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ data: [${createBody}] })
+      .expect(201);
+
+    const recordId = (
+      created.body as { data: { status: string; data: { id: string } }[] }
+    ).data[0]!.data.id;
+
+    const childA = await prisma.${relation.childDelegate}.create({ data: ${childBody} });
+    const childB = await prisma.${relation.childDelegate}.create({ data: ${childBody} });
+
+    const attached = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/update')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({
+        data: [{ id: recordId, relations: { ${relation.relation}: { attach: [childA.id] } } }],
+      })
+      .expect(201);
+
+    expect(
+      (attached.body as { data: { data: { ${relation.relation}: string[] } }[] })
+        .data[0]!.data.${relation.relation},
+    ).toEqual([childA.id]);
+
+    const synced = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/update')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({
+        data: [{ id: recordId, relations: { ${relation.relation}: { sync: [childB.id] } } }],
+      })
+      .expect(201);
+
+    expect(
+      (synced.body as { data: { data: { ${relation.relation}: string[] } }[] })
+        .data[0]!.data.${relation.relation},
+    ).toEqual([childB.id]);
+
+    const detached = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/update')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({
+        data: [{ id: recordId, relations: { ${relation.relation}: { detach: [childB.id] } } }],
+      })
+      .expect(201);
+
+    expect(
+      (detached.body as { data: { data: { ${relation.relation}: string[] } }[] })
+        .data[0]!.data.${relation.relation},
+    ).toEqual([]);
+  });
+`;
+    })
+    .join('');
+}
+
 export function specFile(ctx: ResourceContext): string {
   const requiredFields = ctx.fields.filter((field) => !field.optional);
   const createBody =
@@ -1956,7 +2165,7 @@ ${
   });
 `
     : ''
-}});
+}${relationSpecBlock(ctx, createBody)}});
 `;
 }
 

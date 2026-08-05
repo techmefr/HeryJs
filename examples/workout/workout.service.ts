@@ -12,7 +12,13 @@ import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { resolveRelationInstructions } from '#technical/http/relation-resolver';
 import type { PrismaRelationClient } from '#technical/http/relation-resolver';
 import type { RelationInstruction } from '#technical/http/list-query';
-import { CreateWorkoutInput, UpdateWorkoutInput } from './workout.dto';
+import { applyRelationMutation } from '#technical/http/relation-mutations';
+import type { PivotDelegate } from '#technical/http/relation-mutations';
+import {
+  CreateWorkoutInput,
+  RelationMutationInput,
+  UpdateWorkoutInput,
+} from './workout.dto';
 
 const SEARCHABLE_FIELDS = ['title'] as const;
 const SEARCH_COLLECTION = 'workout';
@@ -178,6 +184,16 @@ export class WorkoutService {
     this.notify();
     await this.syncSearchIndex(updated);
     return updated;
+  }
+
+  async syncTags(record: Workout, input: RelationMutationInput) {
+    return applyRelationMutation(
+      this.prisma.workoutTag as unknown as PivotDelegate,
+      'workoutId',
+      'tagId',
+      record.id,
+      input,
+    );
   }
 
   async softDelete(record: Workout) {

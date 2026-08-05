@@ -8,6 +8,28 @@ export type CreateWorkoutInput = z.infer<typeof createWorkoutSchema>;
 export const updateWorkoutSchema = createWorkoutSchema.partial();
 export type UpdateWorkoutInput = z.infer<typeof updateWorkoutSchema>;
 
+// attach adds, detach removes, sync replaces the whole set in one call --
+// never combined with attach/detach in the same request, since "replace with
+// exactly this set" and "add/remove from whatever is there" are different
+// intents that would otherwise race on the same pivot row.
+const relationMutationSchema = z
+  .object({
+    attach: z.array(z.string()).optional(),
+    detach: z.array(z.string()).optional(),
+    sync: z.array(z.string()).optional(),
+  })
+  .refine((input) => !input.sync || (!input.attach && !input.detach), {
+    message: 'sync cannot be combined with attach or detach',
+  });
+export type RelationMutationInput = z.infer<typeof relationMutationSchema>;
+
+const updateWorkoutRelationsSchema = z.object({
+  tags: relationMutationSchema.optional(),
+});
+export type UpdateWorkoutRelationsInput = z.infer<
+  typeof updateWorkoutRelationsSchema
+>;
+
 // Every mutating verb separates the target (what it acts on) from the
 // setting (how it acts) -- data/ids is always an array, even for a single
 // record, so the response shape never has to differ between one and many.
@@ -19,7 +41,12 @@ export type CreateWorkoutRequestBody = z.infer<
 >;
 
 export const updateWorkoutRequestSchema = z.object({
-  data: z.array(updateWorkoutSchema.extend({ id: z.string() })),
+  data: z.array(
+    updateWorkoutSchema.extend({
+      id: z.string(),
+      relations: updateWorkoutRelationsSchema.optional(),
+    }),
+  ),
 });
 export type UpdateWorkoutRequestBody = z.infer<
   typeof updateWorkoutRequestSchema

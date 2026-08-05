@@ -40,6 +40,13 @@ aggregates:
     discriminator: commentableType
     discriminatorValue: Workout
 
+relations:
+  - relation: tags
+    resource: Tag
+    pivotTable: WorkoutTag
+    foreignKey: workoutId
+    relatedKey: tagId
+
 pagination:
   limits: [10, 15, 20]
   default: 15

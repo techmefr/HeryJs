@@ -14,6 +14,7 @@ export interface ResourceContext {
   filters: Blueprint['filters'];
   includes: Blueprint['includes'];
   aggregates: Blueprint['aggregates'];
+  relations: Blueprint['relations'];
 }
 
 export function buildResourceContext(blueprint: Blueprint): ResourceContext {
@@ -33,5 +34,6 @@ export function buildResourceContext(blueprint: Blueprint): ResourceContext {
     filters: blueprint.filters,
     includes: blueprint.includes,
     aggregates: blueprint.aggregates,
+    relations: blueprint.relations,
   };
 }

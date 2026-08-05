@@ -43,9 +43,11 @@ import type {
   UpdateWorkoutRequestBody,
 } from './workout.dto';
 import {
+  canAttachTagsToWorkout,
   canCreateWorkout,
   canDeleteWorkout,
   canDeleteAnyWorkout,
+  canDetachTagsFromWorkout,
   canHardDeleteWorkout,
   canListTrashedWorkout,
   canRestoreWorkout,
@@ -357,15 +359,40 @@ export class WorkoutController {
         continue;
       }
 
-      const { id: _id, ...data } = body.data[index]!;
+      const { id: _id, relations, ...data } = body.data[index]!;
 
       try {
         const updated = await this.workouts.update(entry.record, data);
+        const relationResults: Record<string, string[]> = {};
+
+        if (relations?.tags) {
+          const { attach, detach, sync } = relations.tags;
+
+          if ((attach && attach.length > 0) || sync) {
+            const decision = canAttachTagsToWorkout(subject, entry.record);
+            if (!decision.allowed) {
+              throw new CapabilityForbiddenException(decision);
+            }
+          }
+
+          if ((detach && detach.length > 0) || sync) {
+            const decision = canDetachTagsFromWorkout(subject, entry.record);
+            if (!decision.allowed) {
+              throw new CapabilityForbiddenException(decision);
+            }
+          }
+
+          relationResults.tags = await this.workouts.syncTags(
+            entry.record,
+            relations.tags,
+          );
+        }
+
         results.push({
           index,
           id: entry.id,
           status: 'ok' as const,
-          data: toWorkoutView(updated),
+          data: { ...toWorkoutView(updated), ...relationResults },
         });
       } catch (error) {
         results.push({

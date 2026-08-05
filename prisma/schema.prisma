@@ -165,8 +165,33 @@ model Workout {
 
   owner User          @relation(fields: [ownerId], references: [id])
   notes WorkoutNote[]
+  tags  WorkoutTag[]
 
   @@index([tenantId])
+}
+
+// A belongsToMany relation, unlike WorkoutNote's hasMany: a tag does not
+// belong to one workout, so attaching or detaching one never creates or
+// deletes a Tag row, only a row in this pivot table -- see
+// relation-mutations.ts, the shared resolver every generated attach/detach/
+// sync route goes through.
+model WorkoutTag {
+  workoutId String
+  tagId     String
+  createdAt DateTime @default(now())
+
+  workout Workout @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([workoutId, tagId])
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  workouts WorkoutTag[]
 }
 
 model WorkoutNote {
