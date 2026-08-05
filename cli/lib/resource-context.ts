@@ -12,6 +12,8 @@ export interface ResourceContext {
   pagination: Blueprint['pagination'];
   sorts: Blueprint['sorts'];
   filters: Blueprint['filters'];
+  includes: Blueprint['includes'];
+  aggregates: Blueprint['aggregates'];
 }
 
 export function buildResourceContext(blueprint: Blueprint): ResourceContext {
@@ -29,5 +31,7 @@ export function buildResourceContext(blueprint: Blueprint): ResourceContext {
     pagination: blueprint.pagination,
     sorts: blueprint.sorts,
     filters: blueprint.filters,
+    includes: blueprint.includes,
+    aggregates: blueprint.aggregates,
   };
 }

@@ -1,0 +1,14 @@
+name: Comment
+routed: false
+
+fields:
+  - name: body
+    type: string
+  - name: createdAt
+    type: datetime
+
+sorts:
+  - createdAt
+
+filters:
+  - body

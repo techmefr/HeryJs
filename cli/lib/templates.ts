@@ -8,6 +8,7 @@ import {
   zodOutputTypeFor,
   zodTypeFor,
 } from './field-types';
+import { camelCase } from './naming';
 
 /**
  * A resource is owned by a team as soon as one of its presets says so, and only
@@ -244,6 +245,9 @@ import { SearchEngineRegistry } from '#technical/search/search-engine.registry';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { writeAuditLog } from '#technical/audit/audit-log';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { resolveRelationInstructions } from '#technical/http/relation-resolver';
+import type { PrismaRelationClient } from '#technical/http/relation-resolver';
+import type { RelationInstruction } from '#technical/http/list-query';
 import { Create${ctx.pascalName}Input, Update${ctx.pascalName}Input } from './${ctx.kebabName}.dto';
 
 const SEARCHABLE_FIELDS = [${searchableFields.map((name) => `'${name}'`).join(', ')}] as const;
@@ -254,6 +258,8 @@ export interface ${ctx.pascalName}SearchOptions {
   onlyTrashed?: boolean;
   sorts?: { field: string; direction: 'asc' | 'desc' }[];
   where?: Record<string, unknown>;
+  include?: Record<string, unknown>;
+  relationInstructions?: RelationInstruction[];
   search?: string;
   searchEngine?: string;
   page?: number;
@@ -374,9 +380,16 @@ export class ${ctx.pascalName}Service {
             : { createdAt: 'desc' },
         skip: limit ? (page - 1) * limit : undefined,
         take: limit,
+        include: options.include as Prisma.${ctx.pascalName}Include | undefined,
       }),
       this.prisma.${ctx.camelName}.count({ where }),
     ]);
+
+    await resolveRelationInstructions(
+      this.prisma as unknown as PrismaRelationClient,
+      records,
+      options.relationInstructions,
+    );
 
     return { records, total };
   }
@@ -464,6 +477,69 @@ ${
 `;
 }
 
+// Both the /describe payload and the search contract need the same relation
+// allow-list rendered as an object literal, one entry per declared relation.
+// The link fields (type/foreignKey/discriminator/childDelegate) are what lets
+// the runtime resolve the relation at all; filters/sorts/selects (or fields,
+// for aggregates) are the same client-facing allow-lists a plain filter/sort
+// gets, just derived from the referenced resource's own blueprint instead of
+// retyped here.
+function relationLinkLiteral(
+  link: {
+    type: string;
+    foreignKey: string;
+    resource: string;
+    discriminator?: string;
+    discriminatorValue?: string;
+  },
+  indent: string,
+): string {
+  const discriminatorLines =
+    link.discriminator !== undefined && link.discriminatorValue !== undefined
+      ? `\n${indent}    discriminator: '${link.discriminator}',\n${indent}    discriminatorValue: '${link.discriminatorValue}',`
+      : '';
+
+  return `${indent}    type: '${link.type}',
+${indent}    foreignKey: '${link.foreignKey}',${discriminatorLines}
+${indent}    childDelegate: '${camelCase(link.resource)}',`;
+}
+
+function includesContractLiteral(ctx: ResourceContext, indent: string): string {
+  if (ctx.includes.length === 0) return '{}';
+
+  const entries = ctx.includes
+    .map(
+      (include) => `${indent}  ${include.relation}: {
+${relationLinkLiteral(include, indent)}
+${indent}    filters: [${include.filters.map((field) => `'${field}'`).join(', ')}],
+${indent}    sorts: [${include.sorts.map((field) => `'${field}'`).join(', ')}],
+${indent}    selects: [${include.selects.map((field) => `'${field}'`).join(', ')}],
+${indent}  },`,
+    )
+    .join('\n');
+
+  return `{\n${entries}\n${indent}}`;
+}
+
+function aggregatesContractLiteral(
+  ctx: ResourceContext,
+  indent: string,
+): string {
+  if (ctx.aggregates.length === 0) return '{}';
+
+  const entries = ctx.aggregates
+    .map(
+      (aggregate) => `${indent}  ${aggregate.relation}: {
+${relationLinkLiteral(aggregate, indent)}
+${indent}    filters: [${aggregate.filters.map((field) => `'${field}'`).join(', ')}],
+${indent}    fields: [${aggregate.fields.map((field) => `'${field}'`).join(', ')}],
+${indent}  },`,
+    )
+    .join('\n');
+
+  return `{\n${entries}\n${indent}}`;
+}
+
 export function controllerFile(ctx: ResourceContext): string {
   const selectableFields = [
     'id',
@@ -489,7 +565,11 @@ import { AlreadyRestoredException } from '#technical/errors/already-restored.exc
 import { resolveDomainError } from '#technical/errors/domain-exception.filter';
 import type { ResolvedError } from '#technical/errors/domain-exception.filter';
 import { ok } from '#technical/http/envelope';
-import { parseSearchRequest, searchRequestSchema } from '#technical/http/list-query';
+import {
+  parseSearchRequest,
+  searchRequestSchema,
+  withIncludesAndAggregates,
+} from '#technical/http/list-query';
 import type { SearchRequestBody } from '#technical/http/list-query';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import {
@@ -538,6 +618,8 @@ ${ctx.fields.map((field) => `    { name: '${field.name}', type: '${field.type}',
   sorts: [${ctx.sorts.map((field) => `'${field}'`).join(', ')}],
   filters: [${ctx.filters.map((field) => `'${field}'`).join(', ')}],
   selects: [${selectableFields.map((field) => `'${field}'`).join(', ')}],
+  includes: ${includesContractLiteral(ctx, '  ')},
+  aggregates: ${aggregatesContractLiteral(ctx, '  ')},
   limits: [${ctx.pagination.limits.join(', ')}],
   defaultLimit: ${ctx.pagination.default},
   rules: {
@@ -611,6 +693,8 @@ export class ${ctx.pascalName}Controller {
       sorts: [${ctx.sorts.map((field) => `'${field}'`).join(', ')}],
       filters: ['id', ${ctx.filters.map((field) => `'${field}'`).join(', ')}],
       selects: [${selectableFields.map((field) => `'${field}'`).join(', ')}],
+      includes: ${includesContractLiteral(ctx, '      ')},
+      aggregates: ${aggregatesContractLiteral(ctx, '      ')},
       limits: [${ctx.pagination.limits.join(', ')}],
       defaultLimit: ${ctx.pagination.default},
     });
@@ -643,7 +727,9 @@ export class ${ctx.pascalName}Controller {
 
     if (capabilities.length === 0) {
       return ok(
-        records.map((record) => project(to${ctx.pascalName}View(record))),
+        records.map((record) =>
+          withIncludesAndAggregates(project(to${ctx.pascalName}View(record)), record, query),
+        ),
         meta,
       );
     }
@@ -652,7 +738,7 @@ export class ${ctx.pascalName}Controller {
       records.map((record) => {
         const resolved = this.policy.recordCapabilities(subject, record);
         return {
-          ...project(to${ctx.pascalName}View(record)),
+          ...withIncludesAndAggregates(project(to${ctx.pascalName}View(record)), record, query),
           capabilities: Object.fromEntries(
             Object.entries(resolved).filter(([key]) =>
               capabilities.includes(key),
@@ -1818,6 +1904,22 @@ ${
     expect(meta.limit).toBe(${ctx.pagination.default});
     expect(meta.total).toBeGreaterThan(0);
     expect(meta.last_page).toBeGreaterThanOrEqual(1);
+  });
+
+  it('rejects an include naming a relation this resource does not declare', async () => {
+    await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/search')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ includes: [{ relation: 'doesNotExist' }] })
+      .expect(400);
+  });
+
+  it('rejects an aggregate naming a relation this resource does not declare', async () => {
+    await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/search')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ aggregates: [{ relation: 'doesNotExist', type: 'count' }] })
+      .expect(400);
   });
 ${
   primarySearchField

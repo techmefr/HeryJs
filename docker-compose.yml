@@ -10,6 +10,18 @@ services:
       - '5432'
     volumes:
       - heryjs-postgres:/var/lib/postgresql/data
+    # A dev process that dies without closing its connection (a killed test
+    # run, an orphaned background job) otherwise leaves a transaction open
+    # indefinitely -- it happened, and it starved every other connection's
+    # transactions until someone noticed and killed it by hand. Postgres now
+    # kills that connection itself once it sits idle mid-transaction, or once
+    # a single statement runs too long, instead of relying on that.
+    command:
+      - postgres
+      - -c
+      - idle_in_transaction_session_timeout=30000
+      - -c
+      - statement_timeout=60000
 
   valkey:
     image: valkey/valkey:8-alpine

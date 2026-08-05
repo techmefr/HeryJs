@@ -108,9 +108,16 @@ export async function checkExampleFreshness(): Promise<boolean> {
   const problems: string[] = [];
 
   for (const blueprint of blueprints) {
-    const ctx = buildResourceContext(
-      loadBlueprint(path.join(EXAMPLES_DIR, blueprint)),
-    );
+    const loaded = loadBlueprint(path.join(EXAMPLES_DIR, blueprint));
+
+    // An unrouted blueprint generates nothing of its own -- it only exists to
+    // be pointed at from another blueprint's includes/aggregates, so there is
+    // no examples/<kebab>/ directory to compare it against.
+    if (!loaded.routed) {
+      continue;
+    }
+
+    const ctx = buildResourceContext(loaded);
     const dir = path.join(EXAMPLES_DIR, ctx.kebabName);
 
     if (!existsSync(dir)) {

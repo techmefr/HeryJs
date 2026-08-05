@@ -163,9 +163,37 @@ model Workout {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  owner User @relation(fields: [ownerId], references: [id])
+  owner User          @relation(fields: [ownerId], references: [id])
+  notes WorkoutNote[]
 
   @@index([tenantId])
+}
+
+model WorkoutNote {
+  id        String   @id @default(cuid())
+  workoutId String
+  body      String
+  rating    Int?
+  createdAt DateTime @default(now())
+
+  workout Workout @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+
+  @@index([workoutId])
+}
+
+// Attachable to more than one resource type, so there is no single parent to
+// point a Prisma @relation at -- commentableType carries which model
+// commentableId refers to. Prisma does not model this: there is no
+// referential integrity here at the database level, only at the application
+// level, in list-query.ts's morphMany handling.
+model Comment {
+  id              String   @id @default(cuid())
+  commentableType String
+  commentableId   String
+  body            String
+  createdAt       DateTime @default(now())
+
+  @@index([commentableType, commentableId])
 }
 
 model MailLog {

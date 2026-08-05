@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import * as path from 'node:path';
 import { blueprintSchema } from '../cli/lib/blueprint';
+import type { Blueprint } from '../cli/lib/blueprint';
 import { buildResourceContext } from '../cli/lib/resource-context';
 import type { ResourceContext } from '../cli/lib/resource-context';
 import * as templates from '../cli/lib/templates';
@@ -70,6 +71,9 @@ function boundNames(importBlock: string): string[] {
 
 function contextFor(preset: 'own' | 'team'): ResourceContext {
   return buildResourceContext(
+    // No includes/aggregates are declared, so the empty arrays zod defaults
+    // to already satisfy Blueprint's resolved shape -- there is nothing here
+    // that needed a referenced blueprint to resolve against.
     blueprintSchema.parse({
       name: 'ImportProbe',
       fields: [
@@ -84,7 +88,7 @@ function contextFor(preset: 'own' | 'team'): ResourceContext {
       },
       sorts: ['createdAt'],
       filters: ['label'],
-    }),
+    }) as unknown as Blueprint,
   );
 }
 

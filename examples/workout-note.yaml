@@ -1,0 +1,17 @@
+name: WorkoutNote
+routed: false
+
+fields:
+  - name: body
+    type: string
+  - name: rating
+    type: int
+    optional: true
+  - name: createdAt
+    type: datetime
+
+sorts:
+  - createdAt
+
+filters:
+  - body

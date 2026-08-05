@@ -306,6 +306,22 @@ describe('Workout resource', () => {
     expect(meta.last_page).toBeGreaterThanOrEqual(1);
   });
 
+  it('rejects an include naming a relation this resource does not declare', async () => {
+    await request(app.getHttpServer())
+      .post('/workouts/search')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ includes: [{ relation: 'doesNotExist' }] })
+      .expect(400);
+  });
+
+  it('rejects an aggregate naming a relation this resource does not declare', async () => {
+    await request(app.getHttpServer())
+      .post('/workouts/search')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ aggregates: [{ relation: 'doesNotExist', type: 'count' }] })
+      .expect(400);
+  });
+
   it('finds a record by text search through the explicitly named default engine', async () => {
     const created = await request(app.getHttpServer())
       .post('/workouts/create')

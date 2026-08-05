@@ -67,6 +67,17 @@ export function registerGenerateCommand(program: Command): void {
         }
 
         const blueprint = loadBlueprint(blueprintPath);
+
+        if (!blueprint.routed) {
+          console.error(
+            pc.red(
+              `${name} is declared routed: false. It exists to be pointed at from another blueprint's includes/aggregates, not to be generated on its own.`,
+            ),
+          );
+          process.exitCode = 1;
+          return;
+        }
+
         const ctx = buildResourceContext(blueprint);
         const targetDir = path.join(root, 'src', 'functional', ctx.kebabName);
 

@@ -16,6 +16,30 @@ sorts:
 filters:
   - title
 
+includes:
+  - relation: notes
+    resource: WorkoutNote
+    type: hasMany
+    foreignKey: workoutId
+  - relation: comments
+    resource: Comment
+    type: morphMany
+    foreignKey: commentableId
+    discriminator: commentableType
+    discriminatorValue: Workout
+
+aggregates:
+  - relation: notes
+    resource: WorkoutNote
+    type: hasMany
+    foreignKey: workoutId
+  - relation: comments
+    resource: Comment
+    type: morphMany
+    foreignKey: commentableId
+    discriminator: commentableType
+    discriminatorValue: Workout
+
 pagination:
   limits: [10, 15, 20]
   default: 15

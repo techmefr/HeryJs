@@ -9,6 +9,9 @@ import { SearchEngineRegistry } from '#technical/search/search-engine.registry';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { writeAuditLog } from '#technical/audit/audit-log';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { resolveRelationInstructions } from '#technical/http/relation-resolver';
+import type { PrismaRelationClient } from '#technical/http/relation-resolver';
+import type { RelationInstruction } from '#technical/http/list-query';
 import { CreateWorkoutInput, UpdateWorkoutInput } from './workout.dto';
 
 const SEARCHABLE_FIELDS = ['title'] as const;
@@ -19,6 +22,8 @@ export interface WorkoutSearchOptions {
   onlyTrashed?: boolean;
   sorts?: { field: string; direction: 'asc' | 'desc' }[];
   where?: Record<string, unknown>;
+  include?: Record<string, unknown>;
+  relationInstructions?: RelationInstruction[];
   search?: string;
   searchEngine?: string;
   page?: number;
@@ -138,9 +143,16 @@ export class WorkoutService {
             : { createdAt: 'desc' },
         skip: limit ? (page - 1) * limit : undefined,
         take: limit,
+        include: options.include as Prisma.WorkoutInclude | undefined,
       }),
       this.prisma.workout.count({ where }),
     ]);
+
+    await resolveRelationInstructions(
+      this.prisma as unknown as PrismaRelationClient,
+      records,
+      options.relationInstructions,
+    );
 
     return { records, total };
   }

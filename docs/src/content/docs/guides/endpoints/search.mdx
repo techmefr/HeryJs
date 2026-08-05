@@ -111,6 +111,63 @@ Every generated resource exposes one search route instead of a detail route: the
     | `search.q` / `search.engine` | string | Free-text search — see [Full-text search](/guides/search/) |
     | `withTrashed` / `onlyTrashed` | boolean | Gated behind the delete permission, not the read one |
     | `capabilities` | array | Which per-record capability decisions to attach — see below |
+    | `includes` | array | Each entry: `relation` (must be in the blueprint's `includes`), `alias`, `filters`/`sorts`/`selects` scoped to the related resource, `limit` — see below |
+    | `aggregates` | array | Each entry: `relation` (must be in the blueprint's `aggregates`), `type` (`count`/`exists`/`avg`/`sum`/`min`/`max`), `field` (required for `avg`/`sum`/`min`/`max`), `alias`, `filters` scoped to the related resource — see below |
+
+    ## Includes and aggregates
+
+    A blueprint declares an include or aggregate by pointing at another resource rather than retyping its shape:
+
+    ```yaml
+    includes:
+      - relation: notes
+        resource: WorkoutNote
+        type: hasMany
+        foreignKey: workoutId
+    aggregates:
+      - relation: notes
+        resource: WorkoutNote
+        type: hasMany
+        foreignKey: workoutId
+    ```
+
+    `filters`/`sorts`/`selects` (or `filters`/`fields` for an aggregate) are derived once, at generation time, from the referenced resource's own blueprint — nothing is hand-typed twice. The referenced resource must be declared `routed: false`: it exists only to describe its shape to whoever includes/aggregates it, and gets no controller, no service, no capabilities of its own.
+
+    `type` is one of:
+
+    - `hasMany` — a real Prisma relation. Needs `foreignKey`.
+    - `morphMany` — a polymorphic relation, which Prisma has no native concept of. Needs `foreignKey`, `discriminator` and `discriminatorValue` (the column and value that mark "this row belongs to a Workout" on the other side).
+
+    A hasMany `count`/`exists` aggregate resolves through Prisma's own filtered `_count`, in the same query as the page itself — the cheapest path available. Everything else — `avg`/`sum`/`min`/`max` on any relation, or any aggregate at all on a `morphMany` relation, which Prisma cannot express through `include` — resolves as one extra batched query per aggregate (a `groupBy` or `findMany` keyed by the foreign key), never one query per row:
+
+    ```
+    POST /workouts/search
+    {
+      "includes": [{ "relation": "notes" }, { "relation": "comments" }],
+      "aggregates": [
+        { "relation": "notes", "type": "count" },
+        { "relation": "notes", "type": "avg", "field": "rating" },
+        { "relation": "comments", "type": "exists" }
+      ]
+    }
+    ```
+
+    ```json
+    {
+      "data": [
+        {
+          "id": "cly8x7g9k0000abc123def456",
+          "notes": [{ "id": "n1", "body": "first note", "rating": 4 }],
+          "comments": [{ "id": "c1", "body": "nice one" }],
+          "notes_count": 2,
+          "notes_avg": 3,
+          "comments_exists": true
+        }
+      ]
+    }
+    ```
+
+    An include's default result key is its relation name; an aggregate's is `${relation}_${type}` — both overridable with `alias`. A `morphMany` include has no `limit`: it cannot be windowed per parent the way a native relation can, since there is no Prisma relation to attach a nested `include` to.
 
     ## Operators
 

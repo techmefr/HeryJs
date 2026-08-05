@@ -1,5 +1,9 @@
 import { InvalidQueryException } from '#technical/errors/invalid-query.exception';
-import { parseSearchRequest, type ListQueryContract } from './list-query';
+import {
+  parseSearchRequest,
+  withIncludesAndAggregates,
+  type ListQueryContract,
+} from './list-query';
 
 const contract: ListQueryContract = {
   sorts: ['title', 'createdAt'],
@@ -7,6 +11,44 @@ const contract: ListQueryContract = {
   selects: ['id', 'title', 'reps', 'createdAt'],
   limits: [10, 15, 20],
   defaultLimit: 15,
+  includes: {
+    notes: {
+      type: 'hasMany',
+      foreignKey: 'workoutId',
+      childDelegate: 'workoutNote',
+      filters: ['body'],
+      sorts: ['createdAt'],
+      selects: ['id', 'body'],
+    },
+    comments: {
+      type: 'morphMany',
+      foreignKey: 'commentableId',
+      discriminator: 'commentableType',
+      discriminatorValue: 'Workout',
+      childDelegate: 'comment',
+      filters: ['body'],
+      sorts: ['createdAt'],
+      selects: ['id', 'body'],
+    },
+  },
+  aggregates: {
+    notes: {
+      type: 'hasMany',
+      foreignKey: 'workoutId',
+      childDelegate: 'workoutNote',
+      filters: ['body'],
+      fields: ['likes'],
+    },
+    comments: {
+      type: 'morphMany',
+      foreignKey: 'commentableId',
+      discriminator: 'commentableType',
+      discriminatorValue: 'Workout',
+      childDelegate: 'comment',
+      filters: ['body'],
+      fields: ['likes'],
+    },
+  },
 };
 
 describe('parseSearchRequest', () => {
@@ -214,5 +256,308 @@ describe('parseSearchRequest', () => {
 
     expect(query.withTrashed).toBe(false);
     expect(query.onlyTrashed).toBe(false);
+  });
+
+  it('rejects an include naming a relation the contract does not list', () => {
+    expect(() =>
+      parseSearchRequest({ includes: [{ relation: 'secret' }] }, contract),
+    ).toThrow(InvalidQueryException);
+  });
+
+  it('builds a Prisma include clause scoped to the relation, filtered and sorted', () => {
+    const query = parseSearchRequest(
+      {
+        includes: [
+          {
+            relation: 'notes',
+            filters: [{ field: 'body', operator: 'like', value: 'day' }],
+            sorts: [{ field: 'createdAt', direction: 'desc' }],
+            limit: 5,
+          },
+        ],
+      },
+      contract,
+    );
+
+    expect(query.include).toEqual({
+      notes: {
+        where: { body: { contains: 'day' } },
+        orderBy: [{ createdAt: 'desc' }],
+        take: 5,
+      },
+    });
+    expect(query.includeManifest).toEqual([
+      { key: 'notes', relation: 'notes' },
+    ]);
+  });
+
+  it('keys an included relation by its alias instead of the relation name', () => {
+    const query = parseSearchRequest(
+      { includes: [{ relation: 'notes', alias: 'recentNotes' }] },
+      contract,
+    );
+
+    expect(query.includeManifest).toEqual([
+      { key: 'recentNotes', relation: 'notes' },
+    ]);
+  });
+
+  it('rejects an alias that collides with one of the resource own fields', () => {
+    expect(() =>
+      parseSearchRequest(
+        { includes: [{ relation: 'notes', alias: 'title' }] },
+        contract,
+      ),
+    ).toThrow(InvalidQueryException);
+  });
+
+  it('rejects two includes claiming the same alias', () => {
+    expect(() =>
+      parseSearchRequest(
+        {
+          includes: [
+            { relation: 'notes', alias: 'sameKey' },
+            { relation: 'notes', alias: 'sameKey' },
+          ],
+        },
+        contract,
+      ),
+    ).toThrow(InvalidQueryException);
+  });
+
+  it('rejects an aggregate naming a relation the contract does not list', () => {
+    expect(() =>
+      parseSearchRequest(
+        { aggregates: [{ relation: 'secret', type: 'count' }] },
+        contract,
+      ),
+    ).toThrow(InvalidQueryException);
+  });
+
+  it('folds a count aggregate into a Prisma _count select, defaulting its key', () => {
+    const query = parseSearchRequest(
+      { aggregates: [{ relation: 'notes', type: 'count' }] },
+      contract,
+    );
+
+    expect(query.include).toEqual({ _count: { select: { notes: true } } });
+    expect(query.aggregateManifest).toEqual([
+      {
+        key: 'notes_count',
+        relation: 'notes',
+        type: 'count',
+        bucketKey: 'notes',
+      },
+    ]);
+  });
+
+  it('scopes an aggregate to its own filter, validated against its own contract', () => {
+    const query = parseSearchRequest(
+      {
+        aggregates: [
+          {
+            relation: 'notes',
+            type: 'count',
+            filters: [{ field: 'body', operator: 'like', value: 'leg' }],
+          },
+        ],
+      },
+      contract,
+    );
+
+    expect(query.include).toEqual({
+      _count: { select: { notes: { where: { body: { contains: 'leg' } } } } },
+    });
+  });
+
+  it('an aggregate and an include can share the same relation without colliding', () => {
+    const query = parseSearchRequest(
+      {
+        includes: [{ relation: 'notes' }],
+        aggregates: [{ relation: 'notes', type: 'exists' }],
+      },
+      contract,
+    );
+
+    expect(query.include).toEqual({
+      notes: {},
+      _count: { select: { notes: true } },
+    });
+    expect(query.includeManifest).toEqual([
+      { key: 'notes', relation: 'notes' },
+    ]);
+    expect(query.aggregateManifest).toEqual([
+      {
+        key: 'notes_exists',
+        relation: 'notes',
+        type: 'exists',
+        bucketKey: 'notes',
+      },
+    ]);
+  });
+
+  it('rejects an avg/sum/min/max aggregate with no field', () => {
+    expect(() =>
+      parseSearchRequest(
+        { aggregates: [{ relation: 'notes', type: 'avg' }] },
+        contract,
+      ),
+    ).toThrow(InvalidQueryException);
+  });
+
+  it('rejects a field the referenced resource does not declare as numeric', () => {
+    expect(() =>
+      parseSearchRequest(
+        { aggregates: [{ relation: 'notes', type: 'avg', field: 'body' }] },
+        contract,
+      ),
+    ).toThrow(InvalidQueryException);
+  });
+
+  it('resolves an avg aggregate on a hasMany relation as a batched instruction, never through _count', () => {
+    const query = parseSearchRequest(
+      { aggregates: [{ relation: 'notes', type: 'avg', field: 'likes' }] },
+      contract,
+    );
+
+    expect(query.include).toBeUndefined();
+    expect(query.relationInstructions).toEqual([
+      {
+        kind: 'aggregate',
+        relation: 'notes',
+        aggregateKey: 'notes:avg',
+        aggregateType: 'avg',
+        field: 'likes',
+        relationType: 'hasMany',
+        foreignKey: 'workoutId',
+        discriminator: undefined,
+        discriminatorValue: undefined,
+        childDelegate: 'workoutNote',
+        where: undefined,
+      },
+    ]);
+    expect(query.aggregateManifest).toEqual([
+      {
+        key: 'notes_avg',
+        relation: 'notes',
+        type: 'avg',
+        bucketKey: 'notes:avg',
+      },
+    ]);
+  });
+
+  it('builds a morphMany include as a batched instruction, never through Prisma include', () => {
+    const query = parseSearchRequest(
+      {
+        includes: [
+          {
+            relation: 'comments',
+            filters: [{ field: 'body', operator: 'like', value: 'nice' }],
+            sorts: [{ field: 'createdAt', direction: 'desc' }],
+          },
+        ],
+      },
+      contract,
+    );
+
+    expect(query.include).toBeUndefined();
+    expect(query.relationInstructions).toEqual([
+      {
+        kind: 'include',
+        relation: 'comments',
+        relationType: 'morphMany',
+        foreignKey: 'commentableId',
+        discriminator: 'commentableType',
+        discriminatorValue: 'Workout',
+        childDelegate: 'comment',
+        where: { body: { contains: 'nice' } },
+        orderBy: [{ createdAt: 'desc' }],
+        select: undefined,
+      },
+    ]);
+    expect(query.includeManifest).toEqual([
+      { key: 'comments', relation: 'comments' },
+    ]);
+  });
+
+  it('rejects a limit on a morphMany include, which cannot be windowed per parent yet', () => {
+    expect(() =>
+      parseSearchRequest(
+        { includes: [{ relation: 'comments', limit: 5 }] },
+        contract,
+      ),
+    ).toThrow(InvalidQueryException);
+  });
+
+  it('resolves a morphMany aggregate as a batched instruction regardless of type', () => {
+    const query = parseSearchRequest(
+      { aggregates: [{ relation: 'comments', type: 'count' }] },
+      contract,
+    );
+
+    expect(query.include).toBeUndefined();
+    expect(query.relationInstructions).toEqual([
+      {
+        kind: 'aggregate',
+        relation: 'comments',
+        aggregateKey: 'comments:count',
+        aggregateType: 'count',
+        field: undefined,
+        relationType: 'morphMany',
+        foreignKey: 'commentableId',
+        discriminator: 'commentableType',
+        discriminatorValue: 'Workout',
+        childDelegate: 'comment',
+        where: undefined,
+      },
+    ]);
+  });
+});
+
+describe('withIncludesAndAggregates', () => {
+  it('renames an included relation from the raw record to its alias', () => {
+    const query = parseSearchRequest(
+      { includes: [{ relation: 'notes', alias: 'recentNotes' }] },
+      contract,
+    );
+
+    const result = withIncludesAndAggregates(
+      { id: '1' },
+      { id: '1', notes: [{ id: 'n1', body: 'gym' }] },
+      query,
+    );
+
+    expect(result).toEqual({
+      id: '1',
+      recentNotes: [{ id: 'n1', body: 'gym' }],
+    });
+  });
+
+  it('turns a count aggregate into a number and an exists aggregate into a boolean', () => {
+    const query = parseSearchRequest(
+      {
+        aggregates: [
+          { relation: 'notes', type: 'count' },
+          { relation: 'notes', type: 'exists', alias: 'hasNotes' },
+        ],
+      },
+      contract,
+    );
+
+    const result = withIncludesAndAggregates(
+      { id: '1' },
+      { id: '1', _aggregates: { notes: 3 } },
+      query,
+    );
+
+    expect(result).toEqual({ id: '1', notes_count: 3, hasNotes: true });
+  });
+
+  it('returns the view unchanged when nothing was included or aggregated', () => {
+    const query = parseSearchRequest({}, contract);
+
+    const result = withIncludesAndAggregates({ id: '1' }, { id: '1' }, query);
+
+    expect(result).toEqual({ id: '1' });
   });
 });

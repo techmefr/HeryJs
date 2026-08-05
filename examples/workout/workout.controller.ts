@@ -24,6 +24,7 @@ import { ok } from '#technical/http/envelope';
 import {
   parseSearchRequest,
   searchRequestSchema,
+  withIncludesAndAggregates,
 } from '#technical/http/list-query';
 import type { SearchRequestBody } from '#technical/http/list-query';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
@@ -68,6 +69,44 @@ const WORKOUT_DESCRIBE = {
   sorts: ['createdAt'],
   filters: ['title'],
   selects: ['id', 'ownerId', 'title', 'createdAt', 'updatedAt', 'deletedAt'],
+  includes: {
+    notes: {
+      type: 'hasMany',
+      foreignKey: 'workoutId',
+      childDelegate: 'workoutNote',
+      filters: ['body'],
+      sorts: ['createdAt'],
+      selects: ['id', 'body', 'rating', 'createdAt'],
+    },
+    comments: {
+      type: 'morphMany',
+      foreignKey: 'commentableId',
+      discriminator: 'commentableType',
+      discriminatorValue: 'Workout',
+      childDelegate: 'comment',
+      filters: ['body'],
+      sorts: ['createdAt'],
+      selects: ['id', 'body', 'createdAt'],
+    },
+  },
+  aggregates: {
+    notes: {
+      type: 'hasMany',
+      foreignKey: 'workoutId',
+      childDelegate: 'workoutNote',
+      filters: ['body'],
+      fields: ['rating'],
+    },
+    comments: {
+      type: 'morphMany',
+      foreignKey: 'commentableId',
+      discriminator: 'commentableType',
+      discriminatorValue: 'Workout',
+      childDelegate: 'comment',
+      filters: ['body'],
+      fields: [],
+    },
+  },
   limits: [10, 15, 20],
   defaultLimit: 15,
   rules: {
@@ -151,6 +190,44 @@ export class WorkoutController {
         'updatedAt',
         'deletedAt',
       ],
+      includes: {
+        notes: {
+          type: 'hasMany',
+          foreignKey: 'workoutId',
+          childDelegate: 'workoutNote',
+          filters: ['body'],
+          sorts: ['createdAt'],
+          selects: ['id', 'body', 'rating', 'createdAt'],
+        },
+        comments: {
+          type: 'morphMany',
+          foreignKey: 'commentableId',
+          discriminator: 'commentableType',
+          discriminatorValue: 'Workout',
+          childDelegate: 'comment',
+          filters: ['body'],
+          sorts: ['createdAt'],
+          selects: ['id', 'body', 'createdAt'],
+        },
+      },
+      aggregates: {
+        notes: {
+          type: 'hasMany',
+          foreignKey: 'workoutId',
+          childDelegate: 'workoutNote',
+          filters: ['body'],
+          fields: ['rating'],
+        },
+        comments: {
+          type: 'morphMany',
+          foreignKey: 'commentableId',
+          discriminator: 'commentableType',
+          discriminatorValue: 'Workout',
+          childDelegate: 'comment',
+          filters: ['body'],
+          fields: [],
+        },
+      },
       limits: [10, 15, 20],
       defaultLimit: 15,
     });
@@ -183,7 +260,13 @@ export class WorkoutController {
 
     if (capabilities.length === 0) {
       return ok(
-        records.map((record) => project(toWorkoutView(record))),
+        records.map((record) =>
+          withIncludesAndAggregates(
+            project(toWorkoutView(record)),
+            record,
+            query,
+          ),
+        ),
         meta,
       );
     }
@@ -192,7 +275,11 @@ export class WorkoutController {
       records.map((record) => {
         const resolved = this.policy.recordCapabilities(subject, record);
         return {
-          ...project(toWorkoutView(record)),
+          ...withIncludesAndAggregates(
+            project(toWorkoutView(record)),
+            record,
+            query,
+          ),
           capabilities: Object.fromEntries(
             Object.entries(resolved).filter(([key]) =>
               capabilities.includes(key),

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import * as yaml from 'js-yaml';
 import { z } from 'zod';
@@ -13,8 +13,46 @@ export const blueprintFieldSchema = z.object({
   hidden: z.boolean().default(false),
 });
 
+const fieldNameSchema = z.string().regex(/^[a-z][a-zA-Z0-9]*$/);
+const resourceNameSchema = z.string().regex(/^[A-Z][a-zA-Z0-9]*$/);
+
+// A relation link names the resource on the other end and how its rows tie
+// back to this one. hasMany is a real Prisma relation: foreignKey is the
+// column the related model uses to point back here. morphMany has no
+// Prisma-level relation at all -- Prisma does not model polymorphic
+// associations -- so the related model's own discriminator column and the
+// value it holds for *this* resource have to be declared, there is nothing
+// to introspect from the schema.
+export const blueprintRelationLinkSchema = z
+  .object({
+    relation: fieldNameSchema,
+    resource: resourceNameSchema,
+    type: z.enum(['hasMany', 'morphMany']),
+    foreignKey: fieldNameSchema,
+    discriminator: fieldNameSchema.optional(),
+    discriminatorValue: z.string().optional(),
+  })
+  .refine(
+    (link) =>
+      link.type === 'hasMany' ||
+      (link.discriminator !== undefined &&
+        link.discriminatorValue !== undefined),
+    {
+      message:
+        'a morphMany link needs both discriminator and discriminatorValue',
+    },
+  );
+
+export type BlueprintRelationLink = z.infer<typeof blueprintRelationLinkSchema>;
+
 export const blueprintSchema = z.object({
   name: z.string().regex(/^[A-Z][a-zA-Z0-9]*$/),
+  // A resource the generator never routes: no controller, no service, no
+  // capabilities of its own. Its only job is to be pointed at from another
+  // blueprint's includes/aggregates, so its own fields/filters/sorts describe
+  // the relation once instead of being retyped by hand on every parent that
+  // includes it.
+  routed: z.boolean().default(true),
   fields: z.array(blueprintFieldSchema).default([]),
   permissions: z
     .object({
@@ -34,15 +72,44 @@ export const blueprintSchema = z.object({
     .array(z.string().regex(/^[a-z][a-zA-Z0-9]*$/))
     .default(['createdAt']),
   filters: z.array(z.string().regex(/^[a-z][a-zA-Z0-9]*$/)).default([]),
+  includes: z.array(blueprintRelationLinkSchema).default([]),
+  aggregates: z.array(blueprintRelationLinkSchema).default([]),
 });
+
+type RawBlueprint = z.infer<typeof blueprintSchema>;
+
+// What an include contract needs at runtime: the client-facing allow-lists a
+// nested filters/sorts/selects request is validated against, derived from
+// the referenced resource's own blueprint rather than retyped here.
+export interface ResolvedInclude extends BlueprintRelationLink {
+  filters: readonly string[];
+  sorts: readonly string[];
+  selects: readonly string[];
+}
+
+// Aggregates validate a `field` (for avg/sum/min/max) against the referenced
+// resource's own numeric fields, and a `filters` allow-list like includes do.
+export interface ResolvedAggregate extends BlueprintRelationLink {
+  filters: readonly string[];
+  fields: readonly string[];
+}
 
 export type PermissionPreset = z.infer<typeof permissionPresetSchema>;
 export type BlueprintField = z.infer<typeof blueprintFieldSchema>;
-export type Blueprint = z.infer<typeof blueprintSchema>;
+
+export interface Blueprint extends Omit<
+  RawBlueprint,
+  'includes' | 'aggregates'
+> {
+  includes: ResolvedInclude[];
+  aggregates: ResolvedAggregate[];
+}
 
 // Columns the generator owns. A blueprint declaring one of them would put a
 // client-writable field on top of a column the framework decides, which is how
-// a caller ends up choosing its own owner or team.
+// a caller ends up choosing its own owner or team. Only applies to routed
+// resources -- an unrouted one gets none of that scaffolding, so it declares
+// every column it has, audit timestamps included.
 const RESERVED_FIELDS = new Set([
   'id',
   'tenantId',
@@ -54,9 +121,13 @@ const RESERVED_FIELDS = new Set([
 ]);
 
 function assertNoReservedField(
-  blueprint: Blueprint,
+  blueprint: RawBlueprint,
   report: (message: string) => void,
 ): void {
+  if (!blueprint.routed) {
+    return;
+  }
+
   for (const field of blueprint.fields) {
     if (RESERVED_FIELDS.has(field.name)) {
       report(
@@ -68,7 +139,9 @@ function assertNoReservedField(
 
 // The columns a sort or filter entry may name beyond the blueprint's own
 // fields -- every generated column except tenantId, which multi-tenancy
-// already applies ahead of anything a caller can request.
+// already applies ahead of anything a caller can request. Only extended for
+// routed resources: an unrouted one has none of these generated columns, so
+// only its own declared fields (plus the always-implicit id) are valid.
 const KNOWN_NON_FIELD_SORT_FILTER_TARGETS = new Set([
   'id',
   'createdAt',
@@ -85,22 +158,47 @@ const KNOWN_NON_FIELD_SORT_FILTER_TARGETS = new Set([
  * 500 on the search route the moment it is called.
  */
 function assertSortsAndFiltersAreKnownFields(
-  blueprint: Blueprint,
+  blueprint: RawBlueprint,
   report: (message: string) => void,
 ): void {
   const fieldNames = new Set(blueprint.fields.map((field) => field.name));
+  const knownTargets = blueprint.routed
+    ? KNOWN_NON_FIELD_SORT_FILTER_TARGETS
+    : new Set(['id']);
 
   for (const [kind, entries] of [
     ['sort', blueprint.sorts],
     ['filter', blueprint.filters],
   ] as const) {
     for (const entry of entries) {
-      if (
-        !fieldNames.has(entry) &&
-        !KNOWN_NON_FIELD_SORT_FILTER_TARGETS.has(entry)
-      ) {
+      if (!fieldNames.has(entry) && !knownTargets.has(entry)) {
         report(`${kind} "${entry}" names no declared field`);
       }
+    }
+  }
+}
+
+/**
+ * A relation named twice in `includes`, or twice in `aggregates`, is not two
+ * different things a client can ask for -- both would generate the same
+ * contract entry, so the second declaration is dead weight at best and a
+ * silent surprise at worst if the two ever disagree.
+ */
+function assertRelationsAreUnique(
+  blueprint: RawBlueprint,
+  report: (message: string) => void,
+): void {
+  for (const [kind, entries] of [
+    ['include', blueprint.includes.map((entry) => entry.relation)],
+    ['aggregate', blueprint.aggregates.map((entry) => entry.relation)],
+  ] as const) {
+    const seen = new Set<string>();
+
+    for (const relation of entries) {
+      if (seen.has(relation)) {
+        report(`relation "${relation}" is declared more than once in ${kind}s`);
+      }
+      seen.add(relation);
     }
   }
 }
@@ -121,6 +219,86 @@ export function resolveBlueprintPath(root: string, nameOrPath: string): string {
     : path.join(root, 'blueprints', `${kebabCase(nameOrPath)}.yaml`);
 }
 
+/**
+ * A relation's target blueprint lives next to the one referencing it -- both
+ * are part of the same project's blueprint directory, so there is no
+ * separate root to resolve against here the way `resolveBlueprintPath` needs
+ * one for the CLI's own name-to-file lookup.
+ */
+function loadReferencedBlueprint(
+  resource: string,
+  dir: string,
+  problems: string[],
+): Blueprint | undefined {
+  const file = path.join(dir, `${kebabCase(resource)}.yaml`);
+
+  if (!existsSync(file)) {
+    problems.push(`resource "${resource}" has no blueprint at ${file}`);
+    return undefined;
+  }
+
+  const referenced = loadBlueprint(file);
+
+  // v1 scope: only a resource with no routes of its own can be an include or
+  // aggregate target. Pointing at a fully routed CRUD resource raises real
+  // questions this framework has not answered yet -- does the caller need the
+  // target's own view permission, does its own capability set apply -- so it
+  // is refused rather than guessed at.
+  if (referenced.routed) {
+    problems.push(
+      `resource "${resource}" is routed and cannot be an include/aggregate target yet`,
+    );
+    return undefined;
+  }
+
+  return referenced;
+}
+
+function resolveRelationLinks(
+  blueprint: RawBlueprint,
+  dir: string,
+  problems: string[],
+): { includes: ResolvedInclude[]; aggregates: ResolvedAggregate[] } {
+  const includes: ResolvedInclude[] = [];
+  const aggregates: ResolvedAggregate[] = [];
+
+  for (const link of blueprint.includes) {
+    const referenced = loadReferencedBlueprint(link.resource, dir, problems);
+    if (!referenced) {
+      continue;
+    }
+
+    includes.push({
+      ...link,
+      filters: referenced.filters,
+      sorts: referenced.sorts,
+      selects: [
+        'id',
+        ...referenced.fields
+          .filter((field) => !field.hidden)
+          .map((field) => field.name),
+      ],
+    });
+  }
+
+  for (const link of blueprint.aggregates) {
+    const referenced = loadReferencedBlueprint(link.resource, dir, problems);
+    if (!referenced) {
+      continue;
+    }
+
+    aggregates.push({
+      ...link,
+      filters: referenced.filters,
+      fields: referenced.fields
+        .filter((field) => field.type === 'int' && !field.hidden)
+        .map((field) => field.name),
+    });
+  }
+
+  return { includes, aggregates };
+}
+
 export function loadBlueprint(filePath: string): Blueprint {
   const raw = yaml.load(readFileSync(filePath, 'utf8'));
   const blueprint = blueprintSchema.parse(raw);
@@ -130,6 +308,13 @@ export function loadBlueprint(filePath: string): Blueprint {
   assertSortsAndFiltersAreKnownFields(blueprint, (message) =>
     problems.push(message),
   );
+  assertRelationsAreUnique(blueprint, (message) => problems.push(message));
+
+  const { includes, aggregates } = resolveRelationLinks(
+    blueprint,
+    path.dirname(filePath),
+    problems,
+  );
 
   if (problems.length > 0) {
     throw new Error(
@@ -137,5 +322,5 @@ export function loadBlueprint(filePath: string): Blueprint {
     );
   }
 
-  return blueprint;
+  return { ...blueprint, includes, aggregates };
 }
