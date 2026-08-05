@@ -150,29 +150,28 @@ function buildFilterWhere(
     throw new InvalidQueryException('filters', contract.filters);
   }
 
-  const andGroup: Record<string, unknown>[] = [];
-  const orGroup: Record<string, unknown>[] = [];
+  // An `or` entry joins the group being built, it does not open a parallel
+  // one: [A, B(or), C] reads as (A OR B) then AND C, not "all A/C AND any B".
+  const groups: Record<string, unknown>[][] = [];
 
   for (const entry of entries) {
     const fragment = buildFilterEntry(entry, contract, depth);
 
-    if (entry.type === 'or') {
-      orGroup.push(fragment);
+    if (entry.type === 'or' && groups.length > 0) {
+      groups.push([fragment]);
     } else {
-      andGroup.push(fragment);
+      if (groups.length === 0) {
+        groups.push([]);
+      }
+      groups[groups.length - 1]!.push(fragment);
     }
   }
 
-  const clauses: Record<string, unknown>[] = [];
+  const branches = groups.map((group) =>
+    group.length === 1 ? group[0]! : { AND: group },
+  );
 
-  if (andGroup.length > 0) {
-    clauses.push({ AND: andGroup });
-  }
-  if (orGroup.length > 0) {
-    clauses.push({ OR: orGroup });
-  }
-
-  return clauses.length === 1 ? clauses[0]! : { AND: clauses };
+  return branches.length === 1 ? branches[0]! : { OR: branches };
 }
 
 function parseSorts(

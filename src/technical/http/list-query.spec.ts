@@ -84,9 +84,7 @@ describe('parseSearchRequest', () => {
       contract,
     );
 
-    expect(query.where).toEqual({
-      AND: [{ title: { equals: 'gym' } }],
-    });
+    expect(query.where).toEqual({ title: { equals: 'gym' } });
   });
 
   it('builds the where fragment from the validated operator, never from the raw value', () => {
@@ -95,7 +93,7 @@ describe('parseSearchRequest', () => {
       contract,
     );
 
-    expect(query.where).toEqual({ AND: [{ reps: { gte: 10 } }] });
+    expect(query.where).toEqual({ reps: { gte: 10 } });
   });
 
   it('rejects in/not in without an array value', () => {
@@ -113,10 +111,10 @@ describe('parseSearchRequest', () => {
       contract,
     );
 
-    expect(query.where).toEqual({ AND: [{ reps: { in: [5, 10] } }] });
+    expect(query.where).toEqual({ reps: { in: [5, 10] } });
   });
 
-  it('groups and-typed and or-typed filters into separate branches', () => {
+  it('an or-typed filter unites with the one before it, not a parallel branch', () => {
     const query = parseSearchRequest(
       {
         filters: [
@@ -128,9 +126,28 @@ describe('parseSearchRequest', () => {
     );
 
     expect(query.where).toEqual({
-      AND: [
-        { AND: [{ title: { equals: 'gym' } }] },
-        { OR: [{ reps: { gt: 5 } }] },
+      OR: [{ title: { equals: 'gym' } }, { reps: { gt: 5 } }],
+    });
+  });
+
+  it('and-groups consecutive and-typed filters before an or splits the branch', () => {
+    const query = parseSearchRequest(
+      {
+        filters: [
+          { field: 'title', value: 'gym' },
+          { field: 'reps', operator: '>=', value: 10 },
+          { field: 'reps', operator: '<', value: 3, type: 'or' },
+        ],
+      },
+      contract,
+    );
+
+    expect(query.where).toEqual({
+      OR: [
+        {
+          AND: [{ title: { equals: 'gym' } }, { reps: { gte: 10 } }],
+        },
+        { reps: { lt: 3 } },
       ],
     });
   });
@@ -152,14 +169,7 @@ describe('parseSearchRequest', () => {
     );
 
     expect(query.where).toEqual({
-      OR: [
-        {
-          AND: [
-            { AND: [{ title: { equals: 'gym' } }] },
-            { OR: [{ reps: { gt: 5 } }] },
-          ],
-        },
-      ],
+      OR: [{ title: { equals: 'gym' } }, { reps: { gt: 5 } }],
     });
   });
 
