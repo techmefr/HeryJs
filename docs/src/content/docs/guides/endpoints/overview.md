@@ -9,15 +9,16 @@ The pages in this section walk through a real one, `Workout`, end to end. Each p
 
 ## The seven routes
 
-| Method   | Path                    | What it does                                               | Documented in                                    |
-| -------- | ----------------------- | ---------------------------------------------------------- | ------------------------------------------------ |
-| `POST`   | `/workouts/search`      | List, with search, sort, filter and pagination             | [Search](/guides/endpoints/search/)              |
-| `GET`    | `/workouts/describe`    | The resource's contract — fields, limits, validation rules | [Details](/guides/endpoints/details/)            |
-| `GET`    | `/workouts/:id`         | Read one record                                            | [Details](/guides/endpoints/details/)            |
-| `POST`   | `/workouts`             | Create                                                     | [Create](/guides/endpoints/create/)   |
-| `PATCH`  | `/workouts/:id`         | Update                                                     | [Update](/guides/endpoints/update/)   |
-| `DELETE` | `/workouts/:id`         | Soft-delete                                                | [Delete](/guides/endpoints/delete/) |
-| `POST`   | `/workouts/:id/restore` | Undo a soft-delete                                         | [Restore](/guides/endpoints/restore/) |
+| Method | Path                  | What it does                                                          | Documented in                          |
+| ------ | --------------------- | ---------------------------------------------------------------------- | --------------------------------------- |
+| `POST` | `/workouts/search`    | List, with search, sort, filter, pagination — also how one record is read, filtered to its id | [Search](/guides/endpoints/search/), [Details](/guides/endpoints/details/) |
+| `GET`  | `/workouts/describe`  | The resource's contract — fields, limits, validation rules            | [Details](/guides/endpoints/details/)  |
+| `POST` | `/workouts/create`    | Create one or many records in one call                                | [Create](/guides/endpoints/create/)    |
+| `POST` | `/workouts/update`    | Update one or many records in one call, including relations           | [Update](/guides/endpoints/update/)    |
+| `POST` | `/workouts/delete`    | Soft-delete (or hard-delete with `mode: "hard"`) one or many records  | [Delete](/guides/endpoints/delete/)    |
+| `POST` | `/workouts/restore`   | Undo a soft-delete for one or many records                            | [Restore](/guides/endpoints/restore/)  |
+
+Every mutating route takes an array — `data` for create/update, `ids` for delete/restore — even for a single record, and answers with one result per entry, each carrying its own `status`. One entry failing never blocks the others in the same request.
 
 Every one of them requires a session — send the bearer token you got from `/auth/login` or `/auth/register` in an `Authorization: Bearer <token>` header. See [Authentication](/guides/authentication/) for how to get one.
 
