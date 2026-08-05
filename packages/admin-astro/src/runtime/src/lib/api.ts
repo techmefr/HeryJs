@@ -74,17 +74,17 @@ export interface AdminSection {
 }
 
 // The overview already reports these, and /signal/stream never ends.
-// /pipeline/traces and /prune each get their own dedicated page
-// (pipeline.astro, prune.astro) rather than the generic flat table, so
-// they're hidden from the auto-discovered sidebar sections the same way
-// /describe and /health are.
+// /pipeline/traces gets its own dedicated page (pipeline.astro) rather than
+// the generic flat table, so it's hidden from the auto-discovered sidebar
+// sections the same way /describe and /health are. /prune needs no such
+// entry: its status route is a POST (see PruneController), so it was never
+// going to surface here in the first place.
 const HIDDEN_PATHS = [
   '/',
   '/describe',
   '/health',
   '/metrics',
   '/pipeline/traces',
-  '/prune',
   '/signal/stream',
 ];
 

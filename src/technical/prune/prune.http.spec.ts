@@ -45,7 +45,7 @@ describe('prune', () => {
 
   it('refuses a non-admin caller on both routes', async () => {
     await request(app.getHttpServer())
-      .get('/prune')
+      .post('/prune/status')
       .set('Authorization', `Bearer ${userToken}`)
       .expect(403);
 
@@ -57,7 +57,7 @@ describe('prune', () => {
 
   it("lists Workout with the project's configured retention", async () => {
     const response = await request(app.getHttpServer())
-      .get('/prune')
+      .post('/prune/status')
       .set('Authorization', `Bearer ${adminToken}`)
       .expect(200);
 

@@ -55,7 +55,7 @@ Two routes, both behind `SessionGuard` and `@Capability(canManagePrune)` — unl
 
 | Route | What it does |
 |---|---|
-| `GET /prune` | Every prunable model that has a rule, with its resolved `retentionDays` and `lock`. |
+| `POST /prune/status` | Every prunable model that has a rule, with its resolved `retentionDays` and `lock`. A `POST` rather than the plain `GET` a status read would suggest, so the admin panel's auto-discovery never turns it into a redundant sidebar section — see the admin page below. |
 | `POST /prune/:model/run` | Hard-deletes that model's overdue rows now, regardless of `lock`. 404s if the model has no prune configuration. |
 
 ```json
@@ -90,4 +90,4 @@ Every generated service also carries a `purge(record)` method: it writes the aud
 
 ## The admin page
 
-Installing the admin module gives you a dedicated `/prune` page: one row per configured model, its retention window, whether it is locked or automatic, and a **Prune now** button that calls the manual-trigger route directly. It is not part of the generic auto-discovered resource list — `GET /prune` is deliberately excluded from that list the same way `/pipeline/traces` is, so it gets this page instead of the flat data table every other resource gets.
+Installing the admin module gives you a dedicated `/prune` page: one row per configured model, its retention window, whether it is locked or automatic, and a **Prune now** button that calls the manual-trigger route directly. It is not part of the generic auto-discovered resource list — not because it is special-cased there, but because `POST /prune/status` was never going to qualify: the panel only auto-discovers argument-free `GET`s and `POST .../search` routes, the same reasoning that keeps `/workouts/search` from doubling as a redundant listing.

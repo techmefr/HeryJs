@@ -77,7 +77,9 @@ import Shell from '../layouts/Shell.astro';
   }
 
   try {
-    const { data } = await api<PruneStatus[]>('/prune');
+    const { data } = await api<PruneStatus[]>('/prune/status', {
+      method: 'POST',
+    });
 
     output.replaceChildren(
       data.length === 0
