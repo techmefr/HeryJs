@@ -303,8 +303,9 @@ function buildFilterWhere(
     throw new InvalidQueryException('filters', contract.filters);
   }
 
-  // An `or` entry joins the group being built, it does not open a parallel
-  // one: [A, B(or), C] reads as (A OR B) then AND C, not "all A/C AND any B".
+  // An `or` entry opens a new group, and every entry after it (until the
+  // next `or`) joins that group with AND: [A, B(or), C] reads as
+  // A OR (B AND C), not "(A OR B) then AND C".
   const groups: Record<string, unknown>[][] = [];
 
   for (const entry of entries) {
