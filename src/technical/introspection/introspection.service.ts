@@ -21,7 +21,7 @@ export interface DescribedController {
 // runtime free of any dependency on the generator, and describes what is
 // actually wired instead of what happens to be on disk.
 @Injectable()
-export class DescribeService {
+export class IntrospectionService {
   constructor(
     private readonly discovery: DiscoveryService,
     private readonly scanner: MetadataScanner,

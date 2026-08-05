@@ -127,7 +127,7 @@ const { title, bare = false } = Astro.props;
 
       if (token() && !onLogin) {
         const nav = document.getElementById('sections');
-        const { data } = await api<DescribedController[]>('/describe');
+        const { data } = await api<DescribedController[]>('/introspect');
         const current = new URLSearchParams(window.location.search).get('path');
 
         for (const section of sectionsOf(data)) {

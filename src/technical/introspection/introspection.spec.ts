@@ -5,9 +5,9 @@ import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
 import { BlogPostModule } from '../../../examples/blog-post/blog-post.module';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
-import type { DescribedController } from './describe.service';
+import type { DescribedController } from './introspection.service';
 
-describe('Resource description', () => {
+describe('Router introspection', () => {
   let app: INestApplication<App>;
   let token: string;
 
@@ -27,7 +27,7 @@ describe('Resource description', () => {
 
   const describeAll = async (): Promise<DescribedController[]> => {
     const response = await request(app.getHttpServer())
-      .get('/describe')
+      .get('/introspect')
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
 
@@ -35,7 +35,7 @@ describe('Resource description', () => {
   };
 
   it('refuses an unauthenticated caller', async () => {
-    await request(app.getHttpServer()).get('/describe').expect(401);
+    await request(app.getHttpServer()).get('/introspect').expect(401);
   });
 
   it('reports the routes actually registered on the router', async () => {
@@ -43,7 +43,7 @@ describe('Resource description', () => {
     const paths = controllers.map((controller) => controller.basePath);
 
     expect(paths).toContain('/blog-posts');
-    expect(paths).toContain('/describe');
+    expect(paths).toContain('/introspect');
   });
 
   it('names the capability guarding each route of a resource', async () => {

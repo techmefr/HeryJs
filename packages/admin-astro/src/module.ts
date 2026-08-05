@@ -60,7 +60,7 @@ registerModule({
   name: 'admin-astro',
   channel: 'official',
   description:
-    'Add an admin panel built with Astro. Sections are discovered from GET /describe, so any module that ships a listable route appears without touching the admin.',
+    'Add an admin panel built with Astro. Sections are discovered from GET /introspect, so any module that ships a listable route appears without touching the admin.',
   dependencies: [],
   install() {
     copyRuntime(RUNTIME_DIR, DEST_DIR);

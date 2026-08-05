@@ -32,7 +32,7 @@ Running `pnpm hery install` with no arguments prints `nothing to install` and ex
 | `stream`               | One-to-many audio/video over LiveKit.                                                                    |
 | `mail`                 | Outgoing mail: a `MailLog` model, string templates, and a BullMQ job that sends.                         |
 | `storage`              | File storage behind a swappable provider — local disk by default, S3-compatible via `STORAGE_DRIVER=s3`. |
-| `admin-astro`          | An admin panel built with Astro, discovering its sections from `GET /describe`.                          |
+| `admin-astro`          | An admin panel built with Astro, discovering its sections from `GET /introspect`.                          |
 | `impersonation`        | Let an admin act as another user, tenant-bounded and audit-logged, via a bearer token for the target.     |
 
 Five of them have a runtime half in `src/modules/`: `live`, `stream`, `mail`, `storage`, `impersonation`. The search drivers install into the existing `technical/search/` folder, because they implement a contract the kernel already owns.

@@ -5,7 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuditModule } from '#technical/audit/audit.module';
 import { AuthModule } from '#technical/auth/auth.module';
-import { DescribeModule } from '#technical/describe/describe.module';
+import { IntrospectionModule } from '#technical/introspection/introspection.module';
 import { FeatureFlagsModule } from '#technical/feature-flags/feature-flags.module';
 import { InspectorModule } from '#devtools/inspector/inspector.module';
 import { PipelineModule } from '#devtools/pipeline/pipeline.module';
@@ -65,10 +65,10 @@ import { redactedRequestSerializer } from '#technical/logging/redacted-request-s
     }),
     AuditModule,
     AuthModule,
-    DescribeModule,
     FeatureFlagsModule,
     ImpersonationModule,
     InspectorModule,
+    IntrospectionModule,
     JobsModule,
     MailModule,
     MonitoringModule,

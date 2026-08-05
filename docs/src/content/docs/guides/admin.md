@@ -1,11 +1,11 @@
 ---
 title: Admin panel and introspection
-description: GET /describe reflects what is actually wired, and the Astro admin builds itself from the answer.
+description: GET /introspect reflects what is actually wired, and the Astro admin builds itself from the answer.
 ---
 
 The admin panel has no configuration file listing your resources. It asks the running application what exists, and renders that. Add a module that ships a listable route and it appears in the sidebar without the admin knowing anything about it.
 
-## `GET /describe`
+## `GET /introspect`
 
 One route, guarded by `SessionGuard` and `DevOnlyGuard`. It returns every controller and every route the DI container actually has:
 
@@ -43,9 +43,9 @@ export interface DescribedController {
 
 ### It reflects the container, not the filesystem
 
-`DescribeService` walks the controllers Nest has instantiated and reads their decorator metadata. It does not parse `*.controller.ts`, and it does not read the blueprint.
+`IntrospectionService` walks the controllers Nest has instantiated and reads their decorator metadata. It does not parse `*.controller.ts`, and it does not read the blueprint.
 
-That choice buys two things. The runtime gains no dependency on the generator — `/describe` works the same in a project where every generated file has since been rewritten by hand. And it describes **what is actually wired** rather than what happens to be on disk: a controller you wrote yourself appears, a controller you removed from a module's `controllers` array does not, and a route you added by hand is described as accurately as a generated one.
+That choice buys two things. The runtime gains no dependency on the generator — `/introspect` works the same in a project where every generated file has since been rewritten by hand. And it describes **what is actually wired** rather than what happens to be on disk: a controller you wrote yourself appears, a controller you removed from a module's `controllers` array does not, and a route you added by hand is described as accurately as a generated one.
 
 This is the same principle as `hery mcp:serve` reading real controllers rather than blueprints, one layer further in: the code is the source of truth, not the thing that produced the code.
 
@@ -76,7 +76,7 @@ controller.routes
   )
 ```
 
-A `GET` with no path parameter is something that can be listed without knowing anything else, so it becomes a sidebar entry, and its payload becomes a table. Routes taking an `:id` are skipped because there is no id to supply. A resource's search route is the one deliberate exception to "non-`GET` routes are skipped": the Lomkit-style search contract takes its query in a JSON body rather than the query string, so the panel calls it with `{}` as the body and renders the result exactly like a plain listing. A handful of paths that are not resource listings — the root, `/describe` itself, `/health`, `/metrics` and the signal stream — are excluded by name.
+A `GET` with no path parameter is something that can be listed without knowing anything else, so it becomes a sidebar entry, and its payload becomes a table. Routes taking an `:id` are skipped because there is no id to supply. A resource's search route is the one deliberate exception to "non-`GET` routes are skipped": the Lomkit-style search contract takes its query in a JSON body rather than the query string, so the panel calls it with `{}` as the body and renders the result exactly like a plain listing. A handful of paths that are not resource listings — the root, `/introspect` itself, `/health`, `/metrics` and the signal stream — are excluded by name.
 
 Note that "argument-free" is a test on **path parameters only**. A GET route that requires a query parameter is still listed, and will render whatever it answers when called without one.
 
@@ -84,7 +84,7 @@ This is why the panel needs no per-resource work. `/blog-posts/search` appears b
 
 ### Columns come from the payload
 
-There is no column configuration and no field metadata in `/describe`. The table takes the union of the keys present in the returned rows:
+There is no column configuration and no field metadata in `/introspect`. The table takes the union of the keys present in the returned rows:
 
 ```ts
 const columns = [...new Set(rows.flatMap((row) => Object.keys(row)))];
@@ -100,14 +100,14 @@ Point it at another API with `PUBLIC_API_URL` if yours is not on `http://localho
 
 ## Before you deploy any of this
 
-`/describe` is a map of your application, and the protections on it are worth understanding precisely.
+`/introspect` is a map of your application, and the protections on it are worth understanding precisely.
 
 **Unauthenticated callers get nothing** — `SessionGuard` runs first and returns 401 before anything is computed, which the spec asserts.
 
-**Any authenticated session gets the whole map.** There is no capability check, no role, no admin flag and no tenant filter on `/describe`. Combined with an unguarded `POST /auth/register`, that means in a non-production deployment anyone who can sign themselves up can enumerate every controller, route, handler name and capability name in the application — including routes they cannot call.
+**Any authenticated session gets the whole map.** There is no capability check, no role, no admin flag and no tenant filter on `/introspect`. Combined with an unguarded `POST /auth/register`, that means in a non-production deployment anyone who can sign themselves up can enumerate every controller, route, handler name and capability name in the application — including routes they cannot call.
 
-**Production protection is a `NODE_ENV` string comparison.** `DevOnlyGuard` 404s when `NODE_ENV === 'production'` and nothing else. A deployment that sets `NODE_ENV=prod`, or forgets it entirely, exposes `/describe` for real. There is no separate flag to turn it off.
+**Production protection is a `NODE_ENV` string comparison.** `DevOnlyGuard` 404s when `NODE_ENV === 'production'` and nothing else. A deployment that sets `NODE_ENV=prod`, or forgets it entirely, exposes `/introspect` for real. There is no separate flag to turn it off.
 
-**Guard order leaks existence.** Because `SessionGuard` is declared before `DevOnlyGuard`, an unauthenticated production request to `/describe` answers 401 rather than the 404 that would make the route look absent. The same ordering applies to `/inspector/requests`, `/scheduler/tasks` and `/seeders`.
+**Guard order leaks existence.** Because `SessionGuard` is declared before `DevOnlyGuard`, an unauthenticated production request to `/introspect` answers 401 rather than the 404 that would make the route look absent. The same ordering applies to `/inspector/requests`, `/scheduler/tasks` and `/seeders`.
 
 The admin panel itself is a static bundle, so `PUBLIC_API_URL` is baked into shipped JavaScript, and the session token lives in browser storage readable by any script on the admin origin. Treat the panel as a development tool unless you have deliberately hardened both ends.
