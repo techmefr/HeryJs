@@ -345,6 +345,14 @@ describe('BlogPost resource', () => {
     expect(
       (found.body as { data: { id: string }[] }).data.map((r) => r.id),
     ).toContain(record.id);
+
+    // Every engine caps its results at some default of its own, so a search
+    // says which cap applied and whether it was reached -- a total taken from
+    // a truncated match set is a floor, and the caller has to be able to tell.
+    expect((found.body as { meta: { search: unknown } }).meta.search).toEqual({
+      matchLimit: env.SEARCH_MATCH_LIMIT,
+      truncated: false,
+    });
   });
 
   it('rejects a search engine keyword hery.config.ts never declared', async () => {

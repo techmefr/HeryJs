@@ -204,7 +204,10 @@ export class BlogPostController {
       }
     }
 
-    const { records, total } = await this.blogPosts.search(subject, query);
+    const { records, total, matches } = await this.blogPosts.search(
+      subject,
+      query,
+    );
     const capabilities = body.capabilities ?? [];
     const select = query.select;
     const project = (view: Record<string, unknown>) =>
@@ -219,7 +222,21 @@ export class BlogPostController {
       limit: query.limit,
       total,
       last_page: Math.max(1, Math.ceil(total / query.limit)),
+      ...(matches
+        ? {
+            search: { matchLimit: matches.limit, truncated: matches.truncated },
+          }
+        : {}),
     };
+
+    // A truncated match set makes total a floor rather than a count, so the
+    // response says which one it is instead of leaving the caller to trust a
+    // number that is quietly wrong.
+    const messages = matches?.truncated
+      ? [
+          `Only the first ${matches.limit} full-text matches were counted, and more exist. The totals below are a floor, not a count -- narrow the search term to see the rest.`,
+        ]
+      : [];
 
     if (capabilities.length === 0) {
       return ok(
@@ -231,6 +248,7 @@ export class BlogPostController {
           ),
         ),
         meta,
+        messages,
       );
     }
 
@@ -254,6 +272,7 @@ export class BlogPostController {
         ...meta,
         capabilities: this.policy.metaCapabilities(subject),
       },
+      messages,
     );
   }
 

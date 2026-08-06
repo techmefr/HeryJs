@@ -341,7 +341,8 @@ import type { Prisma, ${ctx.pascalName} } from '@prisma/client';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import { CapabilitySubject } from '#technical/capabilities/capabilities.types';
-import { scopeWhereFor } from '#technical/capabilities/scope-where';${ownedByTeam(ctx) ? `\nimport { NoCurrentTeamException } from '#technical/errors/no-current-team.exception';` : ''}
+import { scopeWhereFor } from '#technical/capabilities/scope-where';
+import { env } from '#technical/config/env';${ownedByTeam(ctx) ? `\nimport { NoCurrentTeamException } from '#technical/errors/no-current-team.exception';` : ''}
 import { SignalService } from '#technical/signal/signal.service';
 import { SearchEngineRegistry } from '#technical/search/search-engine.registry';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
@@ -448,20 +449,22 @@ export class ${ctx.pascalName}Service {
         ? {}
         : { deletedAt: null };
 
-    const searchWhere = options.search
-      ? {
-          id: {
-            in: await this.searchEngines
-              .resolve(options.searchEngine ?? this.searchEngines.defaultKeyword)
-              .search(
-                SEARCH_COLLECTION,
-                options.search,
-                SEARCHABLE_FIELDS,
-                TenantContextStorage.getTenantId(),
-              ),
-          },
-        }
+    // The matches carry whether the engine had to cut them, which travels back
+    // to the caller as a message. A page of 15 out of a capped 1000 out of
+    // 40000 real matches is a different answer than a page of 15 out of 1000,
+    // and the caller cannot tell them apart unless it is told.
+    const matches = options.search
+      ? await this.searchEngines
+          .resolve(options.searchEngine ?? this.searchEngines.defaultKeyword)
+          .search(
+            SEARCH_COLLECTION,
+            options.search,
+            SEARCHABLE_FIELDS,
+            TenantContextStorage.getTenantId(),
+            env.SEARCH_MATCH_LIMIT,
+          )
       : undefined;
+    const searchWhere = matches ? { id: { in: matches.ids } } : undefined;
 
     // The scope clause sits in its own AND branch so a declared filter can
     // never widen it back, whatever the caller passes in the query string.
@@ -497,7 +500,7 @@ export class ${ctx.pascalName}Service {
       options.relationInstructions,
     );
 
-    return { records, total };
+    return { records, total, matches };
   }
 
   async create(subject: CapabilitySubject, data: Create${ctx.pascalName}Input) {
@@ -848,7 +851,7 @@ export class ${ctx.pascalName}Controller {
       }
     }
 
-    const { records, total } = await this.${ctx.camelName}s.search(subject, query);
+    const { records, total, matches } = await this.${ctx.camelName}s.search(subject, query);
     const capabilities = body.capabilities ?? [];
     const select = query.select;
     const project = (view: Record<string, unknown>) =>
@@ -863,7 +866,19 @@ export class ${ctx.pascalName}Controller {
       limit: query.limit,
       total,
       last_page: Math.max(1, Math.ceil(total / query.limit)),
+      ...(matches
+        ? { search: { matchLimit: matches.limit, truncated: matches.truncated } }
+        : {}),
     };
+
+    // A truncated match set makes total a floor rather than a count, so the
+    // response says which one it is instead of leaving the caller to trust a
+    // number that is quietly wrong.
+    const messages = matches?.truncated
+      ? [
+          \`Only the first \${matches.limit} full-text matches were counted, and more exist. The totals below are a floor, not a count -- narrow the search term to see the rest.\`,
+        ]
+      : [];
 
     if (capabilities.length === 0) {
       return ok(
@@ -871,6 +886,7 @@ export class ${ctx.pascalName}Controller {
           withIncludesAndAggregates(project(to${ctx.pascalName}View(record)), record, query),
         ),
         meta,
+        messages,
       );
     }
 
@@ -890,6 +906,7 @@ export class ${ctx.pascalName}Controller {
         ...meta,
         capabilities: this.policy.metaCapabilities(subject),
       },
+      messages,
     );
   }
 
@@ -2195,6 +2212,13 @@ ${
     expect(
       (found.body as { data: { id: string }[] }).data.map((r) => r.id),
     ).toContain(record.id);
+
+    // Every engine caps its results at some default of its own, so a search
+    // says which cap applied and whether it was reached -- a total taken from
+    // a truncated match set is a floor, and the caller has to be able to tell.
+    expect(
+      (found.body as { meta: { search: unknown } }).meta.search,
+    ).toEqual({ matchLimit: env.SEARCH_MATCH_LIMIT, truncated: false });
   });
 
   it('rejects a search engine keyword hery.config.ts never declared', async () => {

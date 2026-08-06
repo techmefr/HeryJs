@@ -1,7 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
-import type { SearchDriver } from './search-driver';
+import { matchesFrom } from './search-driver';
+import type { SearchDriver, SearchMatches } from './search-driver';
 import { buildTextSearchWhere } from './text-search';
 
 function kebabToCamel(value: string): string {
@@ -14,6 +15,7 @@ interface FindManyDelegate {
   findMany(args: {
     where: Record<string, unknown>;
     select: { id: true };
+    take: number;
   }): Promise<{ id: string }[]>;
 }
 
@@ -42,11 +44,16 @@ export class PrismaSearchDriver implements SearchDriver {
     // no-op indexing methods.
   }
 
+  // No LIMIT at all was the silent one here: the other two drivers cut the
+  // result set at an engine default, this one would happily walk every row a
+  // one-letter term matched.
   async search(
     collection: string,
     term: string,
     fields: readonly string[],
-  ): Promise<string[]> {
+    _tenantId: string,
+    limit: number,
+  ): Promise<SearchMatches> {
     const delegateName = kebabToCamel(collection);
     const delegate = (
       this.prisma as unknown as Record<string, FindManyDelegate>
@@ -59,8 +66,12 @@ export class PrismaSearchDriver implements SearchDriver {
     const rows = await delegate.findMany({
       where: buildTextSearchWhere(term, fields) ?? {},
       select: { id: true },
+      take: limit + 1,
     });
 
-    return rows.map((row) => row.id);
+    return matchesFrom(
+      rows.map((row) => row.id),
+      limit,
+    );
   }
 }

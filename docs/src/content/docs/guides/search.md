@@ -135,7 +135,21 @@ Tenancy is enforced a layer lower still, by the tenant-scoping Prisma extension,
 
 **Soft-deleted records leave the index.** `softDelete` removes the document and `restore` re-adds it, so `{ "search": { "q": "…" }, "onlyTrashed": true }` returns nothing while a non-Prisma driver is active, where the default path would return the matches.
 
-**Recall is exact per tenant, but still an engine's own top-N.** Once a driver enforces the tenant filter server-side, a tenant's results are no longer diluted by other tenants' documents — but the engine's own default window (10 hits on Elasticsearch, 20 on Meilisearch, neither driver passes an explicit size) is still the ceiling on candidates *before* the security clauses narrow them further.
+**Recall is capped by one declared limit, and the response says when the cap was reached.** The three drivers used to inherit three different ceilings — Elasticsearch answers with 10 hits by default, Meilisearch with 20, the Prisma driver with every matching row — and none of them told the caller. A term matching 40 000 records came back with a `total` of 10, indistinguishable from a term that genuinely matched 10.
+
+`SEARCH_MATCH_LIMIT` (default `1000`) is now passed to whichever driver runs, each asks its engine for one row past it, and the search response reports what happened:
+
+```json
+"meta": {
+  "total": 1000,
+  "search": { "matchLimit": 1000, "truncated": true }
+},
+"messages": [
+  "Only the first 1000 full-text matches were counted, and more exist. The totals below are a floor, not a count -- narrow the search term to see the rest."
+]
+```
+
+`truncated: false` means `total` is a count. `truncated: true` means it is a floor — the security clauses then narrow those candidates further, so the page you get is a subset of a subset, and that is now something the caller can see rather than guess.
 
 ## Index maintenance is asynchronous by failure, not by design
 

@@ -26,6 +26,23 @@ export function searchDriverToken(driverName: string): symbol {
  * `remove` takes it too, for the same reason `index` and `search` do: a
  * driver should never need to trust an id alone to be safe to act on.
  */
+/**
+ * A search never returns a bare list of ids, because a bare list cannot say
+ * whether it is the whole answer. Every engine caps its own results by default
+ * -- Elasticsearch at 10 hits, Meilisearch at 20, the Prisma driver at nothing
+ * at all -- so a caller intersecting those ids with its own query would report
+ * a total of 10 for a term matching thousands, with no error and no clue.
+ *
+ * `limit` is therefore an argument, not an engine default, and `truncated`
+ * says whether it was reached. The route that asked turns that into a message
+ * the caller can read: refine the term, there is more behind this page.
+ */
+export interface SearchMatches {
+  ids: string[];
+  truncated: boolean;
+  limit: number;
+}
+
 export interface SearchDriver {
   index(
     collection: string,
@@ -39,5 +56,14 @@ export interface SearchDriver {
     term: string,
     fields: readonly string[],
     tenantId: string,
-  ): Promise<string[]>;
+    limit: number,
+  ): Promise<SearchMatches>;
+}
+
+/**
+ * One extra row is asked for so "as many as the limit allows" and "more than
+ * the limit exists" stop looking identical, then dropped from the answer.
+ */
+export function matchesFrom(ids: string[], limit: number): SearchMatches {
+  return { ids: ids.slice(0, limit), truncated: ids.length > limit, limit };
 }

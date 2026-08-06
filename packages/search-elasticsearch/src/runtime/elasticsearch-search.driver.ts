@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Client } from '@elastic/elasticsearch';
-import type { SearchDriver } from '#kernel/search/search-driver';
+import { matchesFrom } from '#kernel/search/search-driver';
+import type { SearchDriver, SearchMatches } from '#kernel/search/search-driver';
 
 const TENANT_FIELD = 'tenantId';
 
@@ -36,14 +37,19 @@ export class ElasticsearchSearchDriver implements SearchDriver {
   // after the fact can fill its whole page with another tenant's matches,
   // leaving the caller with fewer hits than actually exist for them -- or
   // none at all -- with no error anywhere.
+  //
+  // size is passed explicitly because Elasticsearch answers with its first 10
+  // hits otherwise -- a cap the caller never chose and could not see.
   async search(
     collection: string,
     term: string,
     fields: readonly string[],
     tenantId: string,
-  ): Promise<string[]> {
+    limit: number,
+  ): Promise<SearchMatches> {
     const result = await this.client.search({
       index: collection,
+      size: limit + 1,
       query: {
         bool: {
           must: { multi_match: { query: term, fields: [...fields] } },
@@ -52,6 +58,9 @@ export class ElasticsearchSearchDriver implements SearchDriver {
       },
     });
 
-    return result.hits.hits.map((hit) => hit._id as string);
+    return matchesFrom(
+      result.hits.hits.map((hit) => hit._id as string),
+      limit,
+    );
   }
 }

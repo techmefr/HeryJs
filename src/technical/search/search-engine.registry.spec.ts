@@ -7,7 +7,7 @@ import { InvalidQueryException } from '#technical/errors/invalid-query.exception
 import { PrismaSearchDriver } from './prisma-search.driver';
 import { SearchEngineRegistry } from './search-engine.registry';
 import { searchDriverToken } from './search-driver';
-import type { SearchDriver } from './search-driver';
+import type { SearchDriver, SearchMatches } from './search-driver';
 
 const prismaDriver = {} as PrismaSearchDriver;
 
@@ -160,8 +160,8 @@ describe('SearchEngineRegistry over real Nest DI', () => {
   class FirstDriver implements SearchDriver {
     async index(): Promise<void> {}
     async remove(): Promise<void> {}
-    search(): Promise<string[]> {
-      return Promise.resolve([]);
+    search(): Promise<SearchMatches> {
+      return Promise.resolve({ ids: [], truncated: false, limit: 0 });
     }
   }
 
@@ -169,8 +169,8 @@ describe('SearchEngineRegistry over real Nest DI', () => {
   class SecondDriver implements SearchDriver {
     async index(): Promise<void> {}
     async remove(): Promise<void> {}
-    search(): Promise<string[]> {
-      return Promise.resolve([]);
+    search(): Promise<SearchMatches> {
+      return Promise.resolve({ ids: [], truncated: false, limit: 0 });
     }
   }
 

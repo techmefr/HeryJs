@@ -42,6 +42,12 @@ export function buildServerSchema(nodeEnv: string | undefined) {
       .int()
       .positive()
       .default(5 * 60),
+    // How many full-text matches a search engine is asked for before the
+    // result set is cut. Every engine has a default of its own -- 10 hits for
+    // Elasticsearch, 20 for Meilisearch, unbounded for the Prisma driver --
+    // and inheriting three different silent limits is what this replaces: one
+    // declared limit, applied by every driver, reported when it is reached.
+    SEARCH_MATCH_LIMIT: z.coerce.number().int().positive().default(1000),
   });
 }
 

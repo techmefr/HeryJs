@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Meilisearch } from 'meilisearch';
-import type { SearchDriver } from '#kernel/search/search-driver';
+import { matchesFrom } from '#kernel/search/search-driver';
+import type { SearchDriver, SearchMatches } from '#kernel/search/search-driver';
 
 const TENANT_FIELD = 'tenantId';
 
@@ -53,18 +54,26 @@ export class MeilisearchSearchDriver implements SearchDriver {
   // after the fact can fill its whole page with another tenant's matches,
   // leaving the caller with fewer hits than actually exist for them -- or
   // none at all -- with no error anywhere.
+  //
+  // limit is passed explicitly because Meilisearch answers with its first 20
+  // hits otherwise -- a cap the caller never chose and could not see.
   async search(
     collection: string,
     term: string,
     fields: readonly string[],
     tenantId: string,
-  ): Promise<string[]> {
+    limit: number,
+  ): Promise<SearchMatches> {
     await this.ensureFilterable(collection);
     const result = await this.client.index(collection).search(term, {
       attributesToSearchOn: [...fields],
       filter: `${TENANT_FIELD} = ${JSON.stringify(tenantId)}`,
+      limit: limit + 1,
     });
 
-    return result.hits.map((hit) => (hit as unknown as { id: string }).id);
+    return matchesFrom(
+      result.hits.map((hit) => (hit as unknown as { id: string }).id),
+      limit,
+    );
   }
 }

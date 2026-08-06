@@ -4,6 +4,7 @@ import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import { CapabilitySubject } from '#technical/capabilities/capabilities.types';
 import { scopeWhereFor } from '#technical/capabilities/scope-where';
+import { env } from '#technical/config/env';
 import { SignalService } from '#technical/signal/signal.service';
 import { SearchEngineRegistry } from '#technical/search/search-engine.registry';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
@@ -113,22 +114,22 @@ export class BlogPostService {
         ? {}
         : { deletedAt: null };
 
-    const searchWhere = options.search
-      ? {
-          id: {
-            in: await this.searchEngines
-              .resolve(
-                options.searchEngine ?? this.searchEngines.defaultKeyword,
-              )
-              .search(
-                SEARCH_COLLECTION,
-                options.search,
-                SEARCHABLE_FIELDS,
-                TenantContextStorage.getTenantId(),
-              ),
-          },
-        }
+    // The matches carry whether the engine had to cut them, which travels back
+    // to the caller as a message. A page of 15 out of a capped 1000 out of
+    // 40000 real matches is a different answer than a page of 15 out of 1000,
+    // and the caller cannot tell them apart unless it is told.
+    const matches = options.search
+      ? await this.searchEngines
+          .resolve(options.searchEngine ?? this.searchEngines.defaultKeyword)
+          .search(
+            SEARCH_COLLECTION,
+            options.search,
+            SEARCHABLE_FIELDS,
+            TenantContextStorage.getTenantId(),
+            env.SEARCH_MATCH_LIMIT,
+          )
       : undefined;
+    const searchWhere = matches ? { id: { in: matches.ids } } : undefined;
 
     // The scope clause sits in its own AND branch so a declared filter can
     // never widen it back, whatever the caller passes in the query string.
@@ -164,7 +165,7 @@ export class BlogPostService {
       options.relationInstructions,
     );
 
-    return { records, total };
+    return { records, total, matches };
   }
 
   async create(subject: CapabilitySubject, data: CreateBlogPostInput) {
