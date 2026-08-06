@@ -102,6 +102,8 @@ Rebuilds a resource's search index from what is actually in Postgres — the sou
 
 Scaffolds Prometheus, Grafana and Loki as an opt-in local compose stack, wired to scrape the app's `/metrics`. It writes the compose file and a Prometheus config, then prints the command to start them — it does not start anything itself.
 
+`/metrics` is caller-authenticated like every other route, so the scrape carries an admin API key: the config reads it from `monitoring/api-key`, which the command creates with a placeholder. Mint a key with `POST /api-keys`, put it in that file on its own line, and keep the file out of version control. Until then every scrape gets a 401.
+
 Despite the name it is a plain command, not a registry module: it does not appear in `module:list` and `install --all` does not cover it.
 
 ## `hery up`

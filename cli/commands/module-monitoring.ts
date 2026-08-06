@@ -5,6 +5,7 @@ import pc from 'picocolors';
 
 const COMPOSE_FILE = 'docker-compose.monitoring.yml';
 const PROMETHEUS_CONFIG_DIR = 'monitoring';
+const API_KEY_FILE = 'api-key';
 
 const COMPOSE_CONTENT = `services:
   prometheus:
@@ -14,6 +15,7 @@ const COMPOSE_CONTENT = `services:
       - '9090:9090'
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/api-key:/etc/prometheus/api-key:ro
       - heryjs-prometheus:/prometheus
 
   loki:
@@ -45,8 +47,18 @@ const PROMETHEUS_CONFIG = `global:
 scrape_configs:
   - job_name: heryjs
     metrics_path: /metrics
+    # /metrics carries every route of the application with its request counts,
+    # so it is caller-authenticated like any other route. A scrape has no
+    # session: it authenticates with an admin API key, read from the mounted
+    # file rather than written here.
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/api-key
     static_configs:
       - targets: ['host.docker.internal:3000']
+`;
+
+const API_KEY_PLACEHOLDER = `replace-this-line-with-an-admin-api-key
 `;
 
 export function registerModuleMonitoringCommand(program: Command): void {
@@ -66,10 +78,22 @@ export function registerModuleMonitoringCommand(program: Command): void {
         path.join(PROMETHEUS_CONFIG_DIR, 'prometheus.yml'),
         PROMETHEUS_CONFIG,
       );
+
+      const apiKeyFile = path.join(PROMETHEUS_CONFIG_DIR, API_KEY_FILE);
+
+      if (!existsSync(apiKeyFile)) {
+        writeFileSync(apiKeyFile, API_KEY_PLACEHOLDER);
+      }
+
       writeFileSync(COMPOSE_FILE, COMPOSE_CONTENT);
 
       console.log(
-        pc.green(`✔ Wrote ${COMPOSE_FILE} and monitoring/prometheus.yml`),
+        pc.green(
+          `✔ Wrote ${COMPOSE_FILE}, monitoring/prometheus.yml and monitoring/${API_KEY_FILE}`,
+        ),
+      );
+      console.log(
+        `The scrape authenticates: mint an admin key with POST /api-keys and put it in monitoring/${API_KEY_FILE}, on its own line. Until then Prometheus gets a 401 on every scrape.`,
       );
       console.log('Nothing is running yet. Start it with:');
       console.log(

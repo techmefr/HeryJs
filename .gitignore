@@ -41,3 +41,6 @@ prisma/generated/
 prisma/*.db
 prisma/*.db-journal
 /storage/
+
+# Scraper credential written by hery module:monitoring
+monitoring/api-key
