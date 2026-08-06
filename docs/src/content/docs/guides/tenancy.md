@@ -33,3 +33,16 @@ Deciding how a new tenant comes into being — from a subdomain, an invitation t
 ## Optional second layer: Postgres row-level security
 
 The application-layer boundary above is enough on its own — every generated resource is proven tenant-isolated over a real HTTP round trip. For deployments that want a second, database-level backstop, set `RLS_ENABLED=true` to have tenant-scoped operations run inside a transaction that sets `app.tenant_id` via `set_config`, matching a `FORCE ROW LEVEL SECURITY` policy applied to each tenant-scoped table. This only constrains a genuinely restricted database role (`NOSUPERUSER NOBYPASSRLS`) — a superuser connection always bypasses RLS, flag or not — so it protects against a compromised or misconfigured connection using anything less than superuser credentials, not against the app's own default connection.
+
+The policy fails closed: `current_setting('app.tenant_id', true)` is `NULL` when the variable was never set, and `"tenantId" = NULL` is never true, so a connection that skipped the session variable sees no rows rather than all of them.
+
+### The policy is emitted, not remembered
+
+Writing that migration by hand is how the teams tables spent a month scoped by the extension with nothing behind them. `pnpm hery migrate` now reads the schema and `TENANT_SCOPED_MODELS`, and emits the `ENABLE ROW LEVEL SECURITY` migration for any tenant-scoped table that has no policy yet — including the table `hery generate` just added. A model whose `tenantId` is nullable gets `"tenantId" IS NULL OR …`, so rows belonging to no tenant (a global feature flag) stay visible instead of disappearing.
+
+`pnpm lint:rls` is the guarantee. Every model carrying a `tenantId` has to be one of two things, and the check fails if it is neither, both, or governed without a policy:
+
+- in `TENANT_SCOPED_MODELS` — filtered and stamped by the extension, and covered by a row-level policy;
+- in `APP_ENFORCED_TENANT_MODELS` — written through `authPrismaClient`, which has no extension and never sets `app.tenant_id`, so a policy there would block the writes that fill the table. Each of these passes an explicit `tenantId` at the call site. That is weaker than a boundary, which is why the list is written down rather than implied: `User`, `AuditLog`, `AppNotification`, `FeatureFlag`, `MailLog`, `WebhookEndpoint`, `WebhookEvent`.
+
+A spec then reads `pg_policies` and `pg_class` on the real database, so a migration that was edited, reverted or never applied fails too — the check proves the file exists, the spec proves the database agrees.

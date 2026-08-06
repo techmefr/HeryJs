@@ -17,6 +17,33 @@ interface PrismaQueryEvent {
 
 const TENANT_SCOPED_MODELS = new Set(['Team', 'TeamMember', 'BlogPost']);
 
+/**
+ * The other side of the same question. A model carrying a tenantId is either
+ * governed by the extension below -- filtered on every read, stamped on every
+ * write, and covered by a Postgres row-level policy -- or it is written through
+ * `authPrismaClient`, which has no extension and never sets `app.tenant_id`, so
+ * enabling a policy on it would block the very writes that fill it.
+ *
+ * Every one of these passes an explicit tenantId at the call site, which is
+ * weaker than a boundary and recorded here for that reason: `pnpm lint:rls`
+ * requires each tenantId-carrying model to appear in exactly one of the two
+ * sets, so adding a tenant table forces the choice instead of defaulting to
+ * "no policy, nobody noticed".
+ */
+export const APP_ENFORCED_TENANT_MODELS = new Set([
+  // Written by better-auth's own adapter, which runs its own transactions.
+  'User',
+  // Written by writeAuditLog against the raw client, deliberately outside the
+  // extension chain so an audit entry cannot be scoped away by the boundary it
+  // is recording a crossing of.
+  'AuditLog',
+  'AppNotification',
+  'FeatureFlag',
+  'MailLog',
+  'WebhookEndpoint',
+  'WebhookEvent',
+]);
+
 type TenantHandling =
   'stamp-data' | 'stamp-entries' | 'stamp-and-filter' | 'filter';
 
