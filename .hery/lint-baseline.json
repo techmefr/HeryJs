@@ -3,7 +3,7 @@
   "entries": [
     {
       "rule": "no-raw-process-env",
-      "hash": "b62fbef66e18d7e9de93277c989472f8d7533c6b9d9e2ed0369f944b08b787b3",
+      "hash": "d20e2869912e780319c6caff98a6bf504ce2aa7649ebfde59408bb14f72dda1c",
       "count": 4,
       "file": "src/app.module.ts"
     },
@@ -42,6 +42,12 @@
       "hash": "a6307d220a659d4dc0a4d3e14a52d707e453c06ad0a4b91d769d0790cee42e29",
       "count": 1,
       "file": "src/technical/dev-only/dev-only.guard.ts"
+    },
+    {
+      "rule": "no-raw-process-env",
+      "hash": "2ef5621a4fea12f4f1e107464c9737722a9c0b7e022e6bc76d66c7701d6dee8b",
+      "count": 1,
+      "file": "src/technical/exposition/exposition-runner.service.ts"
     },
     {
       "rule": "no-raw-process-env",
