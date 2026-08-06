@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
-import { auditEntryPayload } from './audit-log';
+import { auditEntryPayload, GENESIS_PREVIOUS_HASH } from './audit-log';
 import { canonicalJson } from './canonical-json';
 
 @Injectable()
@@ -14,17 +14,17 @@ export class AuditService {
   list(tenantId: string) {
     return this.prisma.auditLog.findMany({
       where: { tenantId },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { sequence: 'asc' },
     });
   }
 
   async verifyChain(tenantId: string): Promise<boolean> {
     const entries = await this.list(tenantId);
-    let previousHash: string | null = null;
+    let previousHash: string = GENESIS_PREVIOUS_HASH;
 
     for (const entry of entries) {
       const expectedHash: string = createHash('sha256')
-        .update(previousHash ?? '')
+        .update(previousHash)
         .update(
           canonicalJson(
             auditEntryPayload({

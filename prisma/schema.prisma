@@ -134,7 +134,13 @@ model AppNotification {
 }
 
 model AuditLog {
-  id             String   @id @default(cuid())
+  id String @id @default(cuid())
+  // createdAt is a millisecond timestamp, so two entries written in the same
+  // millisecond -- routine under load -- have no order at all. Reading the
+  // chain by it can hand the verifier a legitimate chain in the wrong order,
+  // and reading the tail by it can return the wrong predecessor. The sequence
+  // is what actually orders the chain.
+  sequence       Int      @unique @default(autoincrement())
   tenantId       String
   model          String
   operation      String
@@ -143,14 +149,18 @@ model AuditLog {
   userId         String?
   impersonatedBy String?
   hash           String
-  previousHash   String?
+  // Empty for the genesis entry rather than null: Postgres treats each NULL as
+  // distinct, so a nullable column would have let a tenant hold any number of
+  // genesis entries -- as many parallel chains -- while the constraint below
+  // looked like it forbade them.
+  previousHash   String
   createdAt      DateTime @default(now())
 
-  @@index([tenantId])
+  @@index([tenantId, sequence])
   // Two entries in the same tenant's chain can never claim the same
   // predecessor -- that is a fork, and the linear verifier can never accept
-  // one. Postgres treats each NULL as distinct, so this also caps a tenant
-  // at exactly one genesis entry (the only row allowed a null previousHash).
+  // one. With previousHash non-null this also caps a tenant at exactly one
+  // genesis entry.
   @@unique([tenantId, previousHash])
 }
 

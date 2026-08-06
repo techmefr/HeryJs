@@ -50,9 +50,11 @@ export function auditEntryPayload(entry: AuditEntryInput): AuditEntryInput {
   };
 }
 
-function computeHash(previousHash: string | null, entry: AuditEntryInput) {
+export const GENESIS_PREVIOUS_HASH = '';
+
+function computeHash(previousHash: string, entry: AuditEntryInput) {
   return createHash('sha256')
-    .update(previousHash ?? '')
+    .update(previousHash)
     .update(canonicalJson(auditEntryPayload(entry)))
     .digest('hex');
 }
@@ -81,10 +83,10 @@ export async function writeAuditLogInTransaction(
 
   const last = await tx.auditLog.findFirst({
     where: { tenantId: entry.tenantId },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { sequence: 'desc' },
   });
 
-  const previousHash = last?.hash ?? null;
+  const previousHash = last?.hash ?? GENESIS_PREVIOUS_HASH;
   const hash = computeHash(previousHash, entry);
 
   await tx.auditLog.create({
