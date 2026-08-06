@@ -11,7 +11,10 @@ import {
 } from '@nestjs/common';
 import { SessionGuard } from '#technical/auth/session.guard';
 import type { RequestWithUser } from '#technical/auth/session.guard';
+import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
+import { Capability } from '#technical/capabilities/capability.decorator';
 import { DevOnlyGuard } from '#technical/dev-only/dev-only.guard';
+import { canUseDevtools } from '#technical/dev-only/dev-only.policy';
 import { InvalidQueryException } from '#technical/errors/invalid-query.exception';
 import { ok } from '#technical/http/envelope';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
@@ -22,11 +25,12 @@ import { SEEDERS } from './seeder.types';
 import type { Seeder } from './seeder.types';
 
 @Controller('seeders')
-@UseGuards(SessionGuard, DevOnlyGuard)
+@UseGuards(SessionGuard, DevOnlyGuard, CapabilitiesGuard)
 export class SeedersController {
   constructor(@Inject(SEEDERS) private readonly seeders: Seeder[]) {}
 
   @Get()
+  @Capability(canUseDevtools)
   list() {
     return ok(
       this.seeders.map(({ name, description, defaultCount, maxCount }) => ({
@@ -39,6 +43,7 @@ export class SeedersController {
   }
 
   @Post(':name/run')
+  @Capability(canUseDevtools)
   async run(
     @Param('name') name: string,
     @Body(new ZodValidationPipe(runSeederSchema)) body: RunSeederDto,

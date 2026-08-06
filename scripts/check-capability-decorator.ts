@@ -2,12 +2,22 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import * as path from 'node:path';
 import * as ts from 'typescript';
 
-const ROUTE_DECORATORS = new Set(['Get', 'Post', 'Patch', 'Put', 'Delete']);
+const ROUTE_DECORATORS = new Set([
+  'Get',
+  'Post',
+  'Patch',
+  'Put',
+  'Delete',
+  'All',
+]);
 
-// Resources live in src/functional in a real project, and the repo's own example
-// lives in examples/. Both are scanned so the example cannot drift out of the
-// conventions it is supposed to demonstrate.
-const RESOURCE_ROOTS = ['src/functional', 'examples'];
+// Every route in the repository, not just the business ones: a kernel route, a
+// module route and a devtools route hand out data exactly like a resource route
+// does, and CapabilitiesGuard cannot tell "this route needs no capability" from
+// "someone forgot the capability". @PublicRoute('<reason>') is how a route says
+// the first out loud; anything else has to carry a @Capability.
+const RESOURCE_ROOTS = ['src', 'examples', 'packages'];
+const SKIPPED_DIRECTORIES = new Set(['node_modules', 'dist']);
 
 function resourceFilesIn(collect: (dir: string) => string[]): string[] {
   const repoRoot = path.resolve(__dirname, '..');
@@ -24,7 +34,9 @@ function findControllerFiles(dir: string): string[] {
     const fullPath = path.join(dir, entry.name);
 
     if (entry.isDirectory()) {
-      return findControllerFiles(fullPath);
+      return SKIPPED_DIRECTORIES.has(entry.name)
+        ? []
+        : findControllerFiles(fullPath);
     }
 
     return entry.name.endsWith('.controller.ts') ? [fullPath] : [];
@@ -55,10 +67,13 @@ function checkFile(filePath: string): string[] {
 
       const hasRoute = names.some((name) => ROUTE_DECORATORS.has(name));
 
-      if (hasRoute && !names.includes('Capability')) {
+      const isDecided =
+        names.includes('Capability') || names.includes('PublicRoute');
+
+      if (hasRoute && !isDecided) {
         const { line } = source.getLineAndCharacterOfPosition(node.getStart());
         violations.push(
-          `${filePath}:${line + 1} — "${node.name.getText()}" is a route but carries no @Capability(...)`,
+          `${filePath}:${line + 1} — "${node.name.getText()}" is a route but carries neither @Capability(...) nor @PublicRoute('<reason>')`,
         );
       }
     }
@@ -96,16 +111,16 @@ success on an empty scan, so an empty scan has to be the failure instead.`,
   const violations = controllerFiles.flatMap(checkFile);
 
   if (violations.length > 0) {
-    console.error('Routes without @Capability(...):\n');
+    console.error('Routes with no authorization decision:\n');
     violations.forEach((violation) => console.error(`  ${violation}`));
     console.error(
-      '\nCapabilitiesGuard lets a route through when the metadata is absent, so an\nundecorated read hands out every row the query returns.',
+      "\nCapabilitiesGuard lets a route through when the metadata is absent, so an\nundecorated read hands out every row the query returns. If the route really\ncannot carry a capability -- logging in, a signed URL, a webhook signed by its\nsender -- say so with @PublicRoute('<reason>').",
     );
     return false;
   }
 
   console.log(
-    `✔ every route carries @Capability(...) (${controllerFiles.length} controllers checked)`,
+    `✔ every route carries @Capability(...) or @PublicRoute(...) (${controllerFiles.length} controllers checked)`,
   );
 
   return true;

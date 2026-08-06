@@ -8,9 +8,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
+import { Capability } from '#technical/capabilities/capability.decorator';
 import { ApiKeyEscalationException } from '#technical/errors/api-key-escalation.exception';
 import { ok } from '#technical/http/envelope';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
+import { canManageOwnApiKeys } from './api-key.policy';
 import { ApiKeyService } from './api-key.service';
 import { createApiKeySchema } from './api-key.schemas';
 import type { CreateApiKeyInput } from './api-key.schemas';
@@ -27,11 +30,12 @@ function assertNotApiKey(req: RequestWithUser): void {
 }
 
 @Controller('api-keys')
-@UseGuards(SessionGuard)
+@UseGuards(SessionGuard, CapabilitiesGuard)
 export class ApiKeyController {
   constructor(private readonly apiKeys: ApiKeyService) {}
 
   @Post()
+  @Capability(canManageOwnApiKeys)
   async create(
     @Req() req: RequestWithUser,
     @Body(new ZodValidationPipe(createApiKeySchema)) body: CreateApiKeyInput,
@@ -44,12 +48,14 @@ export class ApiKeyController {
   }
 
   @Get()
+  @Capability(canManageOwnApiKeys)
   async list(@Req() req: RequestWithUser) {
     assertNotApiKey(req);
     return ok(await this.apiKeys.list(req.user));
   }
 
   @Delete(':id')
+  @Capability(canManageOwnApiKeys)
   async revoke(@Req() req: RequestWithUser, @Param('id') id: string) {
     assertNotApiKey(req);
     await this.apiKeys.revoke(req.user, id);

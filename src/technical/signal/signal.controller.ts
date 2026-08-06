@@ -1,11 +1,25 @@
-import { Controller, Get, Post, Query, Res, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Query,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import IORedis from 'ioredis';
 import { SessionGuard } from '#technical/auth/session.guard';
+import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
+import { Capability } from '#technical/capabilities/capability.decorator';
+import { PublicRoute } from '#technical/capabilities/public-route.decorator';
 import { env } from '#technical/config/env';
 import { ok } from '#technical/http/envelope';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { CHANNEL_PREFIX } from './signal.service';
+import { canIssueSignalToken } from './signal.policy';
+import { SignalTokenGuard } from './signal-token.guard';
+import type { RequestWithSignalToken } from './signal-token.guard';
 import { SignalTokenService } from './signal-token.service';
 
 @Controller('signal')
@@ -13,30 +27,31 @@ export class SignalController {
   constructor(private readonly tokens: SignalTokenService) {}
 
   @Post('token')
-  @UseGuards(SessionGuard)
+  @UseGuards(SessionGuard, CapabilitiesGuard)
+  @Capability(canIssueSignalToken)
   issueToken() {
     const tenantId = TenantContextStorage.getTenantId();
     return ok({ token: this.tokens.issue(tenantId) });
   }
 
   @Get('stream')
+  @UseGuards(SignalTokenGuard)
+  @PublicRoute(
+    'SSE: the short-lived signal token in the query string is the credential',
+  )
   stream(
-    @Query('token') token: string | undefined,
+    @Req() req: RequestWithSignalToken,
     @Query('channels') channels: string | undefined,
     @Res() res: Response,
   ) {
-    const payload = this.tokens.verify(token ?? '');
-
-    if (!payload) {
-      res.status(401).end();
-      return;
-    }
-
+    // The tenant comes from the verified token, never from the request: a
+    // caller chooses which of its own channels to listen to, never whose.
+    const { tenantId } = req.signalToken;
     const requested = (channels ?? '')
       .split(',')
       .map((channel) => channel.trim())
       .filter(Boolean)
-      .map((channel) => `${CHANNEL_PREFIX}${payload.tenantId}:${channel}`);
+      .map((channel) => `${CHANNEL_PREFIX}${tenantId}:${channel}`);
 
     if (requested.length === 0) {
       res.status(400).end();

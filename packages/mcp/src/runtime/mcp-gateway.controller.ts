@@ -5,12 +5,15 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import type { Request, Response } from 'express';
 import { SessionGuard } from '#kernel/auth/session.guard';
 import type { RequestWithUser } from '#kernel/auth/session.guard';
+import { CapabilitiesGuard } from '#kernel/capabilities/capabilities.guard';
+import { Capability } from '#kernel/capabilities/capability.decorator';
 import { subjectOf } from '#kernel/capabilities/subject';
+import { canReachMcpGateway } from './mcp.policy';
 import { MCP_TOOL_REGISTRARS } from './mcp-tool-registrar';
 import type { McpToolRegistrar } from './mcp-tool-registrar';
 
 @Controller('mcp')
-@UseGuards(SessionGuard)
+@UseGuards(SessionGuard, CapabilitiesGuard)
 export class McpGatewayController {
   constructor(
     @Inject(MCP_TOOL_REGISTRARS)
@@ -18,6 +21,7 @@ export class McpGatewayController {
   ) {}
 
   @All()
+  @Capability(canReachMcpGateway)
   async handle(@Req() req: RequestWithUser, @Res() res: Response) {
     const subject = subjectOf(req.user);
     const server = new McpServer({ name: 'heryjs', version: '0.0.1' });

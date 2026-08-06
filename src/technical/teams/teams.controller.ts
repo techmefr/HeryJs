@@ -10,9 +10,17 @@ import {
 } from '@nestjs/common';
 import { SessionGuard } from '#technical/auth/session.guard';
 import type { RequestWithUser } from '#technical/auth/session.guard';
+import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
+import { Capability } from '#technical/capabilities/capability.decorator';
 import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
 import { ok } from '#technical/http/envelope';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
+import {
+  canCreateTeam,
+  canListOwnTeams,
+  canManageTeamMembers,
+  canSwitchCurrentTeam,
+} from './teams.policy';
 import {
   addTeamMemberSchema,
   createTeamSchema,
@@ -31,11 +39,12 @@ import { TeamsService } from './teams.service';
  * absent: they are product decisions, not conventions.
  */
 @Controller('teams')
-@UseGuards(SessionGuard)
+@UseGuards(SessionGuard, CapabilitiesGuard)
 export class TeamsController {
   constructor(private readonly teams: TeamsService) {}
 
   @Get()
+  @Capability(canListOwnTeams)
   async list(@Req() req: RequestWithUser) {
     return ok(await this.teams.listFor(req.user.id), {
       currentTeamId: req.user.currentTeamId,
@@ -43,6 +52,7 @@ export class TeamsController {
   }
 
   @Post()
+  @Capability(canCreateTeam)
   async create(
     @Req() req: RequestWithUser,
     @Body(new ZodValidationPipe(createTeamSchema)) body: CreateTeamInput,
@@ -53,6 +63,7 @@ export class TeamsController {
   }
 
   @Post(':id/members')
+  @Capability(canManageTeamMembers)
   async addMember(
     @Req() req: RequestWithUser,
     @Param('id') id: string,
@@ -66,6 +77,7 @@ export class TeamsController {
   }
 
   @Patch('current')
+  @Capability(canSwitchCurrentTeam)
   async switchCurrent(
     @Req() req: RequestWithUser,
     @Body(new ZodValidationPipe(switchTeamSchema)) body: SwitchTeamInput,

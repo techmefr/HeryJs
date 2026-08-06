@@ -3,16 +3,12 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
-import { env } from '#technical/config/env';
 import { WEBHOOK_QUEUE } from '#technical/jobs/jobs.constants';
-import { verifyWebhookSignature } from './webhook-signature';
-import { InvalidWebhookSignatureException } from './invalid-webhook-signature.exception';
+import type { VerifiedWebhookEndpoint } from './webhook-signature.guard';
 
 export interface ReceivedWebhook {
-  endpointId: string;
+  endpoint: VerifiedWebhookEndpoint;
   rawBody: Buffer;
-  signature: string | undefined;
-  timestamp: string | undefined;
 }
 
 @Injectable()
@@ -26,35 +22,10 @@ export class WebhooksService {
     });
   }
 
+  // The signature, the timestamp window and the endpoint's existence were all
+  // checked by WebhookSignatureGuard, which is what put the endpoint on the
+  // request in the first place. Nothing here re-derives them.
   async receive(input: ReceivedWebhook): Promise<{ eventId: string }> {
-    if (!input.signature || !input.timestamp) {
-      throw new InvalidWebhookSignatureException();
-    }
-
-    const endpoint = await authPrismaClient.webhookEndpoint.findUnique({
-      where: { id: input.endpointId },
-    });
-
-    // Rejecting an unknown endpoint id with the exact same exception as a bad
-    // signature keeps the two indistinguishable from the outside -- a probe
-    // for real endpoint ids gets nothing back that a probe for real
-    // signatures wouldn't also get.
-    if (!endpoint || !endpoint.active) {
-      throw new InvalidWebhookSignatureException();
-    }
-
-    const valid = verifyWebhookSignature({
-      secret: endpoint.secret,
-      timestamp: input.timestamp,
-      rawBody: input.rawBody,
-      signature: input.signature,
-      toleranceSeconds: env.WEBHOOK_SIGNATURE_TOLERANCE_SECONDS,
-    });
-
-    if (!valid) {
-      throw new InvalidWebhookSignatureException();
-    }
-
     let payload: unknown;
 
     try {
@@ -65,9 +36,9 @@ export class WebhooksService {
 
     const event = await authPrismaClient.webhookEvent.create({
       data: {
-        endpointId: endpoint.id,
-        tenantId: endpoint.tenantId,
-        source: endpoint.source,
+        endpointId: input.endpoint.id,
+        tenantId: input.endpoint.tenantId,
+        source: input.endpoint.source,
         payload: payload as object,
       },
       select: { id: true },

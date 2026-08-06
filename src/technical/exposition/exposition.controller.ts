@@ -9,14 +9,17 @@ import {
 } from '@nestjs/common';
 import { SessionGuard } from '#technical/auth/session.guard';
 import type { RequestWithUser } from '#technical/auth/session.guard';
+import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
+import { Capability } from '#technical/capabilities/capability.decorator';
 import { subjectOf } from '#technical/capabilities/subject';
 import { ok } from '#technical/http/envelope';
+import { canReachExposedActions } from './exposition.policy';
 import { describeAction } from './exposition-describe';
 import { ExpositionRunner } from './exposition-runner.service';
 import { ExpositionRegistry } from './exposition.registry';
 
 @Controller('expose')
-@UseGuards(SessionGuard)
+@UseGuards(SessionGuard, CapabilitiesGuard)
 export class ExpositionController {
   constructor(
     private readonly registry: ExpositionRegistry,
@@ -30,6 +33,7 @@ export class ExpositionController {
    * seeing it. Resolved per request, against the caller's own subject.
    */
   @Get()
+  @Capability(canReachExposedActions)
   list(@Req() request: RequestWithUser) {
     const subject = subjectOf(request.user);
 
@@ -42,6 +46,7 @@ export class ExpositionController {
   }
 
   @Post(':action')
+  @Capability(canReachExposedActions)
   async run(
     @Param('action') action: string,
     @Body() body: Record<string, unknown>,

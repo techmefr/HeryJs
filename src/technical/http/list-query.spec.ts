@@ -298,7 +298,9 @@ describe('parseSearchRequest', () => {
       contract,
     );
 
-    expect(query.include).toEqual({ notes: { select: { id: true, body: true } } });
+    expect(query.include).toEqual({
+      notes: { select: { id: true, body: true } },
+    });
   });
 
   it('bounds a morphMany include with no selects the same way', () => {

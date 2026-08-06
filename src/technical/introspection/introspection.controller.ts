@@ -1,15 +1,19 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { SessionGuard } from '#technical/auth/session.guard';
+import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
+import { Capability } from '#technical/capabilities/capability.decorator';
 import { DevOnlyGuard } from '#technical/dev-only/dev-only.guard';
+import { canUseDevtools } from '#technical/dev-only/dev-only.policy';
 import { ok } from '#technical/http/envelope';
 import { IntrospectionService } from './introspection.service';
 
 @Controller('introspect')
-@UseGuards(SessionGuard, DevOnlyGuard)
+@UseGuards(SessionGuard, DevOnlyGuard, CapabilitiesGuard)
 export class IntrospectionController {
   constructor(private readonly introspection: IntrospectionService) {}
 
   @Get()
+  @Capability(canUseDevtools)
   list() {
     return ok(this.introspection.all());
   }

@@ -12,7 +12,7 @@ import { MissingSessionException } from '#technical/errors/invalid-session.excep
 import { ok } from '#technical/http/envelope';
 import { SessionGuard } from '#technical/auth/session.guard';
 import type { RequestWithUser } from '#technical/auth/session.guard';
-import { canImpersonate } from './impersonation.policy';
+import { canImpersonate, canStopImpersonation } from './impersonation.policy';
 import { ImpersonationService } from './impersonation.service';
 
 // SessionGuard already validated this exact header to build req.user, so
@@ -50,6 +50,7 @@ export class ImpersonationController {
   }
 
   @Delete()
+  @Capability(canStopImpersonation)
   async stop(@Req() req: RequestWithUser) {
     await this.impersonation.stop(req.user, bearerToken(req));
 

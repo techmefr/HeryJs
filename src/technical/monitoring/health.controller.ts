@@ -1,4 +1,4 @@
-import { Controller, Get, Inject } from '@nestjs/common';
+import { Controller, Get, Inject, UseGuards } from '@nestjs/common';
 import {
   HealthCheck,
   HealthCheckError,
@@ -6,11 +6,22 @@ import {
   HealthIndicatorResult,
 } from '@nestjs/terminus';
 import IORedis from 'ioredis';
+import { SessionGuard } from '#technical/auth/session.guard';
+import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
+import { Capability } from '#technical/capabilities/capability.decorator';
 import { env } from '#technical/config/env';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
+import { canReadHealth } from './monitoring.policy';
 
+/**
+ * The report names the database and the queue and quotes their failures
+ * verbatim, so it is a caller-authenticated route like any other. A container
+ * or cluster probe carries an API key for it, the same way a metrics scrape
+ * does -- see the health check in docker-compose.yml.
+ */
 @Controller('health')
+@UseGuards(SessionGuard, CapabilitiesGuard)
 export class HealthController {
   constructor(
     private readonly health: HealthCheckService,
@@ -18,6 +29,7 @@ export class HealthController {
   ) {}
 
   @Get()
+  @Capability(canReadHealth)
   @HealthCheck()
   check() {
     return this.health.check([

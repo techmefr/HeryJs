@@ -1,19 +1,18 @@
 import {
   Body,
   Controller,
-  Headers,
   HttpCode,
-  Param,
   Post,
   Req,
   UseGuards,
 } from '@nestjs/common';
-import type { RawBodyRequest } from '@nestjs/common';
-import type { Request } from 'express';
 import { z } from 'zod';
 import { Capability } from '#technical/capabilities/capability.decorator';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
+import { PublicRoute } from '#technical/capabilities/public-route.decorator';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
+import { WebhookSignatureGuard } from './webhook-signature.guard';
+import type { RequestWithWebhookEndpoint } from './webhook-signature.guard';
 import { ok } from '#technical/http/envelope';
 import { SessionGuard } from '#technical/auth/session.guard';
 import type { RequestWithUser } from '#technical/auth/session.guard';
@@ -46,17 +45,14 @@ export class WebhooksController {
 
   @Post(':endpointId')
   @HttpCode(202)
-  async receive(
-    @Param('endpointId') endpointId: string,
-    @Req() req: RawBodyRequest<Request>,
-    @Headers('x-webhook-signature') signature: string | undefined,
-    @Headers('x-webhook-timestamp') timestamp: string | undefined,
-  ) {
+  @UseGuards(WebhookSignatureGuard)
+  @PublicRoute(
+    'inbound webhook: the sender has no session, it signs the raw body with the endpoint secret',
+  )
+  async receive(@Req() req: RequestWithWebhookEndpoint) {
     const result = await this.webhooks.receive({
-      endpointId,
+      endpoint: req.webhookEndpoint,
       rawBody: req.rawBody ?? Buffer.alloc(0),
-      signature,
-      timestamp,
     });
 
     return ok(result);

@@ -1,4 +1,5 @@
 import { Body, Controller, Inject, Post, UseGuards } from '@nestjs/common';
+import { PublicRoute } from '#technical/capabilities/public-route.decorator';
 import { DevOnlyGuard } from '#technical/dev-only/dev-only.guard';
 import { ok } from '#technical/http/envelope';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
@@ -14,6 +15,7 @@ export class AuthController {
   ) {}
 
   @Post('register')
+  @PublicRoute('there is no caller yet: this route is what creates one')
   async register(
     @Body(new ZodValidationPipe(registerSchema)) body: RegisterInput,
   ) {
@@ -21,12 +23,18 @@ export class AuthController {
   }
 
   @Post('login')
+  @PublicRoute(
+    'there is no caller yet: the credentials in the body are the check',
+  )
   async login(@Body(new ZodValidationPipe(loginSchema)) body: LoginInput) {
     return ok(await this.authProvider.login(body.email, body.password));
   }
 
   @Post('dev-token')
   @UseGuards(DevOnlyGuard)
+  @PublicRoute(
+    'mints a caller out of nothing, which is why DevOnlyGuard keeps it out of production',
+  )
   async devToken() {
     return ok(await this.authProvider.devToken());
   }

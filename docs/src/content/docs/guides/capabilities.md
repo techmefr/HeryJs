@@ -101,11 +101,26 @@ Policy functions are plain functions rather than injected class methods on purpo
 
 Being plain functions has a second payoff. `CapabilitiesGuard` only works for HTTP — it reaches for the request through `switchToHttp()`. A GraphQL resolver, a WebSocket event handler and an MCP tool call cannot use the guard, but they can all call `canUpdateBlogPost(subject, record)` directly, which is exactly what they do. One set of rules, several protocols, no second permission model.
 
+## The routes that cannot carry a capability
+
+A few routes have no caller to resolve a decision against. Logging in and registering are what *create* the caller. A signed storage URL is handed to a browser as an `<img src>` and carries no session — the HMAC signature and the expiry in the query string are the credential. An inbound webhook is sent by a third-party service that signs the raw body with the endpoint secret. Each of those is gated, just not by a capability: a guard checks the credential the request actually carries, and the route says so out loud:
+
+```ts
+@Post(':endpointId')
+@UseGuards(WebhookSignatureGuard)
+@PublicRoute('inbound webhook: the sender has no session, it signs the raw body with the endpoint secret')
+async receive(@Req() req: RequestWithWebhookEndpoint) { … }
+```
+
+`@PublicRoute` sets no behaviour — `CapabilitiesGuard` already lets a route through when no capability metadata is present. That is exactly the problem it solves: without it, "this route needs no capability" and "someone forgot the capability" are the same thing to the guard, and to a reader. The decorator makes the first an explicit, greppable statement, with its reason written where the route is rather than in a list somewhere else that quietly stops matching.
+
+Everything else carries a capability, including the routes that are not resources: `/health` and `/metrics` report the database and the queue by name and quote their failures verbatim, so they are caller-authenticated like any other route. A container or cluster probe and a Prometheus scrape have no session, so they authenticate with an API key — the credential this framework already ships for non-interactive callers — in the usual `Authorization: Bearer` header.
+
 ## Enforced in CI
 
 Generated code belongs to you, which means the generator's guarantees stop the moment you edit it. Three scripts hold the line instead:
 
-- `pnpm lint:capabilities` fails the build if any route under `functional/**/*.controller.ts` — reads included, not just `@Post`/`@Patch`/`@Put`/`@Delete` — is missing a `@Capability(...)`. `CapabilitiesGuard` returns `true` when the metadata is absent, so an undecorated read hands out every row its query returns.
+- `pnpm lint:capabilities` fails the build if any route in the repository — every `*.controller.ts` under `src/`, `examples/` and `packages/`, reads included, not just `@Post`/`@Patch`/`@Put`/`@Delete` — carries neither a `@Capability(...)` nor a `@PublicRoute('<reason>')`. `CapabilitiesGuard` returns `true` when the metadata is absent, so an undecorated read hands out every row its query returns. Kernel, module and devtools routes are held to this too: they serve data exactly like a resource route does.
 - `pnpm lint:scope-parity` fails the build if a `search()` method under `functional/**/*.service.ts` does not go through `scopeWhereFor(...)`, which is how a collection query silently loses its scope.
 - `pnpm lint:subject` fails the build if a capability subject is assembled anywhere but `subjectOf`, which is how a field on the subject silently stays empty.
 

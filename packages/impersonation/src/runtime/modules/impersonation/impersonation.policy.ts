@@ -8,3 +8,11 @@ export const canImpersonate: PolicyCheck = (subject) =>
   subject.role === 'admin'
     ? { allowed: true, scope: 'all' }
     : { allowed: false };
+
+// Stopping is the way back out of a session the caller is already inside, so it
+// asks nothing of the role: an impersonated caller is by definition not an
+// admin, and refusing them here would trap them in the session.
+export const canStopImpersonation: PolicyCheck = () => ({
+  allowed: true,
+  scope: 'own',
+});

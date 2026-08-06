@@ -1,13 +1,8 @@
-import {
-  Controller,
-  Get,
-  NotFoundException,
-  Param,
-  Query,
-  Res,
-} from '@nestjs/common';
+import { Controller, Get, Param, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
+import { PublicRoute } from '#kernel/capabilities/public-route.decorator';
 import { LocalStorageProvider } from './local-storage.provider';
+import { StorageSignatureGuard } from './storage-signature.guard';
 
 // Only relevant for the local driver -- S3 and MinIO serve signed URLs
 // directly from the object store, this app never proxies that traffic.
@@ -16,16 +11,9 @@ export class StorageController {
   constructor(private readonly local: LocalStorageProvider) {}
 
   @Get(':key')
-  async serve(
-    @Param('key') key: string,
-    @Query('exp') exp: string,
-    @Query('sig') sig: string,
-    @Res() res: Response,
-  ) {
-    if (!this.local.verify(key, Number(exp), sig)) {
-      throw new NotFoundException();
-    }
-
+  @UseGuards(StorageSignatureGuard)
+  @PublicRoute('signed URL: the HMAC signature and expiry are the credential')
+  async serve(@Param('key') key: string, @Res() res: Response) {
     const [body, contentType] = await Promise.all([
       this.local.read(key),
       this.local.contentTypeOf(key),
