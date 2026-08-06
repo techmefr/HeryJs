@@ -18,3 +18,39 @@ export function resolveCaller(
     ? provider.validateApiKey(token)
     : provider.validateSession(token);
 }
+
+const RESOLVED_CALLER = Symbol('heryResolvedCaller');
+
+type CarriesCaller = {
+  [RESOLVED_CALLER]?: {
+    token: string;
+    caller: Promise<AuthenticatedUser | null>;
+  };
+};
+
+/**
+ * Both halves of authentication read the same bearer token, so a request used
+ * to cost two lookups in the auth store: one in the middleware to derive the
+ * tenant, one in the guard to identify the caller. The answer is memoised on
+ * the request object -- keyed by the token, so a request that somehow carries
+ * two of them resolves both rather than reusing the wrong one -- and the
+ * promise is stored rather than its result, so a guard running while the
+ * middleware is still awaiting joins that lookup instead of starting another.
+ */
+export function resolveCallerOnce(
+  provider: AuthProvider,
+  token: string,
+  request: object,
+): Promise<AuthenticatedUser | null> {
+  const carrier = request as CarriesCaller;
+  const memo = carrier[RESOLVED_CALLER];
+
+  if (memo?.token === token) {
+    return memo.caller;
+  }
+
+  const caller = resolveCaller(provider, token);
+  carrier[RESOLVED_CALLER] = { token, caller };
+
+  return caller;
+}

@@ -8,7 +8,7 @@ import { GqlExecutionContext } from '@nestjs/graphql';
 import { Request } from 'express';
 import { AUTH_PROVIDER } from '#kernel/auth/auth.types';
 import type { AuthenticatedUser, AuthProvider } from '#kernel/auth/auth.types';
-import { resolveCaller } from '#kernel/auth/resolve-caller';
+import { resolveCallerOnce } from '#kernel/auth/resolve-caller';
 import {
   MissingSessionException,
   InvalidSessionException,
@@ -36,11 +36,12 @@ export class GqlSessionGuard implements CanActivate {
       throw new MissingSessionException();
     }
 
-    // Through resolveCaller, never validateSession directly: the tenant
+    // Through resolveCallerOnce, never validateSession directly: the tenant
     // middleware has already accepted this bearer token, and an API key it
     // resolved a caller and a tenant for cannot be rejected here without the
-    // request running under one identity and none at all.
-    const user = await resolveCaller(this.authProvider, token);
+    // request running under one identity and none at all. It resolved that
+    // caller onto this same request, so this reuses the answer.
+    const user = await resolveCallerOnce(this.authProvider, token, request);
 
     if (!user) {
       throw new InvalidSessionException();
