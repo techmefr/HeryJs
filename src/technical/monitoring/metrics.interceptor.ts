@@ -27,7 +27,11 @@ export class MetricsInterceptor implements NestInterceptor {
       const route = request.route as { path?: string } | undefined;
       const labels = {
         method: request.method,
-        route: route?.path ?? request.path,
+        // Never the raw URL: a route pattern is one label value per endpoint,
+        // while a path is one per id -- and one per made-up path a scanner
+        // tries, which is an unbounded label set anybody on the internet can
+        // grow until the registry, and the scrape, fall over.
+        route: route?.path ?? 'unmatched',
         status: String(status),
       };
 

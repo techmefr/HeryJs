@@ -52,7 +52,7 @@ pnpm hery generate blueprints/blog-post.yaml
 
 ## What it generates
 
-A resource in HeryJs starts as a short blueprint describing intent — fields, relations, whether it's tenant-scoped, its permission presets. From that, `hery generate` produces:
+A resource in HeryJs starts as a short blueprint describing intent — fields, relations, its permission presets. Tenancy is not one of the choices: every generated resource is tenant-scoped, in the Prisma extension and behind a Postgres row-level policy. From that, `hery generate` produces:
 
 ```
 functional/
