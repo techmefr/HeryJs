@@ -54,7 +54,7 @@ After this, `Task` is a normal NestJS module like any other. Nothing re-reads `b
 
 ## `hery create:blueprint <Name>`
 
-Walks through interactive prompts (fields, permissions, pagination limits, sortable fields, filterable fields) and writes a YAML blueprint to `blueprints/<name>.yaml`.
+Walks through interactive prompts (fields, permissions, whether to paginate and with which page sizes, sortable fields, filterable fields) and writes a YAML blueprint to `blueprints/<name>.yaml`. Pagination defaults to off — `--yes` writes a blueprint whose search route returns every match.
 
 - `--yes` skips the prompts and takes sensible defaults — useful in scripts, or when trying the generator out.
 - `--all-options` skips the prompts and writes a fully commented blueprint listing every field type, every permission preset and every other option the generator understands, mostly commented out. A quick way to see the whole menu before trimming it to what you need.

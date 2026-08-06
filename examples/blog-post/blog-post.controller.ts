@@ -123,6 +123,10 @@ const BLOG_POST_CONTRACT = {
 const BLOG_POST_DESCRIBE = {
   fields: [{ name: 'title', type: 'string', optional: false }],
   ...BLOG_POST_CONTRACT,
+  // Stated rather than implied by the absence of limits: a client reading this
+  // knows the search route returns every match, and that asking for a page is
+  // an error rather than a no-op.
+  paginated: true,
   rules: {
     create: z.toJSONSchema(createBlogPostSchema),
     update: z.toJSONSchema(updateBlogPostSchema),
@@ -216,12 +220,13 @@ export class BlogPostController {
             Object.entries(view).filter(([key]) => key in select),
           )
         : view;
+    const pageLimit = query.limit ?? 15;
     const meta = {
       channels: [BLOG_POST_SIGNAL_CHANNEL],
-      page: query.page,
-      limit: query.limit,
+      page: query.page ?? 1,
+      limit: pageLimit,
+      last_page: Math.max(1, Math.ceil(total / pageLimit)),
       total,
-      last_page: Math.max(1, Math.ceil(total / query.limit)),
       ...(matches
         ? {
             search: { matchLimit: matches.limit, truncated: matches.truncated },

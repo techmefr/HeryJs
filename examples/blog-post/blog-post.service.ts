@@ -34,8 +34,9 @@ export interface BlogPostSearchOptions {
   relationInstructions?: RelationInstruction[];
   search?: string;
   searchEngine?: string;
-  page?: number;
-  limit?: number;
+  // null when the resource declares no pagination: every match, no window.
+  page?: number | null;
+  limit?: number | null;
 }
 
 export const BLOG_POST_SIGNAL_CHANNEL = 'blogPost';
@@ -143,7 +144,9 @@ export class BlogPostService {
     };
 
     const page = options.page ?? 1;
-    const limit = options.limit;
+    // undefined, never null: Prisma reads an absent take as "every row", which
+    // is what a resource with no declared pagination asks for.
+    const limit = options.limit ?? undefined;
 
     const [records, total] = await Promise.all([
       this.prisma.blogPost.findMany({

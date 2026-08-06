@@ -1,4 +1,7 @@
-import { InvalidQueryException } from '#technical/errors/invalid-query.exception';
+import {
+  InvalidQueryException,
+  PaginationNotOfferedException,
+} from '#technical/errors/invalid-query.exception';
 import {
   parseSearchRequest,
   withIncludesAndAggregates,
@@ -594,5 +597,46 @@ describe('withIncludesAndAggregates', () => {
     const result = withIncludesAndAggregates({ id: '1' }, { id: '1' }, query);
 
     expect(result).toEqual({ id: '1' });
+  });
+});
+
+/**
+ * Pagination is the blueprint's call: declared, the route accepts exactly those
+ * page sizes; absent, it returns every match. The one thing it never does is
+ * accept a page nobody offered and answer as if it had.
+ */
+describe('a contract that declares no pagination', () => {
+  const unpaginated: ListQueryContract = {
+    sorts: ['createdAt'],
+    filters: ['title'],
+    selects: ['id', 'title'],
+  };
+
+  it('parses to no page and no limit', () => {
+    const query = parseSearchRequest({}, unpaginated);
+
+    expect(query.page).toBeNull();
+    expect(query.limit).toBeNull();
+  });
+
+  it('rejects a caller who asks for a limit', () => {
+    expect(() => parseSearchRequest({ limit: 10 }, unpaginated)).toThrow(
+      PaginationNotOfferedException,
+    );
+  });
+
+  it('rejects a caller who asks for a page', () => {
+    expect(() => parseSearchRequest({ page: 2 }, unpaginated)).toThrow(
+      PaginationNotOfferedException,
+    );
+  });
+
+  it('still validates everything else', () => {
+    expect(() =>
+      parseSearchRequest(
+        { sorts: [{ field: 'nope', direction: 'asc' }] },
+        unpaginated,
+      ),
+    ).toThrow(InvalidQueryException);
   });
 });

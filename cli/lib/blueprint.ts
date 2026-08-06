@@ -79,12 +79,18 @@ export const blueprintSchema = z.object({
       delete: permissionPresetSchema.default('own'),
     })
     .default({ view: 'own', create: 'own', update: 'own', delete: 'own' }),
+  // Absent on purpose rather than defaulted: pagination is the developer's
+  // call. Declare it and the search route paginates by exactly these rules --
+  // the only accepted page sizes, and the one it uses when the caller names
+  // none. Leave it out and the route does not paginate at all, and says so in
+  // its own contract instead of quietly capping a result set nobody asked it
+  // to cap.
   pagination: z
     .object({
       limits: z.array(z.number().int().positive()).default([10, 15, 20]),
       default: z.number().int().positive().default(15),
     })
-    .default({ limits: [10, 15, 20], default: 15 }),
+    .optional(),
   sorts: z
     .array(z.string().regex(/^[a-z][a-zA-Z0-9]*$/))
     .default(['createdAt']),

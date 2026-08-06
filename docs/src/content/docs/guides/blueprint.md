@@ -17,7 +17,7 @@ permissions:
   create: own
   update: own
   delete: own
-pagination:
+pagination: # optional — leave it out and the search route returns every match
   limits: [10, 15, 20]
   default: 15
 sorts: [createdAt, title]
@@ -58,7 +58,7 @@ Choosing `team` anywhere changes the generated resource structurally: the Prisma
 
 This is the part that goes beyond validating input: it bounds *output* too.
 
-- `pagination.limits` is the exhaustive list of page sizes a client is allowed to request; anything else is rejected with a 400.
+- `pagination` is optional, and it is the only place pagination is decided. Declare it and `limits` is the exhaustive list of page sizes a client may request — anything else is a 400 — while `default` is the size used when the caller names none. Leave the block out and the search route does not paginate: it returns every match, reports `"paginated": false` in `describe` and `meta`, and rejects a caller who sends `page` or `limit` rather than ignoring them. Bounding the result set is the developer's call, not the framework's.
 - `sorts` is the allow-list of fields a client can sort by — `sort` in the body, prefixed with `-` for descending.
 - `filters` is the allow-list of fields a client can filter on — one entry per field under `filters` in the body.
 

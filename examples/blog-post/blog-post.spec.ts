@@ -59,11 +59,13 @@ describe('BlogPost resource', () => {
     const body = response.body as {
       data: {
         fields: Array<{ name: string }>;
-        limits: number[];
+        limits?: number[];
+        paginated: boolean;
         rules: { create: { required?: string[] } };
       };
     };
     expect(body.data.fields.map((field) => field.name)).toEqual(['title']);
+    expect(body.data.paginated).toBe(true);
     expect(body.data.limits).toEqual([10, 15, 20]);
     expect(body.data.rules.create.required).toEqual(['title']);
   });
@@ -304,6 +306,14 @@ describe('BlogPost resource', () => {
     expect(meta.limit).toBe(15);
     expect(meta.total).toBeGreaterThan(0);
     expect(meta.last_page).toBeGreaterThanOrEqual(1);
+  });
+
+  it('rejects a page size the blueprint did not declare', async () => {
+    await request(app.getHttpServer())
+      .post('/blog-posts/search')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ limit: 21 })
+      .expect(400);
   });
 
   it('rejects an include naming a relation this resource does not declare', async () => {

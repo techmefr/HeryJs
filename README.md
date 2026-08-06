@@ -70,7 +70,7 @@ prisma/
 
 Out of the box, that resource comes with:
 
-- **`search`** — list, detail, filters, sorting, pagination, relations
+- **`search`** — list, detail, filters, sorting, relations, and pagination when the blueprint asks for it
 - **`mutate`** — create, update, soft-delete, restore
 - **Capabilities** — resolved permission decisions embedded via `?include=capabilities`, computed in memory, no per-row query
 - **Multi-tenant isolation** — enforced automatically, underneath permissions

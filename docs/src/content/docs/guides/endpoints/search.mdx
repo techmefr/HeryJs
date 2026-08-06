@@ -18,7 +18,7 @@ Every generated resource exposes one search route instead of a detail route: the
     | `sorts` | array | Each entry: `field` (must be in the blueprint's `sorts` list), `direction` (`asc`/`desc`, default `asc`) — applied in the order given |
     | `selects` | array | Each entry: `field` (must be an exposed field) — trims the response down to just these |
     | `page` | number | Defaults to `1` |
-    | `limit` | number | Must be one of the blueprint's `pagination.limits` |
+    | `limit` | number | Must be one of the blueprint's `pagination.limits`, and is refused outright on a resource that declares no `pagination` |
     | `search.q` / `search.engine` | string | Free-text search — see [Full-text search](/guides/search/) |
     | `withTrashed` / `onlyTrashed` | boolean | Gated behind the delete permission, not the read one |
     | `capabilities` | array | Which per-record capability decisions to attach — see below |
@@ -112,7 +112,7 @@ Every generated resource exposes one search route instead of a detail route: the
     { "meta": { "channels": ["blogPost"], "page": 1, "limit": 15, "total": 3, "last_page": 1 } }
     ```
 
-    `channels` is what a live UI subscribes to — see [Realtime](/guides/realtime/) — to know when to refetch, instead of polling. `page`/`limit`/`total`/`last_page` are the real pagination window, not a truncated guess.
+    `channels` is what a live UI subscribes to — see [Realtime](/guides/realtime/) — to know when to refetch, instead of polling. `page`/`limit`/`total`/`last_page` are the real pagination window, not a truncated guess. A resource whose blueprint declares no `pagination` has no window to report: its `meta` carries `total` and `"paginated": false`, and `data` holds every match.
 
     ## Capabilities in the response
 

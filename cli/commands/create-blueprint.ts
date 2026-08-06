@@ -15,7 +15,7 @@ import type {
 const SCHEMA_FILENAME = 'schema.json';
 const SCHEMA_MODELINE = `# yaml-language-server: $schema=./${SCHEMA_FILENAME}\n`;
 
-const DEFAULT_PAGINATION: Blueprint['pagination'] = {
+const DEFAULT_PAGINATION: NonNullable<Blueprint['pagination']> = {
   limits: [10, 15, 20],
   default: 15,
 };
@@ -127,6 +127,17 @@ function parseCommaList(input: string | undefined): string[] {
 }
 
 async function promptPagination(): Promise<Blueprint['pagination']> {
+  const offerResponse = (await prompts({
+    type: 'confirm',
+    name: 'paginate',
+    message: 'Paginate the search route? (no: it returns every match)',
+    initial: false,
+  })) as { paginate?: boolean };
+
+  if (!offerResponse.paginate) {
+    return undefined;
+  }
+
   const limitsResponse = (await prompts({
     type: 'text',
     name: 'limits',
@@ -218,6 +229,10 @@ permissions:
   update: own
   delete: own
 
+# Optional, and the only place pagination is decided. Declared: the search route
+# accepts exactly these page sizes and uses "default" when the caller names none.
+# Remove the block: the route returns every match, reports "paginated": false in
+# describe, and rejects a caller who sends page or limit.
 pagination:
   limits: [10, 15, 20]
   default: 15
@@ -306,9 +321,7 @@ export function registerCreateBlueprintCommand(program: Command): void {
 
         const fieldNames = fields.map((field) => field.name);
 
-        const pagination = options.yes
-          ? DEFAULT_PAGINATION
-          : await promptPagination();
+        const pagination = options.yes ? undefined : await promptPagination();
 
         const sorts = options.yes
           ? ['createdAt']

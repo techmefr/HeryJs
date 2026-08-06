@@ -11,3 +11,20 @@ export class InvalidQueryException extends DomainException {
     );
   }
 }
+
+/**
+ * Ignoring `page`/`limit` on a resource that does not paginate would leave the
+ * caller believing they read page 2 of something that only ever had one page.
+ * The same `query.invalid` code as any other rejected parameter, so a client
+ * handles it the same way.
+ */
+export class PaginationNotOfferedException extends DomainException {
+  constructor(param: string) {
+    super(
+      HttpStatus.BAD_REQUEST,
+      'query.invalid',
+      `"${param}" is not accepted: this resource declares no pagination, so its search route returns every match. Its describe endpoint reports "paginated": false.`,
+      { param, allowed: [] },
+    );
+  }
+}

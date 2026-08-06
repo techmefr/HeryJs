@@ -369,8 +369,9 @@ export interface ${ctx.pascalName}SearchOptions {
   relationInstructions?: RelationInstruction[];
   search?: string;
   searchEngine?: string;
-  page?: number;
-  limit?: number;
+  // null when the resource declares no pagination: every match, no window.
+  page?: number | null;
+  limit?: number | null;
 }
 
 export const ${ctx.screamingSnakeName}_SIGNAL_CHANNEL = '${ctx.camelName}';
@@ -478,7 +479,9 @@ export class ${ctx.pascalName}Service {
     };
 
     const page = options.page ?? 1;
-    const limit = options.limit;
+    // undefined, never null: Prisma reads an absent take as "every row", which
+    // is what a resource with no declared pagination asks for.
+    const limit = options.limit ?? undefined;
 
     const [records, total] = await Promise.all([
       this.prisma.${ctx.camelName}.findMany({
@@ -633,6 +636,95 @@ ${indent}    foreignKey: '${link.foreignKey}',${discriminatorLines}
 ${indent}    childDelegate: '${camelCase(link.resource)}',`;
 }
 
+function paginationSpec(ctx: ResourceContext, createBody: string): string {
+  const arrange = `    await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/create')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ data: [${createBody}] })
+      .expect(201);
+
+    const response = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/search')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({})
+      .expect(200);`;
+
+  if (!ctx.pagination) {
+    return `  it('returns every match and says it does not paginate', async () => {
+${arrange}
+
+    const { meta } = response.body as {
+      meta: { paginated: boolean; total: number; page?: number };
+    };
+    expect(meta.paginated).toBe(false);
+    expect(meta.page).toBeUndefined();
+    expect(meta.total).toBeGreaterThan(0);
+    expect(
+      (response.body as { data: unknown[] }).data.length,
+    ).toBe(meta.total);
+  });
+
+  it('rejects a caller who asks for a page of something that does not paginate', async () => {
+    await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/search')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ limit: 10 })
+      .expect(400);
+  });`;
+  }
+
+  return `  it('reports pagination meta alongside the results', async () => {
+${arrange}
+
+    const { meta } = response.body as {
+      meta: { page: number; limit: number; total: number; last_page: number };
+    };
+    expect(meta.page).toBe(1);
+    expect(meta.limit).toBe(${ctx.pagination.default});
+    expect(meta.total).toBeGreaterThan(0);
+    expect(meta.last_page).toBeGreaterThanOrEqual(1);
+  });
+
+  it('rejects a page size the blueprint did not declare', async () => {
+    await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/search')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ limit: ${Math.max(...ctx.pagination.limits) + 1} })
+      .expect(400);
+  });`;
+}
+
+/**
+ * Nothing at all when the blueprint declared no pagination: a contract without
+ * these two keys is what makes the search route return every match, and what
+ * makes a caller naming `page` or `limit` a rejected request rather than an
+ * ignored one.
+ */
+function paginationContractLines(ctx: ResourceContext): string {
+  if (!ctx.pagination) {
+    return '';
+  }
+
+  return `  limits: [${ctx.pagination.limits.join(', ')}],
+  defaultLimit: ${ctx.pagination.default},
+`;
+}
+
+/**
+ * An unpaginated route reports no page, no limit and no last_page rather than
+ * inventing "page 1 of 1": there is no page, and `total` is the whole answer.
+ */
+function paginationMetaLines(ctx: ResourceContext): string {
+  if (!ctx.pagination) {
+    return '      paginated: false,\n';
+  }
+
+  return `      page: query.page ?? 1,
+      limit: pageLimit,
+      last_page: Math.max(1, Math.ceil(total / pageLimit)),
+`;
+}
+
 function includesContractLiteral(ctx: ResourceContext, indent: string): string {
   if (ctx.includes.length === 0) return '{}';
 
@@ -760,9 +852,7 @@ const ${ctx.screamingSnakeName}_CONTRACT = {
   selects: [${selectableFields.map((field) => `'${field}'`).join(', ')}],
   includes: ${includesContractLiteral(ctx, '  ')},
   aggregates: ${aggregatesContractLiteral(ctx, '  ')},
-  limits: [${ctx.pagination.limits.join(', ')}],
-  defaultLimit: ${ctx.pagination.default},
-} as const satisfies ListQueryContract;
+${paginationContractLines(ctx)}} as const satisfies ListQueryContract;
 
 // Computed once at module load, not per request: the blueprint's shape never
 // changes at runtime, and the Zod schemas already own the create/update
@@ -773,6 +863,10 @@ const ${ctx.screamingSnakeName}_DESCRIBE = {
 ${ctx.fields.map((field) => `    { name: '${field.name}', type: '${field.type}', optional: ${field.optional} },`).join('\n')}
   ],
   ...${ctx.screamingSnakeName}_CONTRACT,
+  // Stated rather than implied by the absence of limits: a client reading this
+  // knows the search route returns every match, and that asking for a page is
+  // an error rather than a no-op.
+  paginated: ${ctx.pagination ? 'true' : 'false'},
   rules: {
     create: z.toJSONSchema(create${ctx.pascalName}Schema),
     update: z.toJSONSchema(update${ctx.pascalName}Schema),
@@ -860,12 +954,9 @@ export class ${ctx.pascalName}Controller {
             Object.entries(view).filter(([key]) => key in select),
           )
         : view;
-    const meta = {
+${ctx.pagination ? `    const pageLimit = query.limit ?? ${ctx.pagination.default};\n` : ''}    const meta = {
       channels: [${ctx.screamingSnakeName}_SIGNAL_CHANNEL],
-      page: query.page,
-      limit: query.limit,
-      total,
-      last_page: Math.max(1, Math.ceil(total / query.limit)),
+${paginationMetaLines(ctx)}      total,
       ...(matches
         ? { search: { matchLimit: matches.limit, truncated: matches.truncated } }
         : {}),
@@ -1247,9 +1338,7 @@ export class ${ctx.pascalName}Resolver {
       throw new CapabilityForbiddenException();
     }
 
-    const { records } = await this.${ctx.camelName}s.search(subject, {
-      limit: ${ctx.pagination.default},
-    });
+    const { records } = await this.${ctx.camelName}s.search(subject, ${ctx.pagination ? `{\n      limit: ${ctx.pagination.default},\n    }` : '{}'});
 
     return records.map(to${ctx.pascalName}View);
   }
@@ -1388,9 +1477,7 @@ export class ${ctx.pascalName}McpToolRegistrar implements McpToolRegistrar {
           return deniedResult();
         }
 
-        const { records } = await this.${ctx.camelName}s.search(subject, {
-          limit: ${ctx.pagination.default},
-        });
+        const { records } = await this.${ctx.camelName}s.search(subject, ${ctx.pagination ? `{\n          limit: ${ctx.pagination.default},\n        }` : '{}'});
         return textResult(records.map(to${ctx.pascalName}View));
       },
     );
@@ -1968,14 +2055,16 @@ ${
     const body = response.body as {
       data: {
         fields: Array<{ name: string }>;
-        limits: number[];
+        limits?: number[];
+        paginated: boolean;
         rules: { create: { required?: string[] } };
       };
     };
     expect(body.data.fields.map((field) => field.name)).toEqual([
 ${ctx.fields.map((field) => `      '${field.name}',`).join('\n')}
     ]);
-    expect(body.data.limits).toEqual([${ctx.pagination.limits.join(', ')}]);
+    expect(body.data.paginated).toBe(${ctx.pagination ? 'true' : 'false'});
+    expect(body.data.limits).toEqual(${ctx.pagination ? `[${ctx.pagination.limits.join(', ')}]` : 'undefined'});
 ${
   requiredFields.length > 0
     ? `    expect(body.data.rules.create.required).toEqual([${requiredFields.map((field) => `'${field.name}'`).join(', ')}]);`
@@ -2151,27 +2240,7 @@ ${
     ).toBe(true);
   });
 
-  it('reports pagination meta alongside the results', async () => {
-    await request(app.getHttpServer())
-      .post('/${ctx.pluralKebabName}/create')
-      .set('Authorization', \`Bearer \${ownerToken}\`)
-      .send({ data: [${createBody}] })
-      .expect(201);
-
-    const response = await request(app.getHttpServer())
-      .post('/${ctx.pluralKebabName}/search')
-      .set('Authorization', \`Bearer \${ownerToken}\`)
-      .send({})
-      .expect(200);
-
-    const { meta } = response.body as {
-      meta: { page: number; limit: number; total: number; last_page: number };
-    };
-    expect(meta.page).toBe(1);
-    expect(meta.limit).toBe(${ctx.pagination.default});
-    expect(meta.total).toBeGreaterThan(0);
-    expect(meta.last_page).toBeGreaterThanOrEqual(1);
-  });
+${paginationSpec(ctx, createBody)}
 
   it('rejects an include naming a relation this resource does not declare', async () => {
     await request(app.getHttpServer())

@@ -1,5 +1,8 @@
 import { z } from 'zod';
-import { InvalidQueryException } from '#technical/errors/invalid-query.exception';
+import {
+  InvalidQueryException,
+  PaginationNotOfferedException,
+} from '#technical/errors/invalid-query.exception';
 
 export const FILTER_OPERATORS = [
   '=',
@@ -168,9 +171,15 @@ export interface AggregateContract extends RelationContract {
   fields: readonly string[];
 }
 
+/**
+ * A resource paginates only if its blueprint declared how. Both keys are
+ * present together or absent together -- absent means the search route returns
+ * every match, and rejects a caller who asks for a page of something that is
+ * not paginated rather than ignoring the request.
+ */
 export interface ListQueryContract extends FieldContract {
-  limits: readonly number[];
-  defaultLimit: number;
+  limits?: readonly number[];
+  defaultLimit?: number;
   includes?: Record<string, IncludeContract>;
   aggregates?: Record<string, AggregateContract>;
 }
@@ -237,8 +246,10 @@ export interface ParsedListQuery {
   aggregateManifest?: AggregateManifestEntry[];
   search?: string;
   searchEngine?: string;
-  page: number;
-  limit: number;
+  // null on a resource that declared no pagination: the query has no page to
+  // be on, and the service takes every row the filters left.
+  page: number | null;
+  limit: number | null;
 }
 
 function operatorFragment(
@@ -595,17 +606,39 @@ export function withIncludesAndAggregates(
   return result;
 }
 
+function resolvePagination(
+  body: SearchRequestBody,
+  contract: ListQueryContract,
+): { page: number | null; limit: number | null } {
+  const limits = contract.limits;
+  const defaultLimit = contract.defaultLimit;
+
+  if (limits === undefined || defaultLimit === undefined) {
+    if (body.limit !== undefined) {
+      throw new PaginationNotOfferedException('limit');
+    }
+
+    if (body.page !== undefined) {
+      throw new PaginationNotOfferedException('page');
+    }
+
+    return { page: null, limit: null };
+  }
+
+  const limit = body.limit ?? defaultLimit;
+
+  if (!limits.includes(limit)) {
+    throw new InvalidQueryException('limit', limits);
+  }
+
+  return { page: body.page ?? 1, limit };
+}
+
 export function parseSearchRequest(
   body: SearchRequestBody,
   contract: ListQueryContract,
 ): ParsedListQuery {
-  const limit = body.limit ?? contract.defaultLimit;
-
-  if (!contract.limits.includes(limit)) {
-    throw new InvalidQueryException('limit', contract.limits);
-  }
-
-  const page = body.page ?? 1;
+  const { page, limit } = resolvePagination(body, contract);
   const sorts = parseSorts(body.sorts, contract);
   const select = parseSelects(body.selects, contract);
   const where =
