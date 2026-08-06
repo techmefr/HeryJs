@@ -46,6 +46,7 @@ export default defineConfig({
 								{ label: 'Teams', slug: 'guides/teams' },
 								{ label: 'Multi-tenancy', slug: 'guides/tenancy' },
 								{ label: 'Errors and responses', slug: 'guides/errors-and-responses' },
+								{ label: 'Exposing an action to the mine', slug: 'guides/exposing-actions' },
 								{ label: 'Prune', slug: 'guides/prune' },
 							],
 						},
