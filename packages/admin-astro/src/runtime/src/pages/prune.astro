@@ -59,10 +59,10 @@ import Shell from '../layouts/Shell.astro';
       result.textContent = 'Running…';
 
       try {
-        const { data } = await api<PruneRunResult>(
-          '/prune/' + entry.model + '/run',
-          { method: 'POST' },
-        );
+        const { data } = await api<PruneRunResult>('/expose/prune.run', {
+          method: 'POST',
+          body: JSON.stringify({ 'prune.run.model': entry.model }),
+        });
         result.textContent = data.deletedCount + ' deleted';
       } catch {
         result.textContent = 'Failed';
@@ -77,8 +77,9 @@ import Shell from '../layouts/Shell.astro';
   }
 
   try {
-    const { data } = await api<PruneStatus[]>('/prune/status', {
+    const { data } = await api<PruneStatus[]>('/expose/prune.status', {
       method: 'POST',
+      body: JSON.stringify({}),
     });
 
     output.replaceChildren(
@@ -104,7 +105,7 @@ import Shell from '../layouts/Shell.astro';
           )
         : state(
             'Could not load prune status',
-            'The request to /prune failed.',
+            'The request to /expose/prune.status failed.',
             'denied',
           ),
     );

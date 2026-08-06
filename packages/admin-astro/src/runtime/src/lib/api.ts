@@ -76,12 +76,13 @@ export interface AdminSection {
 // The overview already reports these, and /signal/stream never ends.
 // /pipeline/traces gets its own dedicated page (pipeline.astro) rather than
 // the generic flat table, so it's hidden from the auto-discovered sidebar
-// sections the same way /introspect and /health are. /prune needs no such
-// entry: its status route is a POST (see PruneController), so it was never
-// going to surface here in the first place.
+// sections the same way /introspect and /health are. /expose is the mine's
+// own catalog route (see prune.astro for a page built on top of it), not a
+// section in its own right.
 const HIDDEN_PATHS = [
   '/',
   '/introspect',
+  '/expose',
   '/health',
   '/metrics',
   '/pipeline/traces',

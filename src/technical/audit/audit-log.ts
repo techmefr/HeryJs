@@ -57,10 +57,18 @@ function computeHash(previousHash: string | null, entry: AuditEntryInput) {
     .digest('hex');
 }
 
-export async function writeAuditLog(
-  client: PrismaClient,
+type AuditTransactionClient = Pick<PrismaClient, '$executeRaw' | 'auditLog'>;
+
+/**
+ * The advisory lock and the hash-chain append, usable both standalone
+ * (`writeAuditLog`, which opens its own transaction) and from inside a
+ * transaction a caller already holds -- Prisma's interactive transaction
+ * client has no `$transaction` of its own to nest one into.
+ */
+export async function writeAuditLogInTransaction(
+  tx: AuditTransactionClient,
   entry: AuditEntryInput,
-) {
+): Promise<void> {
   // Reading the chain's tail and appending to it are two separate statements,
   // so two concurrent mutations on the same tenant can both read the same
   // tail and both append a row claiming it as their predecessor -- a fork the
@@ -69,29 +77,34 @@ export async function writeAuditLog(
   // the other's uncommitted row), so the transaction takes a session-scoped
   // advisory lock keyed by tenant first: the second writer blocks until the
   // first commits, and then reads the tail it actually produced.
-  await client.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${entry.tenantId}))`;
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${entry.tenantId}))`;
 
-    const last = await tx.auditLog.findFirst({
-      where: { tenantId: entry.tenantId },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    const previousHash = last?.hash ?? null;
-    const hash = computeHash(previousHash, entry);
-
-    await tx.auditLog.create({
-      data: {
-        tenantId: entry.tenantId,
-        model: entry.model,
-        operation: entry.operation,
-        recordId: entry.recordId,
-        data: entry.data as object,
-        userId: entry.userId,
-        impersonatedBy: entry.impersonatedBy,
-        hash,
-        previousHash,
-      },
-    });
+  const last = await tx.auditLog.findFirst({
+    where: { tenantId: entry.tenantId },
+    orderBy: { createdAt: 'desc' },
   });
+
+  const previousHash = last?.hash ?? null;
+  const hash = computeHash(previousHash, entry);
+
+  await tx.auditLog.create({
+    data: {
+      tenantId: entry.tenantId,
+      model: entry.model,
+      operation: entry.operation,
+      recordId: entry.recordId,
+      data: entry.data as object,
+      userId: entry.userId,
+      impersonatedBy: entry.impersonatedBy,
+      hash,
+      previousHash,
+    },
+  });
+}
+
+export async function writeAuditLog(
+  client: PrismaClient,
+  entry: AuditEntryInput,
+): Promise<void> {
+  await client.$transaction((tx) => writeAuditLogInTransaction(tx, entry));
 }

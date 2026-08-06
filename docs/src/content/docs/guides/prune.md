@@ -49,19 +49,30 @@ prune: {
 
 `lock` does not add a second permission tier — `canManagePrune` already restricts the whole feature to `role: 'admin'`, and there is no stronger role to gate a locked model behind. What `lock` changes is who decides *when*: an unlocked model is swept by the daily cron the moment it is due; a locked one is skipped by that cron and only prunes when an admin explicitly triggers it. Use it for a model where hard-deleting a full year of records is not something you want to happen unattended, even by a rule you wrote yourself weeks ago.
 
-## The HTTP surface
+## Exposed to the mine, not routed by hand
 
-Two routes, both behind `SessionGuard` and `@Capability(canManagePrune)` — unlike the scheduler's own `/scheduler/tasks`, neither is `DevOnlyGuard`-gated, because an admin needs to see and trigger this in production.
+`PruneService` carries no controller of its own. `status()` and `run()` are `@ExposeAction`s — see [Exposing an action to the mine](/guides/exposing-actions) — reached through the framework's one generic route rather than a `POST /prune/...` pair, with `canManagePrune` as each action's own capability.
 
-| Route | What it does |
-|---|---|
-| `POST /prune/status` | Every prunable model that has a rule, with its resolved `retentionDays` and `lock`. A `POST` rather than the plain `GET` a status read would suggest, so the admin panel's auto-discovery never turns it into a redundant sidebar section — see the admin page below. |
-| `POST /prune/:model/run` | Hard-deletes that model's overdue rows now, regardless of `lock`. 404s if the model has no prune configuration. |
+```ts
+@ExposeAction('prune.status', { capability: canManagePrune })
+status(): PruneModelStatus[] { ... }
+
+@ExposeAction('prune.run', { capability: canManagePrune })
+async run(
+  @ExposeField('prune.run.model', { kind: 'enum', values: prunableModels(), default: prunableModels()[0] ?? '' })
+  model: string,
+  @ExposeField('prune.run.retentionDays', { kind: 'number', min: 1, max: 3650, default: DEFAULT_RETENTION_DAYS })
+  retentionDays: number,
+): Promise<PruneRunResult> { ... }
+```
 
 ```json
-POST /prune/BlogPost/run
+POST /expose/prune.run
+{ "prune.run.model": "BlogPost" }
 → 201 { "data": { "model": "BlogPost", "deletedCount": 3 }, "messages": [] }
 ```
+
+`model` is a closed list — the mine renders it as a menu, not free text, and an unlisted name is rejected before `run()` ever sees it. `retentionDays` defaults to `hery.config.ts`'s own `prune.default.retentionDays`, and its declared minimum is `1`: a manual run can shorten the window for that one call, but never to `0`, which would purge everything soft-deleted a second ago.
 
 ## The scheduled run
 
@@ -80,9 +91,11 @@ async run(): Promise<void> {
 
 ## It writes to the audit log too
 
-A hard delete is the one thing the audit log cannot skip, so pruning does not go through `deleteMany` blind: it reads the exact rows first, deletes them by id, then writes one `writeAuditLog` entry per tenant those rows belonged to, with `operation: 'prune'` and the count in `data`. `recordId` is `null` — like any bulk operation, there is no single record to name — but the tenant and the count are exactly what makes the sweep visible afterwards instead of leaving a gap in the chain.
+A hard delete is the one thing the audit log cannot skip, so pruning does not go through `deleteMany` blind: it reads the exact rows first, deletes them by id, then writes one audit entry per tenant those rows belonged to, with `operation: 'prune'` and the deleted ids — not just their count — in `data`. `recordId` is still `null`, since there is no single record to name, but knowing exactly what disappeared beats a number on a hard delete: a count says how many rows are gone, an id list says which ones.
 
-The actor differs by path. `pruneNow` is always called from a request, so it attributes the entry to whoever is signed in — `TenantContextStorage.getUserId()` and `getImpersonatedBy()`, the same session-derived pair every other write in the codebase uses. The scheduled `pruneDue` run has no caller behind it at all, so its entries carry a `null` actor rather than inventing one.
+The read, the delete and every one of those audit writes share a single `authPrismaClient.$transaction`. Splitting them was the previous shape's real gap: a process killed between the `deleteMany` and a separate, unwrapped `writeAuditLog` call would leave rows gone with no trace they ever existed. `writeAuditLogInTransaction` — the same hash-chained append `writeAuditLog` itself wraps in its own transaction — is what makes joining it into an outer one possible, since Prisma's interactive transaction client cannot open a nested `$transaction` of its own.
+
+The actor differs by path. `run()` is always called from a request, so it attributes the entry to whoever is signed in — `TenantContextStorage.getUserId()` and `getImpersonatedBy()`, the same session-derived pair every other write in the codebase uses. The scheduled `pruneDue` run has no caller behind it at all, so its entries carry a `null` actor rather than inventing one.
 
 ## Purge is the same operation, reached a different way
 
@@ -90,4 +103,4 @@ Every generated service also carries a `purge(record)` method: it writes the aud
 
 ## The admin page
 
-Installing the admin module gives you a dedicated `/prune` page: one row per configured model, its retention window, whether it is locked or automatic, and a **Prune now** button that calls the manual-trigger route directly. It is not part of the generic auto-discovered resource list — not because it is special-cased there, but because `POST /prune/status` was never going to qualify: the panel only auto-discovers argument-free `GET`s and `POST .../search` routes, the same reasoning that keeps `/blog-posts/search` from doubling as a redundant listing.
+Installing the admin module gives you a dedicated `/prune` page: one row per configured model, its retention window, whether it is locked or automatic, and a **Prune now** button that posts to `/expose/prune.run` directly. It is not part of the generic auto-discovered resource list: the panel only auto-discovers argument-free `GET`s and `POST .../search` routes, and `/expose` itself is explicitly hidden from that discovery — it is the mine's own catalog route, not a section in its own right.

@@ -43,23 +43,26 @@ describe('prune', () => {
     await app.close();
   });
 
-  it('refuses a non-admin caller on both routes', async () => {
+  it('refuses a non-admin caller on both actions', async () => {
     await request(app.getHttpServer())
-      .post('/prune/status')
+      .post('/expose/prune.status')
       .set('Authorization', `Bearer ${userToken}`)
+      .send({})
       .expect(403);
 
     await request(app.getHttpServer())
-      .post('/prune/BlogPost/run')
+      .post('/expose/prune.run')
       .set('Authorization', `Bearer ${userToken}`)
+      .send({ 'prune.run.model': 'BlogPost' })
       .expect(403);
   });
 
   it("lists BlogPost with the project's configured retention", async () => {
     const response = await request(app.getHttpServer())
-      .post('/prune/status')
+      .post('/expose/prune.status')
       .set('Authorization', `Bearer ${adminToken}`)
-      .expect(200);
+      .send({})
+      .expect(201);
 
     const status = (response.body as { data: PruneStatus[] }).data;
 
@@ -70,11 +73,20 @@ describe('prune', () => {
     });
   });
 
-  it('refuses a model that carries no prune configuration', async () => {
+  it('refuses a model that carries no deletedAt field', async () => {
     await request(app.getHttpServer())
-      .post('/prune/User/run')
+      .post('/expose/prune.run')
       .set('Authorization', `Bearer ${adminToken}`)
-      .expect(404);
+      .send({ 'prune.run.model': 'User' })
+      .expect(400);
+  });
+
+  it('refuses a retentionDays of 0', async () => {
+    await request(app.getHttpServer())
+      .post('/expose/prune.run')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ 'prune.run.model': 'BlogPost', 'prune.run.retentionDays': 0 })
+      .expect(400);
   });
 
   it('hard-deletes rows soft-deleted longer ago than the retention window, and leaves recent ones alone', async () => {
@@ -109,8 +121,9 @@ describe('prune', () => {
     });
 
     const response = await request(app.getHttpServer())
-      .post('/prune/BlogPost/run')
+      .post('/expose/prune.run')
       .set('Authorization', `Bearer ${adminToken}`)
+      .send({ 'prune.run.model': 'BlogPost' })
       .expect(201);
 
     const result = (response.body as { data: { deletedCount: number } }).data;
@@ -129,8 +142,8 @@ describe('prune', () => {
     });
 
     expect(entry?.userId).toBe(admin.id);
-    expect((entry?.data as { count?: number } | null)?.count).toBe(
-      result.deletedCount,
+    expect((entry?.data as { ids?: string[] } | null)?.ids).toContain(
+      overdueId,
     );
   });
 });
