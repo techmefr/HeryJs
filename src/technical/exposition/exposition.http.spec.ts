@@ -87,6 +87,21 @@ describe('exposition', () => {
     });
   });
 
+  it('leaves out an action the caller may not run', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/expose')
+      .set('Authorization', `Bearer ${user.token}`)
+      .expect(200);
+
+    const names = (response.body as { data: { name: string }[] }).data.map(
+      (action) => action.name,
+    );
+
+    expect(names).toContain('fixture.greet');
+    expect(names).not.toContain('fixture.blocked');
+    expect(names).not.toContain('prune.run');
+  });
+
   it('runs the action with its default when no param is given', async () => {
     const response = await request(app.getHttpServer())
       .post('/expose/fixture.greet')
