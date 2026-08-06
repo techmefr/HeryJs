@@ -1,0 +1,29 @@
+---
+title: Details
+description: Read one record, and fetch a resource's full contract — fields, limits, sorts, filters and validation rules — without hardcoding its shape by hand.
+---
+
+import EndpointPlayground from '../../../../components/EndpointPlayground.astro';
+import { detailsScenarios as scenarios, resourceCode } from '../../../../data/endpoint-examples.generated';
+
+There is no dedicated single-record route — a resource is read the same way it is listed, through [Search](/guides/endpoints/search/), filtered down to one id. A record that does not exist, is soft-deleted, belongs to another tenant, or that the `view` preset says you may not see — someone else's in a `view: own` resource — comes back the same way: an empty `data` array. There is no 404 or 403 to tell those cases apart, on purpose: the scope clause that excludes rows you cannot see and the `where` clause that excludes rows that do not exist are the same kind of filter, applied before the query ever runs, not a lookup that then checks a permission.
+
+Every generated resource also exposes its own shape at `GET /blog-posts/describe`: the fields it has, the values `sort` and `limit` will actually accept, and the validation rules `create` and `update` enforce — as JSON Schema, reflected straight off the same Zod schemas the server validates against, not a hand-maintained copy of them.
+
+<EndpointPlayground scenarios={scenarios}>
+  <Fragment slot="spec">
+    ## Using the contract
+
+    Use `describe`'s output to build a form that only shows the fields the resource actually has, marks the ones `create.required` lists as mandatory, and validates lengths client-side before ever hitting the server — the server still re-validates on write, this is for UX, not for security.
+
+    There is no `relations` key: this endpoint reports what the resource's own fields and validation rules are, not the shape of `includes`/`aggregates`/`relations` a search or update request may reference — see [Search](/guides/endpoints/search/) and [Update](/guides/endpoints/update/) for those.
+
+    Same guard as every other route on the resource — a caller without permission to view the resource gets the usual 403, not the contract.
+  </Fragment>
+
+  <Fragment slot="resource">
+    Reading one record is the search handler — see [Search](/guides/endpoints/search/) for its real code. `describe` is its own handler, from `examples/blog-post/blog-post.controller.ts`:
+
+    <pre><code>{resourceCode.describe}</code></pre>
+  </Fragment>
+</EndpointPlayground>

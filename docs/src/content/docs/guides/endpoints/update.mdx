@@ -1,0 +1,34 @@
+---
+title: Update
+description: What a partial update accepts, what comes back, and what a caller without permission gets instead.
+---
+
+import EndpointPlayground from '../../../../components/EndpointPlayground.astro';
+import { updateScenarios as scenarios, resourceCode } from '../../../../data/endpoint-examples.generated';
+
+`data` is always an array, even for a single record — the response shape never has to differ between updating one record and updating a hundred. Only the fields you send change; a caller without `update` on a given record gets a real `403 capability.forbidden` for that entry, not a silently ignored write. Each entry in the response reports its own `status` — one record failing never blocks the others in the same request.
+
+<EndpointPlayground scenarios={scenarios}>
+  <Fragment slot="spec">
+    ## Body fields
+
+    | Field | Type | What it does |
+    |---|---|---|
+    | `data` | array | Each entry: `id` plus the fields to change |
+    | `data[].relations` | object | See below — attach/detach/sync a belongsToMany relation in the same call |
+
+    ## Relations: attach, detach, sync
+
+    A resource whose blueprint declares a `relations` entry (a belongsToMany relation through a pivot table) accepts an extra `relations` key per entry, alongside its own fields. `attach` adds to the pivot, `detach` removes from it, `sync` replaces the whole set in one call. `sync` is never combined with `attach`/`detach` in the same request — "replace with exactly this set" and "add/remove from whatever is there" are different intents that would otherwise race on the same pivot row.
+
+    Attaching or syncing requires the resource's `attach:{relation}` capability, detaching (including the detach half of a `sync`) requires `detach:{relation}` — both checked on the record being updated, distinct from the plain `update` capability. Being able to edit a record's own fields does not automatically mean being able to attach or detach whatever it is linked to.
+
+    The response echoes the relation's resolved state — the full list of related ids after the mutation, not just the ones you sent (see the "Attacher un tag" scenario above).
+  </Fragment>
+
+  <Fragment slot="resource">
+    The real generated handler, from `examples/blog-post/blog-post.controller.ts`:
+
+    <pre><code>{resourceCode.update}</code></pre>
+  </Fragment>
+</EndpointPlayground>

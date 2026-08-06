@@ -1,0 +1,30 @@
+---
+title: Restore
+description: Undoing a soft-delete — what to call, and what comes back.
+---
+
+import EndpointPlayground from '../../../../components/EndpointPlayground.astro';
+import { restoreScenarios as scenarios, resourceCode } from '../../../../data/endpoint-examples.generated';
+
+`ids` is always an array, even for a single record. Undoes a [soft-delete](/guides/endpoints/delete/) — `deletedAt` goes back to `null`. A record that was never deleted, or one you don't have `delete` on, answers `error` for that entry the same way any other capability check does — see [Errors and responses](/guides/errors-and-responses/). One record failing never blocks the others in the same request.
+
+<EndpointPlayground scenarios={scenarios}>
+  <Fragment slot="spec">
+    ## Body fields
+
+    | Field | Type | What it does |
+    |---|---|---|
+    | `ids` | array | The records to restore |
+    | `patch` | object | Optional — see below |
+
+    ## Restoring with a patch
+
+    An optional `patch` reapplies a short, scoped update in the same call, reusing the resource's own update field whitelist rather than a second round trip (see the "Restaurer avec un correctif" scenario above).
+  </Fragment>
+
+  <Fragment slot="resource">
+    The real generated handler, from `examples/blog-post/blog-post.controller.ts`:
+
+    <pre><code>{resourceCode.restore}</code></pre>
+  </Fragment>
+</EndpointPlayground>

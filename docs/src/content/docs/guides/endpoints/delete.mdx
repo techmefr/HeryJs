@@ -1,0 +1,32 @@
+---
+title: Delete
+description: Soft-deleting a record — what changes, what a client sees afterwards, and nothing is ever gone from the database.
+---
+
+import EndpointPlayground from '../../../../components/EndpointPlayground.astro';
+import { deleteScenarios as scenarios, resourceCode } from '../../../../data/endpoint-examples.generated';
+
+`ids` is always an array, even for a single record. By default this is a soft-delete: the record stops appearing in normal listings and searches (it simply is not in the results, the same as one that does not exist), but nothing is actually gone from the database. Listing it again requires `withTrashed` or `onlyTrashed` — see [Search](/guides/endpoints/search/) — which is itself gated behind the delete permission, not the read one. Each entry reports its own `status` — one record you don't have `delete` on never blocks the others in the same request.
+
+To undo this, see [Restore](/guides/endpoints/restore/).
+
+<EndpointPlayground scenarios={scenarios}>
+  <Fragment slot="spec">
+    ## Body fields
+
+    | Field | Type | What it does |
+    |---|---|---|
+    | `ids` | array | The records to delete |
+    | `mode` | `'soft'` \| `'hard'` | Defaults to `soft` |
+
+    ## Hard delete
+
+    `mode: 'hard'` removes the row for good, not a soft flag — nothing to restore afterwards. Gated by its own admin-only capability, checked in addition to (never instead of) the delete permission above. A caller without it gets the usual `403 capability.forbidden`, and no record is touched. On success, `data` is `null` for that entry: there is no row left to describe (see the "Suppression définitive" scenario above).
+  </Fragment>
+
+  <Fragment slot="resource">
+    The real generated handler, from `examples/blog-post/blog-post.controller.ts`:
+
+    <pre><code>{resourceCode.delete}</code></pre>
+  </Fragment>
+</EndpointPlayground>
