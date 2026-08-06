@@ -1,9 +1,29 @@
+const ESCAPES: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+};
+
+/**
+ * An error message is not a literal: Nest's own 404 carries the request URL,
+ * and a domain exception is free to quote whatever the caller sent. Both land
+ * in the markup below, so both are escaped before they get there.
+ */
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => ESCAPES[character]!);
+}
+
 export function renderErrorPage(status: number, message: string): string {
+  const safeStatus = escapeHtml(String(status));
+  const safeMessage = escapeHtml(message);
+
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>${status} - ${message}</title>
+<title>${safeStatus} - ${safeMessage}</title>
 <style>
   :root { color-scheme: light dark; }
   body {
@@ -25,8 +45,8 @@ export function renderErrorPage(status: number, message: string): string {
 </head>
 <body>
   <div style="text-align:center">
-    <h1>${status}</h1>
-    <p>${message}</p>
+    <h1>${safeStatus}</h1>
+    <p>${safeMessage}</p>
   </div>
 </body>
 </html>

@@ -1,4 +1,10 @@
-import { Body, Controller, INestApplication, Post } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  INestApplication,
+  Post,
+} from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { z } from 'zod';
@@ -14,6 +20,14 @@ class ValidatedController {
   @Post()
   create(@Body(new ZodValidationPipe(bodySchema)) body: unknown) {
     return body;
+  }
+
+  // A message quoting whatever the caller sent is exactly what the error page
+  // has to survive, whether it comes from a domain exception or from Nest's
+  // own 404 carrying the request URL.
+  @Post('echo')
+  echo(@Body() body: { message: string }) {
+    throw new BadRequestException(body.message);
   }
 }
 
@@ -51,5 +65,16 @@ describe('DomainExceptionFilter over a plain HttpException', () => {
     };
 
     expect(body.error.details?.fieldErrors).toBeDefined();
+  });
+
+  it('escapes the message it renders into the HTML error page', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/validated/echo')
+      .set('Accept', 'text/html')
+      .send({ message: '<script>alert(1)</script>' })
+      .expect(400);
+
+    expect(response.text).not.toContain('<script>alert(1)</script>');
+    expect(response.text).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
   });
 });
