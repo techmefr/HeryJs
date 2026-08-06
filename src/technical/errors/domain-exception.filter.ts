@@ -1,11 +1,14 @@
+import { randomUUID } from 'node:crypto';
 import {
   ArgumentsHost,
   Catch,
   ExceptionFilter,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { TraceContextStorage } from '#technical/tracing/trace-context';
 import { DomainException } from './domain.exception';
 import { renderErrorPage } from './error-page';
 
@@ -14,6 +17,45 @@ export interface ResolvedError {
   key: string;
   message: string;
   details?: unknown;
+}
+
+const logger = new Logger('UnhandledError');
+
+/**
+ * An exception this framework does not recognise is the one case where the
+ * client cannot be told what happened -- the message could name a table, a
+ * column or a connection string. It used to be dropped instead: a bare
+ * "Internal server error." went out and the stack went nowhere, so a
+ * production 500 left nothing behind to read.
+ *
+ * It is now written down twice. The stack goes to the logger, which is what
+ * the terminal, `docker compose logs` and any log collector already read, and
+ * a step goes to the request trace so the pipeline page shows the failing
+ * request in development. Both carry the same generated id, and so does the
+ * response, which is what lets a caller quoting an id be answered from the
+ * logs without the response ever having to explain itself.
+ */
+function reportUnknownError(exception: unknown): ResolvedError {
+  const errorId = randomUUID();
+  const error =
+    exception instanceof Error ? exception : new Error(String(exception));
+
+  logger.error(`[${errorId}] ${error.name}: ${error.message}`, error.stack);
+
+  TraceContextStorage.pushStep({
+    stage: 'controller',
+    label: 'unhandled error',
+    status: 'error',
+    durationMs: 0,
+    detail: { errorId, name: error.name, message: error.message },
+  });
+
+  return {
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
+    key: 'internal.error',
+    message: 'Internal server error.',
+    details: { errorId },
+  };
 }
 
 // Shared with batch routes (create/update/delete/restore over an array):
@@ -45,11 +87,18 @@ export function resolveDomainError(exception: unknown): ResolvedError {
     };
   }
 
-  return {
-    status: HttpStatus.INTERNAL_SERVER_ERROR,
-    key: 'internal.error',
-    message: 'Internal server error.',
-  };
+  return reportUnknownError(exception);
+}
+
+function errorIdOf(resolved: ResolvedError): string | undefined {
+  const details = resolved.details;
+
+  return typeof details === 'object' &&
+    details !== null &&
+    'errorId' in details &&
+    typeof details.errorId === 'string'
+    ? details.errorId
+    : undefined;
 }
 
 @Catch()
@@ -69,7 +118,13 @@ export class DomainExceptionFilter implements ExceptionFilter {
       response
         .status(resolved.status)
         .type('html')
-        .send(renderErrorPage(resolved.status, resolved.message));
+        .send(
+          renderErrorPage(
+            resolved.status,
+            resolved.message,
+            errorIdOf(resolved),
+          ),
+        );
       return;
     }
 

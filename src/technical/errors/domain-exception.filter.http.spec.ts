@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   INestApplication,
+  Logger,
   Post,
 } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
@@ -28,6 +29,11 @@ class ValidatedController {
   @Post('echo')
   echo(@Body() body: { message: string }) {
     throw new BadRequestException(body.message);
+  }
+
+  @Post('boom')
+  boom(): never {
+    throw new Error('the connection string is postgres://user:hunter2@db');
   }
 }
 
@@ -76,5 +82,35 @@ describe('DomainExceptionFilter over a plain HttpException', () => {
 
     expect(response.text).not.toContain('<script>alert(1)</script>');
     expect(response.text).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+  });
+
+  it('logs an unrecognised error under an id the response carries back', async () => {
+    const logged: string[] = [];
+    const logger = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation((message: unknown) => {
+        logged.push(String(message));
+      });
+
+    try {
+      const response = await request(app.getHttpServer())
+        .post('/validated/boom')
+        .expect(500);
+
+      const body = response.body as {
+        error: { message: string; details: { errorId: string } };
+      };
+
+      // The client learns nothing about the failure...
+      expect(body.error.message).toBe('Internal server error.');
+      expect(JSON.stringify(body)).not.toContain('hunter2');
+
+      // ...but the id it gets back is the one the stack was logged under.
+      expect(body.error.details.errorId).toMatch(/^[0-9a-f-]{36}$/);
+      expect(logged.join('\n')).toContain(body.error.details.errorId);
+      expect(logged.join('\n')).toContain('hunter2');
+    } finally {
+      logger.mockRestore();
+    }
   });
 });

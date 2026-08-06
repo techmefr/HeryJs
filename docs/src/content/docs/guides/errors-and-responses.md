@@ -43,6 +43,21 @@ No controller formats its own error response. If a new error case needs a new sh
 
 The filter catches **everything**, not just domain exceptions. A plain Nest `HttpException` is reported with the key `http.error`, and anything else at all becomes a 500 with the key `internal.error` and the message `Internal server error.` — never the original message, so an unexpected throw cannot leak a stack trace, a query or a connection string to a caller.
 
+Withholding it from the caller is not the same as throwing it away, though, and it used to be both: the stack went nowhere, so a production 500 left nothing to read. An unrecognised exception is now written down under a generated id, and the response carries that id:
+
+```json
+{
+  "error": {
+    "status": 500,
+    "key": "internal.error",
+    "message": "Internal server error.",
+    "details": { "errorId": "0f8c…" }
+  }
+}
+```
+
+The same id prefixes the logged line — `logger.error` with the full stack, which the terminal, `docker compose logs` and any collector already pick up — and a step is pushed onto the request trace, so the failing request shows up on the pipeline page in development. The HTML error page prints it as a reference. A caller quoting an id can therefore be answered from the logs, without the response ever having to explain itself.
+
 One more branch: a request whose `Accept` header asks for HTML gets an HTML error page instead of JSON. Hitting a wrong URL in a browser produces something readable rather than a wall of JSON, without a client that asked for JSON ever receiving markup.
 
 ## The success envelope
