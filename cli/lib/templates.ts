@@ -18,6 +18,35 @@ function ownedByTeam(ctx: ResourceContext): boolean {
   return Object.values(ctx.permissions).includes('team');
 }
 
+export function presetsFile(ctx: ResourceContext): string {
+  return `import type { PermissionPreset } from '#technical/capabilities/capabilities.types';
+
+/**
+ * What the blueprint's permissions became. The blueprint itself is never read
+ * at runtime, so this object is the single declaration of the four presets:
+ * the detail route resolves one against a loaded record, the collection query
+ * turns the same one into a where clause, and the view reports it to the
+ * client. Every one of them reads this object rather than repeating a literal.
+ *
+ * That matters because the failure mode is silent. A preset tightened in the
+ * policy and forgotten in the service produces a record the detail route
+ * refuses and the list route hands out in full -- no error, just data that
+ * should have been withheld. With one declaration there is no second place to
+ * forget, and pnpm lint:scope-parity fails the build on any call that passes a
+ * literal instead.
+ */
+export const ${ctx.screamingSnakeName}_PRESETS = {
+  view: '${ctx.permissions.view}',
+  create: '${ctx.permissions.create}',
+  update: '${ctx.permissions.update}',
+  delete: '${ctx.permissions.delete}',
+} as const satisfies Record<
+  'view' | 'create' | 'update' | 'delete',
+  PermissionPreset
+>;
+`;
+}
+
 function pascalRelationName(relation: { relation: string }): string {
   return relation.relation[0]!.toUpperCase() + relation.relation.slice(1);
 }
@@ -137,12 +166,12 @@ function relationPolicyBlock(ctx: ResourceContext): string {
 export const canAttach${pascalRelation}To${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike> = (
   subject,
   record,
-) => (record ? resolveCapability('${ctx.permissions.update}', subject, record) : { allowed: false });
+) => (record ? resolveCapability(${ctx.screamingSnakeName}_PRESETS.update, subject, record) : { allowed: false });
 
 export const canDetach${pascalRelation}From${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike> = (
   subject,
   record,
-) => (record ? resolveCapability('${ctx.permissions.update}', subject, record) : { allowed: false });
+) => (record ? resolveCapability(${ctx.screamingSnakeName}_PRESETS.update, subject, record) : { allowed: false });
 `;
     })
     .join('');
@@ -160,33 +189,34 @@ import {
   CapabilityDecision,
   CapabilitySubject,
 } from '#technical/capabilities/capabilities.types';
+import { ${ctx.screamingSnakeName}_PRESETS } from './${ctx.kebabName}.presets';
 
 export interface ${ctx.pascalName}RecordLike {
   ownerId: string;
 }
 
 export const canCreate${ctx.pascalName}: PolicyCheck = (subject) =>
-  resolveCollectionCapability('${ctx.permissions.create}', subject);
+  resolveCollectionCapability(${ctx.screamingSnakeName}_PRESETS.create, subject);
 
 export const canUpdate${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike> = (
   subject,
   record,
-) => (record ? resolveCapability('${ctx.permissions.update}', subject, record) : { allowed: false });
+) => (record ? resolveCapability(${ctx.screamingSnakeName}_PRESETS.update, subject, record) : { allowed: false });
 
 // The outer gate on the bulk update route -- there is no single record yet
 // to check against, so this is the same broad pass the collection search
 // route takes, before canUpdate${ctx.pascalName} narrows per record inside the handler.
 export const canUpdateAny${ctx.pascalName}: PolicyCheck = (subject) =>
-  resolveCollectionCapability('${ctx.permissions.update}', subject);
+  resolveCollectionCapability(${ctx.screamingSnakeName}_PRESETS.update, subject);
 ${relationPolicyBlock(ctx)}
 export const canDelete${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike> = (
   subject,
   record,
-) => (record ? resolveCapability('${ctx.permissions.delete}', subject, record) : { allowed: false });
+) => (record ? resolveCapability(${ctx.screamingSnakeName}_PRESETS.delete, subject, record) : { allowed: false });
 
 // Same reasoning as canUpdateAny${ctx.pascalName}, for the bulk delete route.
 export const canDeleteAny${ctx.pascalName}: PolicyCheck = (subject) =>
-  resolveCollectionCapability('${ctx.permissions.delete}', subject);
+  resolveCollectionCapability(${ctx.screamingSnakeName}_PRESETS.delete, subject);
 
 // Restore is the inverse of delete, not a kind of update -- whoever can
 // delete a record decides whether it comes back, the same way
@@ -197,10 +227,10 @@ export const canDeleteAny${ctx.pascalName}: PolicyCheck = (subject) =>
 export const canRestore${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike> = (
   subject,
   record,
-) => (record ? resolveCapability('${ctx.permissions.delete}', subject, record) : { allowed: false });
+) => (record ? resolveCapability(${ctx.screamingSnakeName}_PRESETS.delete, subject, record) : { allowed: false });
 
 export const canRestoreAny${ctx.pascalName}: PolicyCheck = (subject) =>
-  resolveCollectionCapability('${ctx.permissions.delete}', subject);
+  resolveCollectionCapability(${ctx.screamingSnakeName}_PRESETS.delete, subject);
 
 // Hard delete is not a scope on the delete preset -- own/team/all/none answer
 // "whose records", not "how permanently". It is its own admin-only capability,
@@ -218,17 +248,17 @@ export const canPurge${ctx.pascalName}: PolicyCheck = (subject) =>
 export const canView${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike> = (
   subject,
   record,
-) => (record ? resolveCapability('${ctx.permissions.view}', subject, record) : { allowed: false });
+) => (record ? resolveCapability(${ctx.screamingSnakeName}_PRESETS.view, subject, record) : { allowed: false });
 
 // Same preset as canView${ctx.pascalName}: whoever may read one record may ask for the
 // collection, and scopeWhereFor narrows that collection to the very same rows.
 export const canViewAny${ctx.pascalName}: PolicyCheck = (subject) =>
-  resolveCollectionCapability('${ctx.permissions.view}', subject);
+  resolveCollectionCapability(${ctx.screamingSnakeName}_PRESETS.view, subject);
 
 // Listing the bin is a moderation move, so it follows the delete preset rather
 // than the read one.
 export const canListTrashed${ctx.pascalName}: PolicyCheck = (subject) =>
-  resolveCollectionCapability('${ctx.permissions.delete}', subject);
+  resolveCollectionCapability(${ctx.screamingSnakeName}_PRESETS.delete, subject);
 
 @Injectable()
 export class ${ctx.pascalName}Policy {
@@ -239,8 +269,8 @@ export class ${ctx.pascalName}Policy {
     record: ${ctx.pascalName}RecordLike,
   ): Record<'update' | 'delete', CapabilityDecision> {
     return {
-      update: this.capabilities.resolve('${ctx.permissions.update}', subject, record),
-      delete: this.capabilities.resolve('${ctx.permissions.delete}', subject, record),
+      update: this.capabilities.resolve(${ctx.screamingSnakeName}_PRESETS.update, subject, record),
+      delete: this.capabilities.resolve(${ctx.screamingSnakeName}_PRESETS.delete, subject, record),
     };
   }
 
@@ -324,6 +354,7 @@ import {
   Create${ctx.pascalName}Input,${ctx.relations.length > 0 ? `\n  RelationMutationInput,` : ''}
   Update${ctx.pascalName}Input,
 } from './${ctx.kebabName}.dto';
+import { ${ctx.screamingSnakeName}_PRESETS } from './${ctx.kebabName}.presets';
 
 const SEARCHABLE_FIELDS = [${searchableFields.map((name) => `'${name}'`).join(', ')}] as const;
 const SEARCH_COLLECTION = '${ctx.kebabName}';
@@ -436,7 +467,7 @@ export class ${ctx.pascalName}Service {
     // never widen it back, whatever the caller passes in the query string.
     const where = {
       AND: [
-        scopeWhereFor('${ctx.permissions.view}', subject),
+        scopeWhereFor(${ctx.screamingSnakeName}_PRESETS.view, subject),
         trashedWhere,
         ...(options.where ? [options.where] : []),
         ...(searchWhere ? [searchWhere] : []),

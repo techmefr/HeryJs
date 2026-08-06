@@ -61,6 +61,7 @@ functional/
     blog-post.controller.ts
     blog-post.service.ts
     blog-post.policy.ts
+    blog-post.presets.ts
     blog-post.dto.ts
     blog-post.spec.ts
 prisma/

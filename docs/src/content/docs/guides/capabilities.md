@@ -61,12 +61,32 @@ export function scopeWhereFor(preset: PermissionPreset, subject: CapabilitySubje
 
 This matters because the failure mode is quiet. Written as two independent pieces of code, a filter added to one and forgotten on the other produces a record that returns 403 on its detail route and is handed out in full by the list route. Nothing errors; the endpoint simply answers with data it should have withheld.
 
+"Fed the same preset" is not a figure of speech: `hery generate` writes the four presets into one object and every call site reads it.
+
+```ts
+// blog-post.presets.ts
+export const BLOG_POST_PRESETS = {
+  view: 'own',
+  create: 'own',
+  update: 'own',
+  delete: 'own',
+} as const satisfies Record<'view' | 'create' | 'update' | 'delete', PermissionPreset>;
+```
+
+```ts
+// blog-post.policy.ts
+export const canViewBlogPost: PolicyCheck<BlogPostRecordLike> = (subject, record) =>
+  record ? resolveCapability(BLOG_POST_PRESETS.view, subject, record) : { allowed: false };
+```
+
+There is one declaration, so tightening a permission is a one-line edit and there is no second place to forget. `pnpm lint:scope-parity` fails the build on any call that passes a literal instead — that literal is the second declaration coming back.
+
 The generated `search()` merges the scope clause in its own `AND` branch:
 
 ```ts
 where: {
   AND: [
-    scopeWhereFor('own', subject),
+    scopeWhereFor(BLOG_POST_PRESETS.view, subject),
     trashedWhere,
     { ...options.filters, ...searchWhere },
   ],
@@ -121,7 +141,7 @@ Everything else carries a capability, including the routes that are not resource
 Generated code belongs to you, which means the generator's guarantees stop the moment you edit it. Three scripts hold the line instead:
 
 - `pnpm lint:capabilities` fails the build if any route in the repository — every `*.controller.ts` under `src/`, `examples/` and `packages/`, reads included, not just `@Post`/`@Patch`/`@Put`/`@Delete` — carries neither a `@Capability(...)` nor a `@PublicRoute('<reason>')`. `CapabilitiesGuard` returns `true` when the metadata is absent, so an undecorated read hands out every row its query returns. Kernel, module and devtools routes are held to this too: they serve data exactly like a resource route does.
-- `pnpm lint:scope-parity` fails the build if a `search()` method under `functional/**/*.service.ts` does not go through `scopeWhereFor(...)`, which is how a collection query silently loses its scope.
+- `pnpm lint:scope-parity` fails the build if a `search()` under `functional/**/*.service.ts` does not go through `scopeWhereFor(...)`, which is how a collection query silently loses its scope — and, in every service and policy it scans, if any call to `scopeWhereFor`, `resolveCapability`, `resolveCollectionCapability` or `CapabilitiesService.resolve` passes a preset literal instead of reading the resource's `<NAME>_PRESETS` entry. Detecting the call was not enough: two calls can both be present and disagree.
 - `pnpm lint:subject` fails the build if a capability subject is assembled anywhere but `subjectOf`, which is how a field on the subject silently stays empty.
 
 Forgetting any of them is a build failure, not a runtime surprise. Each one exists because the corresponding mistake was made at least once, and none of them is detectable by reading the code that contains it — the bug is always an *absence*.

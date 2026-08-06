@@ -19,6 +19,7 @@ import {
   RelationMutationInput,
   UpdateBlogPostInput,
 } from './blog-post.dto';
+import { BLOG_POST_PRESETS } from './blog-post.presets';
 
 const SEARCHABLE_FIELDS = ['title'] as const;
 const SEARCH_COLLECTION = 'blog-post';
@@ -133,7 +134,7 @@ export class BlogPostService {
     // never widen it back, whatever the caller passes in the query string.
     const where = {
       AND: [
-        scopeWhereFor('own', subject),
+        scopeWhereFor(BLOG_POST_PRESETS.view, subject),
         trashedWhere,
         ...(options.where ? [options.where] : []),
         ...(searchWhere ? [searchWhere] : []),

@@ -9,24 +9,28 @@ import {
   CapabilityDecision,
   CapabilitySubject,
 } from '#technical/capabilities/capabilities.types';
+import { BLOG_POST_PRESETS } from './blog-post.presets';
 
 export interface BlogPostRecordLike {
   ownerId: string;
 }
 
 export const canCreateBlogPost: PolicyCheck = (subject) =>
-  resolveCollectionCapability('own', subject);
+  resolveCollectionCapability(BLOG_POST_PRESETS.create, subject);
 
 export const canUpdateBlogPost: PolicyCheck<BlogPostRecordLike> = (
   subject,
   record,
-) => (record ? resolveCapability('own', subject, record) : { allowed: false });
+) =>
+  record
+    ? resolveCapability(BLOG_POST_PRESETS.update, subject, record)
+    : { allowed: false };
 
 // The outer gate on the bulk update route -- there is no single record yet
 // to check against, so this is the same broad pass the collection search
 // route takes, before canUpdateBlogPost narrows per record inside the handler.
 export const canUpdateAnyBlogPost: PolicyCheck = (subject) =>
-  resolveCollectionCapability('own', subject);
+  resolveCollectionCapability(BLOG_POST_PRESETS.update, subject);
 
 // Distinct from canUpdateBlogPost, not an alias of it: being able to edit a
 // blogPost's own fields does not automatically mean being able to attach or
@@ -36,21 +40,30 @@ export const canUpdateAnyBlogPost: PolicyCheck = (subject) =>
 export const canAttachTagsToBlogPost: PolicyCheck<BlogPostRecordLike> = (
   subject,
   record,
-) => (record ? resolveCapability('own', subject, record) : { allowed: false });
+) =>
+  record
+    ? resolveCapability(BLOG_POST_PRESETS.update, subject, record)
+    : { allowed: false };
 
 export const canDetachTagsFromBlogPost: PolicyCheck<BlogPostRecordLike> = (
   subject,
   record,
-) => (record ? resolveCapability('own', subject, record) : { allowed: false });
+) =>
+  record
+    ? resolveCapability(BLOG_POST_PRESETS.update, subject, record)
+    : { allowed: false };
 
 export const canDeleteBlogPost: PolicyCheck<BlogPostRecordLike> = (
   subject,
   record,
-) => (record ? resolveCapability('own', subject, record) : { allowed: false });
+) =>
+  record
+    ? resolveCapability(BLOG_POST_PRESETS.delete, subject, record)
+    : { allowed: false };
 
 // Same reasoning as canUpdateAnyBlogPost, for the bulk delete route.
 export const canDeleteAnyBlogPost: PolicyCheck = (subject) =>
-  resolveCollectionCapability('own', subject);
+  resolveCollectionCapability(BLOG_POST_PRESETS.delete, subject);
 
 // Restore is the inverse of delete, not a kind of update -- whoever can
 // delete a record decides whether it comes back, the same way
@@ -61,10 +74,13 @@ export const canDeleteAnyBlogPost: PolicyCheck = (subject) =>
 export const canRestoreBlogPost: PolicyCheck<BlogPostRecordLike> = (
   subject,
   record,
-) => (record ? resolveCapability('own', subject, record) : { allowed: false });
+) =>
+  record
+    ? resolveCapability(BLOG_POST_PRESETS.delete, subject, record)
+    : { allowed: false };
 
 export const canRestoreAnyBlogPost: PolicyCheck = (subject) =>
-  resolveCollectionCapability('own', subject);
+  resolveCollectionCapability(BLOG_POST_PRESETS.delete, subject);
 
 // Hard delete is not a scope on the delete preset -- own/team/all/none answer
 // "whose records", not "how permanently". It is its own admin-only capability,
@@ -86,17 +102,20 @@ export const canPurgeBlogPost: PolicyCheck = (subject) =>
 export const canViewBlogPost: PolicyCheck<BlogPostRecordLike> = (
   subject,
   record,
-) => (record ? resolveCapability('own', subject, record) : { allowed: false });
+) =>
+  record
+    ? resolveCapability(BLOG_POST_PRESETS.view, subject, record)
+    : { allowed: false };
 
 // Same preset as canViewBlogPost: whoever may read one record may ask for the
 // collection, and scopeWhereFor narrows that collection to the very same rows.
 export const canViewAnyBlogPost: PolicyCheck = (subject) =>
-  resolveCollectionCapability('own', subject);
+  resolveCollectionCapability(BLOG_POST_PRESETS.view, subject);
 
 // Listing the bin is a moderation move, so it follows the delete preset rather
 // than the read one.
 export const canListTrashedBlogPost: PolicyCheck = (subject) =>
-  resolveCollectionCapability('own', subject);
+  resolveCollectionCapability(BLOG_POST_PRESETS.delete, subject);
 
 @Injectable()
 export class BlogPostPolicy {
@@ -107,8 +126,16 @@ export class BlogPostPolicy {
     record: BlogPostRecordLike,
   ): Record<'update' | 'delete', CapabilityDecision> {
     return {
-      update: this.capabilities.resolve('own', subject, record),
-      delete: this.capabilities.resolve('own', subject, record),
+      update: this.capabilities.resolve(
+        BLOG_POST_PRESETS.update,
+        subject,
+        record,
+      ),
+      delete: this.capabilities.resolve(
+        BLOG_POST_PRESETS.delete,
+        subject,
+        record,
+      ),
     };
   }
 

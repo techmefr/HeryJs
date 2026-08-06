@@ -3,11 +3,19 @@ title: What gets generated
 description: A tour of every file hery generate writes for a single resource, and what each one owns.
 ---
 
-Running `hery generate Task` writes nine files into `src/functional/task/`. Each one owns exactly one concern, and each one is plain NestJS you edit afterwards like anything else.
+Running `hery generate Task` writes ten files into `src/functional/task/`. Each one owns exactly one concern, and each one is plain NestJS you edit afterwards like anything else.
 
 ## `task.dto.ts`
 
 Zod schemas for create and update payloads, derived from the blueprint's fields. `updateTaskSchema` is `createTaskSchema.partial()` — every field becomes optional on update, without repeating the shape.
+
+## `task.presets.ts`
+
+One object, `TASK_PRESETS`, holding the four permission presets the blueprint declared. This is what the blueprint *became*: it is never read again at runtime, so the presets have to live somewhere in code, and they live here once.
+
+Everything downstream reads this object — the policy functions, the service's collection query, the view. Nothing repeats a `'own'` or `'team'` literal of its own, which is the point: a preset tightened in the policy and forgotten in the service produces a record the detail route refuses and the list route hands out in full. `pnpm lint:scope-parity` fails the build on any call that passes a literal instead.
+
+Changing a permission after generation is therefore a one-line edit here, not a search-and-replace across three files.
 
 ## `task.policy.ts`
 
@@ -36,7 +44,7 @@ The controller picks per route, which is why deleting then fetching a record giv
 ```ts
 where: {
   AND: [
-    scopeWhereFor('own', subject),
+    scopeWhereFor(TASK_PRESETS.view, subject),
     trashedWhere,
     { ...options.filters, ...searchWhere },
   ],

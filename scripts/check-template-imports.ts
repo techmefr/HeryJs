@@ -94,6 +94,7 @@ function contextFor(preset: 'own' | 'team'): ResourceContext {
 
 const EMITTERS = [
   'dtoFile',
+  'presetsFile',
   'policyFile',
   'recordLoaderFile',
   'serviceFile',

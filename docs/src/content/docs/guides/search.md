@@ -118,7 +118,7 @@ This is the part that has to be right. The generated `search()` composes three i
 return this.prisma.blog-post.findMany({
   where: {
     AND: [
-      scopeWhereFor('own', subject),
+      scopeWhereFor(BLOG_POST_PRESETS.view, subject),
       trashedWhere,
       { ...options.filters, ...searchWhere },
     ],
