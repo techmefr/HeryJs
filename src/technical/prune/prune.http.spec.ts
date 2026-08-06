@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -71,6 +72,41 @@ describe('prune', () => {
       retentionDays: 30,
       lock: false,
     });
+  });
+
+  it("leaves another tenant's overdue rows alone", async () => {
+    const foreignOwner = await authPrismaClient.user.create({
+      data: {
+        email: `prune-foreign-${randomUUID()}@example.test`,
+        tenantId: 'prune-foreign-tenant',
+      },
+    });
+    const overdue = new Date();
+    overdue.setDate(overdue.getDate() - 31);
+
+    const foreignRecord = await authPrismaClient.blogPost.create({
+      data: {
+        tenantId: 'prune-foreign-tenant',
+        ownerId: foreignOwner.id,
+        title: 'another tenant',
+        deletedAt: overdue,
+      },
+    });
+
+    await request(app.getHttpServer())
+      .post('/expose/prune.run')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ 'prune.run.model': 'BlogPost' })
+      .expect(201);
+
+    expect(
+      await authPrismaClient.blogPost.findUnique({
+        where: { id: foreignRecord.id },
+      }),
+    ).not.toBeNull();
+
+    await authPrismaClient.blogPost.delete({ where: { id: foreignRecord.id } });
+    await authPrismaClient.user.delete({ where: { id: foreignOwner.id } });
   });
 
   it('refuses a model that carries no deletedAt field', async () => {

@@ -541,13 +541,17 @@ ${ctx.relations
     await this.removeFromSearchIndex(record.id, record.tenantId);
   }
 
-  // Distinct from hardDelete: purge has no route, only the future admin
-  // decorator system can reach it, and it is gated by its own capability
-  // rather than the delete preset. The audit entry is written before the row
-  // is gone rather than relying on the tenant-scoped client's automatic
-  // after-the-fact extension, because a purge is exactly the operation an
-  // audit trail exists to prove happened even if the write that follows it
-  // never completes.
+  // Distinct from hardDelete: purge is gated by its own capability rather than
+  // the delete preset, and the audit entry is written before the row is gone
+  // rather than relying on the tenant-scoped client's automatic after-the-fact
+  // extension, because a purge is exactly the operation an audit trail exists
+  // to prove happened even if the write that follows it never completes. That
+  // ordering is why it deletes through the unscoped client -- writing the
+  // entry by hand and letting the extension write a second one would fork the
+  // chain -- so the tenant travels in the where clause instead: the boundary
+  // still applies, it is simply stated rather than injected. A record from
+  // another tenant was loaded through the scoped client and cannot reach here,
+  // and if one ever did the delete would not match a row.
   async purge(record: ${ctx.pascalName}) {
     await writeAuditLog(authPrismaClient, {
       tenantId: record.tenantId,
@@ -558,7 +562,9 @@ ${ctx.relations
       userId: TenantContextStorage.getUserId(),
       impersonatedBy: TenantContextStorage.getImpersonatedBy(),
     });
-    await authPrismaClient.${ctx.camelName}.delete({ where: { id: record.id } });
+    await authPrismaClient.${ctx.camelName}.delete({
+      where: { id: record.id, tenantId: record.tenantId },
+    });
     this.notify();
     await this.removeFromSearchIndex(record.id, record.tenantId);
   }

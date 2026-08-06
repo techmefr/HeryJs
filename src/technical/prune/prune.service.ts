@@ -52,10 +52,11 @@ function delegateFor(client: object, model: string): PrunableDelegate {
 
 /**
  * Hard-deletes rows already soft-deleted longer ago than the model's
- * configured retention. This is the one place in the codebase allowed to
- * bypass tenant scoping across every tenant at once -- pruning is a system
- * job, not a request on anyone's behalf, so it runs on authPrismaClient the
- * same way audit-log and impersonation writes do.
+ * configured retention. It runs on authPrismaClient, so the tenant boundary
+ * is not applied for it by the Prisma extension and has to be passed in
+ * explicitly: the scheduled sweep is a system job that legitimately spans
+ * every tenant at once, while a run triggered from a request is still a
+ * request, and only ever reaches the caller's own tenant.
  */
 @Injectable()
 export class PruneService {
@@ -74,6 +75,7 @@ export class PruneService {
     model: string,
     rule: ResolvedPruneRule,
     actor: PruneActor = SYSTEM_ACTOR,
+    tenantId?: string,
   ): Promise<PruneRunResult> {
     const cutoff = new Date(Date.now() - rule.retentionDays * DAY_MS);
 
@@ -85,7 +87,10 @@ export class PruneService {
       // deleteMany's result only carries a count, never which tenants or
       // which rows it touched.
       const rows = await delegate.findMany({
-        where: { deletedAt: { not: null, lt: cutoff } },
+        where: {
+          deletedAt: { not: null, lt: cutoff },
+          ...(tenantId === undefined ? {} : { tenantId }),
+        },
         select: { id: true, tenantId: true },
       });
 
@@ -121,6 +126,12 @@ export class PruneService {
     });
   }
 
+  /**
+   * The request-triggered run. `canManagePrune` answers "is this caller
+   * trusted with a hard delete", never "whose rows may it reach": an admin is
+   * an admin of its own tenant, so the tenant context bounds the sweep the
+   * same way it bounds every other write made on a caller's behalf.
+   */
   @ExposeAction('prune.run', { capability: canManagePrune })
   async run(
     @ExposeField('prune.run.model', {
@@ -144,6 +155,7 @@ export class PruneService {
         userId: TenantContextStorage.getUserId(),
         impersonatedBy: TenantContextStorage.getImpersonatedBy(),
       },
+      TenantContextStorage.getTenantId(),
     );
   }
 
