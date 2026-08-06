@@ -9,7 +9,9 @@ import {
   registerAndLogin,
   type TestUser,
 } from '#devtools/testing/register-and-login';
+import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { ExposeAction, ExposeField } from './exposition.decorators';
+import { ExpositionRunner } from './exposition-runner.service';
 
 const allowEveryone: PolicyCheck = () => ({ allowed: true, scope: 'all' });
 const allowNoOne: PolicyCheck = () => ({ allowed: false });
@@ -155,5 +157,35 @@ describe('exposition', () => {
 
     expect(entry?.userId).toBe(user.id);
     expect(entry?.data).toEqual({ 'fixture.greet.times': 2 });
+  });
+
+  it('runTrusted bypasses the capability check, the CLI path', async () => {
+    const runner = app.get(ExpositionRunner, { strict: false });
+    const tenantId = 'default';
+
+    const result = await TenantContextStorage.run(
+      { tenantId, userId: null, impersonatedBy: null },
+      async () => await runner.runTrusted('fixture.blocked', {}),
+    );
+
+    expect(result).toBe('never');
+
+    const entry = await authPrismaClient.auditLog.findFirst({
+      where: { tenantId, model: 'exposition', operation: 'fixture.blocked' },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    expect(entry?.userId).toBeNull();
+  });
+
+  it('runTrusted still enforces the environment filter', async () => {
+    const runner = app.get(ExpositionRunner, { strict: false });
+
+    await expect(
+      TenantContextStorage.run(
+        { tenantId: 'default', userId: null, impersonatedBy: null },
+        async () => await runner.runTrusted('fixture.prodOnly', {}),
+      ),
+    ).rejects.toThrow();
   });
 });

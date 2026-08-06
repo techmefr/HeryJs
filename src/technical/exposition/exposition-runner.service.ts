@@ -7,7 +7,7 @@ import { CapabilityForbiddenException } from '#technical/errors/capability-forbi
 import { ExpositionEnvironmentBlockedException } from '#technical/errors/exposition-environment-blocked.exception';
 import { InvalidQueryException } from '#technical/errors/invalid-query.exception';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
-import type { ExposedEnvironment } from './exposition.types';
+import type { ExposedEnvironment, RegisteredAction } from './exposition.types';
 import { ExpositionRegistry } from './exposition.registry';
 import { schemaFor } from './exposition-validation';
 
@@ -25,6 +25,39 @@ export class ExpositionRunner {
     params: Record<string, unknown>,
     user: AuthenticatedUser,
   ): Promise<unknown> {
+    const action = this.checkEnvironment(actionName);
+
+    const decision = action.capability(subjectOf(user));
+
+    if (!decision.allowed) {
+      throw new CapabilityForbiddenException(decision);
+    }
+
+    return this.resolveAndInvoke(action, params, {
+      userId: user.id,
+      impersonatedBy: TenantContextStorage.getImpersonatedBy(),
+    });
+  }
+
+  /**
+   * Reached only from the CLI, whose caller is the operator running the
+   * process, not a signed-in user -- there is no subject to check the
+   * action's capability against, so trust comes from having a shell on the
+   * machine instead. The environment filter and the audit trail still apply.
+   */
+  async runTrusted(
+    actionName: string,
+    params: Record<string, unknown>,
+  ): Promise<unknown> {
+    const action = this.checkEnvironment(actionName);
+
+    return this.resolveAndInvoke(action, params, {
+      userId: null,
+      impersonatedBy: null,
+    });
+  }
+
+  private checkEnvironment(actionName: string): RegisteredAction {
     const action = this.registry.get(actionName);
 
     if (!action) {
@@ -38,12 +71,14 @@ export class ExpositionRunner {
       throw new ExpositionEnvironmentBlockedException(actionName);
     }
 
-    const decision = action.capability(subjectOf(user));
+    return action;
+  }
 
-    if (!decision.allowed) {
-      throw new CapabilityForbiddenException(decision);
-    }
-
+  private async resolveAndInvoke(
+    action: RegisteredAction,
+    params: Record<string, unknown>,
+    actor: { userId: string | null; impersonatedBy: string | null },
+  ): Promise<unknown> {
     const resolved = action.params.map((param) => {
       const provided = params[param.name];
       const value = provided === undefined ? param.spec.default : provided;
@@ -62,13 +97,13 @@ export class ExpositionRunner {
     await writeAuditLog(authPrismaClient, {
       tenantId: TenantContextStorage.getTenantId(),
       model: 'exposition',
-      operation: actionName,
+      operation: action.name,
       recordId: null,
       data: Object.fromEntries(
         action.params.map((param, index) => [param.name, resolved[index]]),
       ),
-      userId: user.id,
-      impersonatedBy: TenantContextStorage.getImpersonatedBy(),
+      userId: actor.userId,
+      impersonatedBy: actor.impersonatedBy,
     });
 
     return action.invoke(resolved);
