@@ -696,7 +696,10 @@ import {
   searchRequestSchema,
   withIncludesAndAggregates,
 } from '#technical/http/list-query';
-import type { SearchRequestBody } from '#technical/http/list-query';
+import type {
+  ListQueryContract,
+  SearchRequestBody,
+} from '#technical/http/list-query';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import {
   create${ctx.pascalName}RequestSchema,
@@ -743,6 +746,21 @@ import { ${ctx.screamingSnakeName}_RECORD_LOADER } from './${ctx.kebabName}-reco
 import type { ${ctx.pascalName}RecordLoader } from './${ctx.kebabName}-record.loader';
 import { to${ctx.pascalName}View } from './${ctx.kebabName}.view';
 
+// What the search route accepts, declared once. parseSearchRequest validates
+// against this object and GET /describe publishes it, so the endpoint cannot
+// advertise a contract it does not honour -- or honour one it never mentions.
+// Two literals disagreed on id, which is filterable and used to be missing
+// from describe.
+const ${ctx.screamingSnakeName}_CONTRACT = {
+  sorts: [${ctx.sorts.map((field) => `'${field}'`).join(', ')}],
+  filters: ['id', ${ctx.filters.map((field) => `'${field}'`).join(', ')}],
+  selects: [${selectableFields.map((field) => `'${field}'`).join(', ')}],
+  includes: ${includesContractLiteral(ctx, '  ')},
+  aggregates: ${aggregatesContractLiteral(ctx, '  ')},
+  limits: [${ctx.pagination.limits.join(', ')}],
+  defaultLimit: ${ctx.pagination.default},
+} as const satisfies ListQueryContract;
+
 // Computed once at module load, not per request: the blueprint's shape never
 // changes at runtime, and the Zod schemas already own the create/update
 // contract, so their JSON Schema is the rules a frontend needs -- reflected
@@ -751,13 +769,7 @@ const ${ctx.screamingSnakeName}_DESCRIBE = {
   fields: [
 ${ctx.fields.map((field) => `    { name: '${field.name}', type: '${field.type}', optional: ${field.optional} },`).join('\n')}
   ],
-  sorts: [${ctx.sorts.map((field) => `'${field}'`).join(', ')}],
-  filters: [${ctx.filters.map((field) => `'${field}'`).join(', ')}],
-  selects: [${selectableFields.map((field) => `'${field}'`).join(', ')}],
-  includes: ${includesContractLiteral(ctx, '  ')},
-  aggregates: ${aggregatesContractLiteral(ctx, '  ')},
-  limits: [${ctx.pagination.limits.join(', ')}],
-  defaultLimit: ${ctx.pagination.default},
+  ...${ctx.screamingSnakeName}_CONTRACT,
   rules: {
     create: z.toJSONSchema(create${ctx.pascalName}Schema),
     update: z.toJSONSchema(update${ctx.pascalName}Schema),
@@ -825,15 +837,7 @@ export class ${ctx.pascalName}Controller {
     @Req() req: RequestWithUser,
     @Body(new ZodValidationPipe(searchRequestSchema)) body: SearchRequestBody,
   ) {
-    const query = parseSearchRequest(body, {
-      sorts: [${ctx.sorts.map((field) => `'${field}'`).join(', ')}],
-      filters: ['id', ${ctx.filters.map((field) => `'${field}'`).join(', ')}],
-      selects: [${selectableFields.map((field) => `'${field}'`).join(', ')}],
-      includes: ${includesContractLiteral(ctx, '      ')},
-      aggregates: ${aggregatesContractLiteral(ctx, '      ')},
-      limits: [${ctx.pagination.limits.join(', ')}],
-      defaultLimit: ${ctx.pagination.default},
-    });
+    const query = parseSearchRequest(body, ${ctx.screamingSnakeName}_CONTRACT);
     const subject = subjectOf(req.user);
 
     if (query.withTrashed || query.onlyTrashed) {

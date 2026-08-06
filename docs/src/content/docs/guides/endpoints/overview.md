@@ -7,12 +7,12 @@ Every resource `hery generate` produces exposes the same seven routes, shaped by
 
 The pages in this section walk through a real one, `BlogPost`, end to end. Each page covers one endpoint: what to send, and exactly what comes back.
 
-## The seven routes
+## The six routes
 
 | Method | Path                  | What it does                                                          | Documented in                          |
 | ------ | --------------------- | ---------------------------------------------------------------------- | --------------------------------------- |
 | `POST` | `/blog-posts/search`    | List, with search, sort, filter, pagination — also how one record is read, filtered to its id | [Search](/guides/endpoints/search/), [Details](/guides/endpoints/details/) |
-| `GET`  | `/blog-posts/describe`  | The resource's contract — fields, limits, validation rules            | [Details](/guides/endpoints/details/)  |
+| `GET`  | `/blog-posts/describe`  | The resource's contract — fields, sorts, filters, selects, includes, aggregates, limits, validation rules | [Details](/guides/endpoints/details/)  |
 | `POST` | `/blog-posts/create`    | Create one or many records in one call                                | [Create](/guides/endpoints/create/)    |
 | `POST` | `/blog-posts/update`    | Update one or many records in one call, including relations           | [Update](/guides/endpoints/update/)    |
 | `POST` | `/blog-posts/delete`    | Soft-delete (or hard-delete with `mode: "hard"`) one or many records  | [Delete](/guides/endpoints/delete/)    |

@@ -26,7 +26,10 @@ import {
   searchRequestSchema,
   withIncludesAndAggregates,
 } from '#technical/http/list-query';
-import type { SearchRequestBody } from '#technical/http/list-query';
+import type {
+  ListQueryContract,
+  SearchRequestBody,
+} from '#technical/http/list-query';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import {
   createBlogPostRequestSchema,
@@ -62,14 +65,14 @@ import { BLOG_POST_RECORD_LOADER } from './blog-post-record.loader';
 import type { BlogPostRecordLoader } from './blog-post-record.loader';
 import { toBlogPostView } from './blog-post.view';
 
-// Computed once at module load, not per request: the blueprint's shape never
-// changes at runtime, and the Zod schemas already own the create/update
-// contract, so their JSON Schema is the rules a frontend needs -- reflected
-// straight off the DTO rather than duplicated by hand.
-const BLOG_POST_DESCRIBE = {
-  fields: [{ name: 'title', type: 'string', optional: false }],
+// What the search route accepts, declared once. parseSearchRequest validates
+// against this object and GET /describe publishes it, so the endpoint cannot
+// advertise a contract it does not honour -- or honour one it never mentions.
+// Two literals disagreed on id, which is filterable and used to be missing
+// from describe.
+const BLOG_POST_CONTRACT = {
   sorts: ['createdAt'],
-  filters: ['title'],
+  filters: ['id', 'title'],
   selects: ['id', 'ownerId', 'title', 'createdAt', 'updatedAt', 'deletedAt'],
   includes: {
     notes: {
@@ -111,6 +114,15 @@ const BLOG_POST_DESCRIBE = {
   },
   limits: [10, 15, 20],
   defaultLimit: 15,
+} as const satisfies ListQueryContract;
+
+// Computed once at module load, not per request: the blueprint's shape never
+// changes at runtime, and the Zod schemas already own the create/update
+// contract, so their JSON Schema is the rules a frontend needs -- reflected
+// straight off the DTO rather than duplicated by hand.
+const BLOG_POST_DESCRIBE = {
+  fields: [{ name: 'title', type: 'string', optional: false }],
+  ...BLOG_POST_CONTRACT,
   rules: {
     create: z.toJSONSchema(createBlogPostSchema),
     update: z.toJSONSchema(updateBlogPostSchema),
@@ -181,58 +193,7 @@ export class BlogPostController {
     @Req() req: RequestWithUser,
     @Body(new ZodValidationPipe(searchRequestSchema)) body: SearchRequestBody,
   ) {
-    const query = parseSearchRequest(body, {
-      sorts: ['createdAt'],
-      filters: ['id', 'title'],
-      selects: [
-        'id',
-        'ownerId',
-        'title',
-        'createdAt',
-        'updatedAt',
-        'deletedAt',
-      ],
-      includes: {
-        notes: {
-          type: 'hasMany',
-          foreignKey: 'blogPostId',
-          childDelegate: 'blogPostNote',
-          filters: ['body'],
-          sorts: ['createdAt'],
-          selects: ['id', 'body', 'rating', 'createdAt'],
-        },
-        comments: {
-          type: 'morphMany',
-          foreignKey: 'commentableId',
-          discriminator: 'commentableType',
-          discriminatorValue: 'BlogPost',
-          childDelegate: 'comment',
-          filters: ['body'],
-          sorts: ['createdAt'],
-          selects: ['id', 'body', 'createdAt'],
-        },
-      },
-      aggregates: {
-        notes: {
-          type: 'hasMany',
-          foreignKey: 'blogPostId',
-          childDelegate: 'blogPostNote',
-          filters: ['body'],
-          fields: ['rating'],
-        },
-        comments: {
-          type: 'morphMany',
-          foreignKey: 'commentableId',
-          discriminator: 'commentableType',
-          discriminatorValue: 'BlogPost',
-          childDelegate: 'comment',
-          filters: ['body'],
-          fields: [],
-        },
-      },
-      limits: [10, 15, 20],
-      defaultLimit: 15,
-    });
+    const query = parseSearchRequest(body, BLOG_POST_CONTRACT);
     const subject = subjectOf(req.user);
 
     if (query.withTrashed || query.onlyTrashed) {
