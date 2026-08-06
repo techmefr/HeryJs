@@ -66,16 +66,35 @@ export async function resolveRelationInstructions(
     };
 
     if (instruction.kind === 'include') {
+      // Grouping a child row back onto its parent reads the foreign key off
+      // that row, so a select that does not name it leaves every row keyed by
+      // undefined and every parent with an empty include. It is added to the
+      // query and dropped from the result instead: needed to route the row,
+      // never part of what the caller asked for.
+      const borrowsForeignKey =
+        instruction.select !== undefined &&
+        instruction.select[instruction.foreignKey] !== true;
       const rows = await delegate.findMany({
         where,
         ...(instruction.orderBy ? { orderBy: instruction.orderBy } : {}),
-        ...(instruction.select ? { select: instruction.select } : {}),
+        ...(instruction.select
+          ? {
+              select: borrowsForeignKey
+                ? { ...instruction.select, [instruction.foreignKey]: true }
+                : instruction.select,
+            }
+          : {}),
       });
 
       const grouped = new Map<string, Record<string, unknown>[]>();
 
       for (const row of rows) {
         const parentId = row[instruction.foreignKey] as string;
+
+        if (borrowsForeignKey) {
+          delete row[instruction.foreignKey];
+        }
+
         const bucket = grouped.get(parentId) ?? [];
         bucket.push(row);
         grouped.set(parentId, bucket);

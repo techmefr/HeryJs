@@ -345,6 +345,19 @@ function parseSorts(
   return sorts;
 }
 
+/**
+ * What a relation returns when the caller names no fields of its own. A
+ * generated view is the allow-list that keeps a raw Prisma record from leaking,
+ * but an included relation never goes through one -- its rows are merged onto
+ * the record as they came back. Without a select, "as they came back" means
+ * every column the table has, `hidden` blueprint fields included. The
+ * relation's declared selects already exclude those, so they are the default
+ * rather than an opt-in the caller has to remember.
+ */
+function declaredSelect(contract: FieldContract): Record<string, true> {
+  return Object.fromEntries(contract.selects.map((field) => [field, true]));
+}
+
 function parseSelects(
   selects: SelectEntry[] | undefined,
   contract: FieldContract,
@@ -413,7 +426,9 @@ function buildIncludeClause(
         ? buildFilterWhere(entry.filters, relationContract, 1)
         : undefined;
     const sorts = parseSorts(entry.sorts, relationContract);
-    const select = parseSelects(entry.selects, relationContract);
+    const select =
+      parseSelects(entry.selects, relationContract) ??
+      declaredSelect(relationContract);
     const orderBy = sorts?.map((sort) => ({ [sort.field]: sort.direction }));
 
     if (relationContract.type === 'morphMany') {
@@ -440,7 +455,7 @@ function buildIncludeClause(
       nativeInclude[entry.relation] = {
         ...(where ? { where } : {}),
         ...(orderBy ? { orderBy } : {}),
-        ...(select ? { select } : {}),
+        select,
         ...(entry.limit ? { take: entry.limit } : {}),
       };
     }
@@ -541,7 +556,10 @@ function buildAggregateSelect(
 /**
  * A generated view function only ever emits the resource's own declared
  * fields, by design -- it is the allow-list that keeps a raw Prisma record
- * from leaking. Include data arrives on the raw record under the relation's
+ * from leaking. An included relation has no view of its own, so its own
+ * allow-list is the select buildIncludeClause always attaches: whatever the
+ * caller named, or the relation's declared selects when it named nothing.
+ * Include data arrives on the raw record under the relation's
  * own name (whether Prisma put it there natively or the service merged it in
  * manually, see resolveRelationInstructions). Aggregate data arrives under
  * `_aggregates`, a bucket the service normalizes to the same shape whether it

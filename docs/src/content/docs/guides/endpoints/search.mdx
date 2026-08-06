@@ -44,6 +44,8 @@ Every generated resource exposes one search route instead of a detail route: the
 
     `filters`/`sorts`/`selects` (or `filters`/`fields` for an aggregate) are derived once, at generation time, from the referenced resource's own blueprint — nothing is hand-typed twice. The referenced resource must be declared `routed: false`: it exists only to describe its shape to whoever includes/aggregates it, and gets no controller, no service, no capabilities of its own.
 
+    Those derived `selects` are also what an include returns when the request names no fields of its own. An included relation has no view function of its own — its rows are merged onto the record as the database returned them — so without a select the response would carry every column the related table has, `hidden` blueprint fields included. The declared list already excludes those, so it is the default rather than something a caller has to remember to ask for.
+
     `type` is one of:
 
     - `hasMany` — a real Prisma relation. Needs `foreignKey`.

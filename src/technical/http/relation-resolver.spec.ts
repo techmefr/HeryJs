@@ -66,6 +66,68 @@ describe('resolveRelationInstructions', () => {
     ]);
   });
 
+  it('borrows the foreign key a select left out, and drops it from the result', async () => {
+    const records: Record<string, unknown>[] = [{ id: 'a' }, { id: 'b' }];
+    const findMany = jest.fn(() =>
+      Promise.resolve([
+        { blogPostId: 'a', body: 'first' },
+        { blogPostId: 'b', body: 'second' },
+      ]),
+    );
+    const instructions: RelationInstruction[] = [
+      {
+        kind: 'include',
+        relation: 'notes',
+        relationType: 'morphMany',
+        foreignKey: 'blogPostId',
+        childDelegate: 'blogPostNote',
+        select: { body: true },
+      },
+    ];
+
+    await resolveRelationInstructions(
+      delegateWith({ findMany }),
+      records,
+      instructions,
+    );
+
+    expect(findMany).toHaveBeenCalledWith({
+      where: { blogPostId: { in: ['a', 'b'] } },
+      select: { body: true, blogPostId: true },
+    });
+    expect(records[0]!.notes).toEqual([{ body: 'first' }]);
+    expect(records[1]!.notes).toEqual([{ body: 'second' }]);
+  });
+
+  it('keeps the foreign key when the select asked for it', async () => {
+    const records: Record<string, unknown>[] = [{ id: 'a' }];
+    const findMany = jest.fn(() =>
+      Promise.resolve([{ blogPostId: 'a', body: 'first' }]),
+    );
+    const instructions: RelationInstruction[] = [
+      {
+        kind: 'include',
+        relation: 'notes',
+        relationType: 'morphMany',
+        foreignKey: 'blogPostId',
+        childDelegate: 'blogPostNote',
+        select: { body: true, blogPostId: true },
+      },
+    ];
+
+    await resolveRelationInstructions(
+      delegateWith({ findMany }),
+      records,
+      instructions,
+    );
+
+    expect(findMany).toHaveBeenCalledWith({
+      where: { blogPostId: { in: ['a'] } },
+      select: { body: true, blogPostId: true },
+    });
+    expect(records[0]!.notes).toEqual([{ blogPostId: 'a', body: 'first' }]);
+  });
+
   it('defaults a parent with no matching child rows to an empty include array', async () => {
     const records: Record<string, unknown>[] = [{ id: 'a' }];
     const instructions: RelationInstruction[] = [

@@ -283,12 +283,45 @@ describe('parseSearchRequest', () => {
       notes: {
         where: { body: { contains: 'day' } },
         orderBy: [{ createdAt: 'desc' }],
+        select: { id: true, body: true },
         take: 5,
       },
     });
     expect(query.includeManifest).toEqual([
       { key: 'notes', relation: 'notes' },
     ]);
+  });
+
+  it("bounds an include with no selects to the relation's declared fields", () => {
+    const query = parseSearchRequest(
+      { includes: [{ relation: 'notes' }] },
+      contract,
+    );
+
+    expect(query.include).toEqual({ notes: { select: { id: true, body: true } } });
+  });
+
+  it('bounds a morphMany include with no selects the same way', () => {
+    const query = parseSearchRequest(
+      { includes: [{ relation: 'comments' }] },
+      contract,
+    );
+
+    expect(query.relationInstructions).toEqual([
+      expect.objectContaining({
+        relation: 'comments',
+        select: { id: true, body: true },
+      }),
+    ]);
+  });
+
+  it('narrows an include to the fields the caller named', () => {
+    const query = parseSearchRequest(
+      { includes: [{ relation: 'notes', selects: [{ field: 'body' }] }] },
+      contract,
+    );
+
+    expect(query.include).toEqual({ notes: { select: { body: true } } });
   });
 
   it('keys an included relation by its alias instead of the relation name', () => {
@@ -380,7 +413,7 @@ describe('parseSearchRequest', () => {
     );
 
     expect(query.include).toEqual({
-      notes: {},
+      notes: { select: { id: true, body: true } },
       _count: { select: { notes: true } },
     });
     expect(query.includeManifest).toEqual([
@@ -472,7 +505,7 @@ describe('parseSearchRequest', () => {
         childDelegate: 'comment',
         where: { body: { contains: 'nice' } },
         orderBy: [{ createdAt: 'desc' }],
-        select: undefined,
+        select: { id: true, body: true },
       },
     ]);
     expect(query.includeManifest).toEqual([
