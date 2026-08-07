@@ -76,9 +76,9 @@ function relationSchemaBlock(ctx: ResourceContext): string {
 // intents that would otherwise race on the same pivot row.
 const relationMutationSchema = z
   .object({
-    attach: z.array(z.string()).optional(),
-    detach: z.array(z.string()).optional(),
-    sync: z.array(z.string()).optional(),
+    attach: z.array(z.string()).max(MAX_BATCH_ENTRIES).optional(),
+    detach: z.array(z.string()).max(MAX_BATCH_ENTRIES).optional(),
+    sync: z.array(z.string()).max(MAX_BATCH_ENTRIES).optional(),
   })
   .refine(
     (input) => !input.sync || (!input.attach && !input.detach),
@@ -99,6 +99,7 @@ export function dtoFile(ctx: ResourceContext): string {
   const hasRelations = ctx.relations.length > 0;
 
   return `import { z } from 'zod';
+import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
 
 export const create${ctx.pascalName}Schema = z.object({
 ${fieldLines(ctx, '  ')}
@@ -112,7 +113,7 @@ ${relationSchemaBlock(ctx)}
 // setting (how it acts) -- data/ids is always an array, even for a single
 // record, so the response shape never has to differ between one and many.
 export const create${ctx.pascalName}RequestSchema = z.object({
-  data: z.array(create${ctx.pascalName}Schema),
+  data: z.array(create${ctx.pascalName}Schema).max(MAX_BATCH_ENTRIES),
 });
 export type Create${ctx.pascalName}RequestBody = z.infer<
   typeof create${ctx.pascalName}RequestSchema
@@ -123,7 +124,7 @@ export const update${ctx.pascalName}RequestSchema = z.object({
     update${ctx.pascalName}Schema.extend({
       id: z.string(),${hasRelations ? `\n      relations: update${ctx.pascalName}RelationsSchema.optional(),` : ''}
     }),
-  ),
+  ).max(MAX_BATCH_ENTRIES),
 });
 export type Update${ctx.pascalName}RequestBody = z.infer<
   typeof update${ctx.pascalName}RequestSchema
@@ -133,7 +134,7 @@ export const DELETE_MODES = ['soft', 'hard'] as const;
 export type Delete${ctx.pascalName}Mode = (typeof DELETE_MODES)[number];
 
 export const delete${ctx.pascalName}RequestSchema = z.object({
-  ids: z.array(z.string()),
+  ids: z.array(z.string()).max(MAX_BATCH_ENTRIES),
   mode: z.enum(DELETE_MODES).default('soft'),
 });
 export type Delete${ctx.pascalName}RequestBody = z.infer<
@@ -141,7 +142,7 @@ export type Delete${ctx.pascalName}RequestBody = z.infer<
 >;
 
 export const restore${ctx.pascalName}RequestSchema = z.object({
-  ids: z.array(z.string()),
+  ids: z.array(z.string()).max(MAX_BATCH_ENTRIES),
   // A short, scoped patch to reapply on restore -- not a second update, so
   // it reuses the update schema's own field whitelist rather than inventing
   // a narrower one.
@@ -1985,6 +1986,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
 import { env } from '#technical/config/env';
+import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 
 const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
@@ -2261,6 +2263,29 @@ ${paginationSpec(ctx, createBody)}
       .post('/${ctx.pluralKebabName}/search')
       .set('Authorization', \`Bearer \${ownerToken}\`)
       .send({ aggregates: [{ relation: 'doesNotExist', type: 'count' }] })
+      .expect(400);
+  });
+
+  it('rejects a batch larger than the framework allows in one call', async () => {
+    await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/create')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({
+        data: Array.from({ length: MAX_BATCH_ENTRIES + 1 }, () => (${createBody})),
+      })
+      .expect(400);
+  });
+
+  it('rejects a search carrying more filters than the framework allows', async () => {
+    await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/search')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({
+        filters: Array.from({ length: 51 }, () => ({
+          field: 'id',
+          value: 'none',
+        })),
+      })
       .expect(400);
   });
 ${

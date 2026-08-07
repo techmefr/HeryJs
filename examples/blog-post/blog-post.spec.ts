@@ -8,6 +8,7 @@ import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
 import { BlogPostModule } from './blog-post.module';
 import { env } from '#technical/config/env';
+import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 
 const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
@@ -329,6 +330,31 @@ describe('BlogPost resource', () => {
       .post('/blog-posts/search')
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({ aggregates: [{ relation: 'doesNotExist', type: 'count' }] })
+      .expect(400);
+  });
+
+  it('rejects a batch larger than the framework allows in one call', async () => {
+    await request(app.getHttpServer())
+      .post('/blog-posts/create')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({
+        data: Array.from({ length: MAX_BATCH_ENTRIES + 1 }, () => ({
+          title: 'title-value',
+        })),
+      })
+      .expect(400);
+  });
+
+  it('rejects a search carrying more filters than the framework allows', async () => {
+    await request(app.getHttpServer())
+      .post('/blog-posts/search')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({
+        filters: Array.from({ length: 51 }, () => ({
+          field: 'id',
+          value: 'none',
+        })),
+      })
       .expect(400);
   });
 

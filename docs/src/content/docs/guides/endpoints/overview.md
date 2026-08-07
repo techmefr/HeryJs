@@ -33,6 +33,24 @@ Three keys, always: `data`, `meta` (only when there is something to say about th
 }
 ```
 
+## What a single request may ask for
+
+A page size is a product decision, so a blueprint declares it. The size of the request itself is not, and every one of these is refused with `query.invalid` rather than planned by the database:
+
+| In a request                                            | At most  |
+| ------------------------------------------------------- | -------- |
+| `filters` (per level, three levels deep at most)         | 50       |
+| values in one `in` / `not in`                            | 500      |
+| `sorts`                                                  | 10       |
+| `selects`                                                | 100      |
+| `includes`, `aggregates`                                 | 20 each  |
+| `limit` on an include                                    | 1000     |
+| `page`                                                   | 100 000  |
+| `capabilities`                                           | 50       |
+| records in one `create`/`update`/`delete`/`restore` call  | 100      |
+
+The batch cap is `MAX_BATCH_ENTRIES` in `technical/http/batch.ts`, and the generated DTO is your file — a resource that genuinely needs larger batches raises it there, on that resource, deliberately.
+
 ## The framework's own routes
 
 Beside your resources, the kernel and the modules ship routes of their own — `/audit-logs`, `/teams`, `/notifications`, `/api-keys`, `/feature-flags`, `/mail` once the module is installed. That is our code, not generated code, so it does not ask you to decide anything before it is usable: **every one of those collections pages**, with the same `page`/`limit`/`total`/`last_page` meta a generated resource reports.

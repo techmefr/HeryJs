@@ -12,8 +12,10 @@ const DEFAULT_TTL_SECONDS = 900;
 const MAX_BODY_BYTES = 25 * 1024 * 1024;
 const DEFAULT_CONTENT_TYPE = 'application/octet-stream';
 
+const META_SUFFIX = '.meta.json';
+
 function metaPath(target: string): string {
-  return `${target}.meta.json`;
+  return `${target}${META_SUFFIX}`;
 }
 
 /**
@@ -26,6 +28,15 @@ function insideRoot(key: string): string {
   const target = path.resolve(ROOT, key);
 
   if (target !== ROOT && !target.startsWith(`${ROOT}${path.sep}`)) {
+    throw new InvalidStorageKeyException(key);
+  }
+
+  // The content type of a stored object lives in a sidecar named after it, so a
+  // key ending in that suffix writes over another object's metadata -- and the
+  // content type is what StorageController serves the bytes as. Whoever adds an
+  // upload endpoint on top of this provider would be handing a caller the right
+  // to relabel someone else's file as text/html.
+  if (key.endsWith(META_SUFFIX)) {
     throw new InvalidStorageKeyException(key);
   }
 

@@ -22,6 +22,12 @@ describe('local storage keys', () => {
     });
   });
 
+  it('refuses a key that would land on another object metadata', async () => {
+    await expect(
+      provider.put('inside.txt.meta.json', Buffer.from('{}'), 'text/plain'),
+    ).rejects.toThrow(InvalidStorageKeyException);
+  });
+
   it.each(ESCAPING_KEYS)(
     'refuses to write outside the root with %s',
     async (key) => {

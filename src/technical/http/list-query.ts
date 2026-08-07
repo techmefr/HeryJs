@@ -20,11 +20,29 @@ export type FilterOperator = (typeof FILTER_OPERATORS)[number];
 
 const MAX_FILTER_DEPTH = 3;
 
+/**
+ * A depth cap alone bounds nothing: three levels of ten thousand filters each is
+ * still a query the database has to plan, and the same goes for a sort list, an
+ * `in` set, or a relation asked for a billion rows. A blueprint declares how a
+ * resource pages because that is a product decision; these are not -- no client
+ * has a legitimate use for them, and every generated search route is reachable
+ * by anyone holding a session. They are refused as `query.invalid`, the same
+ * code an unknown field gets.
+ */
+const MAX_FILTERS = 50;
+const MAX_SORTS = 10;
+const MAX_SELECTS = 100;
+const MAX_RELATIONS = 20;
+const MAX_IN_VALUES = 500;
+const MAX_CAPABILITIES = 50;
+const MAX_INCLUDE_LIMIT = 1000;
+const MAX_PAGE = 100_000;
+
 const filterValueSchema = z.union([
   z.string(),
   z.number(),
   z.boolean(),
-  z.array(z.union([z.string(), z.number()])),
+  z.array(z.union([z.string(), z.number()])).max(MAX_IN_VALUES),
 ]);
 
 export interface FilterEntry {
@@ -41,7 +59,7 @@ const filterEntrySchema: z.ZodType<FilterEntry> = z.lazy(() =>
     operator: z.enum(FILTER_OPERATORS).optional(),
     value: filterValueSchema.optional(),
     type: z.enum(['and', 'or']).optional(),
-    nested: z.array(filterEntrySchema).optional(),
+    nested: z.array(filterEntrySchema).max(MAX_FILTERS).optional(),
   }),
 );
 
@@ -96,7 +114,7 @@ const aggregateEntrySchema: z.ZodType<AggregateEntry> = z.object({
   type: z.enum(AGGREGATE_TYPES),
   field: z.string().optional(),
   alias: aliasSchema,
-  filters: z.array(filterEntrySchema).optional(),
+  filters: z.array(filterEntrySchema).max(MAX_FILTERS).optional(),
 });
 
 // One level deep: an include may filter/sort/select/paginate the relation it
@@ -114,26 +132,26 @@ export interface IncludeEntry {
 const includeEntrySchema: z.ZodType<IncludeEntry> = z.object({
   relation: z.string(),
   alias: aliasSchema,
-  filters: z.array(filterEntrySchema).optional(),
-  sorts: z.array(sortEntrySchema).optional(),
-  selects: z.array(selectEntrySchema).optional(),
-  limit: z.number().int().positive().optional(),
+  filters: z.array(filterEntrySchema).max(MAX_FILTERS).optional(),
+  sorts: z.array(sortEntrySchema).max(MAX_SORTS).optional(),
+  selects: z.array(selectEntrySchema).max(MAX_SELECTS).optional(),
+  limit: z.number().int().positive().max(MAX_INCLUDE_LIMIT).optional(),
 });
 
 export const searchRequestSchema = z.object({
-  page: z.number().int().positive().optional(),
+  page: z.number().int().positive().max(MAX_PAGE).optional(),
   limit: z.number().int().optional(),
-  sorts: z.array(sortEntrySchema).optional(),
-  filters: z.array(filterEntrySchema).optional(),
-  selects: z.array(selectEntrySchema).optional(),
-  includes: z.array(includeEntrySchema).optional(),
-  aggregates: z.array(aggregateEntrySchema).optional(),
+  sorts: z.array(sortEntrySchema).max(MAX_SORTS).optional(),
+  filters: z.array(filterEntrySchema).max(MAX_FILTERS).optional(),
+  selects: z.array(selectEntrySchema).max(MAX_SELECTS).optional(),
+  includes: z.array(includeEntrySchema).max(MAX_RELATIONS).optional(),
+  aggregates: z.array(aggregateEntrySchema).max(MAX_RELATIONS).optional(),
   search: z
     .object({ q: z.string().optional(), engine: z.string().optional() })
     .optional(),
   withTrashed: z.boolean().optional(),
   onlyTrashed: z.boolean().optional(),
-  capabilities: z.array(z.string()).optional(),
+  capabilities: z.array(z.string()).max(MAX_CAPABILITIES).optional(),
 });
 
 export type SearchRequestBody = z.infer<typeof searchRequestSchema>;
