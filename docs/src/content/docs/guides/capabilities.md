@@ -107,15 +107,22 @@ export const canUpdateBlogPost: PolicyCheck<BlogPostRecordLike> = (subject, reco
 ```
 
 ```ts
-@Patch(':id')
-@Capability(canUpdateBlogPost)
-@LoadRecordWith(BLOG_POST_RECORD_LOADER)
-async update(@Req() req: RequestWithBlogPost, @Body() body: UpdateBlogPostInput) {
-  return ok(await this.blogPosts.update(req.record, body));
+@Post('update')
+@Capability(canUpdateAnyBlogPost)
+async update(@Req() req: RequestWithUser, @Body() body: UpdateBlogPostRequestBody) {
+  const subject = subjectOf(req.user);
+  const loaded = await this.loadAndAuthorize(
+    body.data.map((item) => item.id),
+    subject,
+    (s, record) => canUpdateBlogPost(s, record),
+  );
+  // one result per entry, each with its own status
 }
 ```
 
 `CapabilitiesGuard` reads the `@Capability` metadata via `Reflector`, loads the record through the `RecordLoader` named in `@LoadRecordWith` (if any), attaches it to the request, and calls the policy function. A `CapabilityForbiddenException` becomes a real HTTP 403 — not a silently filtered list.
+
+Every mutating route takes an array, so the two levels both have work to do: the guard resolves the collection-level function (`canUpdateAnyBlogPost`) before any record is read, and the handler then resolves the record-level one (`canUpdateBlogPost`) against each loaded row. A single refused entry comes back as an error in its own slot rather than failing the whole request.
 
 Policy functions are plain functions rather than injected class methods on purpose: a decorator is evaluated at import time, before Nest's dependency injection has run, so anything it references has to already exist independently of the DI container.
 

@@ -10,12 +10,14 @@ The `hery` CLI is the only thing in this project that reads a blueprint. It is a
 | `new <name>` | Scaffolds a fresh HeryJs project in its own directory. |
 | `create:blueprint <Name>` | Writes a blueprint from prompts or defaults. |
 | `generate <Name>` | Writes a full resource from that blueprint. |
-| `migrate --name <name>` | Runs `prisma migrate dev`. |
+| `migrate --name <name>` | Runs `prisma migrate dev`, then emits and applies any missing row-level policy. |
 | `install [modules...]` | Installs optional modules. |
 | `uninstall <module>` | Removes a module and reverses what installing it did. |
 | `module:list` | Lists the modules available to install. |
 | `module:monitoring` | Scaffolds Prometheus, Grafana and Loki. |
 | `search:reindex <Name>` | Rebuilds a resource's search index from Postgres. |
+| `expose:list` | Prints the catalog of `@ExposeAction`s. |
+| `expose:run <action>` | Runs one exposed action, `--param name=value` per field. |
 | `up` | Checks that local dependencies are ready. |
 | `doctor` | One command for environment, config and infra together. |
 | `env pull` | Writes the resolved variables into `.env`. |
@@ -35,9 +37,11 @@ cd my-app
 cp .env.example .env
 docker compose up -d
 pnpm install
-pnpm exec prisma migrate dev
+pnpm hery migrate --name init
 pnpm start:dev
 ```
+
+`hery migrate` rather than `prisma migrate dev` on purpose, and the scaffolded project prints it that way: it wraps Prisma's own migration and then emits the row-level security policy for every tenant-scoped table, so the database boundary is created with the tables instead of remembered afterwards.
 
 Examples and the doc site are deliberately not copied — this is the framework's own demo, not part of what ships.
 
@@ -63,7 +67,7 @@ Every run also (re)writes `blueprints/schema.json` — a JSON Schema generated s
 
 ## `hery generate <Name|path>`
 
-Reads the blueprint and writes nine files into `src/functional/<name>/`. See [What gets generated](/guides/generated-files/) for what each one owns.
+Reads the blueprint and writes ten files into `src/functional/<name>/`. See [What gets generated](/guides/generated-files/) for what each one owns.
 
 The argument is a name resolved under `blueprints/`, or a path to a YAML file if you would rather keep a blueprint next to whatever it produced:
 
@@ -79,7 +83,7 @@ It also patches `prisma/schema.prisma` (the new model plus its inverse relation 
 
 ## `hery migrate --name <migration-name>`
 
-A thin wrapper around `prisma migrate dev`, run after `generate` once the schema has been patched.
+Runs `prisma migrate dev`, then does the second half `generate` deliberately left undone: it reads the schema and `TENANT_SCOPED_MODELS`, writes the `ENABLE ROW LEVEL SECURITY` migration for any tenant-scoped table that has no policy yet, and applies it. Writing that migration by hand is how the teams tables spent a month scoped by the extension with nothing behind them.
 
 ## `hery install [modules...]`
 
@@ -98,6 +102,16 @@ Removes the module's own npm dependencies (`pnpm remove`) and prints the rest of
 
 Rebuilds a resource's search index from what is actually in Postgres — the source of truth stays the database, the index is a derived cache that can always be thrown away and rebuilt. Run it after installing a search engine module on a resource that already has data, or any time the index and the database might have drifted. See [Full-text search](/guides/search/).
 
+## `hery expose:list` and `hery expose:run`
+
+The two CLI halves of the exposition registry: `expose:list` prints every `@ExposeAction` the app declares, `expose:run` runs one outside a request.
+
+```bash
+pnpm hery expose:run prune.run --param prune.run.model=BlogPost
+```
+
+There is no signed-in user at a terminal, so the capability check is skipped where the HTTP route enforces it — trust comes from having a shell on the machine, the same reasoning `console --tenant` relies on. The environment filter and the audit entry still apply. See [Exposing an action to the mine](/guides/exposing-actions/).
+
 ## `hery module:monitoring`
 
 Scaffolds Prometheus, Grafana and Loki as an opt-in local compose stack, wired to scrape the app's `/metrics`. It writes the compose file and a Prometheus config, then prints the command to start them — it does not start anything itself.
@@ -111,8 +125,8 @@ Despite the name it is a plain command, not a registry module: it does not appea
 Checks that the things the app needs are actually reachable — Postgres, Valkey, and whether Prisma migrations are up to date — and exits non-zero if any of them is not, with a hint for each:
 
 ```
-✔ PostgreSQL (localhost:32768)
-✔ Valkey (localhost:32769)
+✔ PostgreSQL (localhost:32769)
+✔ Valkey (localhost:32768)
 ✘ Prisma migrations — run "pnpm hery migrate --name <name>"
 ```
 

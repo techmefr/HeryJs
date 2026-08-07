@@ -23,7 +23,7 @@ await this.mail.queue(user.email, 'welcome', { name: user.name, app: 'Acme' });
 
 Three things happen, in this order: the template is rendered, a `MailLog` row is written with `status: 'queued'` and the current tenant, and a `mail.send` job goes onto the BullMQ queue. The worker sends, then flips the row to `sent` or to `failed` with the error message.
 
-The `MailLog` row is the point. A queued mail that never arrived is otherwise invisible — the row makes "did we send it, and what happened" a query rather than a log-grep. `GET /mail` returns the log for the current tenant, behind `SessionGuard`.
+The `MailLog` row is the point. A queued mail that never arrived is otherwise invisible — the row makes "did we send it, and what happened" a query rather than a log-grep. `GET /mail?page=&limit=` returns the log for the current tenant, newest first, behind `SessionGuard`, `CapabilitiesGuard` and its own `canReadMailLog` — a module route is held to the same conventions as a kernel one.
 
 Rendering is intentionally small: templates are a `Record` in `mail.templates.ts`, and interpolation is `{{key}}` substitution. No engine, no template files to locate at runtime, and one shipped example (`welcome`) to copy. An unknown template name throws rather than sending a blank message. Two properties to keep in mind when writing your own: a missing key becomes an empty string rather than an error, and **values are not HTML-escaped** — pass user-supplied content through your own escaping first.
 

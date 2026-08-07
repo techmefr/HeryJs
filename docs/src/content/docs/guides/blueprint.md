@@ -83,6 +83,48 @@ Three more are understood by every collection route, and none of them appears in
 
 The two trashed parameters are not just filters: asking for either one is checked against `canListTrashed<Name>`, which follows the `delete` preset. Opening the bin is treated as a moderation action rather than a read, so a user who may see a record is not automatically allowed to browse deleted ones. The rows that come back are still narrowed by the view scope — the gate answers "may I look at the bin", the scope answers "which rows I may see in it".
 
+## Relations
+
+Three more keys describe what a resource is attached to, and they split by what a request may *do* with the relation rather than by how Prisma models it.
+
+`includes` and `aggregates` are the read side — a relation a search request may embed, or count. Each entry names the relation, the resource on the other end, and how they are linked:
+
+```yaml
+includes:
+  - relation: notes
+    resource: BlogPostNote
+    type: hasMany
+    foreignKey: blogPostId
+  - relation: comments
+    resource: Comment
+    type: morphMany
+    foreignKey: commentableId
+    discriminator: commentableType
+    discriminatorValue: BlogPost
+aggregates:
+  - relation: notes
+    resource: BlogPostNote
+    type: hasMany
+    foreignKey: blogPostId
+```
+
+`hasMany` is a real Prisma relation, so `foreignKey` is the column the related model points back with. `morphMany` has no Prisma-level relation at all — Prisma does not model polymorphic associations — so the related model's own discriminator column and the value it holds for *this* resource have to be declared; there is nothing to introspect. Both require `discriminator` and `discriminatorValue`, and a blueprint that omits either on a `morphMany` is rejected.
+
+The referenced resource's own blueprint is what supplies the nested contract: the `filters`, `sorts` and `selects` a request may name *inside* an include come from there rather than being retyped on every parent that includes it. That is what `routed: false` is for — a resource generated with no controller, no service and no capabilities of its own, existing only to describe the shape of a relation once.
+
+`relations` is the write side, and it is specifically the `belongsToMany` case `includes` cannot express: neither side owns the other, so attaching or detaching never touches the related row, only a row in the pivot table.
+
+```yaml
+relations:
+  - relation: tags
+    resource: Tag
+    pivotTable: BlogPostTag
+    foreignKey: blogPostId
+    relatedKey: tagId
+```
+
+Each entry generates an `attach`/`detach`/`sync` block on the update route, gated by its own pair of capabilities (`canAttachTagsToBlogPost`, `canDetachTagsFromBlogPost`) — see [Update](/guides/endpoints/update/).
+
 ## Why YAML, not decorators
 
 The blueprint is consumed once, at generation time — never read by the running application. Decorators like `@Capability` exist for behavior that genuinely needs to run per request; a static contract like pagination limits doesn't need that, and giving it decorator-based runtime metadata would just be indirection for something a YAML file already expresses clearly and diffs cleanly in review.

@@ -115,7 +115,7 @@ Because it is a plain constant in a file you own, narrowing it is an edit, not a
 This is the part that has to be right. The generated `search()` composes three independent clauses:
 
 ```ts
-return this.prisma.blog-post.findMany({
+return this.prisma.blogPost.findMany({
   where: {
     AND: [
       scopeWhereFor(BLOG_POST_PRESETS.view, subject),

@@ -98,12 +98,12 @@ Worth being explicit, because each of these is something a reader may assume:
 
 This is the one that bites. A cron callback runs outside any request, so there is no ambient tenant context — and the tenant-scoped Prisma client *requires* one. Touching a tenant-scoped model from a task without establishing that context throws.
 
-A task that spans tenants has to say which tenant each piece of work belongs to:
+A task that spans tenants has to say which tenant each piece of work belongs to, which is what `runInTenant` is for — the kernel's one entry point for work with no request behind it:
 
 ```ts
 await this.store.run('digest', async () => {
   for (const tenantId of await this.tenants.all()) {
-    await TenantContextStorage.run({ tenantId }, async () => {
+    await runInTenant(tenantId, async () => {
       // tenant-scoped queries are safe in here
     });
   }
@@ -122,7 +122,7 @@ pnpm hery console --tenant acme
 Boots the real application — the full DI container, Prisma, auth, jobs — and drops you at a prompt. No HTTP server is started; this is `NestFactory.createApplicationContext`, not a running app.
 
 ```
-hery> await prisma.blog-post.findMany()
+hery> await prisma.blogPost.findMany()
 ```
 
 Three bindings are pre-loaded, and that is all:

@@ -7,7 +7,7 @@ description: Let an admin act as another user for support, without leaving the t
 pnpm hery install impersonation
 ```
 
-Two routes, both behind `SessionGuard`:
+Two routes, both behind `SessionGuard` and `CapabilitiesGuard` — `canImpersonate` to start, `canStopImpersonation` to stop:
 
 ```ts
 POST   /impersonation/:userId   // start, as an admin

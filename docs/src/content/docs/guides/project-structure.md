@@ -10,9 +10,10 @@ src/
     blog-post/
   technical/             the kernel — always present
     auth/  capabilities/  teams/  tenancy/  prisma/  errors/  http/
-    audit/  config/  dev-only/  feature-flags/  introspection/  jobs/
-    monitoring/  notifications/  scheduler/  search/  seeders/
-    signal/  tracing/  validation/
+    audit/  config/  dev-only/  exposition/  feature-flags/
+    introspection/  jobs/  logging/  monitoring/  notifications/
+    prune/  scheduler/  search/  seeders/  signal/  tracing/
+    validation/
   modules/               optional — installed by hery install, removable
     impersonation/  live/  mail/  storage/  stream/  webhooks/
   devtools/              never ships to production
@@ -20,8 +21,8 @@ src/
 cli/                     the generator
   hery.ts  commands/  lib/
 admin/                   the Astro admin panel (its own workspace)
-blueprints/              one-time generator input
-packages/                templates for the modules under src/modules/
+blueprints/              one-time generator input, created by hery create:blueprint
+packages/                the authoring half of every module, copied into src/modules/
 prisma/
   schema.prisma
 ```
@@ -78,9 +79,9 @@ Generated code belongs to you, which means the generator's guarantees expire the
 Alongside them, each its own CI step:
 
 - `pnpm test` includes `src/architecture.spec.ts`, which asserts that every folder in `functional/` carries the conventional files: `.module.ts`, `.controller.ts`, `.service.ts`, `.policy.ts`, `.dto.ts` and `.spec.ts`. A domain without a spec fails the suite.
-- `pnpm lint:capabilities` — every route in a `functional/` controller carries a `@Capability(...)`.
+- `pnpm lint:capabilities` — every route in every controller under `src/`, `examples/` and `packages/` carries a `@Capability(...)` or a `@PublicRoute('<why>')`, reads included. Kernel, module and devtools routes serve data exactly like a resource route does, so they are held to it too.
 - `pnpm lint:scope-parity` — every `search()` in a `functional/` service goes through `scopeWhereFor(...)`, and every preset comes from the resource's single `<NAME>_PRESETS` declaration rather than a literal.
-- `pnpm lint:rls` — every model carrying a `tenantId` is either covered by a Postgres row-level policy or recorded as enforced in code, never neither.
+- `pnpm lint:rls` — every model the schema declares carries a `tenantId`, or is recorded in `TENANT_FREE_MODELS` with the reason it cannot; and every model that carries one is either covered by a Postgres row-level policy or recorded as enforced in code, never neither and never both.
 - `pnpm lint:subject` — every capability subject comes from `subjectOf(user)`.
 - `pnpm lint:pagination` — every collection route the framework writes itself (`technical/`, `devtools/`, `modules/`, the module packages) pages through `parsePageQuery`/`okPage`, or declares `@UnpaginatedRoute('<why>')`. A generated resource is out of scope: its blueprint decides.
 - `pnpm lint:dev-guard` — no controller hand-rolls its own production check instead of using `DevOnlyGuard`.

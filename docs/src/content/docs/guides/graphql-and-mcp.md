@@ -105,6 +105,6 @@ if (!decision.allowed) {
 }
 ```
 
-Two smaller differences from REST worth knowing: a denial throws `CapabilityForbiddenException` without the decision attached, so the response does not report the scope the way a REST 403 does; and the session is validated twice per request — once by the tenant middleware, once by the resolver guard.
+One smaller difference from REST worth knowing: a denial throws `CapabilityForbiddenException` without the decision attached, so the response does not report the scope the way a REST 403 does. The credential itself costs no more than over REST — the tenant middleware and `GqlSessionGuard` both resolve the caller through `resolveCallerOnce`, which memoises the answer on the request, so a bearer token is looked up once however many layers read it.
 
 The endpoint path is whatever `@nestjs/graphql` defaults to; HeryJs does not set it, so treat it as the library's default rather than a framework guarantee.

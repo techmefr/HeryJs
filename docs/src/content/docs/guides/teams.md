@@ -195,7 +195,7 @@ The generated spec asserts it over real HTTP rather than trusting the argument â
 
 ## The HTTP surface
 
-Four routes, all behind `SessionGuard`. Every one reads membership from the session rather than from the body.
+Four routes, all behind `SessionGuard` and `CapabilitiesGuard`, each carrying its own capability like any resource route. Every one reads membership from the session rather than from the body.
 
 | Route | What it does |
 |---|---|

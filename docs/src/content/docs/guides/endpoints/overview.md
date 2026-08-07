@@ -1,9 +1,9 @@
 ---
 title: Overview
-description: What every generated endpoint shares — the seven routes, the envelope, and where to authenticate — before the per-endpoint pages get specific.
+description: What every generated endpoint shares — the six routes, the envelope, and where to authenticate — before the per-endpoint pages get specific.
 ---
 
-Every resource `hery generate` produces exposes the same seven routes, shaped by the same envelope. Once you have read one resource's endpoints, you have effectively read all of them — the only things that change from one resource to the next are the URL segment and the fields inside `data`.
+Every resource `hery generate` produces exposes the same six routes, shaped by the same envelope. Once you have read one resource's endpoints, you have effectively read all of them — the only things that change from one resource to the next are the URL segment and the fields inside `data`.
 
 The pages in this section walk through a real one, `BlogPost`, end to end. Each page covers one endpoint: what to send, and exactly what comes back.
 

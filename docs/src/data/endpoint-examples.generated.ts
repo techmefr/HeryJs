@@ -3,7 +3,7 @@ import type { PlaygroundScenario } from './scenario-types';
 export const searchScenarios: PlaygroundScenario[] = [
   {
     "id": "filter",
-    "label": "Filtrer sur le titre",
+    "label": "Filter on the title",
     "method": "POST",
     "path": "/blog-posts/search",
     "request": "POST /blog-posts/search\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  \"filters\": [\n    {\n      \"field\": \"title\",\n      \"operator\": \"like\",\n      \"value\": \"hello\"\n    }\n  ]\n}",
@@ -13,7 +13,7 @@ export const searchScenarios: PlaygroundScenario[] = [
         "stage": "middleware",
         "label": "tenant resolution",
         "status": "ok",
-        "durationMs": 7.240197,
+        "durationMs": 7.849616,
         "detail": {
           "tenantId": "default"
         }
@@ -22,16 +22,16 @@ export const searchScenarios: PlaygroundScenario[] = [
         "stage": "guard",
         "label": "session",
         "status": "ok",
-        "durationMs": 0.040572,
+        "durationMs": 0.071781,
         "detail": {
-          "userId": "cmsinc2yj0000gmvo75kb32du"
+          "userId": "cmsipncuz0000qkvodpsstomg"
         }
       },
       {
         "stage": "guard",
         "label": "capability",
         "status": "ok",
-        "durationMs": 0.077285,
+        "durationMs": 0.136815,
         "detail": {
           "policy": "canViewAnyBlogPost",
           "scope": "own"
@@ -41,43 +41,43 @@ export const searchScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 6.443833000000268,
+        "durationMs": 5.225897999998779,
         "detail": {
           "sql": "SELECT \"public\".\"BlogPost\".\"id\", \"public\".\"BlogPost\".\"tenantId\", \"public\".\"BlogPost\".\"ownerId\", \"public\".\"BlogPost\".\"title\", \"public\".\"BlogPost\".\"createdAt\", \"public\".\"BlogPost\".\"updatedAt\", \"public\".\"BlogPost\".\"deletedAt\" FROM \"public\".\"BlogPost\" WHERE (\"public\".\"BlogPost\".\"ownerId\" = $1 AND \"public\".\"BlogPost\".\"deletedAt\" IS NULL AND \"public\".\"BlogPost\".\"title\"::text LIKE ('%' || $2 || '%') AND \"public\".\"BlogPost\".\"tenantId\" = $3) ORDER BY \"public\".\"BlogPost\".\"createdAt\" DESC LIMIT $4 OFFSET $5",
-          "params": "[\"cmsinc2yj0000gmvo75kb32du\",\"hello\",\"default\",\"15\",\"0\"]"
+          "params": "[\"cmsipncuz0000qkvodpsstomg\",\"hello\",\"default\",\"15\",\"0\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 14.578058999999485,
+        "durationMs": 15.133168000000296,
         "detail": {
           "sql": "SELECT COUNT(*) AS \"_count$_all\" FROM (SELECT \"public\".\"BlogPost\".\"id\" FROM \"public\".\"BlogPost\" WHERE (\"public\".\"BlogPost\".\"ownerId\" = $1 AND \"public\".\"BlogPost\".\"deletedAt\" IS NULL AND \"public\".\"BlogPost\".\"title\"::text LIKE ('%' || $2 || '%') AND \"public\".\"BlogPost\".\"tenantId\" = $3) OFFSET $4) AS \"sub\"",
-          "params": "[\"cmsinc2yj0000gmvo75kb32du\",\"hello\",\"default\",\"0\"]"
+          "params": "[\"cmsipncuz0000qkvodpsstomg\",\"hello\",\"default\",\"0\"]"
         }
       },
       {
         "stage": "controller",
         "label": "BlogPostController.search",
         "status": "ok",
-        "durationMs": 24.91324
+        "durationMs": 27.515875
       }
     ]
   },
   {
     "id": "sort-paginate",
-    "label": "Trier et paginer",
+    "label": "Sort and paginate",
     "method": "POST",
     "path": "/blog-posts/search",
     "request": "POST /blog-posts/search\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  \"sorts\": [\n    {\n      \"field\": \"createdAt\",\n      \"direction\": \"desc\"\n    }\n  ],\n  \"page\": 1,\n  \"limit\": 10\n}",
-    "response": "{\n  \"data\": [\n    {\n      \"id\": \"cmsinc3g2000cgmvo5tqx7dra\",\n      \"tenantId\": \"default\",\n      \"ownerId\": \"cmsinc2yj0000gmvo75kb32du\",\n      \"title\": \"Changelog\",\n      \"createdAt\": \"2026-08-07T07:51:42.194Z\",\n      \"updatedAt\": \"2026-08-07T07:51:42.194Z\",\n      \"deletedAt\": null\n    },\n    {\n      \"id\": \"cmsinc3f0000agmvot77r20te\",\n      \"tenantId\": \"default\",\n      \"ownerId\": \"cmsinc2yj0000gmvo75kb32du\",\n      \"title\": \"Release notes\",\n      \"createdAt\": \"2026-08-07T07:51:42.156Z\",\n      \"updatedAt\": \"2026-08-07T07:51:42.156Z\",\n      \"deletedAt\": null\n    },\n    {\n      \"id\": \"cmsinc3ci0008gmvokz6eq5xa\",\n      \"tenantId\": \"default\",\n      \"ownerId\": \"cmsinc2yj0000gmvo75kb32du\",\n      \"title\": \"Hello world\",\n      \"createdAt\": \"2026-08-07T07:51:42.066Z\",\n      \"updatedAt\": \"2026-08-07T07:51:42.066Z\",\n      \"deletedAt\": null\n    }\n  ],\n  \"meta\": {\n    \"channels\": [\n      \"blogPost\"\n    ],\n    \"page\": 1,\n    \"limit\": 10,\n    \"last_page\": 1,\n    \"total\": 3\n  },\n  \"messages\": []\n}",
+    "response": "{\n  \"data\": [\n    {\n      \"id\": \"cmsipndea000cqkvoobm7rdqh\",\n      \"tenantId\": \"default\",\n      \"ownerId\": \"cmsipncuz0000qkvodpsstomg\",\n      \"title\": \"Changelog\",\n      \"createdAt\": \"2026-08-07T08:56:27.538Z\",\n      \"updatedAt\": \"2026-08-07T08:56:27.538Z\",\n      \"deletedAt\": null\n    },\n    {\n      \"id\": \"cmsipndcv000aqkvokx1fc4v2\",\n      \"tenantId\": \"default\",\n      \"ownerId\": \"cmsipncuz0000qkvodpsstomg\",\n      \"title\": \"Release notes\",\n      \"createdAt\": \"2026-08-07T08:56:27.487Z\",\n      \"updatedAt\": \"2026-08-07T08:56:27.487Z\",\n      \"deletedAt\": null\n    },\n    {\n      \"id\": \"cmsipnd9n0008qkvot6ev7tb8\",\n      \"tenantId\": \"default\",\n      \"ownerId\": \"cmsipncuz0000qkvodpsstomg\",\n      \"title\": \"Hello world\",\n      \"createdAt\": \"2026-08-07T08:56:27.371Z\",\n      \"updatedAt\": \"2026-08-07T08:56:27.371Z\",\n      \"deletedAt\": null\n    }\n  ],\n  \"meta\": {\n    \"channels\": [\n      \"blogPost\"\n    ],\n    \"page\": 1,\n    \"limit\": 10,\n    \"last_page\": 1,\n    \"total\": 3\n  },\n  \"messages\": []\n}",
     "flow": [
       {
         "stage": "middleware",
         "label": "tenant resolution",
         "status": "ok",
-        "durationMs": 6.086357,
+        "durationMs": 7.162071,
         "detail": {
           "tenantId": "default"
         }
@@ -86,16 +86,16 @@ export const searchScenarios: PlaygroundScenario[] = [
         "stage": "guard",
         "label": "session",
         "status": "ok",
-        "durationMs": 0.06244,
+        "durationMs": 0.065012,
         "detail": {
-          "userId": "cmsinc2yj0000gmvo75kb32du"
+          "userId": "cmsipncuz0000qkvodpsstomg"
         }
       },
       {
         "stage": "guard",
         "label": "capability",
         "status": "ok",
-        "durationMs": 0.023675,
+        "durationMs": 0.022226,
         "detail": {
           "policy": "canViewAnyBlogPost",
           "scope": "own"
@@ -105,43 +105,43 @@ export const searchScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 1.2794410000005882,
+        "durationMs": 1.0463400000007823,
         "detail": {
           "sql": "SELECT COUNT(*) AS \"_count$_all\" FROM (SELECT \"public\".\"BlogPost\".\"id\" FROM \"public\".\"BlogPost\" WHERE (\"public\".\"BlogPost\".\"ownerId\" = $1 AND \"public\".\"BlogPost\".\"deletedAt\" IS NULL AND \"public\".\"BlogPost\".\"tenantId\" = $2) OFFSET $3) AS \"sub\"",
-          "params": "[\"cmsinc2yj0000gmvo75kb32du\",\"default\",\"0\"]"
+          "params": "[\"cmsipncuz0000qkvodpsstomg\",\"default\",\"0\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 2.556984000000739,
+        "durationMs": 2.2077250000002095,
         "detail": {
           "sql": "SELECT \"public\".\"BlogPost\".\"id\", \"public\".\"BlogPost\".\"tenantId\", \"public\".\"BlogPost\".\"ownerId\", \"public\".\"BlogPost\".\"title\", \"public\".\"BlogPost\".\"createdAt\", \"public\".\"BlogPost\".\"updatedAt\", \"public\".\"BlogPost\".\"deletedAt\" FROM \"public\".\"BlogPost\" WHERE (\"public\".\"BlogPost\".\"ownerId\" = $1 AND \"public\".\"BlogPost\".\"deletedAt\" IS NULL AND \"public\".\"BlogPost\".\"tenantId\" = $2) ORDER BY \"public\".\"BlogPost\".\"createdAt\" DESC LIMIT $3 OFFSET $4",
-          "params": "[\"cmsinc2yj0000gmvo75kb32du\",\"default\",\"10\",\"0\"]"
+          "params": "[\"cmsipncuz0000qkvodpsstomg\",\"default\",\"10\",\"0\"]"
         }
       },
       {
         "stage": "controller",
         "label": "BlogPostController.search",
         "status": "ok",
-        "durationMs": 5.12543
+        "durationMs": 4.548796
       }
     ]
   },
   {
     "id": "by-id",
-    "label": "Chercher par identifiant",
+    "label": "Look one record up by id",
     "method": "POST",
     "path": "/blog-posts/search",
-    "request": "POST /blog-posts/search\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  \"filters\": [\n    {\n      \"field\": \"id\",\n      \"value\": \"cmsinc3ha000egmvoqvctpyo0\"\n    }\n  ]\n}",
-    "response": "{\n  \"data\": [\n    {\n      \"id\": \"cmsinc3ha000egmvoqvctpyo0\",\n      \"tenantId\": \"default\",\n      \"ownerId\": \"cmsinc2yj0000gmvo75kb32du\",\n      \"title\": \"Fetched by id\",\n      \"createdAt\": \"2026-08-07T07:51:42.238Z\",\n      \"updatedAt\": \"2026-08-07T07:51:42.238Z\",\n      \"deletedAt\": null\n    }\n  ],\n  \"meta\": {\n    \"channels\": [\n      \"blogPost\"\n    ],\n    \"page\": 1,\n    \"limit\": 15,\n    \"last_page\": 1,\n    \"total\": 1\n  },\n  \"messages\": []\n}",
+    "request": "POST /blog-posts/search\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  \"filters\": [\n    {\n      \"field\": \"id\",\n      \"value\": \"cmsipndfj000eqkvox3sqokng\"\n    }\n  ]\n}",
+    "response": "{\n  \"data\": [\n    {\n      \"id\": \"cmsipndfj000eqkvox3sqokng\",\n      \"tenantId\": \"default\",\n      \"ownerId\": \"cmsipncuz0000qkvodpsstomg\",\n      \"title\": \"Fetched by id\",\n      \"createdAt\": \"2026-08-07T08:56:27.583Z\",\n      \"updatedAt\": \"2026-08-07T08:56:27.583Z\",\n      \"deletedAt\": null\n    }\n  ],\n  \"meta\": {\n    \"channels\": [\n      \"blogPost\"\n    ],\n    \"page\": 1,\n    \"limit\": 15,\n    \"last_page\": 1,\n    \"total\": 1\n  },\n  \"messages\": []\n}",
     "flow": [
       {
         "stage": "middleware",
         "label": "tenant resolution",
         "status": "ok",
-        "durationMs": 6.28868,
+        "durationMs": 8.443827,
         "detail": {
           "tenantId": "default"
         }
@@ -150,16 +150,16 @@ export const searchScenarios: PlaygroundScenario[] = [
         "stage": "guard",
         "label": "session",
         "status": "ok",
-        "durationMs": 0.026792,
+        "durationMs": 0.034786,
         "detail": {
-          "userId": "cmsinc2yj0000gmvo75kb32du"
+          "userId": "cmsipncuz0000qkvodpsstomg"
         }
       },
       {
         "stage": "guard",
         "label": "capability",
         "status": "ok",
-        "durationMs": 0.018088,
+        "durationMs": 0.021329,
         "detail": {
           "policy": "canViewAnyBlogPost",
           "scope": "own"
@@ -169,27 +169,27 @@ export const searchScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 1.2725659999996424,
+        "durationMs": 1.9025339999989228,
         "detail": {
           "sql": "SELECT \"public\".\"BlogPost\".\"id\", \"public\".\"BlogPost\".\"tenantId\", \"public\".\"BlogPost\".\"ownerId\", \"public\".\"BlogPost\".\"title\", \"public\".\"BlogPost\".\"createdAt\", \"public\".\"BlogPost\".\"updatedAt\", \"public\".\"BlogPost\".\"deletedAt\" FROM \"public\".\"BlogPost\" WHERE (\"public\".\"BlogPost\".\"ownerId\" = $1 AND \"public\".\"BlogPost\".\"deletedAt\" IS NULL AND \"public\".\"BlogPost\".\"id\" = $2 AND \"public\".\"BlogPost\".\"tenantId\" = $3) ORDER BY \"public\".\"BlogPost\".\"createdAt\" DESC LIMIT $4 OFFSET $5",
-          "params": "[\"cmsinc2yj0000gmvo75kb32du\",\"cmsinc3ha000egmvoqvctpyo0\",\"default\",\"15\",\"0\"]"
+          "params": "[\"cmsipncuz0000qkvodpsstomg\",\"cmsipndfj000eqkvox3sqokng\",\"default\",\"15\",\"0\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 1.0177640000001702,
+        "durationMs": 1.5192689999985305,
         "detail": {
           "sql": "SELECT COUNT(*) AS \"_count$_all\" FROM (SELECT \"public\".\"BlogPost\".\"id\" FROM \"public\".\"BlogPost\" WHERE (\"public\".\"BlogPost\".\"ownerId\" = $1 AND \"public\".\"BlogPost\".\"deletedAt\" IS NULL AND \"public\".\"BlogPost\".\"id\" = $2 AND \"public\".\"BlogPost\".\"tenantId\" = $3) OFFSET $4) AS \"sub\"",
-          "params": "[\"cmsinc2yj0000gmvo75kb32du\",\"cmsinc3ha000egmvoqvctpyo0\",\"default\",\"0\"]"
+          "params": "[\"cmsipncuz0000qkvodpsstomg\",\"cmsipndfj000eqkvox3sqokng\",\"default\",\"0\"]"
         }
       },
       {
         "stage": "controller",
         "label": "BlogPostController.search",
         "status": "ok",
-        "durationMs": 3.403602
+        "durationMs": 4.178197
       }
     ]
   }
@@ -198,17 +198,17 @@ export const searchScenarios: PlaygroundScenario[] = [
 export const createScenarios: PlaygroundScenario[] = [
   {
     "id": "create",
-    "label": "Créer un article",
+    "label": "Create a post",
     "method": "POST",
     "path": "/blog-posts/create",
     "request": "POST /blog-posts/create\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  \"data\": [\n    {\n      \"title\": \"Hello world\"\n    }\n  ]\n}",
-    "response": "{\n  \"data\": [\n    {\n      \"index\": 0,\n      \"status\": \"ok\",\n      \"data\": {\n        \"id\": \"cmsinc3i9000ggmvopscx1xq8\",\n        \"tenantId\": \"default\",\n        \"ownerId\": \"cmsinc2yj0000gmvo75kb32du\",\n        \"title\": \"Hello world\",\n        \"createdAt\": \"2026-08-07T07:51:42.274Z\",\n        \"updatedAt\": \"2026-08-07T07:51:42.274Z\",\n        \"deletedAt\": null\n      }\n    }\n  ],\n  \"messages\": []\n}",
+    "response": "{\n  \"data\": [\n    {\n      \"index\": 0,\n      \"status\": \"ok\",\n      \"data\": {\n        \"id\": \"cmsipndgv000gqkvobjccv1ko\",\n        \"tenantId\": \"default\",\n        \"ownerId\": \"cmsipncuz0000qkvodpsstomg\",\n        \"title\": \"Hello world\",\n        \"createdAt\": \"2026-08-07T08:56:27.631Z\",\n        \"updatedAt\": \"2026-08-07T08:56:27.631Z\",\n        \"deletedAt\": null\n      }\n    }\n  ],\n  \"messages\": []\n}",
     "flow": [
       {
         "stage": "middleware",
         "label": "tenant resolution",
         "status": "ok",
-        "durationMs": 6.363923,
+        "durationMs": 7.388093,
         "detail": {
           "tenantId": "default"
         }
@@ -217,16 +217,16 @@ export const createScenarios: PlaygroundScenario[] = [
         "stage": "guard",
         "label": "session",
         "status": "ok",
-        "durationMs": 0.034516,
+        "durationMs": 0.049111,
         "detail": {
-          "userId": "cmsinc2yj0000gmvo75kb32du"
+          "userId": "cmsipncuz0000qkvodpsstomg"
         }
       },
       {
         "stage": "guard",
         "label": "capability",
         "status": "ok",
-        "durationMs": 0.018284,
+        "durationMs": 0.031099,
         "detail": {
           "policy": "canCreateBlogPost",
           "scope": "own"
@@ -236,17 +236,17 @@ export const createScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 5.8019500000000335,
+        "durationMs": 6.476744000001418,
         "detail": {
           "sql": "INSERT INTO \"public\".\"BlogPost\" (\"id\",\"tenantId\",\"ownerId\",\"title\",\"createdAt\",\"updatedAt\") VALUES ($1,$2,$3,$4,$5,$6) RETURNING \"public\".\"BlogPost\".\"id\", \"public\".\"BlogPost\".\"tenantId\", \"public\".\"BlogPost\".\"ownerId\", \"public\".\"BlogPost\".\"title\", \"public\".\"BlogPost\".\"createdAt\", \"public\".\"BlogPost\".\"updatedAt\", \"public\".\"BlogPost\".\"deletedAt\"",
-          "params": "[\"cmsinc3i9000ggmvopscx1xq8\",\"default\",\"cmsinc2yj0000gmvo75kb32du\",\"Hello world\",\"2026-08-07T07:51:42.274Z\",\"2026-08-07T07:51:42.274Z\"]"
+          "params": "[\"cmsipndgv000gqkvobjccv1ko\",\"default\",\"cmsipncuz0000qkvodpsstomg\",\"Hello world\",\"2026-08-07T08:56:27.631Z\",\"2026-08-07T08:56:27.631Z\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.6041949999998906,
+        "durationMs": 0.5603080000000773,
         "detail": {
           "sql": "SELECT pg_advisory_xact_lock(hashtext($1))",
           "params": "[\"default\"]"
@@ -256,7 +256,7 @@ export const createScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.856127999999444,
+        "durationMs": 1.1978170000002137,
         "detail": {
           "sql": "SELECT \"public\".\"AuditLog\".\"id\", \"public\".\"AuditLog\".\"sequence\", \"public\".\"AuditLog\".\"tenantId\", \"public\".\"AuditLog\".\"model\", \"public\".\"AuditLog\".\"operation\", \"public\".\"AuditLog\".\"recordId\", \"public\".\"AuditLog\".\"data\", \"public\".\"AuditLog\".\"userId\", \"public\".\"AuditLog\".\"impersonatedBy\", \"public\".\"AuditLog\".\"hash\", \"public\".\"AuditLog\".\"previousHash\", \"public\".\"AuditLog\".\"createdAt\" FROM \"public\".\"AuditLog\" WHERE \"public\".\"AuditLog\".\"tenantId\" = $1 ORDER BY \"public\".\"AuditLog\".\"sequence\" DESC LIMIT $2 OFFSET $3",
           "params": "[\"default\",\"1\",\"0\"]"
@@ -266,17 +266,17 @@ export const createScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.9342820000001666,
+        "durationMs": 0.9542119999987335,
         "detail": {
           "sql": "INSERT INTO \"public\".\"AuditLog\" (\"id\",\"tenantId\",\"model\",\"operation\",\"recordId\",\"data\",\"userId\",\"impersonatedBy\",\"hash\",\"previousHash\",\"createdAt\") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING \"public\".\"AuditLog\".\"id\", \"public\".\"AuditLog\".\"sequence\", \"public\".\"AuditLog\".\"tenantId\", \"public\".\"AuditLog\".\"model\", \"public\".\"AuditLog\".\"operation\", \"public\".\"AuditLog\".\"recordId\", \"public\".\"AuditLog\".\"data\", \"public\".\"AuditLog\".\"userId\", \"public\".\"AuditLog\".\"impersonatedBy\", \"public\".\"AuditLog\".\"hash\", \"public\".\"AuditLog\".\"previousHash\", \"public\".\"AuditLog\".\"createdAt\"",
-          "params": "[\"cmsinc3ij000hgmvonem8q0vh\",\"default\",\"BlogPost\",\"create\",\"cmsinc3i9000ggmvopscx1xq8\",\"{\\\"id\\\":\\\"cmsinc3i9000ggmvopscx1xq8\\\",\\\"tenantId\\\":\\\"default\\\",\\\"ownerId\\\":\\\"cmsinc2yj0000gmvo75kb32du\\\",\\\"title\\\":\\\"Hello world\\\",\\\"createdAt\\\":\\\"2026-08-07T07:51:42.274Z\\\",\\\"updatedAt\\\":\\\"2026-08-07T07:51:42.274Z\\\",\\\"deletedAt\\\":null}\",\"cmsinc2yj0000gmvo75kb32du\",null,\"ec8769631ebb1ebc7a5167d6e3997715ff648004c1ca265dc69967cf31505302\",\"cdacae3fff1cf3ed4f51dec735000cea57519f2da0c4a720c14e77f823d3f7d6\",\"2026-08-07T07:51:42.283Z\"]"
+          "params": "[\"cmsipndh6000hqkvoxjtyyhry\",\"default\",\"BlogPost\",\"create\",\"cmsipndgv000gqkvobjccv1ko\",\"{\\\"id\\\":\\\"cmsipndgv000gqkvobjccv1ko\\\",\\\"tenantId\\\":\\\"default\\\",\\\"ownerId\\\":\\\"cmsipncuz0000qkvodpsstomg\\\",\\\"title\\\":\\\"Hello world\\\",\\\"createdAt\\\":\\\"2026-08-07T08:56:27.631Z\\\",\\\"updatedAt\\\":\\\"2026-08-07T08:56:27.631Z\\\",\\\"deletedAt\\\":null}\",\"cmsipncuz0000qkvodpsstomg\",null,\"23b92ce708237d8fe53b9f5dd5e67f3b4faa50c12c2426a9fc20b8673317b9f3\",\"d57673ff7c0befa2294d5a8310f7b3392983e95c424b9f516bf18b528e274062\",\"2026-08-07T08:56:27.642Z\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 3.054414000000179,
+        "durationMs": 3.998273999999583,
         "detail": {
           "sql": "COMMIT",
           "params": "[]"
@@ -286,13 +286,13 @@ export const createScenarios: PlaygroundScenario[] = [
         "stage": "controller",
         "label": "BlogPostController.create",
         "status": "ok",
-        "durationMs": 15.050444
+        "durationMs": 16.717287
       }
     ]
   },
   {
     "id": "validation-failed",
-    "label": "Payload invalide",
+    "label": "Invalid payload",
     "method": "POST",
     "path": "/blog-posts/create",
     "request": "POST /blog-posts/create\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  \"data\": [\n    {}\n  ]\n}",
@@ -302,7 +302,7 @@ export const createScenarios: PlaygroundScenario[] = [
         "stage": "middleware",
         "label": "tenant resolution",
         "status": "ok",
-        "durationMs": 5.819563,
+        "durationMs": 6.252832,
         "detail": {
           "tenantId": "default"
         }
@@ -311,16 +311,16 @@ export const createScenarios: PlaygroundScenario[] = [
         "stage": "guard",
         "label": "session",
         "status": "ok",
-        "durationMs": 0.031304,
+        "durationMs": 0.035217,
         "detail": {
-          "userId": "cmsinc2yj0000gmvo75kb32du"
+          "userId": "cmsipncuz0000qkvodpsstomg"
         }
       },
       {
         "stage": "guard",
         "label": "capability",
         "status": "ok",
-        "durationMs": 0.028711,
+        "durationMs": 0.023633,
         "detail": {
           "policy": "canCreateBlogPost",
           "scope": "own"
@@ -330,7 +330,7 @@ export const createScenarios: PlaygroundScenario[] = [
         "stage": "controller",
         "label": "BlogPostController.create",
         "status": "error",
-        "durationMs": 1.090365,
+        "durationMs": 1.217512,
         "detail": {
           "message": "Bad Request Exception"
         }
@@ -342,17 +342,17 @@ export const createScenarios: PlaygroundScenario[] = [
 export const updateScenarios: PlaygroundScenario[] = [
   {
     "id": "update",
-    "label": "Mettre à jour un champ",
+    "label": "Update one field",
     "method": "POST",
     "path": "/blog-posts/update",
-    "request": "POST /blog-posts/update\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  \"data\": [\n    {\n      \"id\": \"cmsinc3j9000igmvo7b2z5tn4\",\n      \"title\": \"Hello world (v2)\"\n    }\n  ]\n}",
-    "response": "{\n  \"data\": [\n    {\n      \"index\": 0,\n      \"id\": \"cmsinc3j9000igmvo7b2z5tn4\",\n      \"status\": \"ok\",\n      \"data\": {\n        \"id\": \"cmsinc3j9000igmvo7b2z5tn4\",\n        \"tenantId\": \"default\",\n        \"ownerId\": \"cmsinc2yj0000gmvo75kb32du\",\n        \"title\": \"Hello world (v2)\",\n        \"createdAt\": \"2026-08-07T07:51:42.309Z\",\n        \"updatedAt\": \"2026-08-07T07:51:42.342Z\",\n        \"deletedAt\": null\n      }\n    }\n  ],\n  \"messages\": []\n}",
+    "request": "POST /blog-posts/update\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  \"data\": [\n    {\n      \"id\": \"cmsipndhw000iqkvobux5zb7n\",\n      \"title\": \"Hello world (v2)\"\n    }\n  ]\n}",
+    "response": "{\n  \"data\": [\n    {\n      \"index\": 0,\n      \"id\": \"cmsipndhw000iqkvobux5zb7n\",\n      \"status\": \"ok\",\n      \"data\": {\n        \"id\": \"cmsipndhw000iqkvobux5zb7n\",\n        \"tenantId\": \"default\",\n        \"ownerId\": \"cmsipncuz0000qkvodpsstomg\",\n        \"title\": \"Hello world (v2)\",\n        \"createdAt\": \"2026-08-07T08:56:27.668Z\",\n        \"updatedAt\": \"2026-08-07T08:56:27.698Z\",\n        \"deletedAt\": null\n      }\n    }\n  ],\n  \"messages\": []\n}",
     "flow": [
       {
         "stage": "middleware",
         "label": "tenant resolution",
         "status": "ok",
-        "durationMs": 6.441739,
+        "durationMs": 6.014755,
         "detail": {
           "tenantId": "default"
         }
@@ -361,16 +361,16 @@ export const updateScenarios: PlaygroundScenario[] = [
         "stage": "guard",
         "label": "session",
         "status": "ok",
-        "durationMs": 0.030238,
+        "durationMs": 0.044076,
         "detail": {
-          "userId": "cmsinc2yj0000gmvo75kb32du"
+          "userId": "cmsipncuz0000qkvodpsstomg"
         }
       },
       {
         "stage": "guard",
         "label": "capability",
         "status": "ok",
-        "durationMs": 0.088079,
+        "durationMs": 0.099189,
         "detail": {
           "policy": "canUpdateAnyBlogPost",
           "scope": "own"
@@ -380,27 +380,27 @@ export const updateScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.6756830000003902,
+        "durationMs": 0.7661580000003596,
         "detail": {
           "sql": "SELECT \"public\".\"BlogPost\".\"id\", \"public\".\"BlogPost\".\"tenantId\", \"public\".\"BlogPost\".\"ownerId\", \"public\".\"BlogPost\".\"title\", \"public\".\"BlogPost\".\"createdAt\", \"public\".\"BlogPost\".\"updatedAt\", \"public\".\"BlogPost\".\"deletedAt\" FROM \"public\".\"BlogPost\" WHERE (\"public\".\"BlogPost\".\"id\" = $1 AND \"public\".\"BlogPost\".\"tenantId\" = $2) LIMIT $3 OFFSET $4",
-          "params": "[\"cmsinc3j9000igmvo7b2z5tn4\",\"default\",\"1\",\"0\"]"
+          "params": "[\"cmsipndhw000iqkvobux5zb7n\",\"default\",\"1\",\"0\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 2.8048760000001494,
+        "durationMs": 4.269123000000036,
         "detail": {
           "sql": "UPDATE \"public\".\"BlogPost\" SET \"title\" = $1, \"updatedAt\" = $2 WHERE (\"public\".\"BlogPost\".\"id\" = $3 AND \"public\".\"BlogPost\".\"tenantId\" = $4) RETURNING \"public\".\"BlogPost\".\"id\", \"public\".\"BlogPost\".\"tenantId\", \"public\".\"BlogPost\".\"ownerId\", \"public\".\"BlogPost\".\"title\", \"public\".\"BlogPost\".\"createdAt\", \"public\".\"BlogPost\".\"updatedAt\", \"public\".\"BlogPost\".\"deletedAt\"",
-          "params": "[\"Hello world (v2)\",\"2026-08-07T07:51:42.342Z\",\"cmsinc3j9000igmvo7b2z5tn4\",\"default\"]"
+          "params": "[\"Hello world (v2)\",\"2026-08-07T08:56:27.698Z\",\"cmsipndhw000iqkvobux5zb7n\",\"default\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.5254809999996723,
+        "durationMs": 0.5978560000003199,
         "detail": {
           "sql": "SELECT pg_advisory_xact_lock(hashtext($1))",
           "params": "[\"default\"]"
@@ -410,7 +410,7 @@ export const updateScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.5359589999998207,
+        "durationMs": 0.8107300000010582,
         "detail": {
           "sql": "SELECT \"public\".\"AuditLog\".\"id\", \"public\".\"AuditLog\".\"sequence\", \"public\".\"AuditLog\".\"tenantId\", \"public\".\"AuditLog\".\"model\", \"public\".\"AuditLog\".\"operation\", \"public\".\"AuditLog\".\"recordId\", \"public\".\"AuditLog\".\"data\", \"public\".\"AuditLog\".\"userId\", \"public\".\"AuditLog\".\"impersonatedBy\", \"public\".\"AuditLog\".\"hash\", \"public\".\"AuditLog\".\"previousHash\", \"public\".\"AuditLog\".\"createdAt\" FROM \"public\".\"AuditLog\" WHERE \"public\".\"AuditLog\".\"tenantId\" = $1 ORDER BY \"public\".\"AuditLog\".\"sequence\" DESC LIMIT $2 OFFSET $3",
           "params": "[\"default\",\"1\",\"0\"]"
@@ -420,17 +420,17 @@ export const updateScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.9348270000000412,
+        "durationMs": 0.9562340000011318,
         "detail": {
           "sql": "INSERT INTO \"public\".\"AuditLog\" (\"id\",\"tenantId\",\"model\",\"operation\",\"recordId\",\"data\",\"userId\",\"impersonatedBy\",\"hash\",\"previousHash\",\"createdAt\") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING \"public\".\"AuditLog\".\"id\", \"public\".\"AuditLog\".\"sequence\", \"public\".\"AuditLog\".\"tenantId\", \"public\".\"AuditLog\".\"model\", \"public\".\"AuditLog\".\"operation\", \"public\".\"AuditLog\".\"recordId\", \"public\".\"AuditLog\".\"data\", \"public\".\"AuditLog\".\"userId\", \"public\".\"AuditLog\".\"impersonatedBy\", \"public\".\"AuditLog\".\"hash\", \"public\".\"AuditLog\".\"previousHash\", \"public\".\"AuditLog\".\"createdAt\"",
-          "params": "[\"cmsinc3kc000kgmvo60a2vqqj\",\"default\",\"BlogPost\",\"update\",\"cmsinc3j9000igmvo7b2z5tn4\",\"{\\\"id\\\":\\\"cmsinc3j9000igmvo7b2z5tn4\\\",\\\"tenantId\\\":\\\"default\\\",\\\"ownerId\\\":\\\"cmsinc2yj0000gmvo75kb32du\\\",\\\"title\\\":\\\"Hello world (v2)\\\",\\\"createdAt\\\":\\\"2026-08-07T07:51:42.309Z\\\",\\\"updatedAt\\\":\\\"2026-08-07T07:51:42.342Z\\\",\\\"deletedAt\\\":null}\",\"cmsinc2yj0000gmvo75kb32du\",null,\"35a1d6587956adf6fba98311d055cda9cc078a5ff87efded74d17f659a46e6f6\",\"4360860ab7cac5f6595918cd3b2e43706d7ceedf17d8e077426a4c1aa5751e22\",\"2026-08-07T07:51:42.348Z\"]"
+          "params": "[\"cmsipndiy000kqkvospnvq15l\",\"default\",\"BlogPost\",\"update\",\"cmsipndhw000iqkvobux5zb7n\",\"{\\\"id\\\":\\\"cmsipndhw000iqkvobux5zb7n\\\",\\\"tenantId\\\":\\\"default\\\",\\\"ownerId\\\":\\\"cmsipncuz0000qkvodpsstomg\\\",\\\"title\\\":\\\"Hello world (v2)\\\",\\\"createdAt\\\":\\\"2026-08-07T08:56:27.668Z\\\",\\\"updatedAt\\\":\\\"2026-08-07T08:56:27.698Z\\\",\\\"deletedAt\\\":null}\",\"cmsipncuz0000qkvodpsstomg\",null,\"84a95f4f6fc70b6f9e3a120485c51cf742f9921bfbecde64e8c94a16c1076643\",\"771d7ab0137766fb6ff5d78fefef12e9ebbae6c11b1918f0172da639f866a29a\",\"2026-08-07T08:56:27.706Z\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 5.1163729999998395,
+        "durationMs": 3.4194210000005114,
         "detail": {
           "sql": "COMMIT",
           "params": "[]"
@@ -440,23 +440,23 @@ export const updateScenarios: PlaygroundScenario[] = [
         "stage": "controller",
         "label": "BlogPostController.update",
         "status": "ok",
-        "durationMs": 16.108304
+        "durationMs": 17.511096
       }
     ]
   },
   {
     "id": "attach-tags",
-    "label": "Attacher un tag",
+    "label": "Attach a tag",
     "method": "POST",
     "path": "/blog-posts/update",
-    "request": "POST /blog-posts/update\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  \"data\": [\n    {\n      \"id\": \"cmsinc3ks000lgmvoc5gb0pga\",\n      \"relations\": {\n        \"tags\": {\n          \"attach\": [\n            \"cmsinc3l5000ngmvourvgbakw\"\n          ]\n        }\n      }\n    }\n  ]\n}",
-    "response": "{\n  \"data\": [\n    {\n      \"index\": 0,\n      \"id\": \"cmsinc3ks000lgmvoc5gb0pga\",\n      \"status\": \"ok\",\n      \"data\": {\n        \"id\": \"cmsinc3ks000lgmvoc5gb0pga\",\n        \"tenantId\": \"default\",\n        \"ownerId\": \"cmsinc2yj0000gmvo75kb32du\",\n        \"title\": \"Tagged article\",\n        \"createdAt\": \"2026-08-07T07:51:42.364Z\",\n        \"updatedAt\": \"2026-08-07T07:51:42.364Z\",\n        \"deletedAt\": null,\n        \"tags\": [\n          \"cmsinc3l5000ngmvourvgbakw\"\n        ]\n      }\n    }\n  ],\n  \"messages\": []\n}",
+    "request": "POST /blog-posts/update\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  \"data\": [\n    {\n      \"id\": \"cmsipndjd000lqkvo1sqyynno\",\n      \"relations\": {\n        \"tags\": {\n          \"attach\": [\n            \"cmsipndjx000nqkvo9nen55qs\"\n          ]\n        }\n      }\n    }\n  ]\n}",
+    "response": "{\n  \"data\": [\n    {\n      \"index\": 0,\n      \"id\": \"cmsipndjd000lqkvo1sqyynno\",\n      \"status\": \"ok\",\n      \"data\": {\n        \"id\": \"cmsipndjd000lqkvo1sqyynno\",\n        \"tenantId\": \"default\",\n        \"ownerId\": \"cmsipncuz0000qkvodpsstomg\",\n        \"title\": \"Tagged article\",\n        \"createdAt\": \"2026-08-07T08:56:27.721Z\",\n        \"updatedAt\": \"2026-08-07T08:56:27.721Z\",\n        \"deletedAt\": null,\n        \"tags\": [\n          \"cmsipndjx000nqkvo9nen55qs\"\n        ]\n      }\n    }\n  ],\n  \"messages\": []\n}",
     "flow": [
       {
         "stage": "middleware",
         "label": "tenant resolution",
         "status": "ok",
-        "durationMs": 6.308666,
+        "durationMs": 5.122096,
         "detail": {
           "tenantId": "default"
         }
@@ -465,16 +465,16 @@ export const updateScenarios: PlaygroundScenario[] = [
         "stage": "guard",
         "label": "session",
         "status": "ok",
-        "durationMs": 0.022631,
+        "durationMs": 0.02155,
         "detail": {
-          "userId": "cmsinc2yj0000gmvo75kb32du"
+          "userId": "cmsipncuz0000qkvodpsstomg"
         }
       },
       {
         "stage": "guard",
         "label": "capability",
         "status": "ok",
-        "durationMs": 0.014189,
+        "durationMs": 0.014228,
         "detail": {
           "policy": "canUpdateAnyBlogPost",
           "scope": "own"
@@ -484,27 +484,27 @@ export const updateScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.727827000000616,
+        "durationMs": 0.663855999999214,
         "detail": {
           "sql": "SELECT \"public\".\"BlogPost\".\"id\", \"public\".\"BlogPost\".\"tenantId\", \"public\".\"BlogPost\".\"ownerId\", \"public\".\"BlogPost\".\"title\", \"public\".\"BlogPost\".\"createdAt\", \"public\".\"BlogPost\".\"updatedAt\", \"public\".\"BlogPost\".\"deletedAt\" FROM \"public\".\"BlogPost\" WHERE (\"public\".\"BlogPost\".\"id\" = $1 AND \"public\".\"BlogPost\".\"tenantId\" = $2) LIMIT $3 OFFSET $4",
-          "params": "[\"cmsinc3ks000lgmvoc5gb0pga\",\"default\",\"1\",\"0\"]"
+          "params": "[\"cmsipndjd000lqkvo1sqyynno\",\"default\",\"1\",\"0\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.9063270000006014,
+        "durationMs": 0.5904909999990196,
         "detail": {
           "sql": "SELECT \"public\".\"BlogPost\".\"id\", \"public\".\"BlogPost\".\"tenantId\", \"public\".\"BlogPost\".\"ownerId\", \"public\".\"BlogPost\".\"title\", \"public\".\"BlogPost\".\"createdAt\", \"public\".\"BlogPost\".\"updatedAt\", \"public\".\"BlogPost\".\"deletedAt\" FROM \"public\".\"BlogPost\" WHERE (\"public\".\"BlogPost\".\"id\" = $1 AND \"public\".\"BlogPost\".\"tenantId\" = $2) LIMIT $3 OFFSET $4",
-          "params": "[\"cmsinc3ks000lgmvoc5gb0pga\",\"default\",\"1\",\"0\"]"
+          "params": "[\"cmsipndjd000lqkvo1sqyynno\",\"default\",\"1\",\"0\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.48568100000011327,
+        "durationMs": 0.5103079999989859,
         "detail": {
           "sql": "SELECT pg_advisory_xact_lock(hashtext($1))",
           "params": "[\"default\"]"
@@ -514,7 +514,7 @@ export const updateScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.8605530000004364,
+        "durationMs": 0.6611630000006699,
         "detail": {
           "sql": "SELECT \"public\".\"AuditLog\".\"id\", \"public\".\"AuditLog\".\"sequence\", \"public\".\"AuditLog\".\"tenantId\", \"public\".\"AuditLog\".\"model\", \"public\".\"AuditLog\".\"operation\", \"public\".\"AuditLog\".\"recordId\", \"public\".\"AuditLog\".\"data\", \"public\".\"AuditLog\".\"userId\", \"public\".\"AuditLog\".\"impersonatedBy\", \"public\".\"AuditLog\".\"hash\", \"public\".\"AuditLog\".\"previousHash\", \"public\".\"AuditLog\".\"createdAt\" FROM \"public\".\"AuditLog\" WHERE \"public\".\"AuditLog\".\"tenantId\" = $1 ORDER BY \"public\".\"AuditLog\".\"sequence\" DESC LIMIT $2 OFFSET $3",
           "params": "[\"default\",\"1\",\"0\"]"
@@ -524,17 +524,17 @@ export const updateScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.8430669999997917,
+        "durationMs": 0.6883299999990413,
         "detail": {
           "sql": "INSERT INTO \"public\".\"AuditLog\" (\"id\",\"tenantId\",\"model\",\"operation\",\"recordId\",\"data\",\"userId\",\"impersonatedBy\",\"hash\",\"previousHash\",\"createdAt\") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING \"public\".\"AuditLog\".\"id\", \"public\".\"AuditLog\".\"sequence\", \"public\".\"AuditLog\".\"tenantId\", \"public\".\"AuditLog\".\"model\", \"public\".\"AuditLog\".\"operation\", \"public\".\"AuditLog\".\"recordId\", \"public\".\"AuditLog\".\"data\", \"public\".\"AuditLog\".\"userId\", \"public\".\"AuditLog\".\"impersonatedBy\", \"public\".\"AuditLog\".\"hash\", \"public\".\"AuditLog\".\"previousHash\", \"public\".\"AuditLog\".\"createdAt\"",
-          "params": "[\"cmsinc3ly000ogmvoqmo4zok8\",\"default\",\"BlogPost\",\"update\",\"cmsinc3ks000lgmvoc5gb0pga\",\"{\\\"id\\\":\\\"cmsinc3ks000lgmvoc5gb0pga\\\",\\\"tenantId\\\":\\\"default\\\",\\\"ownerId\\\":\\\"cmsinc2yj0000gmvo75kb32du\\\",\\\"title\\\":\\\"Tagged article\\\",\\\"createdAt\\\":\\\"2026-08-07T07:51:42.364Z\\\",\\\"updatedAt\\\":\\\"2026-08-07T07:51:42.364Z\\\",\\\"deletedAt\\\":null}\",\"cmsinc2yj0000gmvo75kb32du\",null,\"555337ca0006bdaee0a94fb364135788b01e90ed171f2d218d1aeca56daef207\",\"83ccea88f5652c2ce35e13cd06b62911382292ec4230a75eaa60d0a1f1190c33\",\"2026-08-07T07:51:42.406Z\"]"
+          "params": "[\"cmsipndkn000oqkvo3sgfi57a\",\"default\",\"BlogPost\",\"update\",\"cmsipndjd000lqkvo1sqyynno\",\"{\\\"id\\\":\\\"cmsipndjd000lqkvo1sqyynno\\\",\\\"tenantId\\\":\\\"default\\\",\\\"ownerId\\\":\\\"cmsipncuz0000qkvodpsstomg\\\",\\\"title\\\":\\\"Tagged article\\\",\\\"createdAt\\\":\\\"2026-08-07T08:56:27.721Z\\\",\\\"updatedAt\\\":\\\"2026-08-07T08:56:27.721Z\\\",\\\"deletedAt\\\":null}\",\"cmsipncuz0000qkvodpsstomg\",null,\"9e8fc4025b2c16f3d7fc510c0890639b7f400e8067d85bcd8d9d6c4f395e5379\",\"3bd337d939ab1fc0d9aae5e44d0d085ccc316231c436a7b7fa3499d1307d76cc\",\"2026-08-07T08:56:27.767Z\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 2.4538570000004256,
+        "durationMs": 3.374046000000817,
         "detail": {
           "sql": "COMMIT",
           "params": "[]"
@@ -544,17 +544,17 @@ export const updateScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 1.7584379999998418,
+        "durationMs": 1.6575990000001184,
         "detail": {
           "sql": "INSERT INTO \"public\".\"BlogPostTag\" (\"tenantId\",\"blogPostId\",\"tagId\",\"createdAt\") VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING",
-          "params": "[\"default\",\"cmsinc3ks000lgmvoc5gb0pga\",\"cmsinc3l5000ngmvourvgbakw\",\"2026-08-07T07:51:42.413Z\"]"
+          "params": "[\"default\",\"cmsipndjd000lqkvo1sqyynno\",\"cmsipndjx000nqkvo9nen55qs\",\"2026-08-07T08:56:27.775Z\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 2.2975450000003548,
+        "durationMs": 3.7386940000014874,
         "detail": {
           "sql": "COMMIT",
           "params": "[]"
@@ -564,17 +564,17 @@ export const updateScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.7609599999996135,
+        "durationMs": 1.2967850000004546,
         "detail": {
           "sql": "SELECT \"public\".\"BlogPostTag\".\"blogPostId\", \"public\".\"BlogPostTag\".\"tagId\" FROM \"public\".\"BlogPostTag\" WHERE (\"public\".\"BlogPostTag\".\"blogPostId\" = $1 AND \"public\".\"BlogPostTag\".\"tenantId\" = $2) OFFSET $3",
-          "params": "[\"cmsinc3ks000lgmvoc5gb0pga\",\"default\",\"0\"]"
+          "params": "[\"cmsipndjd000lqkvo1sqyynno\",\"default\",\"0\"]"
         }
       },
       {
         "stage": "controller",
         "label": "BlogPostController.update",
         "status": "ok",
-        "durationMs": 20.408242
+        "durationMs": 22.657503
       }
     ]
   }
@@ -583,17 +583,17 @@ export const updateScenarios: PlaygroundScenario[] = [
 export const deleteScenarios: PlaygroundScenario[] = [
   {
     "id": "soft",
-    "label": "Suppression douce",
+    "label": "Soft delete",
     "method": "POST",
     "path": "/blog-posts/delete",
-    "request": "POST /blog-posts/delete\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  \"ids\": [\n    \"cmsinc3mj000pgmvozj1een3k\"\n  ]\n}",
-    "response": "{\n  \"data\": [\n    {\n      \"index\": 0,\n      \"id\": \"cmsinc3mj000pgmvozj1een3k\",\n      \"status\": \"ok\",\n      \"data\": {\n        \"id\": \"cmsinc3mj000pgmvozj1een3k\",\n        \"tenantId\": \"default\",\n        \"ownerId\": \"cmsinc2yj0000gmvo75kb32du\",\n        \"title\": \"Hello world\",\n        \"createdAt\": \"2026-08-07T07:51:42.428Z\",\n        \"updatedAt\": \"2026-08-07T07:51:42.447Z\",\n        \"deletedAt\": \"2026-08-07T07:51:42.446Z\"\n      }\n    }\n  ],\n  \"messages\": []\n}",
+    "request": "POST /blog-posts/delete\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  \"ids\": [\n    \"cmsipndlc000pqkvo8zihb1b3\"\n  ]\n}",
+    "response": "{\n  \"data\": [\n    {\n      \"index\": 0,\n      \"id\": \"cmsipndlc000pqkvo8zihb1b3\",\n      \"status\": \"ok\",\n      \"data\": {\n        \"id\": \"cmsipndlc000pqkvo8zihb1b3\",\n        \"tenantId\": \"default\",\n        \"ownerId\": \"cmsipncuz0000qkvodpsstomg\",\n        \"title\": \"Hello world\",\n        \"createdAt\": \"2026-08-07T08:56:27.792Z\",\n        \"updatedAt\": \"2026-08-07T08:56:27.826Z\",\n        \"deletedAt\": \"2026-08-07T08:56:27.822Z\"\n      }\n    }\n  ],\n  \"messages\": []\n}",
     "flow": [
       {
         "stage": "middleware",
         "label": "tenant resolution",
         "status": "ok",
-        "durationMs": 5.268085,
+        "durationMs": 7.077258,
         "detail": {
           "tenantId": "default"
         }
@@ -602,16 +602,16 @@ export const deleteScenarios: PlaygroundScenario[] = [
         "stage": "guard",
         "label": "session",
         "status": "ok",
-        "durationMs": 0.023847,
+        "durationMs": 0.034678,
         "detail": {
-          "userId": "cmsinc2yj0000gmvo75kb32du"
+          "userId": "cmsipncuz0000qkvodpsstomg"
         }
       },
       {
         "stage": "guard",
         "label": "capability",
         "status": "ok",
-        "durationMs": 0.068524,
+        "durationMs": 0.082345,
         "detail": {
           "policy": "canDeleteAnyBlogPost",
           "scope": "own"
@@ -621,27 +621,27 @@ export const deleteScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.8533010000001013,
+        "durationMs": 1.642084999999497,
         "detail": {
           "sql": "SELECT \"public\".\"BlogPost\".\"id\", \"public\".\"BlogPost\".\"tenantId\", \"public\".\"BlogPost\".\"ownerId\", \"public\".\"BlogPost\".\"title\", \"public\".\"BlogPost\".\"createdAt\", \"public\".\"BlogPost\".\"updatedAt\", \"public\".\"BlogPost\".\"deletedAt\" FROM \"public\".\"BlogPost\" WHERE (\"public\".\"BlogPost\".\"id\" = $1 AND \"public\".\"BlogPost\".\"tenantId\" = $2) LIMIT $3 OFFSET $4",
-          "params": "[\"cmsinc3mj000pgmvozj1een3k\",\"default\",\"1\",\"0\"]"
+          "params": "[\"cmsipndlc000pqkvo8zihb1b3\",\"default\",\"1\",\"0\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 4.125358999999662,
+        "durationMs": 4.881038999999873,
         "detail": {
           "sql": "UPDATE \"public\".\"BlogPost\" SET \"deletedAt\" = $1, \"updatedAt\" = $2 WHERE (\"public\".\"BlogPost\".\"id\" = $3 AND \"public\".\"BlogPost\".\"tenantId\" = $4) RETURNING \"public\".\"BlogPost\".\"id\", \"public\".\"BlogPost\".\"tenantId\", \"public\".\"BlogPost\".\"ownerId\", \"public\".\"BlogPost\".\"title\", \"public\".\"BlogPost\".\"createdAt\", \"public\".\"BlogPost\".\"updatedAt\", \"public\".\"BlogPost\".\"deletedAt\"",
-          "params": "[\"2026-08-07T07:51:42.446Z\",\"2026-08-07T07:51:42.447Z\",\"cmsinc3mj000pgmvozj1een3k\",\"default\"]"
+          "params": "[\"2026-08-07T08:56:27.822Z\",\"2026-08-07T08:56:27.826Z\",\"cmsipndlc000pqkvo8zihb1b3\",\"default\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.5046740000007048,
+        "durationMs": 0.7019140000011248,
         "detail": {
           "sql": "SELECT pg_advisory_xact_lock(hashtext($1))",
           "params": "[\"default\"]"
@@ -651,7 +651,7 @@ export const deleteScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.6761210000004212,
+        "durationMs": 0.8285009999999602,
         "detail": {
           "sql": "SELECT \"public\".\"AuditLog\".\"id\", \"public\".\"AuditLog\".\"sequence\", \"public\".\"AuditLog\".\"tenantId\", \"public\".\"AuditLog\".\"model\", \"public\".\"AuditLog\".\"operation\", \"public\".\"AuditLog\".\"recordId\", \"public\".\"AuditLog\".\"data\", \"public\".\"AuditLog\".\"userId\", \"public\".\"AuditLog\".\"impersonatedBy\", \"public\".\"AuditLog\".\"hash\", \"public\".\"AuditLog\".\"previousHash\", \"public\".\"AuditLog\".\"createdAt\" FROM \"public\".\"AuditLog\" WHERE \"public\".\"AuditLog\".\"tenantId\" = $1 ORDER BY \"public\".\"AuditLog\".\"sequence\" DESC LIMIT $2 OFFSET $3",
           "params": "[\"default\",\"1\",\"0\"]"
@@ -661,17 +661,17 @@ export const deleteScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.9949930000002496,
+        "durationMs": 1.0778989999998885,
         "detail": {
           "sql": "INSERT INTO \"public\".\"AuditLog\" (\"id\",\"tenantId\",\"model\",\"operation\",\"recordId\",\"data\",\"userId\",\"impersonatedBy\",\"hash\",\"previousHash\",\"createdAt\") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING \"public\".\"AuditLog\".\"id\", \"public\".\"AuditLog\".\"sequence\", \"public\".\"AuditLog\".\"tenantId\", \"public\".\"AuditLog\".\"model\", \"public\".\"AuditLog\".\"operation\", \"public\".\"AuditLog\".\"recordId\", \"public\".\"AuditLog\".\"data\", \"public\".\"AuditLog\".\"userId\", \"public\".\"AuditLog\".\"impersonatedBy\", \"public\".\"AuditLog\".\"hash\", \"public\".\"AuditLog\".\"previousHash\", \"public\".\"AuditLog\".\"createdAt\"",
-          "params": "[\"cmsinc3na000rgmvo553tudv0\",\"default\",\"BlogPost\",\"update\",\"cmsinc3mj000pgmvozj1een3k\",\"{\\\"id\\\":\\\"cmsinc3mj000pgmvozj1een3k\\\",\\\"tenantId\\\":\\\"default\\\",\\\"ownerId\\\":\\\"cmsinc2yj0000gmvo75kb32du\\\",\\\"title\\\":\\\"Hello world\\\",\\\"createdAt\\\":\\\"2026-08-07T07:51:42.428Z\\\",\\\"updatedAt\\\":\\\"2026-08-07T07:51:42.447Z\\\",\\\"deletedAt\\\":\\\"2026-08-07T07:51:42.446Z\\\"}\",\"cmsinc2yj0000gmvo75kb32du\",null,\"c30151301fa687776b1a56984b680f5d0600e041e3a48652dbe9434c76057b75\",\"58f43f232f8fa222ae0b81b7e61acc9834fc4fbf1942687c0c82ec7af9309b68\",\"2026-08-07T07:51:42.454Z\"]"
+          "params": "[\"cmsipndmj000rqkvo34jz84xm\",\"default\",\"BlogPost\",\"update\",\"cmsipndlc000pqkvo8zihb1b3\",\"{\\\"id\\\":\\\"cmsipndlc000pqkvo8zihb1b3\\\",\\\"tenantId\\\":\\\"default\\\",\\\"ownerId\\\":\\\"cmsipncuz0000qkvodpsstomg\\\",\\\"title\\\":\\\"Hello world\\\",\\\"createdAt\\\":\\\"2026-08-07T08:56:27.792Z\\\",\\\"updatedAt\\\":\\\"2026-08-07T08:56:27.826Z\\\",\\\"deletedAt\\\":\\\"2026-08-07T08:56:27.822Z\\\"}\",\"cmsipncuz0000qkvodpsstomg\",null,\"bfaf233db658d6031aab8fda80c7028b3209d155a612ca31217e9fdb8819cc8a\",\"7fc2816827b5792e3d12d0b338d1e3b625003d3ecf7f23d9a7e2bc5f6d2da16b\",\"2026-08-07T08:56:27.835Z\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 2.321037000000615,
+        "durationMs": 4.0359929999995074,
         "detail": {
           "sql": "COMMIT",
           "params": "[]"
@@ -681,23 +681,23 @@ export const deleteScenarios: PlaygroundScenario[] = [
         "stage": "controller",
         "label": "BlogPostController.remove",
         "status": "ok",
-        "durationMs": 13.655729
+        "durationMs": 21.927607
       }
     ]
   },
   {
     "id": "hard",
-    "label": "Suppression définitive",
+    "label": "Hard delete",
     "method": "POST",
     "path": "/blog-posts/delete",
-    "request": "POST /blog-posts/delete\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  \"ids\": [\n    \"cmsinc3nm000sgmvo4fq1q8tt\"\n  ],\n  \"mode\": \"hard\"\n}",
-    "response": "{\n  \"data\": [\n    {\n      \"index\": 0,\n      \"id\": \"cmsinc3nm000sgmvo4fq1q8tt\",\n      \"status\": \"ok\",\n      \"data\": null\n    }\n  ],\n  \"messages\": []\n}",
+    "request": "POST /blog-posts/delete\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  \"ids\": [\n    \"cmsipndn1000sqkvo6ftt521x\"\n  ],\n  \"mode\": \"hard\"\n}",
+    "response": "{\n  \"data\": [\n    {\n      \"index\": 0,\n      \"id\": \"cmsipndn1000sqkvo6ftt521x\",\n      \"status\": \"ok\",\n      \"data\": null\n    }\n  ],\n  \"messages\": []\n}",
     "flow": [
       {
         "stage": "middleware",
         "label": "tenant resolution",
         "status": "ok",
-        "durationMs": 4.50376,
+        "durationMs": 7.225933,
         "detail": {
           "tenantId": "default"
         }
@@ -706,16 +706,16 @@ export const deleteScenarios: PlaygroundScenario[] = [
         "stage": "guard",
         "label": "session",
         "status": "ok",
-        "durationMs": 0.021215,
+        "durationMs": 0.033954,
         "detail": {
-          "userId": "cmsinc37v0004gmvoom6ntk0x"
+          "userId": "cmsipnd400004qkvo0s6mv1s9"
         }
       },
       {
         "stage": "guard",
         "label": "capability",
         "status": "ok",
-        "durationMs": 0.013654,
+        "durationMs": 0.02134,
         "detail": {
           "policy": "canDeleteAnyBlogPost",
           "scope": "own"
@@ -725,27 +725,27 @@ export const deleteScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.6739040000002205,
+        "durationMs": 1.1130080000002636,
         "detail": {
           "sql": "SELECT \"public\".\"BlogPost\".\"id\", \"public\".\"BlogPost\".\"tenantId\", \"public\".\"BlogPost\".\"ownerId\", \"public\".\"BlogPost\".\"title\", \"public\".\"BlogPost\".\"createdAt\", \"public\".\"BlogPost\".\"updatedAt\", \"public\".\"BlogPost\".\"deletedAt\" FROM \"public\".\"BlogPost\" WHERE (\"public\".\"BlogPost\".\"id\" = $1 AND \"public\".\"BlogPost\".\"tenantId\" = $2) LIMIT $3 OFFSET $4",
-          "params": "[\"cmsinc3nm000sgmvo4fq1q8tt\",\"default\",\"1\",\"0\"]"
+          "params": "[\"cmsipndn1000sqkvo6ftt521x\",\"default\",\"1\",\"0\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 3.7972370000006777,
+        "durationMs": 5.548308000001271,
         "detail": {
           "sql": "DELETE FROM \"public\".\"BlogPost\" WHERE (\"public\".\"BlogPost\".\"id\" = $1 AND \"public\".\"BlogPost\".\"tenantId\" = $2) RETURNING \"public\".\"BlogPost\".\"id\", \"public\".\"BlogPost\".\"tenantId\", \"public\".\"BlogPost\".\"ownerId\", \"public\".\"BlogPost\".\"title\", \"public\".\"BlogPost\".\"createdAt\", \"public\".\"BlogPost\".\"updatedAt\", \"public\".\"BlogPost\".\"deletedAt\"",
-          "params": "[\"cmsinc3nm000sgmvo4fq1q8tt\",\"default\"]"
+          "params": "[\"cmsipndn1000sqkvo6ftt521x\",\"default\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.4367580000007365,
+        "durationMs": 0.5383860000001732,
         "detail": {
           "sql": "SELECT pg_advisory_xact_lock(hashtext($1))",
           "params": "[\"default\"]"
@@ -755,7 +755,7 @@ export const deleteScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.5688550000004398,
+        "durationMs": 1.0074430000004213,
         "detail": {
           "sql": "SELECT \"public\".\"AuditLog\".\"id\", \"public\".\"AuditLog\".\"sequence\", \"public\".\"AuditLog\".\"tenantId\", \"public\".\"AuditLog\".\"model\", \"public\".\"AuditLog\".\"operation\", \"public\".\"AuditLog\".\"recordId\", \"public\".\"AuditLog\".\"data\", \"public\".\"AuditLog\".\"userId\", \"public\".\"AuditLog\".\"impersonatedBy\", \"public\".\"AuditLog\".\"hash\", \"public\".\"AuditLog\".\"previousHash\", \"public\".\"AuditLog\".\"createdAt\" FROM \"public\".\"AuditLog\" WHERE \"public\".\"AuditLog\".\"tenantId\" = $1 ORDER BY \"public\".\"AuditLog\".\"sequence\" DESC LIMIT $2 OFFSET $3",
           "params": "[\"default\",\"1\",\"0\"]"
@@ -765,17 +765,17 @@ export const deleteScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.6717029999999795,
+        "durationMs": 1.259450999999899,
         "detail": {
           "sql": "INSERT INTO \"public\".\"AuditLog\" (\"id\",\"tenantId\",\"model\",\"operation\",\"recordId\",\"data\",\"userId\",\"impersonatedBy\",\"hash\",\"previousHash\",\"createdAt\") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING \"public\".\"AuditLog\".\"id\", \"public\".\"AuditLog\".\"sequence\", \"public\".\"AuditLog\".\"tenantId\", \"public\".\"AuditLog\".\"model\", \"public\".\"AuditLog\".\"operation\", \"public\".\"AuditLog\".\"recordId\", \"public\".\"AuditLog\".\"data\", \"public\".\"AuditLog\".\"userId\", \"public\".\"AuditLog\".\"impersonatedBy\", \"public\".\"AuditLog\".\"hash\", \"public\".\"AuditLog\".\"previousHash\", \"public\".\"AuditLog\".\"createdAt\"",
-          "params": "[\"cmsinc3oc000ugmvoxamgn4hc\",\"default\",\"BlogPost\",\"delete\",\"cmsinc3nm000sgmvo4fq1q8tt\",\"{\\\"id\\\":\\\"cmsinc3nm000sgmvo4fq1q8tt\\\",\\\"tenantId\\\":\\\"default\\\",\\\"ownerId\\\":\\\"cmsinc37v0004gmvoom6ntk0x\\\",\\\"title\\\":\\\"Gone for good\\\",\\\"createdAt\\\":\\\"2026-08-07T07:51:42.466Z\\\",\\\"updatedAt\\\":\\\"2026-08-07T07:51:42.466Z\\\",\\\"deletedAt\\\":null}\",\"cmsinc37v0004gmvoom6ntk0x\",null,\"f3682b32e73fde4e291f368b7408d14065653850d7f6fd96ab2a5d61ac4123ef\",\"c5f6506061afe3b8e697e93508c1643ac59d25a25e75e1098be60d86f2b01fcc\",\"2026-08-07T07:51:42.492Z\"]"
+          "params": "[\"cmsipndo2000uqkvocc9q4vqa\",\"default\",\"BlogPost\",\"delete\",\"cmsipndn1000sqkvo6ftt521x\",\"{\\\"id\\\":\\\"cmsipndn1000sqkvo6ftt521x\\\",\\\"tenantId\\\":\\\"default\\\",\\\"ownerId\\\":\\\"cmsipnd400004qkvo0s6mv1s9\\\",\\\"title\\\":\\\"Gone for good\\\",\\\"createdAt\\\":\\\"2026-08-07T08:56:27.853Z\\\",\\\"updatedAt\\\":\\\"2026-08-07T08:56:27.853Z\\\",\\\"deletedAt\\\":null}\",\"cmsipnd400004qkvo0s6mv1s9\",null,\"7ad7c2bade73b0b3870d779f84e0397a6091c03e9ba88cd88deed2f27588ba4f\",\"4e2a5e191a34af8f9bced5289c9018d91878b1f84e6dd6dd19ce68c1efed2883\",\"2026-08-07T08:56:27.890Z\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 2.16718899999978,
+        "durationMs": 3.563206999999238,
         "detail": {
           "sql": "COMMIT",
           "params": "[]"
@@ -785,7 +785,7 @@ export const deleteScenarios: PlaygroundScenario[] = [
         "stage": "controller",
         "label": "BlogPostController.remove",
         "status": "ok",
-        "durationMs": 12.726726
+        "durationMs": 20.058681
       }
     ]
   }
@@ -794,17 +794,17 @@ export const deleteScenarios: PlaygroundScenario[] = [
 export const restoreScenarios: PlaygroundScenario[] = [
   {
     "id": "restore",
-    "label": "Restaurer",
+    "label": "Restore",
     "method": "POST",
     "path": "/blog-posts/restore",
-    "request": "POST /blog-posts/restore\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  \"ids\": [\n    \"cmsinc3oo000vgmvo3z7svgnf\"\n  ]\n}",
-    "response": "{\n  \"data\": [\n    {\n      \"index\": 0,\n      \"id\": \"cmsinc3oo000vgmvo3z7svgnf\",\n      \"status\": \"ok\",\n      \"data\": {\n        \"id\": \"cmsinc3oo000vgmvo3z7svgnf\",\n        \"tenantId\": \"default\",\n        \"ownerId\": \"cmsinc2yj0000gmvo75kb32du\",\n        \"title\": \"Hello world\",\n        \"createdAt\": \"2026-08-07T07:51:42.504Z\",\n        \"updatedAt\": \"2026-08-07T07:51:42.542Z\",\n        \"deletedAt\": null\n      }\n    }\n  ],\n  \"messages\": []\n}",
+    "request": "POST /blog-posts/restore\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  \"ids\": [\n    \"cmsipndoj000vqkvopvp9bycs\"\n  ]\n}",
+    "response": "{\n  \"data\": [\n    {\n      \"index\": 0,\n      \"id\": \"cmsipndoj000vqkvopvp9bycs\",\n      \"status\": \"ok\",\n      \"data\": {\n        \"id\": \"cmsipndoj000vqkvopvp9bycs\",\n        \"tenantId\": \"default\",\n        \"ownerId\": \"cmsipncuz0000qkvodpsstomg\",\n        \"title\": \"Hello world\",\n        \"createdAt\": \"2026-08-07T08:56:27.907Z\",\n        \"updatedAt\": \"2026-08-07T08:56:27.958Z\",\n        \"deletedAt\": null\n      }\n    }\n  ],\n  \"messages\": []\n}",
     "flow": [
       {
         "stage": "middleware",
         "label": "tenant resolution",
         "status": "ok",
-        "durationMs": 5.90991,
+        "durationMs": 6.91927,
         "detail": {
           "tenantId": "default"
         }
@@ -813,16 +813,16 @@ export const restoreScenarios: PlaygroundScenario[] = [
         "stage": "guard",
         "label": "session",
         "status": "ok",
-        "durationMs": 0.063436,
+        "durationMs": 0.033796,
         "detail": {
-          "userId": "cmsinc2yj0000gmvo75kb32du"
+          "userId": "cmsipncuz0000qkvodpsstomg"
         }
       },
       {
         "stage": "guard",
         "label": "capability",
         "status": "ok",
-        "durationMs": 0.067117,
+        "durationMs": 0.105785,
         "detail": {
           "policy": "canRestoreAnyBlogPost",
           "scope": "own"
@@ -832,27 +832,27 @@ export const restoreScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.5639490000003207,
+        "durationMs": 0.8408269999999902,
         "detail": {
           "sql": "SELECT \"public\".\"BlogPost\".\"id\", \"public\".\"BlogPost\".\"tenantId\", \"public\".\"BlogPost\".\"ownerId\", \"public\".\"BlogPost\".\"title\", \"public\".\"BlogPost\".\"createdAt\", \"public\".\"BlogPost\".\"updatedAt\", \"public\".\"BlogPost\".\"deletedAt\" FROM \"public\".\"BlogPost\" WHERE (\"public\".\"BlogPost\".\"id\" = $1 AND \"public\".\"BlogPost\".\"tenantId\" = $2) LIMIT $3 OFFSET $4",
-          "params": "[\"cmsinc3oo000vgmvo3z7svgnf\",\"default\",\"1\",\"0\"]"
+          "params": "[\"cmsipndoj000vqkvopvp9bycs\",\"default\",\"1\",\"0\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 2.50626899999952,
+        "durationMs": 4.024400999998761,
         "detail": {
           "sql": "UPDATE \"public\".\"BlogPost\" SET \"deletedAt\" = $1, \"updatedAt\" = $2 WHERE (\"public\".\"BlogPost\".\"id\" = $3 AND \"public\".\"BlogPost\".\"tenantId\" = $4) RETURNING \"public\".\"BlogPost\".\"id\", \"public\".\"BlogPost\".\"tenantId\", \"public\".\"BlogPost\".\"ownerId\", \"public\".\"BlogPost\".\"title\", \"public\".\"BlogPost\".\"createdAt\", \"public\".\"BlogPost\".\"updatedAt\", \"public\".\"BlogPost\".\"deletedAt\"",
-          "params": "[null,\"2026-08-07T07:51:42.542Z\",\"cmsinc3oo000vgmvo3z7svgnf\",\"default\"]"
+          "params": "[null,\"2026-08-07T08:56:27.958Z\",\"cmsipndoj000vqkvopvp9bycs\",\"default\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.5639750000000276,
+        "durationMs": 1.0966029999999591,
         "detail": {
           "sql": "SELECT pg_advisory_xact_lock(hashtext($1))",
           "params": "[\"default\"]"
@@ -862,7 +862,7 @@ export const restoreScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.627093000000059,
+        "durationMs": 0.9871660000007978,
         "detail": {
           "sql": "SELECT \"public\".\"AuditLog\".\"id\", \"public\".\"AuditLog\".\"sequence\", \"public\".\"AuditLog\".\"tenantId\", \"public\".\"AuditLog\".\"model\", \"public\".\"AuditLog\".\"operation\", \"public\".\"AuditLog\".\"recordId\", \"public\".\"AuditLog\".\"data\", \"public\".\"AuditLog\".\"userId\", \"public\".\"AuditLog\".\"impersonatedBy\", \"public\".\"AuditLog\".\"hash\", \"public\".\"AuditLog\".\"previousHash\", \"public\".\"AuditLog\".\"createdAt\" FROM \"public\".\"AuditLog\" WHERE \"public\".\"AuditLog\".\"tenantId\" = $1 ORDER BY \"public\".\"AuditLog\".\"sequence\" DESC LIMIT $2 OFFSET $3",
           "params": "[\"default\",\"1\",\"0\"]"
@@ -872,17 +872,17 @@ export const restoreScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.5964249999997264,
+        "durationMs": 0.9781750000001921,
         "detail": {
           "sql": "INSERT INTO \"public\".\"AuditLog\" (\"id\",\"tenantId\",\"model\",\"operation\",\"recordId\",\"data\",\"userId\",\"impersonatedBy\",\"hash\",\"previousHash\",\"createdAt\") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING \"public\".\"AuditLog\".\"id\", \"public\".\"AuditLog\".\"sequence\", \"public\".\"AuditLog\".\"tenantId\", \"public\".\"AuditLog\".\"model\", \"public\".\"AuditLog\".\"operation\", \"public\".\"AuditLog\".\"recordId\", \"public\".\"AuditLog\".\"data\", \"public\".\"AuditLog\".\"userId\", \"public\".\"AuditLog\".\"impersonatedBy\", \"public\".\"AuditLog\".\"hash\", \"public\".\"AuditLog\".\"previousHash\", \"public\".\"AuditLog\".\"createdAt\"",
-          "params": "[\"cmsinc3pv000ygmvodv0o3ztc\",\"default\",\"BlogPost\",\"update\",\"cmsinc3oo000vgmvo3z7svgnf\",\"{\\\"id\\\":\\\"cmsinc3oo000vgmvo3z7svgnf\\\",\\\"tenantId\\\":\\\"default\\\",\\\"ownerId\\\":\\\"cmsinc2yj0000gmvo75kb32du\\\",\\\"title\\\":\\\"Hello world\\\",\\\"createdAt\\\":\\\"2026-08-07T07:51:42.504Z\\\",\\\"updatedAt\\\":\\\"2026-08-07T07:51:42.542Z\\\",\\\"deletedAt\\\":null}\",\"cmsinc2yj0000gmvo75kb32du\",null,\"2a1959f1356f956eed393fe6dcb96a66a7a4746f5f629fc4a0280d8365137dcf\",\"184c91d6ff3b144ba9d4a37e5312732920fd2634b63e1e27cf12eb40e8a1c66b\",\"2026-08-07T07:51:42.547Z\"]"
+          "params": "[\"cmsipndq7000yqkvovb5npuiy\",\"default\",\"BlogPost\",\"update\",\"cmsipndoj000vqkvopvp9bycs\",\"{\\\"id\\\":\\\"cmsipndoj000vqkvopvp9bycs\\\",\\\"tenantId\\\":\\\"default\\\",\\\"ownerId\\\":\\\"cmsipncuz0000qkvodpsstomg\\\",\\\"title\\\":\\\"Hello world\\\",\\\"createdAt\\\":\\\"2026-08-07T08:56:27.907Z\\\",\\\"updatedAt\\\":\\\"2026-08-07T08:56:27.958Z\\\",\\\"deletedAt\\\":null}\",\"cmsipncuz0000qkvodpsstomg\",null,\"6dc57daeb7f1c9e3cfe0313582142696e0589bb2b0e712d01b8a203bbed4a3e8\",\"b712f09fe38d6e6386bb277252d9b58ff0dfb65b05ab1b9df9ffe60db61681da\",\"2026-08-07T08:56:27.967Z\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 2.150118000000475,
+        "durationMs": 3.8531270000003133,
         "detail": {
           "sql": "COMMIT",
           "params": "[]"
@@ -892,23 +892,23 @@ export const restoreScenarios: PlaygroundScenario[] = [
         "stage": "controller",
         "label": "BlogPostController.restore",
         "status": "ok",
-        "durationMs": 10.747827
+        "durationMs": 17.672366
       }
     ]
   },
   {
     "id": "restore-with-patch",
-    "label": "Restaurer avec un correctif",
+    "label": "Restore with a fix",
     "method": "POST",
     "path": "/blog-posts/restore",
-    "request": "POST /blog-posts/restore\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  \"ids\": [\n    \"cmsinc3q6000zgmvo2qmj1d6p\"\n  ],\n  \"patch\": {\n    \"title\": \"Hello world (restored)\"\n  }\n}",
-    "response": "{\n  \"data\": [\n    {\n      \"index\": 0,\n      \"id\": \"cmsinc3q6000zgmvo2qmj1d6p\",\n      \"status\": \"ok\",\n      \"data\": {\n        \"id\": \"cmsinc3q6000zgmvo2qmj1d6p\",\n        \"tenantId\": \"default\",\n        \"ownerId\": \"cmsinc2yj0000gmvo75kb32du\",\n        \"title\": \"Hello world (restored)\",\n        \"createdAt\": \"2026-08-07T07:51:42.558Z\",\n        \"updatedAt\": \"2026-08-07T07:51:42.596Z\",\n        \"deletedAt\": null\n      }\n    }\n  ],\n  \"messages\": []\n}",
+    "request": "POST /blog-posts/restore\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  \"ids\": [\n    \"cmsipndqs000zqkvo857fnkem\"\n  ],\n  \"patch\": {\n    \"title\": \"Hello world (restored)\"\n  }\n}",
+    "response": "{\n  \"data\": [\n    {\n      \"index\": 0,\n      \"id\": \"cmsipndqs000zqkvo857fnkem\",\n      \"status\": \"ok\",\n      \"data\": {\n        \"id\": \"cmsipndqs000zqkvo857fnkem\",\n        \"tenantId\": \"default\",\n        \"ownerId\": \"cmsipncuz0000qkvodpsstomg\",\n        \"title\": \"Hello world (restored)\",\n        \"createdAt\": \"2026-08-07T08:56:27.988Z\",\n        \"updatedAt\": \"2026-08-07T08:56:28.168Z\",\n        \"deletedAt\": null\n      }\n    }\n  ],\n  \"messages\": []\n}",
     "flow": [
       {
         "stage": "middleware",
         "label": "tenant resolution",
         "status": "ok",
-        "durationMs": 5.62684,
+        "durationMs": 35.802892,
         "detail": {
           "tenantId": "default"
         }
@@ -917,16 +917,16 @@ export const restoreScenarios: PlaygroundScenario[] = [
         "stage": "guard",
         "label": "session",
         "status": "ok",
-        "durationMs": 0.025553,
+        "durationMs": 0.056549,
         "detail": {
-          "userId": "cmsinc2yj0000gmvo75kb32du"
+          "userId": "cmsipncuz0000qkvodpsstomg"
         }
       },
       {
         "stage": "guard",
         "label": "capability",
         "status": "ok",
-        "durationMs": 0.015371,
+        "durationMs": 0.030013,
         "detail": {
           "policy": "canRestoreAnyBlogPost",
           "scope": "own"
@@ -936,27 +936,27 @@ export const restoreScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.6679180000000997,
+        "durationMs": 1.6978290000006382,
         "detail": {
           "sql": "SELECT \"public\".\"BlogPost\".\"id\", \"public\".\"BlogPost\".\"tenantId\", \"public\".\"BlogPost\".\"ownerId\", \"public\".\"BlogPost\".\"title\", \"public\".\"BlogPost\".\"createdAt\", \"public\".\"BlogPost\".\"updatedAt\", \"public\".\"BlogPost\".\"deletedAt\" FROM \"public\".\"BlogPost\" WHERE (\"public\".\"BlogPost\".\"id\" = $1 AND \"public\".\"BlogPost\".\"tenantId\" = $2) LIMIT $3 OFFSET $4",
-          "params": "[\"cmsinc3q6000zgmvo2qmj1d6p\",\"default\",\"1\",\"0\"]"
+          "params": "[\"cmsipndqs000zqkvo857fnkem\",\"default\",\"1\",\"0\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 2.7290670000002137,
+        "durationMs": 5.610993000000235,
         "detail": {
           "sql": "UPDATE \"public\".\"BlogPost\" SET \"title\" = $1, \"deletedAt\" = $2, \"updatedAt\" = $3 WHERE (\"public\".\"BlogPost\".\"id\" = $4 AND \"public\".\"BlogPost\".\"tenantId\" = $5) RETURNING \"public\".\"BlogPost\".\"id\", \"public\".\"BlogPost\".\"tenantId\", \"public\".\"BlogPost\".\"ownerId\", \"public\".\"BlogPost\".\"title\", \"public\".\"BlogPost\".\"createdAt\", \"public\".\"BlogPost\".\"updatedAt\", \"public\".\"BlogPost\".\"deletedAt\"",
-          "params": "[\"Hello world (restored)\",null,\"2026-08-07T07:51:42.596Z\",\"cmsinc3q6000zgmvo2qmj1d6p\",\"default\"]"
+          "params": "[\"Hello world (restored)\",null,\"2026-08-07T08:56:28.168Z\",\"cmsipndqs000zqkvo857fnkem\",\"default\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.3469889999996667,
+        "durationMs": 0.6422400000010384,
         "detail": {
           "sql": "SELECT pg_advisory_xact_lock(hashtext($1))",
           "params": "[\"default\"]"
@@ -966,7 +966,7 @@ export const restoreScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.6983230000005278,
+        "durationMs": 1.6479619999990973,
         "detail": {
           "sql": "SELECT \"public\".\"AuditLog\".\"id\", \"public\".\"AuditLog\".\"sequence\", \"public\".\"AuditLog\".\"tenantId\", \"public\".\"AuditLog\".\"model\", \"public\".\"AuditLog\".\"operation\", \"public\".\"AuditLog\".\"recordId\", \"public\".\"AuditLog\".\"data\", \"public\".\"AuditLog\".\"userId\", \"public\".\"AuditLog\".\"impersonatedBy\", \"public\".\"AuditLog\".\"hash\", \"public\".\"AuditLog\".\"previousHash\", \"public\".\"AuditLog\".\"createdAt\" FROM \"public\".\"AuditLog\" WHERE \"public\".\"AuditLog\".\"tenantId\" = $1 ORDER BY \"public\".\"AuditLog\".\"sequence\" DESC LIMIT $2 OFFSET $3",
           "params": "[\"default\",\"1\",\"0\"]"
@@ -976,17 +976,17 @@ export const restoreScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 1.2376530000001367,
+        "durationMs": 1.6312379999999393,
         "detail": {
           "sql": "INSERT INTO \"public\".\"AuditLog\" (\"id\",\"tenantId\",\"model\",\"operation\",\"recordId\",\"data\",\"userId\",\"impersonatedBy\",\"hash\",\"previousHash\",\"createdAt\") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING \"public\".\"AuditLog\".\"id\", \"public\".\"AuditLog\".\"sequence\", \"public\".\"AuditLog\".\"tenantId\", \"public\".\"AuditLog\".\"model\", \"public\".\"AuditLog\".\"operation\", \"public\".\"AuditLog\".\"recordId\", \"public\".\"AuditLog\".\"data\", \"public\".\"AuditLog\".\"userId\", \"public\".\"AuditLog\".\"impersonatedBy\", \"public\".\"AuditLog\".\"hash\", \"public\".\"AuditLog\".\"previousHash\", \"public\".\"AuditLog\".\"createdAt\"",
-          "params": "[\"cmsinc3re0012gmvoiis7v593\",\"default\",\"BlogPost\",\"update\",\"cmsinc3q6000zgmvo2qmj1d6p\",\"{\\\"id\\\":\\\"cmsinc3q6000zgmvo2qmj1d6p\\\",\\\"tenantId\\\":\\\"default\\\",\\\"ownerId\\\":\\\"cmsinc2yj0000gmvo75kb32du\\\",\\\"title\\\":\\\"Hello world (restored)\\\",\\\"createdAt\\\":\\\"2026-08-07T07:51:42.558Z\\\",\\\"updatedAt\\\":\\\"2026-08-07T07:51:42.596Z\\\",\\\"deletedAt\\\":null}\",\"cmsinc2yj0000gmvo75kb32du\",null,\"be0c22fc5b5e5478e759354f506300d9561da8a30a60993ea7e71a194f6b2aa5\",\"5cd317531b7239ab98cd2f9078a0db2bf1fc4c929a685eff5c6e0e11683a01a3\",\"2026-08-07T07:51:42.602Z\"]"
+          "params": "[\"cmsipndw40012qkvo4yte42aq\",\"default\",\"BlogPost\",\"update\",\"cmsipndqs000zqkvo857fnkem\",\"{\\\"id\\\":\\\"cmsipndqs000zqkvo857fnkem\\\",\\\"tenantId\\\":\\\"default\\\",\\\"ownerId\\\":\\\"cmsipncuz0000qkvodpsstomg\\\",\\\"title\\\":\\\"Hello world (restored)\\\",\\\"createdAt\\\":\\\"2026-08-07T08:56:27.988Z\\\",\\\"updatedAt\\\":\\\"2026-08-07T08:56:28.168Z\\\",\\\"deletedAt\\\":null}\",\"cmsipncuz0000qkvodpsstomg\",null,\"58c9c9886ce5aeac91c779d23c546b3f898acc8d2f5e64a470cc36775429ce71\",\"87e3953102560b3bf852fa3c3d48b4436eee853f573c5e6699d92afd94c45a57\",\"2026-08-07T08:56:28.180Z\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 3.8865859999996246,
+        "durationMs": 4.038692000000083,
         "detail": {
           "sql": "COMMIT",
           "params": "[]"
@@ -996,7 +996,7 @@ export const restoreScenarios: PlaygroundScenario[] = [
         "stage": "controller",
         "label": "BlogPostController.restore",
         "status": "ok",
-        "durationMs": 13.180463
+        "durationMs": 22.854937
       }
     ]
   }
@@ -1005,17 +1005,17 @@ export const restoreScenarios: PlaygroundScenario[] = [
 export const detailsScenarios: PlaygroundScenario[] = [
   {
     "id": "read-one",
-    "label": "Lire un enregistrement",
+    "label": "Read one record",
     "method": "POST",
     "path": "/blog-posts/search",
-    "request": "POST /blog-posts/search\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  \"filters\": [\n    {\n      \"field\": \"id\",\n      \"value\": \"cmsinc3rs0013gmvogjy9inub\"\n    }\n  ]\n}",
-    "response": "{\n  \"data\": [\n    {\n      \"id\": \"cmsinc3rs0013gmvogjy9inub\",\n      \"tenantId\": \"default\",\n      \"ownerId\": \"cmsinc2yj0000gmvo75kb32du\",\n      \"title\": \"Hello world\",\n      \"createdAt\": \"2026-08-07T07:51:42.616Z\",\n      \"updatedAt\": \"2026-08-07T07:51:42.616Z\",\n      \"deletedAt\": null\n    }\n  ],\n  \"meta\": {\n    \"channels\": [\n      \"blogPost\"\n    ],\n    \"page\": 1,\n    \"limit\": 15,\n    \"last_page\": 1,\n    \"total\": 1\n  },\n  \"messages\": []\n}",
+    "request": "POST /blog-posts/search\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  \"filters\": [\n    {\n      \"field\": \"id\",\n      \"value\": \"cmsipndxv0013qkvoc71qj13k\"\n    }\n  ]\n}",
+    "response": "{\n  \"data\": [\n    {\n      \"id\": \"cmsipndxv0013qkvoc71qj13k\",\n      \"tenantId\": \"default\",\n      \"ownerId\": \"cmsipncuz0000qkvodpsstomg\",\n      \"title\": \"Hello world\",\n      \"createdAt\": \"2026-08-07T08:56:28.243Z\",\n      \"updatedAt\": \"2026-08-07T08:56:28.243Z\",\n      \"deletedAt\": null\n    }\n  ],\n  \"meta\": {\n    \"channels\": [\n      \"blogPost\"\n    ],\n    \"page\": 1,\n    \"limit\": 15,\n    \"last_page\": 1,\n    \"total\": 1\n  },\n  \"messages\": []\n}",
     "flow": [
       {
         "stage": "middleware",
         "label": "tenant resolution",
         "status": "ok",
-        "durationMs": 4.797741,
+        "durationMs": 9.104184,
         "detail": {
           "tenantId": "default"
         }
@@ -1024,16 +1024,16 @@ export const detailsScenarios: PlaygroundScenario[] = [
         "stage": "guard",
         "label": "session",
         "status": "ok",
-        "durationMs": 0.020938,
+        "durationMs": 0.072149,
         "detail": {
-          "userId": "cmsinc2yj0000gmvo75kb32du"
+          "userId": "cmsipncuz0000qkvodpsstomg"
         }
       },
       {
         "stage": "guard",
         "label": "capability",
         "status": "ok",
-        "durationMs": 0.013774,
+        "durationMs": 0.024671,
         "detail": {
           "policy": "canViewAnyBlogPost",
           "scope": "own"
@@ -1043,33 +1043,33 @@ export const detailsScenarios: PlaygroundScenario[] = [
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.6823679999997694,
+        "durationMs": 1.3497889999998733,
         "detail": {
           "sql": "SELECT \"public\".\"BlogPost\".\"id\", \"public\".\"BlogPost\".\"tenantId\", \"public\".\"BlogPost\".\"ownerId\", \"public\".\"BlogPost\".\"title\", \"public\".\"BlogPost\".\"createdAt\", \"public\".\"BlogPost\".\"updatedAt\", \"public\".\"BlogPost\".\"deletedAt\" FROM \"public\".\"BlogPost\" WHERE (\"public\".\"BlogPost\".\"ownerId\" = $1 AND \"public\".\"BlogPost\".\"deletedAt\" IS NULL AND \"public\".\"BlogPost\".\"id\" = $2 AND \"public\".\"BlogPost\".\"tenantId\" = $3) ORDER BY \"public\".\"BlogPost\".\"createdAt\" DESC LIMIT $4 OFFSET $5",
-          "params": "[\"cmsinc2yj0000gmvo75kb32du\",\"cmsinc3rs0013gmvogjy9inub\",\"default\",\"15\",\"0\"]"
+          "params": "[\"cmsipncuz0000qkvodpsstomg\",\"cmsipndxv0013qkvoc71qj13k\",\"default\",\"15\",\"0\"]"
         }
       },
       {
         "stage": "prisma",
         "label": "query",
         "status": "ok",
-        "durationMs": 0.7524929999999586,
+        "durationMs": 1.4099499999992986,
         "detail": {
           "sql": "SELECT COUNT(*) AS \"_count$_all\" FROM (SELECT \"public\".\"BlogPost\".\"id\" FROM \"public\".\"BlogPost\" WHERE (\"public\".\"BlogPost\".\"ownerId\" = $1 AND \"public\".\"BlogPost\".\"deletedAt\" IS NULL AND \"public\".\"BlogPost\".\"id\" = $2 AND \"public\".\"BlogPost\".\"tenantId\" = $3) OFFSET $4) AS \"sub\"",
-          "params": "[\"cmsinc2yj0000gmvo75kb32du\",\"cmsinc3rs0013gmvogjy9inub\",\"default\",\"0\"]"
+          "params": "[\"cmsipncuz0000qkvodpsstomg\",\"cmsipndxv0013qkvoc71qj13k\",\"default\",\"0\"]"
         }
       },
       {
         "stage": "controller",
         "label": "BlogPostController.search",
         "status": "ok",
-        "durationMs": 1.551174
+        "durationMs": 2.993476
       }
     ]
   },
   {
     "id": "describe",
-    "label": "Contrat de la ressource",
+    "label": "The resource contract",
     "method": "GET",
     "path": "/blog-posts/describe",
     "request": "GET /blog-posts/describe\nAuthorization: Bearer <token>",
@@ -1079,7 +1079,7 @@ export const detailsScenarios: PlaygroundScenario[] = [
         "stage": "middleware",
         "label": "tenant resolution",
         "status": "ok",
-        "durationMs": 5.222911,
+        "durationMs": 20.943832,
         "detail": {
           "tenantId": "default"
         }
@@ -1088,16 +1088,16 @@ export const detailsScenarios: PlaygroundScenario[] = [
         "stage": "guard",
         "label": "session",
         "status": "ok",
-        "durationMs": 0.036364,
+        "durationMs": 0.388787,
         "detail": {
-          "userId": "cmsinc2yj0000gmvo75kb32du"
+          "userId": "cmsipncuz0000qkvodpsstomg"
         }
       },
       {
         "stage": "guard",
         "label": "capability",
         "status": "ok",
-        "durationMs": 0.014163,
+        "durationMs": 0.037005,
         "detail": {
           "policy": "canViewAnyBlogPost",
           "scope": "own"
@@ -1107,7 +1107,7 @@ export const detailsScenarios: PlaygroundScenario[] = [
         "stage": "controller",
         "label": "BlogPostController.describe",
         "status": "ok",
-        "durationMs": 0.113912
+        "durationMs": 0.898069
       }
     ]
   }

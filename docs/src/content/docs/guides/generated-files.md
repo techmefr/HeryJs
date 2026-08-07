@@ -21,11 +21,13 @@ Changing a permission after generation is therefore a one-line edit here, not a 
 
 The exported policy functions and a small `TaskPolicy` class.
 
-Six functions, one per question a route can ask: `canCreateTask`, `canViewTask`, `canViewAnyTask`, `canUpdateTask`, `canDeleteTask`, `canListTrashedTask`. Each is a one-liner resolving a blueprint preset, and they are plain exported functions rather than class methods so a decorator can reference them at import time — and so a GraphQL resolver or an MCP tool can call the same rule without going through a guard.
+One function per question a route or a payload entry can ask. They come in pairs: a record-level check (`canViewTask`, `canUpdateTask`, `canDeleteTask`, `canRestoreTask`) resolving a preset against one loaded record, and a collection-level one (`canViewAnyTask`, `canUpdateAnyTask`, `canDeleteAnyTask`, `canRestoreAnyTask`) answering "may this caller reach the route at all" before any record is loaded. That split is what a bulk route needs: the guard admits the request, then each entry in the array is checked on its own record. Alongside them, `canCreateTask`, `canListTrashedTask`, `canHardDeleteTask`, `canPurgeTask` and one pair per mutable relation (`canAttachTagsToTask`, `canDetachTagsFromTask`).
 
-Two of them are worth noticing. `canViewAnyTask` uses the same preset as `canViewTask`, which is what makes the list route and the detail route answer the same question. And `canListTrashedTask` follows the *delete* preset rather than the read one, on the grounds that opening the bin is a moderation move.
+Each is a one-liner resolving a blueprint preset, and they are plain exported functions rather than class methods so a decorator can reference them at import time — and so a GraphQL resolver or an MCP tool can call the same rule without going through a guard.
 
-`TaskPolicy` is the injectable half, resolving the decisions attached to a record or a collection for `?include=capabilities`.
+Two are worth noticing. `canViewAnyTask` uses the same preset as `canViewTask`, which is what makes the collection route and a single-record read answer the same question. And `canListTrashedTask` follows the *delete* preset rather than the read one, on the grounds that opening the bin is a moderation move.
+
+`TaskPolicy` is the injectable half, resolving the decisions attached to each record and to the collection when a search request names them in its `capabilities` array.
 
 ## `task-record.loader.ts`
 
@@ -57,17 +59,18 @@ Each mutation also publishes on the resource's signal channel and syncs the sear
 
 ## `task.controller.ts`
 
-The HTTP surface: seven routes, each behind `SessionGuard` and `CapabilitiesGuard`, each response passed through `task.view.ts` before it leaves the process.
+The HTTP surface: six routes, each behind `SessionGuard` and `CapabilitiesGuard`, each response passed through `task.view.ts` before it leaves the process. There is no `GET /tasks/:id` — reading one record is the search route filtered to an id, so there is one contract to learn instead of two, and [Details](/guides/endpoints/details/) explains why.
 
-| Route | Capability | Loader |
+| Route | Capability at the guard | Per-record check |
 |---|---|---|
-| `POST /tasks/search` | `canViewAnyTask` | — |
+| `POST /tasks/search` | `canViewAnyTask` | the view preset, as a `where` clause |
 | `GET /tasks/describe` | `canViewAnyTask` | — |
-| `GET /tasks/:id` | `canViewTask` | visible only |
-| `POST /tasks` | `canCreateTask` | — |
-| `PATCH /tasks/:id` | `canUpdateTask` | including trashed |
-| `DELETE /tasks/:id` | `canDeleteTask` | including trashed |
-| `POST /tasks/:id/restore` | `canUpdateTask` | including trashed |
+| `POST /tasks/create` | `canCreateTask` | — |
+| `POST /tasks/update` | `canUpdateAnyTask` | `canUpdateTask` per entry, on the loaded record |
+| `POST /tasks/delete` | `canDeleteAnyTask`, plus `canHardDeleteTask` once for the whole request when `mode: 'hard'` | `canDeleteTask` per entry |
+| `POST /tasks/restore` | `canRestoreAnyTask` | `canRestoreTask` per entry |
+
+Every mutating route takes an array and answers with one result per entry, each carrying its own `status`, so one refused record never blocks the others. The guard admits the caller to the route; the per-record function above is what decides each entry.
 
 The search route parses its body through the shared `parseSearchRequest` against the blueprint's contract, checks `canListTrashedTask` separately if the caller asked for trashed rows, and returns `meta.channels` so a client knows what to subscribe to for invalidation.
 
@@ -95,7 +98,7 @@ taskFactory({ ownerId: existingUser.id });   // "recycle" — just pass the exis
 
 ## `task.spec.ts`
 
-An end-to-end HTTP test, generated once and meant to be extended by hand. Eleven cases for the default permission presets: creation is scoped to the current tenant, the describe route reports the blueprint's fields and rules, the collection and detail routes agree on who may see a record, same for the trash, listing resolves each record's capabilities, a non-owner gets a real 403 on update, soft-delete and restore round-trip, a different tenant never sees another tenant's records, a client-supplied tenant header cannot spoof the tenant, and full-text search finds a record through the named default engine while an undeclared engine keyword is rejected. See [Testing conventions](/guides/testing/).
+An end-to-end HTTP test, generated once and meant to be extended by hand. Seventeen cases for the default permission presets: creation is scoped to the current tenant, the describe route reports the blueprint's fields and rules, a record read one way and listed the other agree on who may see it, same for the trash, a search resolves the capabilities it asked for, a non-owner gets a real 403 on update, soft-delete and restore round-trip while restoring a live record is refused, a different tenant never sees another tenant's records, a client-supplied tenant header cannot spoof the tenant, pagination reports its meta and rejects an undeclared page size, an include or an aggregate naming an undeclared relation is rejected, full-text search finds a record through the named default engine while an undeclared engine keyword is rejected, and a relation attaches, syncs and detaches through the update route. See [Testing conventions](/guides/testing/).
 
 ## Optional extras
 
@@ -113,3 +116,5 @@ Each requires its module to be installed, and each re-checks the resource's own 
 ## What it also patches
 
 `prisma/schema.prisma` gains the model — `id`, `tenantId`, `ownerId`, your fields, timestamps and a nullable `deletedAt`, plus a `teamId` if any preset is `team`. Then two sets in the kernel gain the model's name: `TENANT_SCOPED_MODELS` in `prisma.client.ts` and `AUDITED_MODELS` in `audit-log.ts`. Those two patches are what make tenancy and the audit trail automatic for the new resource rather than something to remember — a set the generator does not maintain is a feature that silently applies to nothing.
+
+The row-level policy behind that first set is not left to be remembered either: the `pnpm hery migrate` you run next reads the schema and emits the `ENABLE ROW LEVEL SECURITY` migration for the new table before applying it. See [Multi-tenancy](/guides/tenancy/).

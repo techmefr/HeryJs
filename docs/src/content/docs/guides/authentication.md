@@ -19,12 +19,12 @@ Both return a bearer token backed by Better Auth. It expires the way any login s
 A session token is the wrong fit for CI, cron, or any script that runs unattended — nobody is there to log in again when it expires. API keys exist for exactly that case: a bearer token scoped to the same user who created it, with no expiry, revocable at will.
 
 ```
-POST   /api-keys        { name }   // create — the only time the raw key is shown
-GET    /api-keys                   // list — id, name, timestamps, never the key itself
-DELETE /api-keys/:id               // revoke
+POST   /api-keys                   { name }   // create — the only time the raw key is shown
+GET    /api-keys?page=&limit=                 // list — id, name, timestamps, never the key itself
+DELETE /api-keys/:id                          // revoke
 ```
 
-All three routes sit behind `SessionGuard` like everything else: minting a key requires being logged in first. Each key acts as the user who created it — same tenant, same role, same capabilities, same everything a session token for that user would resolve to. There is no separate permission model for keys; if you would not trust the user with a capability, do not create a key for them.
+All three routes sit behind `SessionGuard` and `CapabilitiesGuard` like everything else: minting a key requires being logged in first. Each key acts as the user who created it — same tenant, same role, same capabilities, same everything a session token for that user would resolve to. There is no separate permission model for keys; if you would not trust the user with a capability, do not create a key for them.
 
 ```ts
 const created = await request(app.getHttpServer())
@@ -53,3 +53,4 @@ Revoking a key sets `revokedAt` rather than deleting the row — every request m
 - **See its own secret again.** `GET /api-keys` returns metadata only. If it is lost, revoke it and mint a new one.
 - **Outlive its owner's access.** A key has no independent lifetime beyond the user it belongs to; there is nothing to configure per key beyond a name.
 - **Act as anyone but its creator.** There is no "service account" concept separate from a real user — if a script needs its own identity rather than borrowing a person's, create a dedicated user for it and mint the key from that account.
+- **Mint, list or revoke keys.** All three routes above refuse a request authenticated by a key rather than a session, with a 403 `apiKey.forbidden`. Otherwise revoking a leaked key would not actually cut off access: the bearer could have minted further keys with it, each with its own prefix and its own `revokedAt`, so revoking the one you know about leaves the others live.

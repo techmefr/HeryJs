@@ -16,7 +16,7 @@ Tenancy in HeryJs is a boundary, not a scope you remember to add to every query.
 - on `create` / `createMany`, the current tenant id is injected into the data automatically;
 - on every read/update/delete operation, a `tenantId` filter is injected into the `where` clause automatically.
 
-A caller writing `this.prisma.blog-post.findMany({})` gets tenant-scoped results without ever mentioning a tenant. There is no code path where a developer can forget the filter, because the filter isn't written by the developer in the first place.
+A caller writing `this.prisma.blogPost.findMany({})` gets tenant-scoped results without ever mentioning a tenant. There is no code path where a developer can forget the filter, because the filter isn't written by the developer in the first place.
 
 ## Work with no request behind it
 

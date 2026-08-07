@@ -23,6 +23,7 @@ Every subclass follows that shape: an HTTP status, a stable machine-readable `ke
 | `InvalidSessionException` | 401 | `auth.session.invalid` |
 | `InvalidCredentialsException` | 401 | `auth.invalidCredentials` |
 | `CapabilityForbiddenException` | 403 | `capability.forbidden` |
+| `ApiKeyEscalationException` | 403 | `apiKey.forbidden` |
 | `RecordNotFoundException` | 404 | `<resource>.notFound` |
 | `NoCurrentTeamException` | 409 | `team.noCurrentTeam` |
 | `InvalidQueryException` | 400 | `query.invalid` |
@@ -73,7 +74,7 @@ ok(records, { currentTeamId }, ['Saved.'])  // all three
 
 Every generated controller method returns `ok(...)`. Three keys, always the same three, so a client can be written once against the envelope rather than per endpoint.
 
-`meta` carries what is *about* the response rather than in it — the channels to subscribe to for invalidation, collection-level capabilities under `?include=capabilities`, the caller's current team on `GET /teams`.
+`meta` carries what is *about* the response rather than in it — the channels to subscribe to for invalidation, the collection-level capabilities a search request asked for in its `capabilities` array, the page window on a paged route, the caller's current team on `GET /teams`.
 
 `messages` carries text meant for a human. This is what lets a backend that has just done something non-obvious say so — a save that also queued a job, a create that also joined you to a team — without inventing a response shape for the occasion. Because the field is always present, a client can render it unconditionally and never has to ask whether this particular endpoint might have something to say.
 

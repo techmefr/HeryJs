@@ -163,7 +163,7 @@ describe('doc examples', () => {
 
     scenarios.search.push({
       id: 'filter',
-      label: 'Filtrer sur le titre',
+      label: 'Filter on the title',
       method: 'POST',
       path: '/blog-posts/search',
       request: formatRequest('POST', '/blog-posts/search', {
@@ -190,7 +190,7 @@ describe('doc examples', () => {
 
     scenarios.search.push({
       id: 'sort-paginate',
-      label: 'Trier et paginer',
+      label: 'Sort and paginate',
       method: 'POST',
       path: '/blog-posts/search',
       request: formatRequest('POST', '/blog-posts/search', {
@@ -214,7 +214,7 @@ describe('doc examples', () => {
 
     scenarios.search.push({
       id: 'by-id',
-      label: 'Chercher par identifiant',
+      label: 'Look one record up by id',
       method: 'POST',
       path: '/blog-posts/search',
       request: formatRequest('POST', '/blog-posts/search', {
@@ -234,7 +234,7 @@ describe('doc examples', () => {
 
     scenarios.create.push({
       id: 'create',
-      label: 'Créer un article',
+      label: 'Create a post',
       method: 'POST',
       path: '/blog-posts/create',
       request: formatRequest('POST', '/blog-posts/create', {
@@ -254,7 +254,7 @@ describe('doc examples', () => {
 
     scenarios.create.push({
       id: 'validation-failed',
-      label: 'Payload invalide',
+      label: 'Invalid payload',
       method: 'POST',
       path: '/blog-posts/create',
       request: formatRequest('POST', '/blog-posts/create', { data: [{}] }),
@@ -274,7 +274,7 @@ describe('doc examples', () => {
 
     scenarios.update.push({
       id: 'update',
-      label: 'Mettre à jour un champ',
+      label: 'Update one field',
       method: 'POST',
       path: '/blog-posts/update',
       request: formatRequest('POST', '/blog-posts/update', {
@@ -303,7 +303,7 @@ describe('doc examples', () => {
 
     scenarios.update.push({
       id: 'attach-tags',
-      label: 'Attacher un tag',
+      label: 'Attach a tag',
       method: 'POST',
       path: '/blog-posts/update',
       request: formatRequest('POST', '/blog-posts/update', {
@@ -325,7 +325,7 @@ describe('doc examples', () => {
 
     scenarios.delete.push({
       id: 'soft',
-      label: 'Suppression douce',
+      label: 'Soft delete',
       method: 'POST',
       path: '/blog-posts/delete',
       request: formatRequest('POST', '/blog-posts/delete', { ids: [id] }),
@@ -345,7 +345,7 @@ describe('doc examples', () => {
 
     scenarios.delete.push({
       id: 'hard',
-      label: 'Suppression définitive',
+      label: 'Hard delete',
       method: 'POST',
       path: '/blog-posts/delete',
       request: formatRequest('POST', '/blog-posts/delete', {
@@ -373,7 +373,7 @@ describe('doc examples', () => {
 
     scenarios.restore.push({
       id: 'restore',
-      label: 'Restaurer',
+      label: 'Restore',
       method: 'POST',
       path: '/blog-posts/restore',
       request: formatRequest('POST', '/blog-posts/restore', { ids: [id] }),
@@ -398,7 +398,7 @@ describe('doc examples', () => {
 
     scenarios.restore.push({
       id: 'restore-with-patch',
-      label: 'Restaurer avec un correctif',
+      label: 'Restore with a fix',
       method: 'POST',
       path: '/blog-posts/restore',
       request: formatRequest('POST', '/blog-posts/restore', {
@@ -421,7 +421,7 @@ describe('doc examples', () => {
 
     scenarios.details.push({
       id: 'read-one',
-      label: 'Lire un enregistrement',
+      label: 'Read one record',
       method: 'POST',
       path: '/blog-posts/search',
       request: formatRequest('POST', '/blog-posts/search', {
@@ -440,7 +440,7 @@ describe('doc examples', () => {
 
     scenarios.details.push({
       id: 'describe',
-      label: 'Contrat de la ressource',
+      label: 'The resource contract',
       method: 'GET',
       path: '/blog-posts/describe',
       request: formatRequest('GET', '/blog-posts/describe'),

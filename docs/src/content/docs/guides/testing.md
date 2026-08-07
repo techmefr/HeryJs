@@ -39,21 +39,27 @@ A fresh random email per call is also what keeps specs isolated: there is no tru
 
 ## What the generated spec asserts
 
-Eleven cases for the default permission presets, with two users — an owner and a stranger. Request bodies are built from the blueprint's required fields with sample values, so the spec compiles and runs against whatever fields you declared.
+Seventeen cases for the default permission presets, with two users — an owner and a stranger. Request bodies are built from the blueprint's required fields with sample values, so the spec compiles and runs against whatever fields you declared.
 
 1. **Creates a record owned by the current user, scoped to the current tenant** — asserts the created record's `tenantId`, proving the boundary is stamped without the caller mentioning it.
 2. **Describes its fields and create/update rules for a frontend to consume** — the `/describe` route reports the same fields and required list the blueprint declares.
 3. **Scope parity** — see below.
 4. **Trash parity** — see below.
-5. **Lists records with resolved capabilities via `?include=capabilities`** — each row and `meta` carry the resolved `{ allowed, scope }` decisions, not a plain boolean.
+5. **Resolves the capabilities the request named** — a search body carrying `capabilities: ['update']` gets each row and `meta` back with the resolved `{ allowed, scope }` decisions, not a plain boolean.
 6. **Returns a real 403 when someone other than the owner tries to update it** — the stranger gets a 403, not a silently filtered response.
-7. **Soft-deletes then restores a record** — delete, confirm the detail route now 404s, restore, confirm it is readable again. The 404 in the middle is the interesting assertion: a trashed record must not resurface through a plain read.
-8. **Never lets a different tenant see this tenant's records** — moves a user into another tenant directly in the database, then confirms the search route answers with zero rows.
-9. **Cannot be spoofed into another tenant via a client-supplied header** — a `x-tenant-id` header is ignored rather than honoured, since the tenant is resolved from the session, not a header.
-10. **Finds a record by text search through the explicitly named default engine.**
-11. **Rejects a search engine keyword `hery.config.ts` never declared** — a 400, not a silent fallback.
+7. **Soft-deletes then restores a record** — delete, confirm a read no longer finds it, restore, confirm it is back. The gap in the middle is the interesting assertion: a trashed record must not resurface through a plain read.
+8. **Refuses to restore a record that is not trashed** — restoring a live row is an error, not a no-op that reports success.
+9. **Never lets a different tenant see this tenant's records** — moves a user into another tenant directly in the database, then confirms the search route answers with zero rows.
+10. **Cannot be spoofed into another tenant via a client-supplied header** — a `x-tenant-id` header is ignored rather than honoured, since the tenant is resolved from the session, not a header.
+11. **Reports pagination meta alongside the results** — `page`, `limit`, `total` and `last_page`, for a blueprint that declared pagination.
+12. **Rejects a page size the blueprint did not declare** — a 400 against the declared `limits`, not a silent clamp.
+13. **Rejects an include naming a relation this resource does not declare.**
+14. **Rejects an aggregate naming a relation this resource does not declare.**
+15. **Finds a record by text search through the explicitly named default engine.**
+16. **Rejects a search engine keyword `hery.config.ts` never declared** — a 400, not a silent fallback.
+17. **Attaches, syncs and detaches a relation through the update route** — one case per mutable relation the blueprint declares.
 
-Cases 5, 7 and 8 disappear when the blueprint's presets make them unreachable — `create`/`update`/`delete: none` skips the write they depend on setting up — and 10-11 only appear when the blueprint has a visible string field to search on. Case 8 is the one that needs the raw client. The spec opens its own unextended `PrismaClient`, deliberately *not* the tenant-scoped one, because reassigning a user's tenant is exactly the operation the scoped client is built to prevent. Setting up an adversarial condition requires stepping outside the thing being tested.
+Cases that depend on a write disappear when the blueprint's presets make them unreachable — `create`/`update`/`delete: none` skips the setup they need. Cases 11 and 12 only appear when the blueprint declares pagination, 13-14 only when it declares an include or an aggregate, 15-16 only when it has a visible string field to search on, and 17 only when it declares a mutable relation. Case 9 is the one that needs the raw client. The spec opens its own unextended `PrismaClient`, deliberately *not* the tenant-scoped one, because reassigning a user's tenant is exactly the operation the scoped client is built to prevent. Setting up an adversarial condition requires stepping outside the thing being tested.
 
 ### The scope-parity and trash-parity cases adapt to the blueprint
 
