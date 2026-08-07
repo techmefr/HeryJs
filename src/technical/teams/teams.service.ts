@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
+import type { PageQuery } from '#technical/http/page-query';
 
 @Injectable()
 export class TeamsService {
@@ -9,11 +10,23 @@ export class TeamsService {
     @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,
   ) {}
 
-  listFor(userId: string) {
-    return this.prisma.team.findMany({
-      where: { members: { some: { userId } } },
-      orderBy: { createdAt: 'asc' },
-    });
+  async listFor(userId: string, page: PageQuery) {
+    const where = { members: { some: { userId } } };
+
+    // The id breaks a createdAt tie: two teams created in the same millisecond
+    // would otherwise order arbitrarily, and an arbitrary order across two
+    // requests is how a row shows up on page one and page two, or on neither.
+    const [records, total] = await Promise.all([
+      this.prisma.team.findMany({
+        where,
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        skip: page.skip,
+        take: page.take,
+      }),
+      this.prisma.team.count({ where }),
+    ]);
+
+    return { records, total };
   }
 
   /**

@@ -4,6 +4,7 @@ import {
   Inject,
   Param,
   Patch,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -12,6 +13,7 @@ import type { RequestWithUser } from '#technical/auth/session.guard';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { Capability } from '#technical/capabilities/capability.decorator';
 import { ok } from '#technical/http/envelope';
+import { okPage, parsePageQuery } from '#technical/http/page-query';
 import { canReadOwnNotifications } from './notifications.policy';
 import { NOTIFICATION_PROVIDER } from './notification.types';
 import type { NotificationProvider } from './notification.types';
@@ -26,8 +28,10 @@ export class NotificationsController {
 
   @Get()
   @Capability(canReadOwnNotifications)
-  async list(@Req() req: RequestWithUser) {
-    return ok(await this.notifications.listFor(req.user.id));
+  async list(@Req() req: RequestWithUser, @Query() query: unknown) {
+    const page = parsePageQuery(query);
+
+    return okPage(await this.notifications.listFor(req.user.id, page), page);
   }
 
   @Patch(':id/read')

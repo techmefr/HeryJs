@@ -1,3 +1,5 @@
+import type { Page, PageQuery } from '#technical/http/page-query';
+
 export interface Notification {
   id: string;
   userId: string;
@@ -13,7 +15,7 @@ export interface NotificationProvider {
     type: string,
     payload: Record<string, unknown>,
   ): Promise<Notification>;
-  listFor(userId: string): Promise<Notification[]>;
+  listFor(userId: string, page: PageQuery): Promise<Page<Notification>>;
   markRead(id: string, userId: string): Promise<Notification>;
 }
 

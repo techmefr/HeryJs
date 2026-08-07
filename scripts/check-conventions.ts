@@ -9,6 +9,7 @@ import { checkCapabilityDecorator } from './check-capability-decorator';
 import { checkExampleFreshness } from './check-example-freshness';
 import { checkLintCoverage } from './check-lint-coverage';
 import { checkNoInlineDevGuard } from './check-no-inline-dev-guard';
+import { checkPagination } from './check-pagination';
 import { checkRls } from './check-rls';
 import { checkScopeParity } from './check-scope-parity';
 import { checkSubjectConstruction } from './check-subject-construction';
@@ -18,6 +19,7 @@ const CHECKS: Array<{ name: string; run: () => boolean | Promise<boolean> }> = [
   { name: 'capabilities', run: checkCapabilityDecorator },
   { name: 'scope-parity', run: checkScopeParity },
   { name: 'rls', run: checkRls },
+  { name: 'pagination', run: checkPagination },
   { name: 'coverage', run: checkLintCoverage },
   { name: 'dev-guard', run: checkNoInlineDevGuard },
   { name: 'subject', run: checkSubjectConstruction },

@@ -13,6 +13,7 @@ import { env } from '#technical/config/env';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import { canReadHealth } from './monitoring.policy';
+import { UnpaginatedRoute } from '#technical/http/unpaginated-route.decorator';
 
 /**
  * The report names the database and the queue and quotes their failures
@@ -28,6 +29,7 @@ export class HealthController {
     @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,
   ) {}
 
+  @UnpaginatedRoute('one object, not a collection')
   @Get()
   @Capability(canReadHealth)
   @HealthCheck()

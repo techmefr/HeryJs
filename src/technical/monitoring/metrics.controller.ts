@@ -4,6 +4,7 @@ import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { Capability } from '#technical/capabilities/capability.decorator';
 import { canReadMetrics } from './monitoring.policy';
 import { metricsRegistry } from './metrics.registry';
+import { UnpaginatedRoute } from '#technical/http/unpaginated-route.decorator';
 
 /**
  * A scrape is a caller like any other. Prometheus has no session, so it
@@ -13,6 +14,9 @@ import { metricsRegistry } from './metrics.registry';
 @Controller('metrics')
 @UseGuards(SessionGuard, CapabilitiesGuard)
 export class MetricsController {
+  @UnpaginatedRoute(
+    'the Prometheus text format, which the scraper reads whole or not at all',
+  )
   @Get()
   @Capability(canReadMetrics)
   @Header('Content-Type', 'text/plain')

@@ -7,6 +7,8 @@ The kernel in `technical/` is what every project gets. Everything beyond it — 
 
 A module is an installer, not a dependency. It runs once, writes real files into your project, and disappears. There is no module resident at runtime, no plugin lifecycle, no hook system: the same "generate once, own your code" bargain as `hery generate`, applied to infrastructure instead of resources.
 
+The files it writes are held to the same conventions as the kernel, because they were written by the same people: a guard and a policy on every route, tenant scoping, and a paged collection route wherever it exposes one — `lint:pagination` and `lint:capabilities` cover module code exactly as they cover `technical/`. Installing a module is meant to be the whole job: fill in whatever it added to `.env`, run the migration it printed, and it works. Nothing is left as an exercise.
+
 ## Listing and installing
 
 ```bash

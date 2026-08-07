@@ -1,8 +1,10 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { Capability } from '#technical/capabilities/capability.decorator';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { SessionGuard } from '#technical/auth/session.guard';
 import { ok } from '#technical/http/envelope';
+import { UnpaginatedRoute } from '#technical/http/unpaginated-route.decorator';
+import { okPage, parsePageQuery } from '#technical/http/page-query';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { canReadAuditLog } from './audit.policy';
 import { AuditService } from './audit.service';
@@ -14,10 +16,16 @@ export class AuditController {
 
   @Get()
   @Capability(canReadAuditLog)
-  async list() {
-    return ok(await this.audit.list(TenantContextStorage.getTenantId()));
+  async list(@Query() query: unknown) {
+    const page = parsePageQuery(query);
+
+    return okPage(
+      await this.audit.page(TenantContextStorage.getTenantId(), page),
+      page,
+    );
   }
 
+  @UnpaginatedRoute('one verdict on the whole chain, not a collection')
   @Get('verify')
   @Capability(canReadAuditLog)
   async verify() {

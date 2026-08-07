@@ -2,6 +2,7 @@ import { randomBytes, createHash, timingSafeEqual } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { authPrismaClient } from './better-auth.instance';
 import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
+import type { Page, PageQuery } from '#technical/http/page-query';
 import type { AuthenticatedUser } from './auth.types';
 
 const KEY_PREFIX = 'hery_ak_';
@@ -61,18 +62,33 @@ export class ApiKeyService {
     };
   }
 
-  async list(user: AuthenticatedUser): Promise<ApiKeySummary[]> {
-    const keys = await authPrismaClient.apiKey.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: 'asc' },
-    });
+  async list(
+    user: AuthenticatedUser,
+    page: PageQuery,
+  ): Promise<Page<ApiKeySummary>> {
+    const where = { userId: user.id };
 
-    return keys.map((key) => ({
-      id: key.id,
-      name: key.name,
-      createdAt: key.createdAt,
-      revokedAt: key.revokedAt,
-    }));
+    // The id breaks a createdAt tie, so the order is the same on every request
+    // and a key cannot land on two pages or on none.
+    const [keys, total] = await Promise.all([
+      authPrismaClient.apiKey.findMany({
+        where,
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        skip: page.skip,
+        take: page.take,
+      }),
+      authPrismaClient.apiKey.count({ where }),
+    ]);
+
+    return {
+      records: keys.map((key) => ({
+        id: key.id,
+        name: key.name,
+        createdAt: key.createdAt,
+        revokedAt: key.revokedAt,
+      })),
+      total,
+    };
   }
 
   async revoke(user: AuthenticatedUser, id: string): Promise<void> {

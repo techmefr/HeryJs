@@ -5,6 +5,7 @@ import { Capability } from '#technical/capabilities/capability.decorator';
 import { DevOnlyGuard } from '#technical/dev-only/dev-only.guard';
 import { canUseDevtools } from '#technical/dev-only/dev-only.policy';
 import { ok } from '#technical/http/envelope';
+import { UnpaginatedRoute } from '#technical/http/unpaginated-route.decorator';
 import { IntrospectionService } from './introspection.service';
 
 @Controller('introspect')
@@ -12,6 +13,9 @@ import { IntrospectionService } from './introspection.service';
 export class IntrospectionController {
   constructor(private readonly introspection: IntrospectionService) {}
 
+  @UnpaginatedRoute(
+    'the route table this application declares in code, as long as that code',
+  )
   @Get()
   @Capability(canUseDevtools)
   list() {

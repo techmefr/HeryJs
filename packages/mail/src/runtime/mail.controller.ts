@@ -1,8 +1,8 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { SessionGuard } from '#kernel/auth/session.guard';
 import { CapabilitiesGuard } from '#kernel/capabilities/capabilities.guard';
 import { Capability } from '#kernel/capabilities/capability.decorator';
-import { ok } from '#kernel/http/envelope';
+import { okPage, parsePageQuery } from '#kernel/http/page-query';
 import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
 import { canReadMailLog } from './mail.policy';
 import { MailService } from './mail.service';
@@ -14,7 +14,12 @@ export class MailController {
 
   @Get()
   @Capability(canReadMailLog)
-  async list() {
-    return ok(await this.mail.list(TenantContextStorage.getTenantId()));
+  async list(@Query() query: unknown) {
+    const page = parsePageQuery(query);
+
+    return okPage(
+      await this.mail.list(TenantContextStorage.getTenantId(), page),
+      page,
+    );
   }
 }

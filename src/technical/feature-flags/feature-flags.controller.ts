@@ -1,8 +1,17 @@
-import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { Capability } from '#technical/capabilities/capability.decorator';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { SessionGuard } from '#technical/auth/session.guard';
 import { ok } from '#technical/http/envelope';
+import { okPage, parsePageQuery } from '#technical/http/page-query';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import { canManageFeatureFlags } from './feature-flags.policy';
 import { FeatureFlagsService } from './feature-flags.service';
@@ -16,8 +25,10 @@ export class FeatureFlagsController {
 
   @Get()
   @Capability(canManageFeatureFlags)
-  async list() {
-    return ok(await this.featureFlags.listAll());
+  async list(@Query() query: unknown) {
+    const page = parsePageQuery(query);
+
+    return okPage(await this.featureFlags.listAll(page), page);
   }
 
   @Patch(':key')

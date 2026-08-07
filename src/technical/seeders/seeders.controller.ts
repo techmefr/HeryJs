@@ -17,6 +17,7 @@ import { DevOnlyGuard } from '#technical/dev-only/dev-only.guard';
 import { canUseDevtools } from '#technical/dev-only/dev-only.policy';
 import { InvalidQueryException } from '#technical/errors/invalid-query.exception';
 import { ok } from '#technical/http/envelope';
+import { UnpaginatedRoute } from '#technical/http/unpaginated-route.decorator';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import { runSeederSchema } from './run-seeder.dto';
@@ -29,6 +30,9 @@ import type { Seeder } from './seeder.types';
 export class SeedersController {
   constructor(@Inject(SEEDERS) private readonly seeders: Seeder[]) {}
 
+  @UnpaginatedRoute(
+    'the seeders registered in code, as long as the code that registers them',
+  )
   @Get()
   @Capability(canUseDevtools)
   list() {

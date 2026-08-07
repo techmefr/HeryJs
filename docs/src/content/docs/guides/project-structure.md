@@ -82,6 +82,7 @@ Alongside them, each its own CI step:
 - `pnpm lint:scope-parity` — every `search()` in a `functional/` service goes through `scopeWhereFor(...)`, and every preset comes from the resource's single `<NAME>_PRESETS` declaration rather than a literal.
 - `pnpm lint:rls` — every model carrying a `tenantId` is either covered by a Postgres row-level policy or recorded as enforced in code, never neither.
 - `pnpm lint:subject` — every capability subject comes from `subjectOf(user)`.
+- `pnpm lint:pagination` — every collection route the framework writes itself (`technical/`, `devtools/`, `modules/`, the module packages) pages through `parsePageQuery`/`okPage`, or declares `@UnpaginatedRoute('<why>')`. A generated resource is out of scope: its blueprint decides.
 - `pnpm lint:dev-guard` — no controller hand-rolls its own production check instead of using `DevOnlyGuard`.
 - `pnpm lint:coverage` — a meta-check that every top-level directory is reached by *some* linter, so a newly added folder cannot quietly escape all of them. Two roots are allow-listed (`docs`, which ships its own toolchain, and `packages/admin-astro/src/runtime`, the admin template whose copy is only verified for real once `hery install` writes it into `admin/`), plus two file types read by the tools that own them (`.cjs`, `.mjs`) — the script describes that list as recorded debt rather than a licence.
 

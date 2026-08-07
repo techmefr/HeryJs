@@ -33,6 +33,12 @@ Three keys, always: `data`, `meta` (only when there is something to say about th
 }
 ```
 
+## The framework's own routes
+
+Beside your resources, the kernel and the modules ship routes of their own — `/audit-logs`, `/teams`, `/notifications`, `/api-keys`, `/feature-flags`, `/mail` once the module is installed. That is our code, not generated code, so it does not ask you to decide anything before it is usable: **every one of those collections pages**, with the same `page`/`limit`/`total`/`last_page` meta a generated resource reports.
+
+They are `GET` routes, so the window goes in the query string: `GET /audit-logs?page=2&limit=50`. The accepted page sizes are `10`, `25`, `50`, `100`, and the default is `25` — anything else is refused with the same `query.invalid` key as any other rejected parameter. `lint:pagination` fails the build on a framework collection route that does not page, unless it declares `@UnpaginatedRoute('<why>')` — which is how the route table, the scheduled tasks, the exposed actions and the capped devtools buffers say out loud that they return everything they have, and why that is bounded.
+
 ## When something goes wrong
 
 Every error, from every route, comes back the same way — see [Errors and responses](/guides/errors-and-responses/) for the full table of status/key pairs. The one rule worth keeping in mind while building a UI: **the `key` is what you branch on in code, the `message` is what you show a human, and neither ever changes shape** between resources or between routes.

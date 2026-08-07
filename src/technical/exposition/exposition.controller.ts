@@ -13,6 +13,7 @@ import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { Capability } from '#technical/capabilities/capability.decorator';
 import { subjectOf } from '#technical/capabilities/subject';
 import { ok } from '#technical/http/envelope';
+import { UnpaginatedRoute } from '#technical/http/unpaginated-route.decorator';
 import { canReachExposedActions } from './exposition.policy';
 import { describeAction } from './exposition-describe';
 import { ExpositionRunner } from './exposition-runner.service';
@@ -32,6 +33,9 @@ export class ExpositionController {
    * allowed anywhere near, so the same capability that gates running it gates
    * seeing it. Resolved per request, against the caller's own subject.
    */
+  @UnpaginatedRoute(
+    'the actions declared in code, as long as the code that declares them',
+  )
   @Get()
   @Capability(canReachExposedActions)
   list(@Req() request: RequestWithUser) {

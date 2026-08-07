@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -14,6 +15,7 @@ import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { Capability } from '#technical/capabilities/capability.decorator';
 import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
 import { ok } from '#technical/http/envelope';
+import { okPage, parsePageQuery } from '#technical/http/page-query';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import {
   canCreateTeam,
@@ -45,8 +47,10 @@ export class TeamsController {
 
   @Get()
   @Capability(canListOwnTeams)
-  async list(@Req() req: RequestWithUser) {
-    return ok(await this.teams.listFor(req.user.id), {
+  async list(@Req() req: RequestWithUser, @Query() query: unknown) {
+    const page = parsePageQuery(query);
+
+    return okPage(await this.teams.listFor(req.user.id, page), page, {
       currentTeamId: req.user.currentTeamId,
     });
   }

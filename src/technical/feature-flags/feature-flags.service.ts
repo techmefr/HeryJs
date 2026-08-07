@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
+import type { PageQuery } from '#technical/http/page-query';
 
 @Injectable()
 export class FeatureFlagsService {
@@ -33,8 +34,18 @@ export class FeatureFlagsService {
     });
   }
 
-  listAll() {
-    return this.prisma.featureFlag.findMany({ orderBy: { key: 'asc' } });
+  async listAll(page: PageQuery) {
+    const [records, total] = await Promise.all([
+      this.prisma.featureFlag.findMany({
+        // key is unique per tenant, so it is already a stable order on its own.
+        orderBy: [{ key: 'asc' }, { id: 'asc' }],
+        skip: page.skip,
+        take: page.take,
+      }),
+      this.prisma.featureFlag.count(),
+    ]);
+
+    return { records, total };
   }
 
   async set(key: string, enabled: boolean, tenantId?: string) {

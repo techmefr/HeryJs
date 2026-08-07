@@ -199,7 +199,7 @@ Four routes, all behind `SessionGuard`. Every one reads membership from the sess
 
 | Route | What it does |
 |---|---|
-| `GET /teams` | The caller's own teams. `meta.currentTeamId` carries the current one. |
+| `GET /teams` | The caller's own teams, paged (`?page=&limit=`). `meta.currentTeamId` carries the current one, alongside the usual `page`/`limit`/`total`/`last_page`. |
 | `POST /teams` | Creates a team, `{ name }`. |
 | `POST /teams/:id/members` | Adds `{ userId }` to the team. |
 | `PATCH /teams/current` | Switches the current team, `{ teamId }`. |

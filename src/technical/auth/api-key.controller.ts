@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -12,6 +13,7 @@ import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { Capability } from '#technical/capabilities/capability.decorator';
 import { ApiKeyEscalationException } from '#technical/errors/api-key-escalation.exception';
 import { ok } from '#technical/http/envelope';
+import { okPage, parsePageQuery } from '#technical/http/page-query';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import { canManageOwnApiKeys } from './api-key.policy';
 import { ApiKeyService } from './api-key.service';
@@ -49,9 +51,11 @@ export class ApiKeyController {
 
   @Get()
   @Capability(canManageOwnApiKeys)
-  async list(@Req() req: RequestWithUser) {
+  async list(@Req() req: RequestWithUser, @Query() query: unknown) {
     assertNotApiKey(req);
-    return ok(await this.apiKeys.list(req.user));
+    const page = parsePageQuery(query);
+
+    return okPage(await this.apiKeys.list(req.user, page), page);
   }
 
   @Delete(':id')

@@ -15,6 +15,7 @@ import { Capability } from '#technical/capabilities/capability.decorator';
 import { PublicRoute } from '#technical/capabilities/public-route.decorator';
 import { env } from '#technical/config/env';
 import { ok } from '#technical/http/envelope';
+import { UnpaginatedRoute } from '#technical/http/unpaginated-route.decorator';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { CHANNEL_PREFIX } from './signal.service';
 import { canIssueSignalToken } from './signal.policy';
@@ -34,6 +35,7 @@ export class SignalController {
     return ok({ token: this.tokens.issue(tenantId) });
   }
 
+  @UnpaginatedRoute('an open SSE stream: it has no end to page to')
   @Get('stream')
   @UseGuards(SignalTokenGuard)
   @PublicRoute(
