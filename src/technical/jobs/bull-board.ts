@@ -7,6 +7,8 @@ import IORedis from 'ioredis';
 import { env } from '#technical/config/env';
 import { DEFAULT_QUEUE, WEBHOOK_QUEUE } from './jobs.constants';
 
+export const BULL_BOARD_BASE_PATH = '/jobs';
+
 export function mountBullBoard(app: INestApplication) {
   const connection = new IORedis(env.REDIS_URL, { maxRetriesPerRequest: null });
   const queues = [DEFAULT_QUEUE, WEBHOOK_QUEUE].map(
@@ -14,11 +16,11 @@ export function mountBullBoard(app: INestApplication) {
   );
 
   const serverAdapter = new ExpressAdapter();
-  serverAdapter.setBasePath('/jobs');
+  serverAdapter.setBasePath(BULL_BOARD_BASE_PATH);
   createBullBoard({
     queues: queues.map((queue) => new BullMQAdapter(queue)),
     serverAdapter,
   });
 
-  app.use('/jobs', serverAdapter.getRouter());
+  app.use(BULL_BOARD_BASE_PATH, serverAdapter.getRouter());
 }

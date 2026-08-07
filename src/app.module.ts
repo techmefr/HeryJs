@@ -17,6 +17,7 @@ import { MonitoringModule } from '#technical/monitoring/monitoring.module';
 import { NotificationsModule } from '#technical/notifications/notifications.module';
 import { PruneModule } from '#technical/prune/prune.module';
 import { SchedulerModule } from '#technical/scheduler/scheduler.module';
+import { SecurityHeadersMiddleware } from '#technical/http/security-headers.middleware';
 import { SeedersModule } from '#technical/seeders/seeders.module';
 import { StorageModule } from '#modules/storage/storage.module';
 import { TeamsModule } from '#technical/teams/teams.module';
@@ -92,9 +93,12 @@ import { redactedRequestSerializer } from '#technical/logging/redacted-request-s
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    // Trace opens outermost so every guard, interceptor, handler, and
-    // Prisma call downstream (tenant resolution included) can attach a
-    // step to the same request-scoped context.
+    // Headers first, so they are set on a response even when something
+    // downstream fails before reaching a handler. Trace opens next, and outside
+    // everything else, so every guard, interceptor, handler, and Prisma call
+    // downstream (tenant resolution included) can attach a step to the same
+    // request-scoped context.
+    consumer.apply(SecurityHeadersMiddleware).forRoutes('*');
     consumer.apply(PipelineMiddleware).forRoutes('*');
     consumer.apply(TenantMiddleware).forRoutes('*');
     consumer.apply(InspectorMiddleware).forRoutes('*');

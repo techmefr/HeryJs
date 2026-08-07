@@ -33,6 +33,10 @@ Three keys, always: `data`, `meta` (only when there is something to say about th
 }
 ```
 
+## The headers on every response
+
+Set by a middleware the application registers itself, ahead of everything else, so they are there even when a request fails before reaching a handler: `nosniff`, no framing, no referrer, no `X-Powered-By`, and a content security policy that permits inline styles and **no script at all** — the only HTML served here is the error page, and it needs nothing more. The one exception is `/jobs`, the queue dashboard, which is a third-party UI with its own scripts and is mounted in development only.
+
 ## What a single request may ask for
 
 A page size is a product decision, so a blueprint declares it. The size of the request itself is not, and every one of these is refused with `query.invalid` rather than planned by the database:
