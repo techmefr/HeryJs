@@ -8,28 +8,23 @@ import {
 import * as path from 'node:path';
 import pc from 'picocolors';
 
-// A module's runtime/ is written against the app's kernel through this
-// specifier, so tsconfig.json in the module's own package can map it to
-// ../../src/technical/* and type-check/lint the file where it is authored,
-// instead of a string template nothing checks until it lands in a generated
-// project. Most modules land two levels under src/ (src/modules/<name>/), but
-// some (search drivers, the graphql guard) land directly inside the kernel's
-// own src/technical/ tree -- so the rewrite target is computed per
-// destination file rather than fixed, from that file's own directory back to
-// src/technical.
+// A module's runtime/ is written against the app's kernel through #kernel/, so
+// tsconfig.json in the module's own package can map it to ../../src/technical/*
+// and type-check/lint the file where it is authored, instead of a string
+// template nothing checks until it lands in a generated project.
+//
+// It lands as #technical/, the app's own subpath import, rather than as a
+// relative path computed from the destination: modules land at three different
+// depths (src/modules/<name>/, src/technical/search/, src/ itself), so a
+// relative rewrite produced a different file for each of them, and none of them
+// matched the copy this repository keeps under src/modules/ -- which is the copy
+// every convention check and every reader actually sees. One specifier means the
+// installed file is the authored file, and `pnpm lint:module-drift` can say so.
 const KERNEL_SPECIFIER = '#kernel/';
+const APP_KERNEL_SPECIFIER = '#technical/';
 
-function kernelPrefixFor(destFileDir: string): string {
-  const relative = path
-    .relative(destFileDir, 'src/technical')
-    .split(path.sep)
-    .join('/');
-
-  return `${relative.startsWith('.') ? relative : `./${relative}`}/`;
-}
-
-function rewriteKernelSpecifiers(source: string, destFileDir: string): string {
-  return source.split(KERNEL_SPECIFIER).join(kernelPrefixFor(destFileDir));
+export function rewriteKernelSpecifiers(source: string): string {
+  return source.split(KERNEL_SPECIFIER).join(APP_KERNEL_SPECIFIER);
 }
 
 /**
@@ -53,10 +48,7 @@ export function copyRuntime(runtimeDir: string, destDir: string): void {
       continue;
     }
 
-    const content = rewriteKernelSpecifiers(
-      readFileSync(sourcePath, 'utf8'),
-      path.dirname(destPath),
-    );
+    const content = rewriteKernelSpecifiers(readFileSync(sourcePath, 'utf8'));
     mkdirSync(path.dirname(destPath), { recursive: true });
     writeFileSync(destPath, content);
     console.log(pc.green(`✔ ${destPath}`));

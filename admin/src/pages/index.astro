@@ -26,7 +26,7 @@ import Shell from '../layouts/Shell.astro';
   const output = document.getElementById('output')!;
   output.appendChild(skeleton(4));
 
-  const { data } = await api<DescribedController[]>('/describe');
+  const { data } = await api<DescribedController[]>('/introspect');
   const routes = data.flatMap((controller) => controller.routes);
 
   const strip = document.createElement('div');

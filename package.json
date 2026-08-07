@@ -32,6 +32,7 @@
     "lint:scope-parity": "pnpm run lint:conventions scope-parity",
     "lint:rls": "pnpm run lint:conventions rls",
     "lint:pagination": "pnpm run lint:conventions pagination",
+    "lint:module-drift": "pnpm run lint:conventions module-drift",
     "lint:coverage": "pnpm run lint:conventions coverage",
     "lint:dev-guard": "pnpm run lint:conventions dev-guard",
     "lint:subject": "pnpm run lint:conventions subject",

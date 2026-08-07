@@ -52,6 +52,8 @@ admin-astro [official] - Add an admin panel built with Astro...
 
 Discovery walks `packages/*` at startup and requires whatever `src/module.ts` it finds there — there is no barrel file listing packages by hand, so a new official module needs nothing beyond its own folder to show up.
 
+Because this repository has every module installed into itself, each one exists twice: authored under `packages/<name>/src/runtime`, installed where that module's own `module.ts` copies it to. `pnpm lint:module-drift` compares the two and fails when they diverge — a fix applied to the copy that runs here and not to the copy a project would install is a fix nobody else gets, and the whole gate stayed green through it until this check existed. The runtime file is written against the kernel through a `#kernel/` specifier, rewritten to the app's own `#technical/` on the way in, which is the only difference between the two copies.
+
 The **community** channel is the same mechanism turned outward: any npm package a project installs can register itself as a module by adding a `heryjs.module: true` marker to its own `package.json`. `hery module:list` and `hery install` scan the project's declared dependencies for that marker and require whichever ones carry it — there is no separate registry to submit to and nothing HeryJs curates on that side; the convention itself is the whole channel.
 
 ## A module is these fields

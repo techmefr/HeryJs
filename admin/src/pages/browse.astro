@@ -45,7 +45,7 @@ import Shell from '../layouts/Shell.astro';
     output.appendChild(skeleton());
 
     try {
-      const { data } = await api<unknown>(
+      const { data, meta } = await api<unknown>(
         route,
         method === 'POST'
           ? { method: 'POST', body: JSON.stringify({}) }
@@ -65,11 +65,22 @@ import Shell from '../layouts/Shell.astro';
           : table(rows),
       );
 
-      document
-        .getElementById('top-extra')
-        ?.appendChild(
-          pill(rows.length + (rows.length === 1 ? ' row' : ' rows'), 'neutral'),
-        );
+      // A paged listing shows one page: saying "25 rows" and stopping there
+      // would read as "that is all there is", which is exactly what it is not.
+      const window = meta as
+        { page?: number; total?: number; last_page?: number } | undefined;
+      const label =
+        window?.total !== undefined && window.total > rows.length
+          ? rows.length +
+            ' of ' +
+            window.total +
+            ' rows — page ' +
+            (window.page ?? 1) +
+            ' of ' +
+            (window.last_page ?? 1)
+          : rows.length + (rows.length === 1 ? ' row' : ' rows');
+
+      document.getElementById('top-extra')?.appendChild(pill(label, 'neutral'));
     } catch (error) {
       output.replaceChildren(
         error instanceof ApiError && error.status === 403
