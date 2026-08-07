@@ -6,29 +6,33 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable } from '@nestjs/common';
+import { s3StorageEnv } from './storage.env';
 import type { StorageProvider } from './storage.types';
 
-const BUCKET = process.env.STORAGE_S3_BUCKET ?? 'heryjs';
 const DEFAULT_TTL_SECONDS = 900;
 
 // Works against real S3 or any S3-compatible endpoint (self-hosted MinIO
 // included) -- only STORAGE_S3_ENDPOINT changes between the two.
 @Injectable()
 export class S3StorageProvider implements StorageProvider {
+  private readonly env = s3StorageEnv();
+
+  private readonly bucket = this.env.STORAGE_S3_BUCKET;
+
   private readonly client = new S3Client({
-    region: process.env.STORAGE_S3_REGION ?? 'us-east-1',
-    endpoint: process.env.STORAGE_S3_ENDPOINT,
-    forcePathStyle: Boolean(process.env.STORAGE_S3_ENDPOINT),
+    region: this.env.STORAGE_S3_REGION,
+    endpoint: this.env.STORAGE_S3_ENDPOINT,
+    forcePathStyle: Boolean(this.env.STORAGE_S3_ENDPOINT),
     credentials: {
-      accessKeyId: process.env.STORAGE_S3_ACCESS_KEY ?? 'heryjs',
-      secretAccessKey: process.env.STORAGE_S3_SECRET_KEY ?? 'heryjs-dev-secret',
+      accessKeyId: this.env.STORAGE_S3_ACCESS_KEY,
+      secretAccessKey: this.env.STORAGE_S3_SECRET_KEY,
     },
   });
 
   async put(key: string, body: Buffer, contentType: string): Promise<void> {
     await this.client.send(
       new PutObjectCommand({
-        Bucket: BUCKET,
+        Bucket: this.bucket,
         Key: key,
         Body: body,
         ContentType: contentType,
@@ -38,7 +42,7 @@ export class S3StorageProvider implements StorageProvider {
 
   async remove(key: string): Promise<void> {
     await this.client.send(
-      new DeleteObjectCommand({ Bucket: BUCKET, Key: key }),
+      new DeleteObjectCommand({ Bucket: this.bucket, Key: key }),
     );
   }
 
@@ -48,7 +52,7 @@ export class S3StorageProvider implements StorageProvider {
   ): Promise<string> {
     return getSignedUrl(
       this.client,
-      new GetObjectCommand({ Bucket: BUCKET, Key: key }),
+      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
       { expiresIn: expiresInSeconds },
     );
   }

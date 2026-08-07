@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
+import { streamEnv } from './stream.env';
 
-const LIVEKIT_URL = process.env.LIVEKIT_URL ?? 'http://localhost:7880';
-const LIVEKIT_API_KEY = process.env.LIVEKIT_API_KEY ?? 'devkey';
-const LIVEKIT_API_SECRET = process.env.LIVEKIT_API_SECRET ?? 'secret';
+const { LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET } = streamEnv;
 
 // v1 is scoped to one-to-many: a single publisher per room, any number of
 // subscribe-only viewers -- real multi-participant conferencing (mixing N

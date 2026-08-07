@@ -125,9 +125,15 @@ Despite the name it is a plain command, not a registry module: it does not appea
 Checks that the things the app needs are actually reachable — Postgres, Valkey, and whether Prisma migrations are up to date — and exits non-zero if any of them is not, with a hint for each:
 
 ```
-✔ PostgreSQL (localhost:32769)
-✔ Valkey (localhost:32768)
+✔ PostgreSQL (localhost:32768)
+✔ Valkey (localhost:32769)
 ✘ Prisma migrations — run "pnpm hery migrate --name <name>"
+```
+
+Reachable here means the service answered as itself, not that a socket opened: Postgres is asked for a `select 1` and Valkey for a `PING`. Since the compose files let Docker pick the host port, recreating the containers can hand Postgres the port `.env` still has under `REDIS_URL` and the other way round — two services up, two URLs pointing at the wrong one, and a connection check would call that healthy. This one says which service failed to answer and tells you to run `--start`:
+
+```
+✘ PostgreSQL (localhost:32769) — something is listening there, but it does not answer as PostgreSQL — was the container recreated on a new port? run "pnpm hery up --start"
 ```
 
 `--start` brings the compose services up first and then does something more interesting: it reads back the **ports Docker actually assigned** and writes them into `.env`. The compose files publish container ports without fixing a host port, so several projects can run side by side without colliding, and `hery up --start` is what reconciles that with your configuration. It resolves `DATABASE_URL` and `REDIS_URL`, plus `ELASTICSEARCH_URL` or `MEILISEARCH_URL` if the matching search module is installed.
@@ -178,6 +184,8 @@ pnpm hery lint --min-score 100           # fail only on anything new
 ```
 
 The baseline (`.hery/lint-baseline.json` by default, override with `--baseline <path>`) keys each grandfathered violation by the rule and a hash of the exact file content it was recorded against — never by path. Rename the file and the debt follows it; touch even one line and the file's violations count as new again. That is deliberate: a baseline immune to edits would let someone change a violating line for an unrelated reason and walk away having silently re-endorsed it.
+
+This framework's own baseline is empty, and CI runs `--min-score 100` against it. There is no known debt left to grandfather here, so the next violation introduced fails the build on the commit that introduces it.
 
 `--format json` prints `{ score, grandfathered, violations }` instead of the text report, for a script or an agent to act on.
 

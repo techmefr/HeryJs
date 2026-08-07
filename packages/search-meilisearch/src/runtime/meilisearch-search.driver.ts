@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Meilisearch } from 'meilisearch';
+import { meilisearchEnv } from './meilisearch-search.env';
 import { matchesFrom } from '#kernel/search/search-driver';
 import type { SearchDriver, SearchMatches } from '#kernel/search/search-driver';
 
@@ -8,8 +9,8 @@ const TENANT_FIELD = 'tenantId';
 @Injectable()
 export class MeilisearchSearchDriver implements SearchDriver {
   private readonly client = new Meilisearch({
-    host: process.env.MEILISEARCH_URL ?? 'http://localhost:7700',
-    apiKey: process.env.MEILISEARCH_API_KEY ?? 'heryjs-dev-master-key',
+    host: meilisearchEnv.MEILISEARCH_URL,
+    apiKey: meilisearchEnv.MEILISEARCH_API_KEY,
   });
 
   // Meilisearch refuses to filter on an attribute that was never declared

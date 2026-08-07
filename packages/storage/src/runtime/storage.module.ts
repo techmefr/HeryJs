@@ -2,10 +2,11 @@ import { Module } from '@nestjs/common';
 import { LocalStorageProvider } from './local-storage.provider';
 import { S3StorageProvider } from './s3-storage.provider';
 import { StorageController } from './storage.controller';
+import { storageEnv } from './storage.env';
 import { StorageSignatureGuard } from './storage-signature.guard';
 import { STORAGE_PROVIDER } from './storage.types';
 
-const DRIVER = process.env.STORAGE_DRIVER ?? 'local';
+const DRIVER = storageEnv.STORAGE_DRIVER;
 
 @Module({
   controllers: DRIVER === 'local' ? [StorageController] : [],

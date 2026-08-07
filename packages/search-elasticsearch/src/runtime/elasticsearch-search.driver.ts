@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Client } from '@elastic/elasticsearch';
+import { elasticsearchEnv } from './elasticsearch-search.env';
 import { matchesFrom } from '#kernel/search/search-driver';
 import type { SearchDriver, SearchMatches } from '#kernel/search/search-driver';
 
@@ -8,7 +9,7 @@ const TENANT_FIELD = 'tenantId';
 @Injectable()
 export class ElasticsearchSearchDriver implements SearchDriver {
   private readonly client = new Client({
-    node: process.env.ELASTICSEARCH_URL ?? 'http://localhost:9200',
+    node: elasticsearchEnv.ELASTICSEARCH_URL,
   });
 
   async index(

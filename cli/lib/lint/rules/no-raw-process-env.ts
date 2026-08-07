@@ -26,16 +26,31 @@ function packageRuntimeRoots(repoRoot: string): string[] {
     .filter((dir) => existsSync(dir));
 }
 
-// The one file allowed to touch process.env directly -- every other read is
-// supposed to go through the parsed, validated `env` export instead.
-const ALLOWED_FILE = 'src/technical/config/env.ts';
+// The only two files allowed to touch process.env directly, and both of them
+// exist to validate what they read: env.ts parses the application's own schema,
+// module-env.ts parses the schema an installed module declares for itself. Every
+// other read is supposed to go through one of their exports instead.
+const ALLOWED_FILES = [
+  'src/technical/config/env.ts',
+  'src/technical/config/module-env.ts',
+];
 
 const PATTERN = /process\.env\b/;
+
+// NODE_ENV is the one name this rule does not ask to be validated. It is Node's
+// own switch rather than configuration of ours: it is read before any schema can
+// be loaded, its value is not a value the framework chooses, and pinning it to a
+// list would refuse the deployments that legitimately run under `staging`. What
+// the rule is about is configuration -- a URL, a credential, a limit -- where a
+// missing or misspelled variable has to fail at boot instead of defaulting in
+// silence. Branching production behaviour on NODE_ENV has its own check,
+// `lint:dev-guard`, which is where that concern belongs.
+const NODE_ENV_READ = /process\.env\.NODE_ENV\b/g;
 
 function checkFile(filePath: string, repoRoot: string): Violation[] {
   const relative = path.relative(repoRoot, filePath).split(path.sep).join('/');
 
-  if (relative === ALLOWED_FILE) {
+  if (ALLOWED_FILES.includes(relative)) {
     return [];
   }
 
@@ -44,7 +59,7 @@ function checkFile(filePath: string, repoRoot: string): Violation[] {
   const violations: Violation[] = [];
 
   lines.forEach((text, index) => {
-    if (PATTERN.test(text)) {
+    if (PATTERN.test(text.replace(NODE_ENV_READ, ''))) {
       violations.push({
         rule: 'no-raw-process-env',
         severity: 'major',

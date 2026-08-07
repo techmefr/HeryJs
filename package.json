@@ -134,6 +134,7 @@
     "forceExit": true,
     "roots": [
       "<rootDir>/src",
+      "<rootDir>/cli",
       "<rootDir>/examples"
     ],
     "moduleNameMapper": {

@@ -1,11 +1,25 @@
 import { connect } from 'node:net';
 import { spawnSync } from 'node:child_process';
+import { Client } from 'pg';
 
 export interface CheckResult {
   label: string;
   ok: boolean;
   hint?: string;
 }
+
+/**
+ * Docker hands out a different port every time these containers are recreated,
+ * and .env keeps the one from last time -- so the two URLs end up pointing at
+ * each other's service, and a check that only opens a socket reports both of
+ * them healthy. Every check here speaks the protocol it claims to be checking,
+ * and separates "nothing is listening" from "something is, but it is not this".
+ */
+const NOT_THE_RIGHT_SERVICE =
+  'something is listening there, but it does not answer as';
+
+const RESYNC_HINT =
+  'was the container recreated on a new port? run "pnpm hery up --start"';
 
 export function parseHostPort(
   url: string,
@@ -47,6 +61,56 @@ export function checkTcp(
   });
 }
 
+export async function speaksPostgres(
+  url: string,
+  timeoutMs = 2000,
+): Promise<boolean> {
+  const client = new Client({
+    connectionString: url,
+    connectionTimeoutMillis: timeoutMs,
+  });
+
+  try {
+    await client.connect();
+    await client.query('select 1');
+    return true;
+  } catch {
+    return false;
+  } finally {
+    await client.end().catch(() => undefined);
+  }
+}
+
+/**
+ * RESP accepts an inline command, so a PING costs one write and needs no client
+ * library: anything that answers `+PONG` is a Redis-compatible server, anything
+ * else -- a Postgres listener included -- is not.
+ */
+export function speaksRedis(
+  host: string,
+  port: number,
+  timeoutMs = 1000,
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = connect({ host, port });
+    let timer: NodeJS.Timeout;
+
+    const settle = (answered: boolean) => {
+      clearTimeout(timer);
+      socket.destroy();
+      resolve(answered);
+    };
+
+    timer = setTimeout(() => settle(false), timeoutMs);
+
+    socket.once('connect', () => socket.write('PING\r\n'));
+    socket.once('data', (chunk: Buffer) =>
+      settle(chunk.toString('utf8').startsWith('+PONG')),
+    );
+    socket.once('error', () => settle(false));
+  });
+}
+
 export function checkMigrations(): CheckResult {
   const result = spawnSync('npx', ['prisma', 'migrate', 'status'], {
     encoding: 'utf-8',
@@ -82,10 +146,16 @@ export async function runInfraChecks(): Promise<CheckResult[]> {
 
     if (parsed) {
       const reachable = await checkTcp(parsed.host, parsed.port);
+      const answers = reachable && (await speaksPostgres(databaseUrl));
+
       checks.push({
         label: `PostgreSQL (${parsed.host}:${parsed.port})`,
-        ok: reachable,
-        hint: reachable ? undefined : 'run "docker compose up -d postgres"',
+        ok: answers,
+        hint: answers
+          ? undefined
+          : reachable
+            ? `${NOT_THE_RIGHT_SERVICE} PostgreSQL — ${RESYNC_HINT}`
+            : 'run "docker compose up -d postgres"',
       });
     } else {
       checks.push({
@@ -106,10 +176,17 @@ export async function runInfraChecks(): Promise<CheckResult[]> {
 
   if (redisParsed) {
     const redisReachable = await checkTcp(redisParsed.host, redisParsed.port);
+    const redisAnswers =
+      redisReachable && (await speaksRedis(redisParsed.host, redisParsed.port));
+
     checks.push({
       label: `Valkey (${redisParsed.host}:${redisParsed.port})`,
-      ok: redisReachable,
-      hint: redisReachable ? undefined : 'run "docker compose up -d valkey"',
+      ok: redisAnswers,
+      hint: redisAnswers
+        ? undefined
+        : redisReachable
+          ? `${NOT_THE_RIGHT_SERVICE} Valkey — ${RESYNC_HINT}`
+          : 'run "docker compose up -d valkey"',
     });
   } else {
     checks.push({
