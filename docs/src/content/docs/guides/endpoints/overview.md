@@ -37,6 +37,25 @@ Three keys, always: `data`, `meta` (only when there is something to say about th
 
 Set by a middleware the application registers itself, ahead of everything else, so they are there even when a request fails before reaching a handler: `nosniff`, no framing, no referrer, no `X-Powered-By`, and a content security policy that permits inline styles and **no script at all** — the only HTML served here is the error page, and it needs nothing more. The one exception is `/jobs`, the queue dashboard, which is a third-party UI with its own scripts and is mounted in development only.
 
+## Which browsers may call it
+
+`cors.config.ts`, at the project root, one file for one subject — next to `hery.config.ts`, and yours to edit:
+
+```ts
+import type { CorsConfig } from './src/technical/http/cors.types';
+
+export default {
+  origins: ['https://app.example.com'],
+  credentials: false,
+} satisfies CorsConfig;
+```
+
+An **empty** `origins` turns CORS off: no header goes out, and that is the right answer whenever nothing is a browser on another domain — a mobile client, another service, or a same-origin front end. The boot log says so out loud rather than leaving you to discover it from a browser console.
+
+A fresh project ships `origins: ['*']`, so a front end on another port works with no setup. That exact value is **refused under `NODE_ENV=production`**, naming the file: it is the value that is convenient locally and wrong once something real is behind it. `'*'` together with `credentials: true` is refused everywhere — browsers reject that pair, so accepting it would only produce an application that does not work and says nothing about why.
+
+`methods`, `allowedHeaders`, `exposedHeaders` and `maxAgeSeconds` are optional. The default allowed headers are `Authorization` and `Content-Type`, because a preflight that drops the first refuses every authenticated cross-origin request.
+
 ## What a single request may ask for
 
 A page size is a product decision, so a blueprint declares it. The size of the request itself is not, and every one of these is refused with `query.invalid` rather than planned by the database:

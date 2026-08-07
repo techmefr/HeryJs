@@ -11,6 +11,7 @@ import { Test } from '@nestjs/testing';
 import { z } from 'zod';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import { DomainExceptionFilter } from './domain-exception.filter';
 
@@ -34,6 +35,16 @@ class ValidatedController {
   @Post('boom')
   boom(): never {
     throw new Error('the connection string is postgres://user:hunter2@db');
+  }
+
+  // A filter value of the wrong type, exactly as a caller reaches it: the field
+  // name is whitelisted by the resource contract, the value is not, so the
+  // driver is the first thing that notices.
+  @Post('wrong-type')
+  async wrongType() {
+    return authPrismaClient.user.findMany({
+      where: { email: { contains: 42 as unknown as string } },
+    });
   }
 }
 
@@ -109,6 +120,35 @@ describe('DomainExceptionFilter over a plain HttpException', () => {
       expect(body.error.details.errorId).toMatch(/^[0-9a-f-]{36}$/);
       expect(logged.join('\n')).toContain(body.error.details.errorId);
       expect(logged.join('\n')).toContain('hunter2');
+    } finally {
+      logger.mockRestore();
+    }
+  });
+
+  it('answers a value of the wrong type with a 400 instead of blaming the server', async () => {
+    const logged: string[] = [];
+    const logger = jest
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation((message: unknown) => {
+        logged.push(String(message));
+      });
+
+    try {
+      const response = await request(app.getHttpServer())
+        .post('/validated/wrong-type')
+        .expect(400);
+
+      const body = response.body as {
+        error: { key: string; message: string; details: { errorId: string } };
+      };
+
+      expect(body.error.key).toBe('query.invalid');
+      expect(body.error.message).toContain('does not match the type');
+
+      // Prisma's own message quotes the generated query, so it never travels
+      // back -- it goes to the log, under the id the response carries.
+      expect(JSON.stringify(body)).not.toContain('SELECT');
+      expect(logged.join('\n')).toContain(body.error.details.errorId);
     } finally {
       logger.mockRestore();
     }

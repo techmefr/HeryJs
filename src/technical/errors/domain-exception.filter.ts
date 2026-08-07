@@ -8,8 +8,10 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { Prisma } from '@prisma/client';
 import { TraceContextStorage } from '#technical/tracing/trace-context';
 import { DomainException } from './domain.exception';
+import { InvalidQueryValueException } from './invalid-query.exception';
 import { renderErrorPage } from './error-page';
 
 export interface ResolvedError {
@@ -58,6 +60,50 @@ function reportUnknownError(exception: unknown): ResolvedError {
   };
 }
 
+/**
+ * A value of the wrong type is the caller's mistake, and only the driver is in a
+ * position to notice it -- so the 400 is decided here, from the error Prisma
+ * throws. The original is still written to the log at warn level with the same
+ * id: the other way to reach a validation error is a bug in a query this
+ * framework built itself, and that has to stay findable rather than be answered
+ * with "your request was invalid" and forgotten.
+ */
+function reportInvalidQueryValue(error: Error): ResolvedError {
+  const errorId = randomUUID();
+
+  logger.warn(`[${errorId}] ${error.name}: ${error.message}`);
+
+  TraceContextStorage.pushStep({
+    stage: 'prisma',
+    label: 'rejected value',
+    status: 'error',
+    durationMs: 0,
+    detail: { errorId, name: error.name },
+  });
+
+  const exception = new InvalidQueryValueException();
+
+  return {
+    status: exception.getStatus(),
+    key: exception.key,
+    message: exception.message,
+    details: { ...(exception.details as Record<string, unknown>), errorId },
+  };
+}
+
+// P2023 is the same family: a value that cannot be the column it is compared to
+// -- a malformed uuid on a project whose ids are uuids, where this framework's
+// own default is a cuid and would never produce one.
+const CLIENT_VALUE_ERROR_CODES = new Set(['P2023']);
+
+function isClientValueError(exception: unknown): exception is Error {
+  return (
+    exception instanceof Prisma.PrismaClientValidationError ||
+    (exception instanceof Prisma.PrismaClientKnownRequestError &&
+      CLIENT_VALUE_ERROR_CODES.has(exception.code))
+  );
+}
+
 // Shared with batch routes (create/update/delete/restore over an array):
 // one failed entry there gets this exact shape inline in the results array,
 // rather than the whole request 500ing or a second error format to document.
@@ -69,6 +115,10 @@ export function resolveDomainError(exception: unknown): ResolvedError {
       message: exception.message,
       details: exception.details,
     };
+  }
+
+  if (isClientValueError(exception)) {
+    return reportInvalidQueryValue(exception);
   }
 
   if (exception instanceof HttpException) {

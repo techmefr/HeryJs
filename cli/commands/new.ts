@@ -46,6 +46,7 @@ const COPY_ENTRIES = [
   'prisma/schema.prisma',
   'prisma.config.ts',
   'hery.config.ts',
+  'cors.config.ts',
   '.dependency-cruiser.cjs',
   'tsconfig.json',
   'tsconfig.build.json',
@@ -259,7 +260,7 @@ function rewritePackageJson(destRoot: string, projectName: string): void {
   // admin-astro package's own eslint.config.mjs still ships in packages/ and
   // still shadows the root config for its neighbors the same way it does here.
   manifest.scripts.lint =
-    'eslint "{src,apps,libs,test,cli,scripts,prisma,packages}/**/*.ts" "prisma.config.ts" "hery.config.ts" --ignore-pattern "packages/admin-astro/src/runtime/**" --fix';
+    'eslint "{src,apps,libs,test,cli,scripts,prisma,packages}/**/*.ts" "prisma.config.ts" "hery.config.ts" "cors.config.ts" --ignore-pattern "packages/admin-astro/src/runtime/**" --fix';
 
   writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`);
 }
