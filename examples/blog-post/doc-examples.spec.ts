@@ -450,21 +450,152 @@ describe('doc examples', () => {
   });
 });
 
+const CUID = /\bc(?=[a-z0-9]*\d)[a-z0-9]{20,30}\b/g;
+const SHA256 = /\b[0-9a-f]{64}\b/g;
+const ISO_TIMESTAMP = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/g;
+const FIRST_TIMESTAMP = Date.parse('2026-01-15T09:00:00.000Z');
+
+function placeholderId(index: number): string {
+  return `cxmpl${String(index).padStart(20, '0')}`;
+}
+
+// The audit chain hashes the record, its actor and its timestamps, so every run
+// produces different digests for the same example. They stay hex and stay
+// distinct from one another, since what the example shows is that each entry
+// links to the previous one.
+function placeholderDigest(index: number): string {
+  return String(index).padStart(64, '0');
+}
+
+/**
+ * Everything in this file is captured from a real run, and a real run brings a
+ * new set of cuids and a new set of timestamps every time -- which rewrote the
+ * whole generated file on every `pnpm test`, so a change in the actual shape of
+ * a response was invisible in a diff of several hundred lines that always moved.
+ *
+ * Each distinct id becomes a stable placeholder, and each distinct timestamp a
+ * fixed instant assigned in chronological order, so the examples that depend on
+ * one record being newer than another still read correctly. The file now changes
+ * only when a request, a response or a pipeline actually changes.
+ */
+function stabilizerFor(everything: string): (serialized: string) => string {
+  const ids = (everything.match(CUID) ?? []).reduce(
+    (mapped, id) =>
+      mapped.has(id) ? mapped : mapped.set(id, placeholderId(mapped.size + 1)),
+    new Map<string, string>(),
+  );
+
+  const digests = (everything.match(SHA256) ?? []).reduce(
+    (mapped, digest) =>
+      mapped.has(digest)
+        ? mapped
+        : mapped.set(digest, placeholderDigest(mapped.size + 1)),
+    new Map<string, string>(),
+  );
+
+  const timestamps = [...new Set(everything.match(ISO_TIMESTAMP) ?? [])]
+    .sort((left, right) => Date.parse(left) - Date.parse(right))
+    .reduce(
+      (mapped, value, index) =>
+        mapped.set(
+          value,
+          new Date(FIRST_TIMESTAMP + index * 1000).toISOString(),
+        ),
+      new Map<string, string>(),
+    );
+
+  return (serialized) =>
+    serialized
+      .replace(CUID, (id) => ids.get(id) ?? id)
+      .replace(SHA256, (digest) => digests.get(digest) ?? digest)
+      .replace(ISO_TIMESTAMP, (value) => timestamps.get(value) ?? value);
+}
+
+// A duration measured on whoever ran the suite is not information the reader can
+// use, and it was the other half of the churn. The sequence of stages is the
+// point, so the generated steps carry no timing at all.
+function withoutTimings(steps: TraceStep[]): Omit<TraceStep, 'durationMs'>[] {
+  return steps.map(({ durationMs: _durationMs, ...step }) => step);
+}
+
+/**
+ * A paginated search issues its count and its page of rows concurrently, so the
+ * trace records them in whichever order the database answered -- the same two
+ * steps, swapped from one run to the next. Neighbours that share a stage and a
+ * label are the concurrent ones, and only those are put in a fixed order.
+ */
+function canonicalOrder<TStep extends { stage: string; label: string }>(
+  steps: TStep[],
+): TStep[] {
+  const ordered: TStep[] = [];
+
+  for (const step of steps) {
+    const previous = ordered[ordered.length - 1];
+
+    if (
+      !previous ||
+      previous.stage !== step.stage ||
+      previous.label !== step.label
+    ) {
+      ordered.push(step);
+      continue;
+    }
+
+    let insertAt = ordered.length;
+
+    while (
+      insertAt > 0 &&
+      ordered[insertAt - 1]!.stage === step.stage &&
+      ordered[insertAt - 1]!.label === step.label &&
+      JSON.stringify(ordered[insertAt - 1]) > JSON.stringify(step)
+    ) {
+      insertAt -= 1;
+    }
+
+    ordered.splice(insertAt, 0, step);
+  }
+
+  return ordered;
+}
+
+function untimed(collected: PlaygroundScenario[]) {
+  return collected.map((scenario) => ({
+    ...scenario,
+    flow: canonicalOrder(withoutTimings(scenario.flow)),
+  }));
+}
+
 function writeGeneratedFile(): void {
+  const untimedScenarios = {
+    search: untimed(scenarios.search),
+    create: untimed(scenarios.create),
+    update: untimed(scenarios.update),
+    delete: untimed(scenarios.delete),
+    restore: untimed(scenarios.restore),
+    details: untimed(scenarios.details),
+  };
+
+  // One pass over everything first, so an id or a timestamp reads the same in
+  // every section of the file rather than being numbered from one per section.
+  const stabilize = stabilizerFor(JSON.stringify(untimedScenarios));
+
+  const serialize = (collected: unknown) =>
+    stabilize(JSON.stringify(collected, null, 2));
+
   const lines = [
     "import type { PlaygroundScenario } from './scenario-types';",
     '',
-    `export const searchScenarios: PlaygroundScenario[] = ${JSON.stringify(scenarios.search, null, 2)};`,
+    `export const searchScenarios: PlaygroundScenario[] = ${serialize(untimedScenarios.search)};`,
     '',
-    `export const createScenarios: PlaygroundScenario[] = ${JSON.stringify(scenarios.create, null, 2)};`,
+    `export const createScenarios: PlaygroundScenario[] = ${serialize(untimedScenarios.create)};`,
     '',
-    `export const updateScenarios: PlaygroundScenario[] = ${JSON.stringify(scenarios.update, null, 2)};`,
+    `export const updateScenarios: PlaygroundScenario[] = ${serialize(untimedScenarios.update)};`,
     '',
-    `export const deleteScenarios: PlaygroundScenario[] = ${JSON.stringify(scenarios.delete, null, 2)};`,
+    `export const deleteScenarios: PlaygroundScenario[] = ${serialize(untimedScenarios.delete)};`,
     '',
-    `export const restoreScenarios: PlaygroundScenario[] = ${JSON.stringify(scenarios.restore, null, 2)};`,
+    `export const restoreScenarios: PlaygroundScenario[] = ${serialize(untimedScenarios.restore)};`,
     '',
-    `export const detailsScenarios: PlaygroundScenario[] = ${JSON.stringify(scenarios.details, null, 2)};`,
+    `export const detailsScenarios: PlaygroundScenario[] = ${serialize(untimedScenarios.details)};`,
     '',
     `export const resourceCode = ${JSON.stringify(resourceCode, null, 2)};`,
     '',

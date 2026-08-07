@@ -8,7 +8,7 @@ interface PlaygroundStep {
 	stage: 'middleware' | 'guard' | 'controller' | 'prisma';
 	label: string;
 	status: 'ok' | 'blocked' | 'error';
-	durationMs: number;
+	durationMs?: number;
 	detail?: unknown;
 }
 
@@ -132,7 +132,7 @@ const { scenarios } = Astro.props;
 					<div class="ep-flow-head">
 						<span class="ep-flow-stage">${step.stage}</span>
 						<span class="ep-flow-status">${step.status}</span>
-						<span class="ep-flow-duration">${step.durationMs}ms</span>
+						<span class="ep-flow-duration">${step.durationMs === undefined ? '' : `${step.durationMs}ms`}</span>
 					</div>
 					<div class="ep-flow-label">${step.label}</div>
 					${detail}

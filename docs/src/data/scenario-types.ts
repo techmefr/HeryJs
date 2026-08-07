@@ -2,7 +2,7 @@ export interface PlaygroundStep {
   stage: 'middleware' | 'guard' | 'controller' | 'prisma';
   label: string;
   status: 'ok' | 'blocked' | 'error';
-  durationMs: number;
+  durationMs?: number;
   detail?: unknown;
 }
 
