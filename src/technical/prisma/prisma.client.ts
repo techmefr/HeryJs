@@ -15,14 +15,47 @@ interface PrismaQueryEvent {
   duration: number;
 }
 
-const TENANT_SCOPED_MODELS = new Set(['Team', 'TeamMember', 'BlogPost']);
+const TENANT_SCOPED_MODELS = new Set([
+  'Team',
+  'TeamMember',
+  'BlogPost',
+  'BlogPostNote',
+  'BlogPostTag',
+  'Tag',
+  'Comment',
+  'AppNotification',
+]);
+
+/**
+ * Models with no tenantId at all, and the reason each one has none. Everything
+ * else in the schema carries one: multi-tenancy is not a feature a project turns
+ * on later, it is the shape every table has from the first migration, because
+ * retrofitting a boundary onto rows that were written without one is the part
+ * that cannot be done safely afterwards.
+ *
+ * `pnpm lint:rls` refuses a model that is in neither this list nor one of the
+ * two below.
+ */
+export const TENANT_FREE_MODELS = new Set([
+  // better-auth's own tables. Each row hangs off a User, which does carry a
+  // tenantId, and better-auth reads them through its own adapter with its own
+  // queries -- a column here would be stamped by nobody.
+  'Session',
+  'Account',
+  'ApiKey',
+  // Email-verification and password-reset tokens, looked up by their own value
+  // before any session exists, so there is no tenant to scope the lookup by.
+  'Verification',
+]);
 
 /**
  * The other side of the same question. A model carrying a tenantId is either
  * governed by the extension below -- filtered on every read, stamped on every
- * write, and covered by a Postgres row-level policy -- or it is written through
- * `authPrismaClient`, which has no extension and never sets `app.tenant_id`, so
- * enabling a policy on it would block the very writes that fill it.
+ * write, and covered by a Postgres row-level policy -- or it is written from
+ * somewhere the extension cannot reach it: better-auth's own adapter, a queue
+ * worker with no ambient request, or deliberately outside the extension chain.
+ * None of those set `app.tenant_id`, so a policy there would block the very
+ * writes that fill the table.
  *
  * Every one of these passes an explicit tenantId at the call site, which is
  * weaker than a boundary and recorded here for that reason: `pnpm lint:rls`
@@ -37,8 +70,12 @@ export const APP_ENFORCED_TENANT_MODELS = new Set([
   // extension chain so an audit entry cannot be scoped away by the boundary it
   // is recording a crossing of.
   'AuditLog',
-  'AppNotification',
+  // Global rows are the point of a feature flag: tenantId is nullable, and the
+  // extension would stamp the current tenant onto a flag meant for everyone.
   'FeatureFlag',
+  // Written by a queue worker as well as by a request. A worker runs outside
+  // any request, so there is no ambient tenant to stamp or filter by, and the
+  // call site passes the tenantId the job carries instead.
   'MailLog',
   'WebhookEndpoint',
   'WebhookEvent',

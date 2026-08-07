@@ -385,10 +385,18 @@ describe('BlogPost resource', () => {
     ).data[0]!.data.id;
 
     const childA = await prisma.tag.create({
-      data: { name: 'name-value', createdAt: new Date().toISOString() },
+      data: {
+        tenantId: 'default',
+        name: 'name-value',
+        createdAt: new Date().toISOString(),
+      },
     });
     const childB = await prisma.tag.create({
-      data: { name: 'name-value', createdAt: new Date().toISOString() },
+      data: {
+        tenantId: 'default',
+        name: 'name-value',
+        createdAt: new Date().toISOString(),
+      },
     });
 
     const attached = await request(app.getHttpServer())

@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
@@ -17,7 +18,12 @@ export class InAppNotificationProvider implements NotificationProvider {
     payload: Record<string, unknown>,
   ): Promise<Notification> {
     return this.prisma.appNotification.create({
-      data: { userId, type, payload },
+      // tenantId is injected by the tenant-scoping Prisma extension, invisible to callers by design.
+      data: {
+        userId,
+        type,
+        payload,
+      } as unknown as Prisma.AppNotificationCreateInput,
     });
   }
 

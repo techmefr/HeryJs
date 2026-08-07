@@ -1,6 +1,11 @@
 import { existsSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
-import { modelSetIn, rlsEnabledTablesIn, tenantModelsIn } from '../cli/lib/rls';
+import {
+  declaredModelsIn,
+  modelSetIn,
+  rlsEnabledTablesIn,
+  tenantModelsIn,
+} from '../cli/lib/rls';
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const SCHEMA = path.join(REPO_ROOT, 'prisma', 'schema.prisma');
@@ -34,9 +39,39 @@ export function checkRls(): boolean {
   const appEnforced = new Set(
     modelSetIn(clientSource, 'APP_ENFORCED_TENANT_MODELS'),
   );
-  const tenantModels = tenantModelsIn(readFileSync(SCHEMA, 'utf8'));
+  const tenantFree = new Set(modelSetIn(clientSource, 'TENANT_FREE_MODELS'));
+  const schemaSource = readFileSync(SCHEMA, 'utf8');
+  const tenantModels = tenantModelsIn(schemaSource);
+  const declared = declaredModelsIn(schemaSource);
   const covered = rlsEnabledTablesIn(MIGRATIONS);
   const problems: string[] = [];
+
+  // Multi-tenancy is the shape of the schema, not a feature added later: a new
+  // table carries a tenantId, or says here why it cannot. Adding the column
+  // afterwards means backfilling rows whose tenant nobody recorded.
+  for (const model of declared) {
+    const carriesTenant = tenantModels.some((entry) => entry.name === model);
+
+    if (!carriesTenant && !tenantFree.has(model)) {
+      problems.push(
+        `${model} has no tenantId — give it one, or record it in TENANT_FREE_MODELS with the reason it cannot have one`,
+      );
+    }
+
+    if (carriesTenant && tenantFree.has(model)) {
+      problems.push(
+        `TENANT_FREE_MODELS lists ${model}, which does carry a tenantId — decide which of the two it is`,
+      );
+    }
+  }
+
+  for (const model of appEnforced) {
+    if (!tenantModels.some((entry) => entry.name === model)) {
+      problems.push(
+        `APP_ENFORCED_TENANT_MODELS lists ${model}, which has no tenantId column — the list claims a boundary the table cannot hold`,
+      );
+    }
+  }
 
   if (governed.size === 0) {
     console.error(
@@ -88,7 +123,7 @@ export function checkRls(): boolean {
   }
 
   console.log(
-    `✔ every tenant table is accounted for (${governed.size} covered by a row-level policy, ${appEnforced.size} enforced in code)`,
+    `✔ every table is accounted for (${governed.size} covered by a row-level policy, ${appEnforced.size} enforced in code, ${tenantFree.size} tenant-free with a recorded reason)`,
   );
 
   return true;

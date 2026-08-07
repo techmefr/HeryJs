@@ -1886,10 +1886,16 @@ function relationSpecBlock(ctx: ResourceContext, createBody: string): string {
 
   return ctx.relations
     .map((relation) => {
-      const childBody =
-        relation.childRequiredFields.length > 0
-          ? `{ ${relation.childRequiredFields.map((field) => `${field.name}: ${sampleValueFor(field)}`).join(', ')} }`
-          : '{}';
+      // The spec seeds children through a raw client, which is outside the
+      // tenant-scoping extension, so it passes the tenant the requests below
+      // run under rather than relying on a column default the schema does not
+      // give it.
+      const childBody = [
+        `tenantId: 'default'`,
+        ...relation.childRequiredFields.map(
+          (field) => `${field.name}: ${sampleValueFor(field)}`,
+        ),
+      ].join(', ');
 
       return `
   it('attaches, syncs, and detaches ${relation.relation} through the update route', async () => {
@@ -1903,8 +1909,8 @@ function relationSpecBlock(ctx: ResourceContext, createBody: string): string {
       created.body as { data: { status: string; data: { id: string } }[] }
     ).data[0]!.data.id;
 
-    const childA = await prisma.${relation.childDelegate}.create({ data: ${childBody} });
-    const childB = await prisma.${relation.childDelegate}.create({ data: ${childBody} });
+    const childA = await prisma.${relation.childDelegate}.create({ data: { ${childBody} } });
+    const childB = await prisma.${relation.childDelegate}.create({ data: { ${childBody} } });
 
     const attached = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}/update')

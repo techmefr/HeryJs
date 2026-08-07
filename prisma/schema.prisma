@@ -122,6 +122,7 @@ model FeatureFlag {
 
 model AppNotification {
   id        String    @id @default(cuid())
+  tenantId  String
   userId    String
   type      String
   payload   Json
@@ -131,6 +132,7 @@ model AppNotification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([tenantId])
 }
 
 model AuditLog {
@@ -186,6 +188,7 @@ model BlogPost {
 // relation-mutations.ts, the shared resolver every generated attach/detach/
 // sync route goes through.
 model BlogPostTag {
+  tenantId   String
   blogPostId String
   tagId      String
   createdAt  DateTime @default(now())
@@ -194,18 +197,23 @@ model BlogPostTag {
   tag      Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([blogPostId, tagId])
+  @@index([tenantId])
 }
 
 model Tag {
   id        String   @id @default(cuid())
+  tenantId  String
   name      String
   createdAt DateTime @default(now())
 
   blogPosts BlogPostTag[]
+
+  @@index([tenantId])
 }
 
 model BlogPostNote {
   id         String   @id @default(cuid())
+  tenantId   String
   blogPostId String
   body       String
   rating     Int?
@@ -214,6 +222,7 @@ model BlogPostNote {
   blogPost BlogPost @relation(fields: [blogPostId], references: [id], onDelete: Cascade)
 
   @@index([blogPostId])
+  @@index([tenantId])
 }
 
 // Attachable to more than one resource type, so there is no single parent to
@@ -223,12 +232,14 @@ model BlogPostNote {
 // level, in list-query.ts's morphMany handling.
 model Comment {
   id              String   @id @default(cuid())
+  tenantId        String
   commentableType String
   commentableId   String
   body            String
   createdAt       DateTime @default(now())
 
   @@index([commentableType, commentableId])
+  @@index([tenantId])
 }
 
 model MailLog {

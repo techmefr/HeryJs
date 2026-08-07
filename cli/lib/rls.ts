@@ -38,6 +38,17 @@ export function tenantModelsIn(schemaSource: string): TenantModel[] {
   return models;
 }
 
+/**
+ * Every model the schema declares, tenant column or not. The tenancy check
+ * needs the whole list: a model with no tenantId is the case it exists to
+ * catch, and that one is invisible to tenantModelsIn.
+ */
+export function declaredModelsIn(schemaSource: string): string[] {
+  return [...schemaSource.matchAll(/^model\s+(\w+)/gm)].map(
+    (match) => match[1]!,
+  );
+}
+
 export function modelSetIn(source: string, setName: string): string[] {
   // Comments go first: an apostrophe in one of them (better-auth's own adapter)
   // is indistinguishable from a quote once the entries are read by pattern.

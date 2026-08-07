@@ -18,6 +18,12 @@ Tenancy in HeryJs is a boundary, not a scope you remember to add to every query.
 
 A caller writing `this.prisma.blog-post.findMany({})` gets tenant-scoped results without ever mentioning a tenant. There is no code path where a developer can forget the filter, because the filter isn't written by the developer in the first place.
 
+## Work with no request behind it
+
+A queue worker, a scheduled task or a CLI backfill never went through `TenantMiddleware`, so there is no ambient tenant to stamp — and a tenant-scoped write from there throws rather than landing somewhere plausible. `runInTenant(tenantId, fn)` (`src/technical/tenancy/run-in-tenant.ts`) opens the context explicitly, from the tenant the job already carries. The webhooks processor is the example: it reads `event.tenantId` off the row it is processing and notifies that tenant's admins inside it.
+
+There is deliberately no default tenant to fall back on. A worker that forgets the context fails loudly on the first write, which is the failure you want — the alternative is rows quietly filed under `"default"`.
+
 ## What this buys you
 
 A cross-tenant data leak would require either bypassing the extension entirely (using the raw, non-scoped client) or removing a model from `TENANT_SCOPED_MODELS` — both of which are visible in a code review, unlike a missing `WHERE tenant_id = ?` buried in one query among hundreds.
@@ -40,9 +46,13 @@ The policy fails closed: `current_setting('app.tenant_id', true)` is `NULL` when
 
 Writing that migration by hand is how the teams tables spent a month scoped by the extension with nothing behind them. `pnpm hery migrate` now reads the schema and `TENANT_SCOPED_MODELS`, and emits the `ENABLE ROW LEVEL SECURITY` migration for any tenant-scoped table that has no policy yet — including the table `hery generate` just added. A model whose `tenantId` is nullable gets `"tenantId" IS NULL OR …`, so rows belonging to no tenant (a global feature flag) stay visible instead of disappearing.
 
-`pnpm lint:rls` is the guarantee. Every model carrying a `tenantId` has to be one of two things, and the check fails if it is neither, both, or governed without a policy:
+`pnpm lint:rls` is the guarantee. It answers two questions about every model the schema declares.
+
+First: does it carry a `tenantId` at all? A table gets the column in the migration that creates it, or it is listed in `TENANT_FREE_MODELS` with the reason it cannot have one — today better-auth's own `Session`, `Account` and `ApiKey`, written by an adapter that would never stamp a column HeryJs added, and `Verification`, whose tokens are looked up by value before any session exists. Nothing else is allowed to have none. Retrofitting the column is the expensive half: adding it later means backfilling rows whose tenant nobody ever recorded, and there is no honest value to put in them.
+
+Second, for a model that carries one: which of the two enforcement paths is it on? The check fails if it is neither, both, or governed without a policy:
 
 - in `TENANT_SCOPED_MODELS` — filtered and stamped by the extension, and covered by a row-level policy;
-- in `APP_ENFORCED_TENANT_MODELS` — written through `authPrismaClient`, which has no extension and never sets `app.tenant_id`, so a policy there would block the writes that fill the table. Each of these passes an explicit `tenantId` at the call site. That is weaker than a boundary, which is why the list is written down rather than implied: `User`, `AuditLog`, `AppNotification`, `FeatureFlag`, `MailLog`, `WebhookEndpoint`, `WebhookEvent`.
+- in `APP_ENFORCED_TENANT_MODELS` — written through `authPrismaClient`, which has no extension and never sets `app.tenant_id`, so a policy there would block the writes that fill the table. Each of these passes an explicit `tenantId` at the call site. That is weaker than a boundary, which is why the list is written down rather than implied: `User`, `AuditLog`, `FeatureFlag`, `MailLog`, `WebhookEndpoint`, `WebhookEvent`.
 
 A spec then reads `pg_policies` and `pg_class` on the real database, so a migration that was edited, reverted or never applied fails too — the check proves the file exists, the spec proves the database agrees.

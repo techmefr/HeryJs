@@ -288,7 +288,11 @@ describe('doc examples', () => {
   it('captures update: attaching a tag', async () => {
     const id = await createOne(owner.token, 'Tagged article');
     const tag = await prisma.tag.create({
-      data: { name: 'release', createdAt: new Date().toISOString() },
+      data: {
+        tenantId: 'default',
+        name: 'release',
+        createdAt: new Date().toISOString(),
+      },
     });
 
     const response = await request(app.getHttpServer())

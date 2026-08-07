@@ -7,6 +7,7 @@ import { WEBHOOK_QUEUE } from '#kernel/jobs/jobs.constants';
 import { NOTIFICATION_PROVIDER } from '#kernel/notifications/notification.types';
 import type { NotificationProvider } from '#kernel/notifications/notification.types';
 import { SignalService } from '#kernel/signal/signal.service';
+import { runInTenant } from '#kernel/tenancy/run-in-tenant';
 
 interface WebhookProcessJobData {
   eventId: string;
@@ -42,12 +43,16 @@ export class WebhooksProcessor extends WorkerHost {
       select: { id: true },
     });
 
-    await Promise.all(
-      admins.map((admin) =>
-        this.notifications.send(admin.id, 'webhook.received', {
-          eventId: event.id,
-          source: event.source,
-        }),
+    // A notification is a tenant-scoped row and this runs on a worker, with no
+    // request behind it: the tenant comes from the event being processed.
+    await runInTenant(event.tenantId, () =>
+      Promise.all(
+        admins.map((admin) =>
+          this.notifications.send(admin.id, 'webhook.received', {
+            eventId: event.id,
+            source: event.source,
+          }),
+        ),
       ),
     );
 
