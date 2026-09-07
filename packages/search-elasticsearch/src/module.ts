@@ -13,7 +13,7 @@ registerModule({
   channel: 'official',
   description:
     'Swap free-text search from Prisma contains() to Elasticsearch (docker service, driver, DI wiring)',
-  dependencies: ['@elastic/elasticsearch@^8.17.0'],
+  dependencies: ['@elastic/elasticsearch@^9.5.1'],
   install() {
     if (existsSync(COMPOSE_FILE)) {
       console.log(pc.yellow(`${COMPOSE_FILE} already exists, skipping.`));
