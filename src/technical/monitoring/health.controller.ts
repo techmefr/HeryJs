@@ -1,9 +1,9 @@
 import { Controller, Get, Inject, UseGuards } from '@nestjs/common';
 import {
   HealthCheck,
-  HealthCheckError,
   HealthCheckService,
   HealthIndicatorResult,
+  HealthIndicatorService,
 } from '@nestjs/terminus';
 import IORedis from 'ioredis';
 import { SessionGuard } from '#technical/auth/session.guard';
@@ -26,6 +26,7 @@ import { UnpaginatedRoute } from '#technical/http/unpaginated-route.decorator';
 export class HealthController {
   constructor(
     private readonly health: HealthCheckService,
+    private readonly indicator: HealthIndicatorService,
     @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,
   ) {}
 
@@ -41,17 +42,18 @@ export class HealthController {
   }
 
   private async checkDatabase(): Promise<HealthIndicatorResult> {
+    const session = this.indicator.check('database');
+
     try {
       await this.prisma.$queryRaw`SELECT 1`;
-      return { database: { status: 'up' } };
+      return session.up();
     } catch (error) {
-      throw new HealthCheckError('Database check failed', {
-        database: { status: 'down', message: (error as Error).message },
-      });
+      return session.down({ message: (error as Error).message });
     }
   }
 
   private async checkRedis(): Promise<HealthIndicatorResult> {
+    const session = this.indicator.check('redis');
     const client = new IORedis(env.REDIS_URL, {
       lazyConnect: true,
       maxRetriesPerRequest: 1,
@@ -60,11 +62,9 @@ export class HealthController {
     try {
       await client.connect();
       await client.ping();
-      return { redis: { status: 'up' } };
+      return session.up();
     } catch (error) {
-      throw new HealthCheckError('Redis check failed', {
-        redis: { status: 'down', message: (error as Error).message },
-      });
+      return session.down({ message: (error as Error).message });
     } finally {
       client.disconnect();
     }
