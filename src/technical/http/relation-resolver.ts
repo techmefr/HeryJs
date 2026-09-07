@@ -62,7 +62,7 @@ export async function resolveRelationInstructions(
       ...(instruction.discriminator
         ? { [instruction.discriminator]: instruction.discriminatorValue }
         : {}),
-      ...(instruction.where ?? {}),
+      ...instruction.where,
     };
 
     if (instruction.kind === 'include') {

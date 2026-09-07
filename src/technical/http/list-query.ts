@@ -680,7 +680,7 @@ export function parseSearchRequest(
   );
 
   const nativeInclude: Record<string, unknown> = {
-    ...(includeResult?.nativeInclude ?? {}),
+    ...includeResult?.nativeInclude,
     ...(aggregateResult &&
     Object.keys(aggregateResult.nativeCountSelect).length > 0
       ? { _count: { select: aggregateResult.nativeCountSelect } }
