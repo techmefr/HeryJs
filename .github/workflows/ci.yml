@@ -1,10 +1,21 @@
 name: CI
 
+# Every branch, not just main. The workflow used to trigger on main alone, so a
+# feature branch ran no checks at all until a pull request existed -- and three
+# defects that only a runner can see (a refused install, a missing service, an
+# unhandled rejection) sat undetected for a month behind a green local gate.
+# pull_request is deliberately absent: a push run is attached to the same commit
+# a pull request points at, so its checks already show up there, and adding the
+# event would only run everything twice.
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
+
+# A branch under active pushing keeps only its latest run. main keeps every one,
+# because each of its runs is the record for a commit that shipped.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   build-and-test:
@@ -31,7 +42,7 @@ jobs:
           --health-retries 5
 
       # Half the suites boot the whole application, and the queue module opens
-      # a connection as soon as it does -- without this they failed on a
+      # a connection as soon as they do -- without this they failed on a
       # refused connection to 6479, which is the port the compose stack uses
       # and the default REDIS_URL points at.
       valkey:
@@ -45,11 +56,11 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
           cache: pnpm
@@ -59,6 +70,10 @@ jobs:
       - run: pnpm exec prisma migrate deploy
 
       - run: pnpm run lint
+
+      - run: pnpm run lint:fast
+
+      - run: pnpm run lint:types
 
       - run: pnpm run typecheck
 
@@ -72,7 +87,16 @@ jobs:
 
       - run: pnpm test
 
+      - run: pnpm run test:e2e
+
       - run: pnpm run build
+
+      # Both Astro workspaces, on every run rather than only when their own
+      # files change: what broke the docs build during the last dependency
+      # bump was the root lockfile, not anything under docs/.
+      - run: pnpm --filter admin run build
+
+      - run: pnpm --filter docs run build
 
   search-drivers:
     runs-on: ubuntu-latest
@@ -107,11 +131,11 @@ jobs:
           - 7700:7700
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
           cache: pnpm

@@ -6,5 +6,6 @@
   "globalSetup": "<rootDir>/global-setup.ts",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
-  }
+  },
+  "forceExit": true
 }
