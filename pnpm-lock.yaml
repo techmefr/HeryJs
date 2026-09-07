@@ -15,17 +15,17 @@ importers:
         specifier: ^3.1097.0
         version: 3.1097.0
       '@bull-board/api':
-        specifier: ^8.3.2
-        version: 8.3.2(@bull-board/ui@8.3.2(bullmq@5.81.2))(bullmq@5.81.2)
+        specifier: ^9.8.0
+        version: 9.8.0(@bull-board/ui@9.8.0(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0)))(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0))
       '@bull-board/express':
-        specifier: ^8.3.2
-        version: 8.3.2(bullmq@5.81.2)
+        specifier: ^9.8.0
+        version: 9.8.0(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0))
       '@modelcontextprotocol/sdk':
         specifier: ^1.30.0
         version: 1.30.0(zod@4.5.4)
       '@nestjs/bullmq':
         specifier: ^12.0.0
-        version: 12.0.0(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(bullmq@5.81.2)
+        version: 12.0.0(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0))
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -57,8 +57,8 @@ importers:
         specifier: ^1.7.3
         version: 1.7.3(@opentelemetry/api@1.9.1)(@prisma/client@7.10.0(prisma@7.10.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3))(mysql2@3.15.3)(pg@8.23.0)(prisma@7.10.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       bullmq:
-        specifier: ^5.81.2
-        version: 5.81.2
+        specifier: ^6.3.4
+        version: 6.3.4(ioredis@6.0.0)(pg@8.23.0)
       commander:
         specifier: ^15.0.0
         version: 15.0.0
@@ -66,8 +66,8 @@ importers:
         specifier: ^8.3.0
         version: 8.3.0
       ioredis:
-        specifier: ^5.11.1
-        version: 5.11.1
+        specifier: ^6.0.0
+        version: 6.0.0
       js-yaml:
         specifier: ^5.4.1
         version: 5.4.1
@@ -346,13 +346,13 @@ importers:
     devDependencies:
       '@nestjs/bullmq':
         specifier: ^12.0.0
-        version: 12.0.0(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(bullmq@5.81.2)
+        version: 12.0.0(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0))
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
       bullmq:
-        specifier: ^5.81.2
-        version: 5.81.2
+        specifier: ^6.3.4
+        version: 6.3.4(ioredis@6.0.0)(pg@8.23.0)
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
@@ -448,7 +448,7 @@ importers:
     devDependencies:
       '@nestjs/bullmq':
         specifier: ^12.0.0
-        version: 12.0.0(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(bullmq@5.81.2)
+        version: 12.0.0(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0))
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -456,8 +456,8 @@ importers:
         specifier: ^5.0.0
         version: 5.0.6
       bullmq:
-        specifier: ^5.81.2
-        version: 5.81.2
+        specifier: ^6.3.4
+        version: 6.3.4(ioredis@6.0.0)(pg@8.23.0)
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
@@ -1079,23 +1079,23 @@ packages:
   '@bufbuild/protobuf@1.10.1':
     resolution: {integrity: sha512-wJ8ReQbHxsAfXhrf9ixl0aYbZorRuOWpBNzm8pL8ftmSxQx/wnJD5Eg861NwJU/czy2VXFIebCeZnZrI9rktIQ==}
 
-  '@bull-board/api@8.3.2':
-    resolution: {integrity: sha512-DsAiixsmJy97bQDW6Lou0oSx/LD5qm38N0D++fftRFn9si0kNhOh4DG3+7MCVblVcNX8MF/Fh3W1oxaRENFS3A==}
+  '@bull-board/api@9.8.0':
+    resolution: {integrity: sha512-+qmJ19pBrOSZCPLbN93IijoPEpx5DZBWkwqUBk/FgQObvSyHB2OJvuwvvi/TaujTCbRH1eiYPc4USp9dTlNEug==}
     peerDependencies:
-      '@bull-board/ui': 8.3.2
+      '@bull-board/ui': 9.8.0
       bull: ^4.16.5
-      bullmq: ^5.79.2
+      bullmq: ^5.56.0 || ^6.0.0
     peerDependenciesMeta:
       bull:
         optional: true
       bullmq:
         optional: true
 
-  '@bull-board/express@8.3.2':
-    resolution: {integrity: sha512-wVypBvcrEy2n87ztLh05WCRvhJmzB74kzvZKiHl/DKZ4UShEy6XLq1WKBVWzywKRdJmZ8In9vVYv6BwD6IagDw==}
+  '@bull-board/express@9.8.0':
+    resolution: {integrity: sha512-nYywx44PHHq7ybgQZySrDiM9B2Yc1NSywWm+zdjP8UyVGrvgooZ0UsT+F58ZF4wQ2QGqYRCTNb+YbPvBAWWjBg==}
 
-  '@bull-board/ui@8.3.2':
-    resolution: {integrity: sha512-Mr68M//St5BZ5OQ3X8lm4BjTwsBeEE7vo5n+5szxckmgJGBgYnY4GiEVOjGRfMCUErPP5kNdmMgKOLUmU1GH+Q==}
+  '@bull-board/ui@9.8.0':
+    resolution: {integrity: sha512-WE6imvISwGDI/E1i7H1M4mQ/NI99sj9u/XIUT5QgbQlWAbys1N4/YdfPktwK6eyKynPMPHJqcAqwRDJDzlceOA==}
 
   '@cacheable/memory@2.2.0':
     resolution: {integrity: sha512-CTLKqLItRCEixEAewD3/j9DB3/o96gpTPD4eJ1v+DGOlxZRZncRQkGYqqnAGCscYd6RNeXfGeiuCphsPtqyIfQ==}
@@ -2047,6 +2047,9 @@ packages:
 
   '@ioredis/commands@1.10.0':
     resolution: {integrity: sha512-UmeW7z4LfctwoQ5wkhVzgq8tXkreED2xZGpX+Bg+zA+WJFZCT6c062AfCK/Dfk81xZnnwdhJCUMkitihRaoC2Q==}
+
+  '@ioredis/commands@2.0.0':
+    resolution: {integrity: sha512-vrx0AE/T0h7cRZwfo1M39Cr+ZhZrkf0V8mQN75wucKCxCLD9l/VX6no3gFvrLqD1IlG/1LtzWovqEw3t0Vr9zg==}
 
   '@isaacs/cliui@8.0.2':
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
@@ -4511,12 +4514,21 @@ packages:
   buffer@5.7.1:
     resolution: {integrity: sha512-EHcyIPBQ4BSGlvjB16k5KgAJ27CIsHY/2JBmCRReo48y9rQ3MaUzWX3KVlBa4U7MyX02HdVj0K7C3WaB3ju7FQ==}
 
-  bullmq@5.81.2:
-    resolution: {integrity: sha512-Hi9GaVCC6HE9bQP65j/FNv1aL1fcEukTF99ezS5pl1Ud+joCFpNWiPCV45mWdkEmpuacS0XJdMMFGKPIHCwoPg==}
-    engines: {node: '>=12.22.0'}
+  bullmq@6.3.4:
+    resolution: {integrity: sha512-DpilB5sayCB8huCp4YuzVhJjxB4ieHidzu+GPgbcjPi3kQv0gdLoLnk+I+mMACDQ88rTbSiT+B4crmhWFGL9GA==}
+    engines: {node: '>=14.17.0'}
     peerDependencies:
+      bullmq-otel: '>=2.0.0'
+      ioredis: '>=5.0.0'
+      pg: '>=8.0.0'
       redis: '>=5.0.0'
     peerDependenciesMeta:
+      bullmq-otel:
+        optional: true
+      ioredis:
+        optional: true
+      pg:
+        optional: true
       redis:
         optional: true
 
@@ -4797,10 +4809,9 @@ packages:
   create-require@1.1.1:
     resolution: {integrity: sha512-dcKFX3jn0MpIaXjisoRvexIJVEKzaq7z2rZKxf+MSr9TkdmHmsU4m2lcLojrj/FHl8mk5VxMmYA+ftRkP/3oKQ==}
 
-  cron-parser@4.9.0:
-    resolution: {integrity: sha512-p0SaNjrHOnQeR8/VnfGbmg9te2kfyYSQ7Sc/j/6DtPL3JQvKxmjO9TSjNFpujqV3vEYYBvNNvXSxzyksBWAx1Q==}
-    engines: {node: '>=12.0.0'}
-    deprecated: v4 is no longer maintained, upgrade to v5
+  cron-parser@5.10.0:
+    resolution: {integrity: sha512-izNAxJyRWUP8ljBoDSub5WyrVOUlT4SLGShswE7eoRBpp6QUsSycYxLBMJlbshgPBMcPT/nrfgjNY2918ayv2A==}
+    engines: {node: '>=18'}
 
   cron@4.4.0:
     resolution: {integrity: sha512-fkdfq+b+AHI4cKdhZlppHveI/mgz2qpiYxcm+t5E5TsxX7QrLS1VE0+7GENEk9z0EeGPcpSciGv6ez24duWhwQ==}
@@ -5876,6 +5887,10 @@ packages:
     resolution: {integrity: sha512-ehuGcf94bQXhfagULNXrJdfnWO38v070jxSx/qE87Kjzmu2fU7ro5EFAb+OPituLqgfyuQaym5DlrNydW2sJ9A==}
     engines: {node: '>=12.22.0'}
 
+  ioredis@6.0.0:
+    resolution: {integrity: sha512-f+Dtubxfpf6KYFq7WVXJoOLn0bk4TJrMrN9SzeE+jrWrCWj7XX3fA6vkryafhADX+GMymRxgDJDOI33COkJc0w==}
+    engines: {node: '>=20.0.0'}
+
   ip-address@10.3.1:
     resolution: {integrity: sha512-1e9d3kb97NHJTIJDZW9rKqW2h6+dFa50Dy0fpPSMQp2ADje5gvKsXmdiK6dwY5t76TaTt5+P5N1Y/LoToIxP6g==}
     engines: {node: '>= 12'}
@@ -6720,8 +6735,8 @@ packages:
     resolution: {integrity: sha512-4kmO/MdyUIkLIvTPr8VHLil4AtoKIoniWPIEk5+CDy0xnWC84azhSFmuJ7PxZdsYtiP5kEeQsORAVIeMgxT+Hw==}
     hasBin: true
 
-  msgpackr@2.0.4:
-    resolution: {integrity: sha512-o1C5KRmuRt+apqMr1HuGSqWStZoRBUpEsCsl15uM9VdAF1qHLtvMOU2En747EnTyEl6c4pzPewRMFF31s1CNbA==}
+  msgpackr@2.1.0:
+    resolution: {integrity: sha512-p/pBCVO63CsvvpkomUnNNag6+n38rULuDA6HHe70o2gtC8ODI52foF/4ko2qQcp6OiErJXTmrZeXmsGGHsIQNQ==}
 
   multer@2.2.0:
     resolution: {integrity: sha512-6rdyFg2kLrMh9Jee7/BMPuV9lEAd7lLW2YUpF9/YxR7njyoUwwQ0ZPh3TaIY50Sw6vlyD2HW3wGOkTS4P79xrQ==}
@@ -9457,17 +9472,17 @@ snapshots:
 
   '@bufbuild/protobuf@1.10.1': {}
 
-  '@bull-board/api@8.3.2(@bull-board/ui@8.3.2(bullmq@5.81.2))(bullmq@5.81.2)':
+  '@bull-board/api@9.8.0(@bull-board/ui@9.8.0(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0)))(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0))':
     dependencies:
-      '@bull-board/ui': 8.3.2(bullmq@5.81.2)
+      '@bull-board/ui': 9.8.0(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0))
       redis-info: 3.1.0
     optionalDependencies:
-      bullmq: 5.81.2
+      bullmq: 6.3.4(ioredis@6.0.0)(pg@8.23.0)
 
-  '@bull-board/express@8.3.2(bullmq@5.81.2)':
+  '@bull-board/express@9.8.0(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0))':
     dependencies:
-      '@bull-board/api': 8.3.2(@bull-board/ui@8.3.2(bullmq@5.81.2))(bullmq@5.81.2)
-      '@bull-board/ui': 8.3.2(bullmq@5.81.2)
+      '@bull-board/api': 9.8.0(@bull-board/ui@9.8.0(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0)))(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0))
+      '@bull-board/ui': 9.8.0(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0))
       ejs: 6.0.1
       express: 5.2.1
     transitivePeerDependencies:
@@ -9475,9 +9490,9 @@ snapshots:
       - bullmq
       - supports-color
 
-  '@bull-board/ui@8.3.2(bullmq@5.81.2)':
+  '@bull-board/ui@9.8.0(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0))':
     dependencies:
-      '@bull-board/api': 8.3.2(@bull-board/ui@8.3.2(bullmq@5.81.2))(bullmq@5.81.2)
+      '@bull-board/api': 9.8.0(@bull-board/ui@9.8.0(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0)))(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0))
     transitivePeerDependencies:
       - bull
       - bullmq
@@ -10170,7 +10185,10 @@ snapshots:
     optionalDependencies:
       '@types/node': 26.1.2
 
-  '@ioredis/commands@1.10.0': {}
+  '@ioredis/commands@1.10.0':
+    optional: true
+
+  '@ioredis/commands@2.0.0': {}
 
   '@isaacs/cliui@8.0.2':
     dependencies:
@@ -10627,12 +10645,12 @@ snapshots:
       '@nestjs/core': 12.0.1(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@12.0.1)(@nestjs/websockets@12.0.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       tslib: 2.8.1
 
-  '@nestjs/bullmq@12.0.0(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(bullmq@5.81.2)':
+  '@nestjs/bullmq@12.0.0(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0))':
     dependencies:
       '@nestjs/bull-shared': 12.0.0(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)
       '@nestjs/common': 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@nestjs/core': 12.0.1(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@12.0.1)(@nestjs/websockets@12.0.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      bullmq: 5.81.2
+      bullmq: 6.3.4(ioredis@6.0.0)(pg@8.23.0)
       tslib: 2.8.1
 
   '@nestjs/cli@12.0.0(@swc/cli@0.8.1(@swc/core@1.16.2)(chokidar@5.0.0))(@swc/core@1.16.2)(@types/node@26.1.2)(fork-ts-checker-webpack-plugin@9.1.0(typescript@6.0.3)(webpack@5.106.2(@swc/core@1.16.2)))(prettier@3.9.6)(ts-loader@9.6.2(typescript@6.0.3)(webpack@5.106.2(@swc/core@1.16.2)))(tsconfig-paths-webpack-plugin@4.2.0)(webpack-node-externals@3.0.0)(webpack@5.106.2(@swc/core@1.16.2))':
@@ -12815,16 +12833,16 @@ snapshots:
       base64-js: 1.5.1
       ieee754: 1.2.1
 
-  bullmq@5.81.2:
+  bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0):
     dependencies:
-      cron-parser: 4.9.0
-      ioredis: 5.11.1
-      msgpackr: 2.0.4
+      cron-parser: 5.10.0
+      msgpackr: 2.1.0
       node-abort-controller: 3.1.1
       semver: 7.8.5
       tslib: 2.8.1
-    transitivePeerDependencies:
-      - supports-color
+    optionalDependencies:
+      ioredis: 6.0.0
+      pg: 8.23.0
 
   busboy@1.6.0:
     dependencies:
@@ -13054,7 +13072,7 @@ snapshots:
 
   create-require@1.1.1: {}
 
-  cron-parser@4.9.0:
+  cron-parser@5.10.0:
     dependencies:
       luxon: 3.7.2
 
@@ -14405,6 +14423,18 @@ snapshots:
       standard-as-callback: 2.1.0
     transitivePeerDependencies:
       - supports-color
+    optional: true
+
+  ioredis@6.0.0:
+    dependencies:
+      '@ioredis/commands': 2.0.0
+      cluster-key-slot: 1.1.1
+      debug: 4.4.3
+      denque: 2.1.0
+      redis-errors: 1.2.0
+      standard-as-callback: 2.1.0
+    transitivePeerDependencies:
+      - supports-color
 
   ip-address@10.3.1: {}
 
@@ -15631,7 +15661,7 @@ snapshots:
       '@msgpackr-extract/msgpackr-extract-win32-x64': 3.0.4
     optional: true
 
-  msgpackr@2.0.4:
+  msgpackr@2.1.0:
     optionalDependencies:
       msgpackr-extract: 3.0.4
 
@@ -16295,6 +16325,7 @@ snapshots:
   redis-parser@3.0.0:
     dependencies:
       redis-errors: 1.2.0
+    optional: true
 
   reflect-metadata@0.2.2: {}
 
