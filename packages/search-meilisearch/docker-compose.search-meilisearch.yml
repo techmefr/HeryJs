@@ -1,6 +1,6 @@
 services:
   meilisearch:
-    image: getmeili/meilisearch:v1.11
+    image: getmeili/meilisearch:v1.24
     restart: unless-stopped
     environment:
       MEILI_MASTER_KEY: heryjs-dev-master-key
