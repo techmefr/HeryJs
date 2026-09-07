@@ -6,6 +6,10 @@ packages:
 
 allowBuilds:
   '@apollo/protobufjs': true
+  # jest-haste-map pulls it in for watch mode only, and jest falls back to
+  # its own crawler without it -- so the native build is refused rather
+  # than approved, and a fresh install stops asking.
+  '@parcel/watcher': false
   '@prisma/client': true
   '@prisma/engines': true
   '@swc/core': true
