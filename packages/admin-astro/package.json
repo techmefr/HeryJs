@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "devDependencies": {
     "astro": "^5.16.2",
-    "lucide": "^1.27.0",
+    "lucide": "^1.41.0",
     "typescript": "^5.7.3"
   }
 }
