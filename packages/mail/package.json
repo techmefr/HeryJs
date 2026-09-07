@@ -5,7 +5,7 @@
   "devDependencies": {
     "@nestjs/bullmq": "^12.0.0",
     "@nestjs/common": "^12.0.1",
-    "bullmq": "^5.81.2",
+    "bullmq": "^6.3.4",
     "picocolors": "^1.1.1",
     "typescript": "^6.0.3"
   }
