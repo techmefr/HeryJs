@@ -1,5 +1,5 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Inject } from '@nestjs/common';
+import { Inject, Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import { authPrismaClient } from '#kernel/auth/better-auth.instance';
 import { writeAuditLog } from '#kernel/audit/audit-log';
@@ -15,6 +15,8 @@ interface WebhookProcessJobData {
 
 @Processor(WEBHOOK_QUEUE)
 export class WebhooksProcessor extends WorkerHost {
+  private readonly logger = new Logger('Webhooks');
+
   constructor(
     @Inject(NOTIFICATION_PROVIDER)
     private readonly notifications: NotificationProvider,
@@ -71,6 +73,21 @@ export class WebhooksProcessor extends WorkerHost {
       data: { processedAt: new Date() },
     });
 
-    void this.signal.publish(`${event.tenantId}:webhookEvent`);
+    // The signal is a change notification, not part of the work: the event is
+    // processed and committed by the time this runs, so a publish that fails
+    // must not fail the job and have the whole event processed a second time.
+    // It does have to be read, though. Left as a bare `void`, a rejection here
+    // owned nobody -- and the publisher is closed on shutdown while a job can
+    // still be in flight, so the rejection surfaced as an unhandled one,
+    // failing whichever test happened to be running at the time.
+    try {
+      await this.signal.publish(`${event.tenantId}:webhookEvent`);
+    } catch (error) {
+      this.logger.warn(
+        `Could not signal webhookEvent for tenant ${event.tenantId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 }
