@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "#kernel/*": ["../src/technical/*"]
+    }
+  },
+  "include": ["../packages/*/src", "../packages/*/test"],
+  "exclude": ["../node_modules", "../packages/*/node_modules"]
+}

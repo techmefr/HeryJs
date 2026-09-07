@@ -6,11 +6,58 @@ import type { SearchDriver, SearchMatches } from '#kernel/search/search-driver';
 
 const TENANT_FIELD = 'tenantId';
 
+function isAlreadyExists(error: unknown): boolean {
+  return (
+    (error as { body?: { error?: { type?: string } } })?.body?.error?.type ===
+    'resource_already_exists_exception'
+  );
+}
+
 @Injectable()
 export class ElasticsearchSearchDriver implements SearchDriver {
   private readonly client = new Client({
     node: elasticsearchEnv.ELASTICSEARCH_URL,
   });
+
+  /**
+   * Left to its own dynamic mapping, Elasticsearch types a first-seen string
+   * as `text` with a `.keyword` sub-field, and a `term` filter on an analysed
+   * `text` field matches nothing -- so every search answered with zero hits
+   * while the documents sat in the index, tenant isolation holding only
+   * because nobody could read anything at all. The tenant field is declared
+   * `keyword` before the first document lands instead, which is what it is:
+   * an identifier to match exactly, never a phrase to analyse.
+   *
+   * A collection created by an earlier version of this driver keeps the
+   * mapping it was born with -- Elasticsearch cannot retype a live field --
+   * and has to be reindexed to pick this up.
+   */
+  private readonly mappedCollections = new Set<string>();
+
+  private async ensureMapping(collection: string): Promise<void> {
+    if (this.mappedCollections.has(collection)) {
+      return;
+    }
+
+    if (!(await this.client.indices.exists({ index: collection }))) {
+      try {
+        await this.client.indices.create({
+          index: collection,
+          mappings: { properties: { [TENANT_FIELD]: { type: 'keyword' } } },
+        });
+      } catch (error) {
+        // Two processes reaching a fresh collection at once both see it
+        // missing, and the loser of that race is told it already exists --
+        // which is the state it was asking for. Anything else is a real
+        // failure and stays one.
+        if (!isAlreadyExists(error)) {
+          throw error;
+        }
+      }
+    }
+
+    this.mappedCollections.add(collection);
+  }
 
   async index(
     collection: string,
@@ -18,6 +65,7 @@ export class ElasticsearchSearchDriver implements SearchDriver {
     document: Record<string, unknown>,
     tenantId: string,
   ): Promise<void> {
+    await this.ensureMapping(collection);
     await this.client.index({
       index: collection,
       id,
