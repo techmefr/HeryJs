@@ -15,6 +15,7 @@ registerModule({
     '@nestjs/graphql',
     '@nestjs/apollo',
     '@apollo/server',
+    '@as-integrations/express5',
     'graphql',
   ],
   install() {
