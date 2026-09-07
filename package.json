@@ -42,8 +42,8 @@
     "hery": "NODE_OPTIONS=--conditions=development ts-node cli/hery.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1097.0",
-    "@aws-sdk/s3-request-presigner": "^3.1097.0",
+    "@aws-sdk/client-s3": "^3.1127.0",
+    "@aws-sdk/s3-request-presigner": "^3.1127.0",
     "@bull-board/api": "^9.8.0",
     "@bull-board/express": "^9.8.0",
     "@modelcontextprotocol/sdk": "^1.30.0",
@@ -98,7 +98,7 @@
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
     "globals": "^17.12.0",
-    "jest": "^30.4.2",
+    "jest": "^30.5.1",
     "oxlint": "^1.81.0",
     "oxlint-tsgolint": "^7.0.2001",
     "prettier": "^3.9.6",
@@ -111,7 +111,7 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.65.0"
+    "typescript-eslint": "^8.69.0"
   },
   "packageManager": "pnpm@11.9.0",
   "jest": {
