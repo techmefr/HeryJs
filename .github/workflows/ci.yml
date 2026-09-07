@@ -12,6 +12,7 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://heryjs:heryjs@localhost:5432/heryjs
+      REDIS_URL: redis://localhost:6479
       BETTER_AUTH_URL: http://localhost:3000
 
     services:
@@ -25,6 +26,20 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      # Half the suites boot the whole application, and the queue module opens
+      # a connection as soon as it does -- without this they failed on a
+      # refused connection to 6479, which is the port the compose stack uses
+      # and the default REDIS_URL points at.
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports:
+          - 6479:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
