@@ -8,7 +8,7 @@
     "^#kernel/(.*)$": "<rootDir>/src/technical/$1"
   },
   "transform": {
-    "^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": "test/tsconfig.search.json" }]
+    "^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": "test/tsconfig.modules.json" }]
   },
   "testTimeout": 60000,
   "forceExit": true
