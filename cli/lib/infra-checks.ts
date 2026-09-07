@@ -93,15 +93,14 @@ export function speaksRedis(
 ): Promise<boolean> {
   return new Promise((resolve) => {
     const socket = connect({ host, port });
-    let timer: NodeJS.Timeout;
 
-    const settle = (answered: boolean) => {
+    function settle(answered: boolean) {
       clearTimeout(timer);
       socket.destroy();
       resolve(answered);
-    };
+    }
 
-    timer = setTimeout(() => settle(false), timeoutMs);
+    const timer = setTimeout(() => settle(false), timeoutMs);
 
     socket.once('connect', () => socket.write('PING\r\n'));
     socket.once('data', (chunk: Buffer) =>
