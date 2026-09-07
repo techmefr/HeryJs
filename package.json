@@ -26,7 +26,7 @@
     "test:cov": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "test:debug": "NODE_OPTIONS=--experimental-vm-modules node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json",
-    "test:search": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-search.json",
+    "test:modules": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-modules.json",
     "arch:check": "depcruise src --config .dependency-cruiser.cjs",
     "lint:conventions": "NODE_OPTIONS=--conditions=development ts-node scripts/check-conventions.ts",
     "lint:capabilities": "pnpm run lint:conventions capabilities",

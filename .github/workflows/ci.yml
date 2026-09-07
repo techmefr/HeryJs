@@ -98,7 +98,11 @@ jobs:
 
       - run: pnpm --filter docs run build
 
-  search-drivers:
+  # The specs that boot a module for real: the two search drivers against
+  # live engines, and the GraphQL module against a live HTTP server. They
+  # live here rather than in build-and-test because they need services that
+  # the application suite has no use for.
+  module-integration:
     runs-on: ubuntu-latest
 
     env:
@@ -156,4 +160,4 @@ jobs:
           echo 'elasticsearch or meilisearch never became reachable'
           exit 1
 
-      - run: pnpm run test:search
+      - run: pnpm run test:modules
