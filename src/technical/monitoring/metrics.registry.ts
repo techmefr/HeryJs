@@ -3,7 +3,7 @@ import {
   Histogram,
   Registry,
   collectDefaultMetrics,
-} from 'prom-client';
+} from '@prometheus-io/client';
 
 export const metricsRegistry = new Registry();
 collectDefaultMetrics({ register: metricsRegistry });
