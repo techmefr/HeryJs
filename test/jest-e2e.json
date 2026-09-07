@@ -4,6 +4,13 @@
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
   "globalSetup": "<rootDir>/global-setup.ts",
+  "moduleNameMapper": {
+    "^#technical/(.*)$": "<rootDir>/../src/technical/$1",
+    "^#devtools/(.*)$": "<rootDir>/../src/devtools/$1",
+    "^#modules/(.*)$": "<rootDir>/../src/modules/$1",
+    "^#functional/(.*)$": "<rootDir>/../src/functional/$1",
+    "^#app\\.module$": "<rootDir>/../src/app.module"
+  },
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },
