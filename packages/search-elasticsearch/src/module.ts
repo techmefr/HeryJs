@@ -1,42 +1,21 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import * as path from 'node:path';
 import pc from 'picocolors';
-import { registerModule } from '../../../cli/lib/module-registry';
-import { copyRuntime } from '../../../cli/lib/runtime-copy';
+import { defineModule } from '../../../cli/lib/module-definition';
 
-const COMPOSE_FILE = 'docker-compose.search-elasticsearch.yml';
-const RUNTIME_DIR = path.join(__dirname, 'runtime');
-const DEST_DIR = 'src/technical/search';
-
-registerModule({
+export default defineModule({
   name: 'search-elasticsearch',
-  channel: 'official',
   description:
     'Swap free-text search from Prisma contains() to Elasticsearch (docker service, driver, DI wiring)',
+  meta: { compatibility: '>=0.0.1' },
+  dest: 'src/technical/search',
   dependencies: ['@elastic/elasticsearch@^9.5.1'],
-  install() {
-    if (existsSync(COMPOSE_FILE)) {
-      console.log(pc.yellow(`${COMPOSE_FILE} already exists, skipping.`));
-    } else {
-      writeFileSync(
-        COMPOSE_FILE,
-        readFileSync(path.join(__dirname, '..', COMPOSE_FILE), 'utf8'),
-      );
-      console.log(pc.green(`✔ ${COMPOSE_FILE}`));
-    }
+  install(context) {
+    context.copyPackageFile('docker-compose.search-elasticsearch.yml');
+    context.copyRuntime();
 
-    copyRuntime(RUNTIME_DIR, DEST_DIR);
-
-    console.log('');
-    console.log(pc.cyan('Next steps:'));
-    console.log(
-      `  1. Import ${pc.bold('ElasticsearchSearchModule')} into src/app.module.ts`,
-    );
-    console.log(
-      `  2. Declare it in hery.config.ts, e.g. { search: { default: 'prisma', engines: { prisma: { driver: 'prisma' }, elasticsearch: { driver: 'elasticsearch' } } } }`,
-    );
-    console.log(
-      `  3. Run "pnpm hery up --start" to boot Elasticsearch and resolve ELASTICSEARCH_URL`,
-    );
+    context.nextSteps([
+      `Import ${pc.bold('ElasticsearchSearchModule')} into src/app.module.ts`,
+      "Declare it in hery.config.ts, e.g. { search: { default: 'prisma', engines: { prisma: { driver: 'prisma' }, elasticsearch: { driver: 'elasticsearch' } } } }",
+      'Run "pnpm hery up --start" to boot Elasticsearch and resolve ELASTICSEARCH_URL',
+    ]);
   },
 });

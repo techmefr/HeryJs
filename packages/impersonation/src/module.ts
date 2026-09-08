@@ -1,14 +1,5 @@
-import * as path from 'node:path';
 import pc from 'picocolors';
-import { registerModule } from '../../../cli/lib/module-registry';
-import { copyRuntime } from '../../../cli/lib/runtime-copy';
-import {
-  patchExactStrings,
-  patchModelFields,
-} from '../../../cli/lib/schema-patch';
-
-const RUNTIME_DIR = path.join(__dirname, 'runtime');
-const DEST_DIR = 'src';
+import { defineModule } from '../../../cli/lib/module-definition';
 
 const SCHEMA_FILE = 'prisma/schema.prisma';
 const BETTER_AUTH_INSTANCE_FILE = 'src/technical/auth/better-auth.instance.ts';
@@ -19,24 +10,26 @@ const CAPABILITIES_TYPES_FILE =
   'src/technical/capabilities/capabilities.types.ts';
 const CAPABILITIES_SUBJECT_FILE = 'src/technical/capabilities/subject.ts';
 
-registerModule({
+export default defineModule({
   name: 'impersonation',
-  channel: 'official',
   description:
     "Let an admin act as another user for support, without ever leaving the tenant boundary or the audit trail: a bearer token for the target user, minted from the admin's own, that never touches the admin's original session.",
-  install() {
-    copyRuntime(RUNTIME_DIR, DEST_DIR);
+  meta: { compatibility: '>=0.0.1' },
+  dest: 'src',
+  install(context) {
+    context.copyRuntime();
 
-    patchModelFields(SCHEMA_FILE, 'User', [
+    context.patchModelFields(SCHEMA_FILE, 'User', [
       '  role          String?',
       '  banned        Boolean  @default(false)',
       '  banReason     String?',
       '  banExpires    DateTime?',
     ]);
-    patchModelFields(SCHEMA_FILE, 'Session', ['  impersonatedBy String?']);
-    console.log(pc.green(`✔ patched ${SCHEMA_FILE}`));
+    context.patchModelFields(SCHEMA_FILE, 'Session', [
+      '  impersonatedBy String?',
+    ]);
 
-    patchExactStrings(
+    context.patchExactStrings(
       BETTER_AUTH_INSTANCE_FILE,
       [
         [
@@ -63,9 +56,8 @@ registerModule({
       ],
       'admin(',
     );
-    console.log(pc.green(`✔ patched ${BETTER_AUTH_INSTANCE_FILE}`));
 
-    patchExactStrings(
+    context.patchExactStrings(
       AUTH_TYPES_FILE,
       [
         [
@@ -84,9 +76,8 @@ registerModule({
       ],
       'impersonatedBy: string | null;',
     );
-    console.log(pc.green(`✔ patched ${AUTH_TYPES_FILE}`));
 
-    patchExactStrings(
+    context.patchExactStrings(
       SESSION_AUTH_PROVIDER_FILE,
       [
         [
@@ -125,9 +116,8 @@ registerModule({
       ],
       'impersonatedBy,\n  };',
     );
-    console.log(pc.green(`✔ patched ${SESSION_AUTH_PROVIDER_FILE}`));
 
-    patchExactStrings(
+    context.patchExactStrings(
       CAPABILITIES_TYPES_FILE,
       [
         [
@@ -141,9 +131,8 @@ registerModule({
       ],
       'role: string | null;',
     );
-    console.log(pc.green(`✔ patched ${CAPABILITIES_TYPES_FILE}`));
 
-    patchExactStrings(
+    context.patchExactStrings(
       CAPABILITIES_SUBJECT_FILE,
       [
         [
@@ -153,19 +142,12 @@ registerModule({
       ],
       'role: user.role,',
     );
-    console.log(pc.green(`✔ patched ${CAPABILITIES_SUBJECT_FILE}`));
 
-    console.log('');
-    console.log(pc.cyan('Next steps:'));
-    console.log(`  1. Run "pnpm hery migrate --name add_impersonation"`);
-    console.log(
-      `  2. Import ${pc.bold('ImpersonationModule')} into src/app.module.ts`,
-    );
-    console.log(
-      `  3. There is no role-management endpoint, by design (see Teams): promote a user to admin by hand, e.g. UPDATE "User" SET role = 'admin' WHERE email = '...'`,
-    );
-    console.log(
-      `  4. POST /impersonation/:userId as an admin to get a bearer token for the target; DELETE /impersonation with that token to end it and go back to using your own`,
-    );
+    context.nextSteps([
+      'Run "pnpm hery migrate --name add_impersonation"',
+      `Import ${pc.bold('ImpersonationModule')} into src/app.module.ts`,
+      "There is no role-management endpoint, by design (see Teams): promote a user to admin by hand, e.g. UPDATE \"User\" SET role = 'admin' WHERE email = '...'",
+      'POST /impersonation/:userId as an admin to get a bearer token for the target; DELETE /impersonation with that token to end it and go back to using your own',
+    ]);
   },
 });

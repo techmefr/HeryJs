@@ -1,16 +1,12 @@
-import * as path from 'node:path';
 import pc from 'picocolors';
-import { registerModule } from '../../../cli/lib/module-registry';
-import { copyRuntime } from '../../../cli/lib/runtime-copy';
+import { defineModule } from '../../../cli/lib/module-definition';
 
-const RUNTIME_DIR = path.join(__dirname, 'runtime');
-const DEST_DIR = 'src/technical';
-
-registerModule({
+export default defineModule({
   name: 'graphql',
-  channel: 'official',
   description:
     'Add a GraphQL endpoint (Apollo driver) with a session guard mirroring the REST auth flow. Use "hery generate <Name> --graphql" to add a resolver to a resource.',
+  meta: { compatibility: '>=0.0.1' },
+  dest: 'src/technical',
   dependencies: [
     '@nestjs/graphql',
     '@nestjs/apollo',
@@ -18,16 +14,12 @@ registerModule({
     '@as-integrations/express5',
     'graphql',
   ],
-  install() {
-    copyRuntime(RUNTIME_DIR, DEST_DIR);
+  install(context) {
+    context.copyRuntime();
 
-    console.log('');
-    console.log(pc.cyan('Next steps:'));
-    console.log(
-      `  1. Import ${pc.bold('GraphqlModule')} into src/app.module.ts`,
-    );
-    console.log(
-      `  2. Run "hery generate <Name> --graphql" to add a resolver to a resource`,
-    );
+    context.nextSteps([
+      `Import ${pc.bold('GraphqlModule')} into src/app.module.ts`,
+      'Run "hery generate <Name> --graphql" to add a resolver to a resource',
+    ]);
   },
 });

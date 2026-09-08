@@ -1,11 +1,9 @@
 import { execSync } from 'node:child_process';
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { getModule, listModules } from '../lib/module-registry';
-import type { ModuleDefinition } from '../lib/module-registry';
-import { loadModules } from '../lib/module-discovery';
-
-loadModules();
+import type { LoadedModule } from '../lib/module-definition';
+import { createInstallContext } from '../lib/module-context';
+import { findModule, loadModules } from '../lib/module-discovery';
 
 export function registerInstallCommand(program: Command): void {
   program
@@ -15,7 +13,10 @@ export function registerInstallCommand(program: Command): void {
     )
     .option('--all', 'install every registered module')
     .action(async (moduleNames: string[], options: { all?: boolean }) => {
-      const targets = options.all ? listModules() : resolveModules(moduleNames);
+      const available = loadModules();
+      const targets = options.all
+        ? available
+        : resolveModules(available, moduleNames);
 
       if (targets.length === 0) {
         console.log(pc.yellow('nothing to install'));
@@ -31,17 +32,20 @@ export function registerInstallCommand(program: Command): void {
           });
         }
 
-        await module.install();
+        await module.install(createInstallContext(module));
         console.log(pc.green(`✔ ${module.name} installed`));
       }
     });
 }
 
-function resolveModules(names: string[]): ModuleDefinition[] {
-  const modules: ModuleDefinition[] = [];
+function resolveModules(
+  available: LoadedModule[],
+  names: string[],
+): LoadedModule[] {
+  const modules: LoadedModule[] = [];
 
   for (const name of names) {
-    const module = getModule(name);
+    const module = findModule(available, name);
 
     if (!module) {
       console.log(

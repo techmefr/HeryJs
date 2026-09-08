@@ -1,34 +1,24 @@
-import * as path from 'node:path';
 import pc from 'picocolors';
-import { registerModule } from '../../../cli/lib/module-registry';
-import { copyRuntime } from '../../../cli/lib/runtime-copy';
+import { defineModule } from '../../../cli/lib/module-definition';
 
-const RUNTIME_DIR = path.join(__dirname, 'runtime');
-const DEST_DIR = 'src/modules/live';
-
-registerModule({
+export default defineModule({
   name: 'live',
-  channel: 'official',
   description:
     'Add bidirectional WebSocket support (Socket.IO). Use "hery generate <Name> --live" to add a live gateway to a resource.',
+  meta: { compatibility: '>=0.0.1' },
+  dest: 'src/modules/live',
   dependencies: [
     '@nestjs/websockets',
     '@nestjs/platform-socket.io',
     'socket.io',
   ],
-  install() {
-    copyRuntime(RUNTIME_DIR, DEST_DIR);
+  install(context) {
+    context.copyRuntime();
 
-    console.log('');
-    console.log(pc.cyan('Next steps:'));
-    console.log(
-      `  1. Run "hery generate <Name> --live" to add a live gateway to a resource`,
-    );
-    console.log(
-      `  2. Import ${pc.bold('LiveModule')} and add ${pc.bold('<Name>LiveGateway')} to the imports/providers of <name>.module.ts`,
-    );
-    console.log(
-      `  3. Clients connect with "io('/live/<name>', { auth: { token } })" using the same bearer token as REST`,
-    );
+    context.nextSteps([
+      'Run "hery generate <Name> --live" to add a live gateway to a resource',
+      `Import ${pc.bold('LiveModule')} and add ${pc.bold('<Name>LiveGateway')} to the imports/providers of <name>.module.ts`,
+      `Clients connect with "io('/live/<name>', { auth: { token } })" using the same bearer token as REST`,
+    ]);
   },
 });

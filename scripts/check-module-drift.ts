@@ -1,10 +1,9 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import * as path from 'node:path';
 import { rewriteKernelSpecifiers } from '../cli/lib/runtime-copy';
+import { loadOfficialModules } from '../cli/lib/module-discovery';
 
 const REPO_ROOT = path.resolve(__dirname, '..');
-const PACKAGES = path.join(REPO_ROOT, 'packages');
-const DEST_DIR = /const DEST_DIR = '([^']+)'/;
 
 interface ModulePackage {
   name: string;
@@ -12,27 +11,20 @@ interface ModulePackage {
   destDir: string;
 }
 
+/**
+ * Where a module's runtime lands is a field of its definition, so this reads
+ * the definition rather than grepping the source for a local constant -- a
+ * module whose destination this check cannot see is a module whose two copies
+ * it silently stops comparing.
+ */
 function modulePackages(): ModulePackage[] {
-  if (!existsSync(PACKAGES)) {
-    return [];
-  }
+  return loadOfficialModules().flatMap((module) => {
+    const runtimeDir = path.join(module.packageDir, 'src', 'runtime');
 
-  return readdirSync(PACKAGES, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .flatMap((entry) => {
-      const moduleFile = path.join(PACKAGES, entry.name, 'src', 'module.ts');
-      const runtimeDir = path.join(PACKAGES, entry.name, 'src', 'runtime');
-
-      if (!existsSync(moduleFile) || !existsSync(runtimeDir)) {
-        return [];
-      }
-
-      const dest = DEST_DIR.exec(readFileSync(moduleFile, 'utf8'));
-
-      return dest
-        ? [{ name: entry.name, runtimeDir, destDir: dest[1]! }]
-        : [{ name: entry.name, runtimeDir, destDir: '' }];
-    });
+    return existsSync(runtimeDir)
+      ? [{ name: module.name, runtimeDir, destDir: module.dest }]
+      : [];
+  });
 }
 
 function filesUnder(dir: string): string[] {
@@ -133,13 +125,6 @@ export function checkModuleDrift(): boolean {
   let unshippedSpecs = 0;
 
   for (const module of packages) {
-    if (module.destDir === '') {
-      problems.push(
-        `packages/${module.name}/src/module.ts declares no DEST_DIR literal — this check cannot tell where its runtime lands`,
-      );
-      continue;
-    }
-
     for (const authored of filesUnder(module.runtimeDir)) {
       const relative = path.relative(module.runtimeDir, authored);
       const installed = path.join(REPO_ROOT, module.destDir, relative);

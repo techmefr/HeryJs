@@ -47,7 +47,7 @@ export function patchModelFields(
   filePath: string,
   modelName: string,
   fieldLines: string[],
-): void {
+): boolean {
   const source = readFileSync(filePath, 'utf8');
   const start = source.indexOf(`model ${modelName} {`);
 
@@ -63,7 +63,7 @@ export function patchModelFields(
   }
 
   if (source.slice(start, close).includes(guard.trim())) {
-    return;
+    return false;
   }
 
   // Timestamps are conventionally the last scalars before the blank line that
@@ -84,6 +84,7 @@ export function patchModelFields(
     fieldLines.join('\n') +
     source.slice(insertAt);
   writeFileSync(filePath, patched);
+  return true;
 }
 
 /**
@@ -96,11 +97,11 @@ export function patchExactStrings(
   filePath: string,
   pairs: Array<[string, string]>,
   guardText: string,
-): void {
+): boolean {
   const source = readFileSync(filePath, 'utf8');
 
   if (source.includes(guardText)) {
-    return;
+    return false;
   }
 
   let patched = source;
@@ -116,6 +117,7 @@ export function patchExactStrings(
   }
 
   writeFileSync(filePath, patched);
+  return true;
 }
 
 function withBackRelation(
