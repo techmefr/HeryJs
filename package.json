@@ -20,7 +20,7 @@
     "lint:fast": "oxlint -c .oxlintrc.json src apps libs test cli scripts prisma prisma.config.ts hery.config.ts cors.config.ts",
     "lint:types": "oxlint -c .oxlintrc.json --type-aware src apps libs test cli scripts prisma prisma.config.ts hery.config.ts cors.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "typecheck:packages": "for d in packages/*/; do if [ -f \"$d/tsconfig.json\" ]; then echo \"$d\"; tsc --noEmit -p \"$d/tsconfig.json\" || exit 1; fi; done",
+    "typecheck:packages": "for d in packages/*/ examples/hery-module-*/; do if [ -f \"$d/tsconfig.json\" ]; then echo \"$d\"; tsc --noEmit -p \"$d/tsconfig.json\" || exit 1; fi; done",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest && pnpm run test:module-specs && pnpm --filter admin test",
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
     "test:cov": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
@@ -145,6 +145,7 @@
       "<rootDir>/examples"
     ],
     "moduleNameMapper": {
+      "^#kernel/(.*)$": "<rootDir>/src/technical/$1",
       "^#technical/(.*)$": "<rootDir>/src/technical/$1",
       "^#devtools/(.*)$": "<rootDir>/src/devtools/$1",
       "^#modules/(.*)$": "<rootDir>/src/modules/$1",

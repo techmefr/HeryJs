@@ -1,0 +1,23 @@
+{
+  "name": "hery-module-maintenance",
+  "version": "0.1.0",
+  "description": "Answer 503 while an app is in maintenance, except for admins.",
+  "license": "MIT",
+  "main": "dist/module.js",
+  "types": "dist/module.d.ts",
+  "files": ["dist", "src/runtime"],
+  "heryjs": {
+    "module": true
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "pnpm run build"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^12.0.0"
+  },
+  "devDependencies": {
+    "@nestjs/common": "^12.0.1",
+    "typescript": "^6.0.3"
+  }
+}

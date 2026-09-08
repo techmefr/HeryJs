@@ -118,6 +118,8 @@ The name has to be kebab-case, and it is refused if a directory or an installabl
 
 Two things in there are the constraints rather than the convenience. `meta.compatibility` is written from the kernel you scaffolded against, so it is never the field nobody filled in. And **the spec is under `src/runtime`**, which means `copyRuntime` copies it into the project alongside the code, and the installing project's own suite runs it — a module with no spec is a module whose installer has nothing to run.
 
+Moving that directory into its own repository is all it takes to make it a community module — see [Publishing a module](/guides/publishing-a-module/) for what the package has to declare, and `examples/hery-module-maintenance` for a complete one.
+
 That spec runs where it is written, without being installed first: `pnpm run test:module-specs` runs every `src/runtime/**/*.spec.ts` under `packages/`, against the kernel's own sources. Installing the module then runs the copy too, under the project's own suite.
 
 ## Checking one: `hery module:validate`
@@ -147,7 +149,7 @@ Everything it asks for is checked from the package alone, so a third-party autho
 | something under `src/runtime/` is a spec | `copyRuntime` copies it in with the code, so the installer has something to run |
 | the only subpath import is `#kernel/` | it is the one specifier rewritten on the way in; any other arrives pointing at nothing |
 | no relative import climbs out of the package | nothing above `src/runtime` is copied |
-| `tsconfig.json` maps `#kernel/*` when the runtime uses it | otherwise the author's own `tsc` typechecks against no kernel at all |
+| a `tsconfig.json` that is present maps `#kernel/*` | otherwise the author's own `tsc` typechecks against no kernel at all — and a published package ships none, so this one applies where the module is authored |
 
 Typechecking the runtime is deliberately not in that list: that is the author's own `tsc`, against their own `tsconfig`.
 

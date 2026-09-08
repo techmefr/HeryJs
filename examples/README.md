@@ -1,5 +1,9 @@
 # Examples
 
+Two things live here, both to be read rather than shipped: `blog-post/`, a reference
+resource, and `hery-module-maintenance/`, a complete community module with its own
+README.
+
 `blog-post/` is a reference resource. It is not part of the application: `app.module.ts`
 does not import it and `tsconfig.build.json` excludes it, so nothing here ships. It
 exists to be read, and to be the thing the framework's own tests exercise when they

@@ -21,11 +21,22 @@ const REQUIRED_SUFFIXES = [
   '.spec.ts',
 ];
 
+/**
+ * A directory carrying its own package.json is a package, not a domain: the
+ * example module in examples/ is a module the way a published one is, and a
+ * module is not made of a controller, a policy and a DTO.
+ */
+function isPackage(dir: string): boolean {
+  return existsSync(join(dir, 'package.json'));
+}
+
 function listDomains(): Array<{ name: string; path: string }> {
   return RESOURCE_ROOTS.filter((root) => existsSync(root)).flatMap((root) =>
     readdirSync(root)
       .map((entry) => ({ name: entry, path: join(root, entry) }))
-      .filter((entry) => statSync(entry.path).isDirectory()),
+      .filter(
+        (entry) => statSync(entry.path).isDirectory() && !isPackage(entry.path),
+      ),
   );
 }
 

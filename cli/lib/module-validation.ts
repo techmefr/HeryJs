@@ -117,10 +117,17 @@ export function validateModule(module: LoadedModule): string[] {
     );
   const tsconfig = path.join(module.packageDir, 'tsconfig.json');
 
+  /**
+   * Only when the file is there. A published module ships its compiled entry
+   * and `src/runtime` as sources -- its tsconfig stays in the author's
+   * repository, so demanding one here failed every correctly published package
+   * the moment it was validated from the project that depends on it, which is
+   * where this command is meant to be run.
+   */
   if (
     usesKernel &&
-    (!existsSync(tsconfig) ||
-      !readFileSync(tsconfig, 'utf8').includes('#kernel/*'))
+    existsSync(tsconfig) &&
+    !readFileSync(tsconfig, 'utf8').includes('#kernel/*')
   ) {
     problems.push(
       'its runtime imports #kernel/ but its tsconfig.json maps no #kernel/* path, so nothing here typechecks against the kernel',

@@ -63,6 +63,7 @@ export default defineConfig({
 							label: 'Modules',
 							items: [
 								{ label: 'The module system', slug: 'guides/modules' },
+								{ label: 'Publishing a module', slug: 'guides/publishing-a-module' },
 								{ label: 'Full-text search', slug: 'guides/search' },
 								{ label: 'Realtime', slug: 'guides/realtime' },
 								{ label: 'Mail and storage', slug: 'guides/mail-and-storage' },
