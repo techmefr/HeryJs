@@ -2,6 +2,7 @@ import pc from 'picocolors';
 import { defineModule } from '../../../cli/lib/module-definition';
 
 const SCHEMA_FILE = 'prisma/schema.prisma';
+const ENV_SCHEMA_FILE = 'src/technical/config/env-schema.ts';
 const BETTER_AUTH_INSTANCE_FILE = 'src/technical/auth/better-auth.instance.ts';
 const AUTH_TYPES_FILE = 'src/technical/auth/auth.types.ts';
 const SESSION_AUTH_PROVIDER_FILE =
@@ -29,6 +30,31 @@ export default defineModule({
       '  impersonatedBy String?',
     ]);
 
+    const rlsBlock = [
+      '    RLS_ENABLED: z',
+      '      .string()',
+      "      .default('false')",
+      "      .transform((value) => value === 'true'),",
+    ].join('\n');
+
+    context.patchExactStrings(
+      ENV_SCHEMA_FILE,
+      [
+        [
+          rlsBlock,
+          [
+            rlsBlock,
+            '    IMPERSONATION_SESSION_SECONDS: z.coerce',
+            '      .number()',
+            '      .int()',
+            '      .positive()',
+            '      .default(30 * 60),',
+          ].join('\n'),
+        ],
+      ],
+      'IMPERSONATION_SESSION_SECONDS',
+    );
+
     context.patchExactStrings(
       BETTER_AUTH_INSTANCE_FILE,
       [
@@ -45,13 +71,11 @@ export default defineModule({
             '      // there is no role-management endpoint here, on purpose (see',
             '      // Teams: roles are a product decision, granted by hand in the',
             '      // database, not a convention HeryJs ships).',
-            '      admin({ impersonationSessionDuration: IMPERSONATION_SESSION_SECONDS }),',
+            '      admin({',
+            '        impersonationSessionDuration: env.IMPERSONATION_SESSION_SECONDS,',
+            '      }),',
             '    ],',
           ].join('\n'),
-        ],
-        [
-          'async function createAuth() {',
-          'const IMPERSONATION_SESSION_SECONDS = 30 * 60;\n\nasync function createAuth() {',
         ],
       ],
       'admin(',
