@@ -21,7 +21,7 @@
     "lint:types": "oxlint -c .oxlintrc.json --type-aware src apps libs test cli scripts prisma prisma.config.ts hery.config.ts cors.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "typecheck:packages": "for d in packages/*/; do if [ -f \"$d/tsconfig.json\" ]; then echo \"$d\"; tsc --noEmit -p \"$d/tsconfig.json\" || exit 1; fi; done",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest && pnpm --filter admin test",
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
     "test:cov": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "test:debug": "NODE_OPTIONS=--experimental-vm-modules node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",

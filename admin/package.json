@@ -7,7 +7,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "lint": "eslint \"src/**/*.{ts,astro}\" --fix && prettier --write \"src/**/*.{ts,astro}\""
+    "lint": "eslint \"src/**/*.{ts,astro}\" --fix && prettier --write \"src/**/*.{ts,astro}\"",
+    "test": "vitest run --environment jsdom"
   },
   "dependencies": {
     "astro": "^7.3.1",
@@ -18,9 +19,11 @@
     "eslint": "^10.10.0",
     "eslint-plugin-astro": "^3.1.0",
     "globals": "^17.12.0",
+    "jsdom": "^30.0.1",
     "prettier": "^3.9.6",
     "prettier-plugin-astro": "^0.14.1",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.69.0"
+    "typescript-eslint": "^8.69.0",
+    "vitest": "^5.0.0"
   }
 }
