@@ -220,66 +220,135 @@ describe('the install context', () => {
     });
   });
 
-  describe('patching a file the project owns', () => {
-    it('writes what the edit returns', () => {
-      writeFileSync('schema.prisma', 'model User {}\n');
+  describe('adding models to the Prisma schema', () => {
+    function authorSchema(source: string): void {
+      mkdirSync('prisma', { recursive: true });
+      writeFileSync('prisma/schema.prisma', source);
+    }
+
+    it('appends the block the module declares', () => {
+      authorSchema('model User {\n  id String @id\n}\n');
 
       const context = contextFor();
-      context.patch(
-        'schema.prisma',
-        'model Probe',
-        (source) => `${source}model Probe {}\n`,
-      );
+      context.addPrismaModels('\nmodel Probe {\n  id String @id\n}\n');
 
-      expect(readFileSync('schema.prisma', 'utf8')).toBe(
-        'model User {}\nmodel Probe {}\n',
+      expect(readFileSync('prisma/schema.prisma', 'utf8')).toContain(
+        'model Probe {',
       );
-      expect(context.touched).toEqual(['schema.prisma']);
+      expect(context.touched).toEqual(['prisma/schema.prisma']);
     });
 
     // Installing twice has to be a no-op, and the guard lives here rather than
     // in each module so no author can forget it.
-    it('does nothing when the marker is already there', () => {
-      writeFileSync('schema.prisma', 'model Probe {}\n');
-      const edit = jest.fn();
+    it('does nothing when the model is already declared', () => {
+      authorSchema('model Probe {\n  id String @id\n}\n');
 
       const context = contextFor();
-      context.patch('schema.prisma', 'model Probe', edit);
+      context.addPrismaModels('\nmodel Probe {\n  id String @id\n}\n');
 
-      expect(edit).not.toHaveBeenCalled();
       expect(context.touched).toEqual([]);
-      expect(logged.join('\n')).toContain('already has model Probe, skipping');
+      expect(logged.join('\n')).toContain('already declares Probe, skipping');
     });
 
-    // Every caller extends something the project already owns, so a missing
-    // file means this project is not shaped the way the module expected --
-    // creating it would invent a file nobody asked for.
-    it('skips a file that is not there rather than creating it', () => {
+    // Every one of these operations extends something the project already
+    // owns, so a missing file means this project is not shaped the way the
+    // module expected -- creating it would invent a file nobody asked for.
+    it('skips a schema that is not there rather than creating it', () => {
       const context = contextFor();
-      context.patch('nowhere.yaml', 'marker', () => 'written');
+      context.addPrismaModels('\nmodel Probe {\n  id String @id\n}\n');
 
       expect(context.touched).toEqual([]);
       expect(logged.join('\n')).toContain('does not exist here, skipping');
     });
 
-    it('skips when the edit decides there is nothing to do', () => {
-      writeFileSync('package.json', '{}\n');
+    it('adds fields to a model the module does not own', () => {
+      authorSchema('model User {\n  id String @id\n}\n');
 
       const context = contextFor();
-      context.patch('package.json', 'marker', () => undefined);
+      context.addModelFields('User', ['  role String?']);
 
-      expect(readFileSync('package.json', 'utf8')).toBe('{}\n');
-      expect(context.touched).toEqual([]);
-      expect(logged.join('\n')).toContain('nothing to patch, skipping');
+      expect(readFileSync('prisma/schema.prisma', 'utf8')).toContain(
+        'role String?',
+      );
+      expect(context.touched).toEqual(['prisma/schema.prisma']);
     });
 
-    it('skips when the edit returns the file unchanged', () => {
-      writeFileSync('package.json', '{}\n');
+    it('does nothing when the model already carries the field', () => {
+      authorSchema('model User {\n  id String @id\n  role String?\n}\n');
 
       const context = contextFor();
-      context.patch('package.json', 'marker', (source) => source);
+      context.addModelFields('User', ['  role String?']);
 
       expect(context.touched).toEqual([]);
+      expect(logged.join('\n')).toContain('already has User patched, skipping');
+    });
+  });
+
+  describe('chaining a command onto a root script', () => {
+    it('appends it to what the script already runs', () => {
+      writeFileSync(
+        'package.json',
+        '{\n  "scripts": {\n    "test": "jest"\n  }\n}\n',
+      );
+
+      const context = contextFor();
+      context.chainScript('test', 'pnpm --filter probe test');
+
+      expect(readFileSync('package.json', 'utf8')).toContain(
+        'jest && pnpm --filter probe test',
+      );
+      expect(context.touched).toEqual(['package.json']);
+    });
+
+    it('says so when the command is already chained', () => {
+      writeFileSync(
+        'package.json',
+        '{\n  "scripts": {\n    "test": "jest && pnpm --filter probe test"\n  }\n}\n',
+      );
+
+      const context = contextFor();
+      context.chainScript('test', 'pnpm --filter probe test');
+
+      expect(context.touched).toEqual([]);
+      expect(logged.join('\n')).toContain(
+        'already runs "pnpm --filter probe test" in "test"',
+      );
+    });
+
+    // The two skips used to read the same, which hid a project shaped
+    // differently from the one the module expected behind a second install.
+    it('says so when there is no such script to chain onto', () => {
+      writeFileSync('package.json', '{\n  "scripts": {}\n}\n');
+
+      const context = contextFor();
+      context.chainScript('test', 'pnpm --filter probe test');
+
+      expect(context.touched).toEqual([]);
+      expect(logged.join('\n')).toContain('has no "test" script to chain onto');
+    });
+  });
+
+  describe('declaring a workspace', () => {
+    it('adds the directory to the packages list', () => {
+      writeFileSync('pnpm-workspace.yaml', "packages:\n  - '.'\n");
+
+      const context = contextFor();
+      context.addWorkspace('probe-ui');
+
+      expect(readFileSync('pnpm-workspace.yaml', 'utf8')).toContain(
+        "- 'probe-ui'",
+      );
+      expect(context.touched).toEqual(['pnpm-workspace.yaml']);
+    });
+
+    it('does nothing when the directory is already listed', () => {
+      writeFileSync('pnpm-workspace.yaml', "packages:\n  - 'probe-ui'\n");
+
+      const context = contextFor();
+      context.addWorkspace('probe-ui');
+
+      expect(context.touched).toEqual([]);
+      expect(logged.join('\n')).toContain('already lists probe-ui, skipping');
     });
   });
 
@@ -293,17 +362,18 @@ describe('the install context', () => {
   it('records every write in the order they happened', () => {
     authorRuntimeFile('probe.ts', 'export const PROBE = true;\n');
     writeFileSync(path.join(packageDir, 'compose.yml'), 'x: 1\n');
-    writeFileSync('schema.prisma', 'model User {}\n');
+    mkdirSync('prisma', { recursive: true });
+    writeFileSync('prisma/schema.prisma', 'model User {\n  id String @id\n}\n');
 
     const context = contextFor();
     context.copyPackageFile('compose.yml');
     context.copyRuntime();
-    context.patch('schema.prisma', 'Probe', (source) => `${source}Probe\n`);
+    context.addPrismaModels('\nmodel Probe {\n  id String @id\n}\n');
 
     expect(context.touched).toEqual([
       'compose.yml',
       'src/modules/probe/probe.ts',
-      'schema.prisma',
+      'prisma/schema.prisma',
     ]);
   });
 });

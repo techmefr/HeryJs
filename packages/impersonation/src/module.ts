@@ -1,7 +1,6 @@
 import pc from 'picocolors';
 import { defineModule } from '../../../cli/lib/module-definition';
 
-const SCHEMA_FILE = 'prisma/schema.prisma';
 const ENV_SCHEMA_FILE = 'src/technical/config/env-schema.ts';
 const BETTER_AUTH_INSTANCE_FILE = 'src/technical/auth/better-auth.instance.ts';
 const AUTH_TYPES_FILE = 'src/technical/auth/auth.types.ts';
@@ -20,15 +19,13 @@ export default defineModule({
   install(context) {
     context.copyRuntime();
 
-    context.patchModelFields(SCHEMA_FILE, 'User', [
+    context.addModelFields('User', [
       '  role          String?',
       '  banned        Boolean  @default(false)',
       '  banReason     String?',
       '  banExpires    DateTime?',
     ]);
-    context.patchModelFields(SCHEMA_FILE, 'Session', [
-      '  impersonatedBy String?',
-    ]);
+    context.addModelFields('Session', ['  impersonatedBy String?']);
 
     const rlsBlock = [
       '    RLS_ENABLED: z',

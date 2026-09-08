@@ -1,8 +1,6 @@
 import pc from 'picocolors';
 import { defineModule } from '../../../cli/lib/module-definition';
 
-const SCHEMA_FILE = 'prisma/schema.prisma';
-
 const MAIL_LOG_MODEL = `
 model MailLog {
   id        String    @id @default(cuid())
@@ -27,11 +25,7 @@ export default defineModule({
   dependencies: [],
   install(context) {
     context.copyRuntime();
-    context.patch(
-      SCHEMA_FILE,
-      'model MailLog',
-      (schema) => schema.trimEnd() + '\n' + MAIL_LOG_MODEL,
-    );
+    context.addPrismaModels(MAIL_LOG_MODEL);
 
     context.nextSteps([
       'Run "pnpm hery migrate --name add_mail_log"',

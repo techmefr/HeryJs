@@ -1,12 +1,17 @@
 import type { InstallContext, LoadedModule } from './module-definition';
+import { PRISMA_SCHEMA, modelNamesIn } from './schema-patch';
+import { PACKAGE_MANIFEST, WORKSPACE_MANIFEST } from './project-patch';
 
 export interface PatchRecord {
   module: string;
   file: string;
   /**
-   * What has to be in the file once the patch has been applied. For an exact
-   * patch that is every replacement it writes; for a guarded edit, the marker
-   * it guards on; for a Prisma model, the first field name it adds.
+   * What has to be in the file once the patch has been applied: every
+   * replacement an exact patch writes, every model an append declares, the
+   * command a chained script ends with, the first field name added to a model.
+   * Every write a module can make is a named operation, so every one of them
+   * leaves a mark this can look for -- there is no freeform edit left whose
+   * content only its own callback knows.
    */
   marks: string[];
   model?: string;
@@ -29,18 +34,38 @@ export async function recordPatches(
     copyPackageFile: () => undefined,
     nextSteps: () => undefined,
 
-    patch: (file, marker) => {
-      records.push({ module: module.name, file, marks: [marker] });
+    addPrismaModels: (models) => {
+      records.push({
+        module: module.name,
+        file: PRISMA_SCHEMA,
+        marks: modelNamesIn(models).map((name) => `model ${name} {`),
+      });
     },
 
-    patchModelFields: (file, model, fields) => {
+    addModelFields: (model, fields) => {
       const first = fields[0];
 
       records.push({
         module: module.name,
-        file,
+        file: PRISMA_SCHEMA,
         model,
         marks: first === undefined ? [] : [fieldNameIn(first)],
+      });
+    },
+
+    chainScript: (_script, command) => {
+      records.push({
+        module: module.name,
+        file: PACKAGE_MANIFEST,
+        marks: [command],
+      });
+    },
+
+    addWorkspace: (directory) => {
+      records.push({
+        module: module.name,
+        file: WORKSPACE_MANIFEST,
+        marks: [`'${directory}'`],
       });
     },
 

@@ -54,13 +54,11 @@ describe('recording what a module patches', () => {
     ]);
   });
 
-  it('records the marker a guarded edit guards on', async () => {
+  it('records every model an append declares', async () => {
     const records = await recordPatches(
       moduleInstalling((context) => {
-        context.patch(
-          'src/app.module.ts',
-          'WebhooksModule',
-          (source) => source,
+        context.addPrismaModels(
+          '\nmodel ProbeLog {\n  id String @id\n}\n\nmodel ProbeEvent {\n  id String @id\n}\n',
         );
       }),
     );
@@ -68,8 +66,40 @@ describe('recording what a module patches', () => {
     expect(records).toEqual([
       {
         module: 'probe',
-        file: 'src/app.module.ts',
-        marks: ['WebhooksModule'],
+        file: 'prisma/schema.prisma',
+        marks: ['model ProbeLog {', 'model ProbeEvent {'],
+      },
+    ]);
+  });
+
+  it('records the command a chained script has to end with', async () => {
+    const records = await recordPatches(
+      moduleInstalling((context) => {
+        context.chainScript('test', 'pnpm --filter probe test');
+      }),
+    );
+
+    expect(records).toEqual([
+      {
+        module: 'probe',
+        file: 'package.json',
+        marks: ['pnpm --filter probe test'],
+      },
+    ]);
+  });
+
+  it('records the workspace entry a module declares', async () => {
+    const records = await recordPatches(
+      moduleInstalling((context) => {
+        context.addWorkspace('probe-ui');
+      }),
+    );
+
+    expect(records).toEqual([
+      {
+        module: 'probe',
+        file: 'pnpm-workspace.yaml',
+        marks: ["'probe-ui'"],
       },
     ]);
   });
@@ -80,7 +110,7 @@ describe('recording what a module patches', () => {
   it('records only the field name of a Prisma patch', async () => {
     const records = await recordPatches(
       moduleInstalling((context) => {
-        context.patchModelFields('prisma/schema.prisma', 'User', [
+        context.addModelFields('User', [
           '  role      String   @default("member")',
           '  lastSeenAt DateTime?',
         ]);
@@ -113,7 +143,7 @@ describe('recording what a module patches', () => {
     const records = await recordPatches(
       moduleInstalling(async (context) => {
         await Promise.resolve();
-        context.patch('src/app.module.ts', 'ProbeModule', (source) => source);
+        context.addWorkspace('probe-ui');
       }),
     );
 

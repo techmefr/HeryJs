@@ -1,40 +1,5 @@
 import pc from 'picocolors';
 import { defineModule } from '../../../cli/lib/module-definition';
-import type { InstallContext } from '../../../cli/lib/module-definition';
-
-const WORKSPACE_FILE = 'pnpm-workspace.yaml';
-const PACKAGE_FILE = 'package.json';
-
-/**
- * The admin ships its own toolchain -- its own eslint config and its own test
- * runner, because its code is browser code and the root suites run under node.
- * So the root scripts have to delegate to it. Without the lint delegation the
- * admin installs a workspace nothing lints, which the coverage check reports as
- * unreached source — correctly, since it is; and without the test delegation it
- * installs a runner and a suite nothing ever runs, which is worse than shipping
- * neither.
- */
-function delegateToAdmin(context: InstallContext, script: string): void {
-  const delegation = `pnpm --filter admin ${script}`;
-
-  context.patch(PACKAGE_FILE, delegation, (source) => {
-    const manifest = JSON.parse(source) as {
-      scripts?: Record<string, string>;
-    };
-    const existing = manifest.scripts?.[script];
-
-    if (existing === undefined) {
-      return undefined;
-    }
-
-    manifest.scripts = {
-      ...manifest.scripts,
-      [script]: `${existing} && ${delegation}`,
-    };
-
-    return `${JSON.stringify(manifest, null, 2)}\n`;
-  });
-}
 
 export default defineModule({
   name: 'admin-astro',
@@ -45,13 +10,19 @@ export default defineModule({
   dependencies: [],
   install(context) {
     context.copyRuntime();
+    context.addWorkspace('admin');
 
-    context.patch(WORKSPACE_FILE, "'admin'", (source) =>
-      source.replace('packages:\n', "packages:\n  - 'admin'\n"),
-    );
-
-    delegateToAdmin(context, 'lint');
-    delegateToAdmin(context, 'test');
+    /**
+     * The admin ships its own toolchain -- its own eslint config and its own
+     * test runner, because its code is browser code and the root suites run
+     * under node. So the root scripts have to delegate to it. Without the lint
+     * delegation the admin installs a workspace nothing lints, which the
+     * coverage check reports as unreached source -- correctly, since it is;
+     * and without the test delegation it installs a runner and a suite nothing
+     * ever runs, which is worse than shipping neither.
+     */
+    context.chainScript('lint', 'pnpm --filter admin lint');
+    context.chainScript('test', 'pnpm --filter admin test');
 
     context.nextSteps([
       `Run ${pc.bold('pnpm install')} to install the admin workspace`,

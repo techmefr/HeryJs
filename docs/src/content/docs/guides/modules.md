@@ -181,19 +181,23 @@ A module never imports `node:fs`. Every write goes through the context it is han
 |---|---|
 | `copyRuntime()` | copies `src/runtime/` to `dest`, rewriting `#kernel/` on the way, skipping any file already there |
 | `copyPackageFile(name)` | copies a file from the package root into the project, skipping one already there |
-| `patch(file, marker, edit)` | writes `edit(source)` unless `marker` is already present, or the file is absent |
-| `patchModelFields(file, model, fields)` | adds columns to a Prisma model the module does not own |
+| `addPrismaModels(models)` | appends models the module owns to `prisma/schema.prisma` |
+| `addModelFields(model, fields)` | adds columns to a Prisma model the module does not own |
+| `chainScript(script, command)` | appends a command to one of the root `package.json` scripts |
+| `addWorkspace(directory)` | declares a directory in `pnpm-workspace.yaml` |
 | `patchExactStrings(file, pairs, guard)` | exact-match replacements in a kernel file the module extends |
 | `nextSteps(steps)` | the closing numbered list |
 | `touched` | every path this install wrote, in order |
 
 A file that does not exist is skipped rather than created: every one of these callers extends something the project already owns, so a missing file means the project is not shaped the way the module expected, and inventing it would be worse than saying so.
 
+Every write is one named operation, and each intent has exactly one of them. The four that target a file the project always has in the same place — the Prisma schema, the root manifest, the workspace file — take no path at all: the operation says which file it means, so two modules cannot spell that path differently, and the patch check below knows what to look for without being told. And none of them takes a callback receiving the file's source and returning a new one: what a module writes has to be readable without running it. `patchExactStrings` is the one that stays general, for the kernel files a module extends, and it is declarative in the same way — pairs of exact strings, plus the guard that makes a second install a no-op.
+
 ### A patch that stops applying is a silent failure
 
 `patchExactStrings` throws when it cannot find its search text — but only on a project that has not been patched yet. Once the guard is in the file, the whole patch is skipped as already applied, so a kernel refactor that moves the anchored text turns the patch into a no-op that reports success. In this repository that is exactly how one module went on installing a value the kernel had stopped reading.
 
-`pnpm run lint:module-patches` closes that: it runs each installed module's `install()` against a context that writes nothing and only records what it would patch, then checks the project still holds every mark — each replacement of an exact patch, the marker of a guarded edit, the field name of a Prisma patch. Either the module patches what the kernel says now, or the kernel keeps what the module extends; a skipped patch is not a third option.
+`pnpm run lint:module-patches` closes that: it runs each installed module's `install()` against a context that writes nothing and only records what it would patch, then checks the project still holds every mark — each replacement of an exact patch, the name of every model appended, the chained command, the workspace entry, the field name of a Prisma patch. Either the module patches what the kernel says now, or the kernel keeps what the module extends; a skipped patch is not a third option.
 
 It is part of `lint:conventions`, and so of CI, alongside `lint:module-drift` — which compares the two copies of a module's runtime and cannot see a patched kernel file, since that file is a copy of nothing.
 
