@@ -1,3 +1,5 @@
+import { validRange } from 'semver';
+
 export interface ModuleMeta {
   /**
    * The range of HeryJs versions this module was written against, as a
@@ -146,6 +148,10 @@ export function definitionProblems(value: unknown): string[] {
     meta.compatibility === ''
   ) {
     problems.push('it declares no meta.compatibility');
+  } else if (validRange(meta.compatibility) === null) {
+    problems.push(
+      `its meta.compatibility "${meta.compatibility}" is not a semver range`,
+    );
   }
 
   return problems;

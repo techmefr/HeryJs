@@ -7,6 +7,7 @@
  */
 import { checkCapabilityDecorator } from './check-capability-decorator';
 import { checkExampleFreshness } from './check-example-freshness';
+import { checkKernelVersion } from './check-kernel-version';
 import { checkLintCoverage } from './check-lint-coverage';
 import { checkModuleDrift } from './check-module-drift';
 import { checkNoInlineDevGuard } from './check-no-inline-dev-guard';
@@ -26,6 +27,7 @@ const CHECKS: Array<{ name: string; run: () => boolean | Promise<boolean> }> = [
   { name: 'dev-guard', run: checkNoInlineDevGuard },
   { name: 'subject', run: checkSubjectConstruction },
   { name: 'template-imports', run: checkTemplateImports },
+  { name: 'kernel-version', run: checkKernelVersion },
   { name: 'example-freshness', run: checkExampleFreshness },
 ];
 

@@ -85,7 +85,17 @@ export interface ModuleDefinition {
 
 `dest` is declared rather than hidden in a local constant, so `lint:module-drift` can find the installed half of every file without parsing anyone's source.
 
-`meta.compatibility` is a semver range. It matters more here than in a framework whose modules stay resident: a HeryJs module runs once and leaves code behind, so installing one written against another kernel is not a runtime error anyone can undo — it is files on disk written against a contract that has moved.
+`meta.compatibility` is a semver range. It matters more here than in a framework whose modules stay resident: a HeryJs module runs once and leaves code behind, so installing one written against another kernel is not a runtime error anyone can undo — it is files on disk written against a contract that has moved. So it is checked while nothing has been written yet, before the first dependency is even added:
+
+```
+$ pnpm hery install some-module
+✖ some-module was written for HeryJs >=2.0.0, and this project is on 1.4.2
+    install it with --force if you mean to take that on
+```
+
+`--force` installs it anyway and prints the same line as a warning. The refusal is a default, not a wall: the files land, and you own them.
+
+The version it is compared against is not your project's — that one is yours to number as you like — but the kernel yours was generated from, declared in `cli/lib/kernel-version.ts`. A range nobody can parse is reported as the malformed field it is rather than as a version mismatch.
 
 There is no `channel` field. The loader stamps it from where it found the module, so nothing can claim to be official.
 

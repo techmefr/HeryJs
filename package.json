@@ -38,6 +38,7 @@
     "lint:dev-guard": "pnpm run lint:conventions dev-guard",
     "lint:subject": "pnpm run lint:conventions subject",
     "lint:template-imports": "pnpm run lint:conventions template-imports",
+    "lint:kernel-version": "pnpm run lint:conventions kernel-version",
     "lint:example": "pnpm run lint:conventions example-freshness",
     "lint:hery": "NODE_OPTIONS=--conditions=development ts-node cli/hery.ts lint --min-score 100",
     "hery": "NODE_OPTIONS=--conditions=development ts-node cli/hery.ts"
@@ -75,6 +76,7 @@
     "prompts": "^2.4.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "semver": "^7.8.5",
     "socket.io": "^4.8.3",
     "zod": "^4.5.4"
   },
@@ -92,6 +94,7 @@
     "@types/node": "^24.13.3",
     "@types/pg": "^8.23.1",
     "@types/prompts": "^2.4.9",
+    "@types/semver": "^7.8.0",
     "@types/supertest": "^7.0.0",
     "dependency-cruiser": "^18.2.0",
     "eslint": "^10.10.0",

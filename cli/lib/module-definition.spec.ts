@@ -75,6 +75,15 @@ describe('what makes a module definition', () => {
       'it declares no meta.compatibility',
     ]);
   });
+
+  // Reported here rather than only at install time, so a range nobody can
+  // parse reads as the malformed field it is instead of as a module written
+  // for some other version of HeryJs.
+  it('rejects a compatibility that is not a semver range', () => {
+    expect(
+      definitionProblems({ ...VALID, meta: { compatibility: 'latest' } }),
+    ).toEqual(['its meta.compatibility "latest" is not a semver range']);
+  });
 });
 
 describe('the install context', () => {
