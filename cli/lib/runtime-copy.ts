@@ -32,14 +32,19 @@ export function rewriteKernelSpecifiers(source: string): string {
  * installed into, rewriting `#kernel/` specifiers to the real relative path
  * as it goes. Skips (and logs) any file the developer already has, exactly
  * like the string-template installers did.
+ *
+ * Returns the paths it actually wrote, so the install context can record what
+ * a module touched without the module reporting it itself.
  */
-export function copyRuntime(runtimeDir: string, destDir: string): void {
+export function copyRuntime(runtimeDir: string, destDir: string): string[] {
+  const written: string[] = [];
+
   for (const entry of readdirSync(runtimeDir, { withFileTypes: true })) {
     const sourcePath = path.join(runtimeDir, entry.name);
     const destPath = path.join(destDir, entry.name);
 
     if (entry.isDirectory()) {
-      copyRuntime(sourcePath, destPath);
+      written.push(...copyRuntime(sourcePath, destPath));
       continue;
     }
 
@@ -52,5 +57,8 @@ export function copyRuntime(runtimeDir: string, destDir: string): void {
     mkdirSync(path.dirname(destPath), { recursive: true });
     writeFileSync(destPath, content);
     console.log(pc.green(`✔ ${destPath}`));
+    written.push(destPath);
   }
+
+  return written;
 }

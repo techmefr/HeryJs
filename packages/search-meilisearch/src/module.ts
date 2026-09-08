@@ -1,42 +1,21 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import * as path from 'node:path';
 import pc from 'picocolors';
-import { registerModule } from '../../../cli/lib/module-registry';
-import { copyRuntime } from '../../../cli/lib/runtime-copy';
+import { defineModule } from '../../../cli/lib/module-definition';
 
-const COMPOSE_FILE = 'docker-compose.search-meilisearch.yml';
-const RUNTIME_DIR = path.join(__dirname, 'runtime');
-const DEST_DIR = 'src/technical/search';
-
-registerModule({
+export default defineModule({
   name: 'search-meilisearch',
-  channel: 'official',
   description:
     'Swap free-text search from Prisma contains() to Meilisearch (docker service, driver, DI wiring)',
+  meta: { compatibility: '>=0.0.1' },
+  dest: 'src/technical/search',
   dependencies: ['meilisearch'],
-  install() {
-    if (existsSync(COMPOSE_FILE)) {
-      console.log(pc.yellow(`${COMPOSE_FILE} already exists, skipping.`));
-    } else {
-      writeFileSync(
-        COMPOSE_FILE,
-        readFileSync(path.join(__dirname, '..', COMPOSE_FILE), 'utf8'),
-      );
-      console.log(pc.green(`✔ ${COMPOSE_FILE}`));
-    }
+  install(context) {
+    context.copyPackageFile('docker-compose.search-meilisearch.yml');
+    context.copyRuntime();
 
-    copyRuntime(RUNTIME_DIR, DEST_DIR);
-
-    console.log('');
-    console.log(pc.cyan('Next steps:'));
-    console.log(
-      `  1. Import ${pc.bold('MeilisearchSearchModule')} into src/app.module.ts`,
-    );
-    console.log(
-      `  2. Declare it in hery.config.ts, e.g. { search: { default: 'prisma', engines: { prisma: { driver: 'prisma' }, meilisearch: { driver: 'meilisearch' } } } }`,
-    );
-    console.log(
-      `  3. Run "pnpm hery up --start" to boot Meilisearch and resolve MEILISEARCH_URL`,
-    );
+    context.nextSteps([
+      `Import ${pc.bold('MeilisearchSearchModule')} into src/app.module.ts`,
+      "Declare it in hery.config.ts, e.g. { search: { default: 'prisma', engines: { prisma: { driver: 'prisma' }, meilisearch: { driver: 'meilisearch' } } } }",
+      'Run "pnpm hery up --start" to boot Meilisearch and resolve MEILISEARCH_URL',
+    ]);
   },
 });

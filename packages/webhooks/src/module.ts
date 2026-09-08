@@ -1,11 +1,6 @@
-import { readFileSync, writeFileSync } from 'node:fs';
-import * as path from 'node:path';
 import pc from 'picocolors';
-import { registerModule } from '../../../cli/lib/module-registry';
-import { copyRuntime } from '../../../cli/lib/runtime-copy';
+import { defineModule } from '../../../cli/lib/module-definition';
 
-const RUNTIME_DIR = path.join(__dirname, 'runtime');
-const DEST_DIR = 'src/modules/webhooks';
 const SCHEMA_FILE = 'prisma/schema.prisma';
 
 const WEBHOOK_MODELS = `
@@ -41,41 +36,26 @@ model WebhookEvent {
 }
 `;
 
-function patchSchema(): void {
-  const schema = readFileSync(SCHEMA_FILE, 'utf8');
-
-  if (schema.includes('model WebhookEndpoint')) {
-    console.log(
-      pc.yellow(`${SCHEMA_FILE} already has WebhookEndpoint, skipping.`),
-    );
-    return;
-  }
-
-  writeFileSync(SCHEMA_FILE, schema.trimEnd() + '\n' + WEBHOOK_MODELS);
-  console.log(pc.green(`✔ patched ${SCHEMA_FILE}`));
-}
-
-registerModule({
+export default defineModule({
   name: 'webhooks',
-  channel: 'official',
   description:
     'Receive inbound webhooks with HMAC-SHA256 signature verification (constant-time, timestamp-tolerant against replay) and run each accepted payload through Event, Job, Notification, Audit and Signal.',
+  meta: { compatibility: '>=0.0.1' },
+  dest: 'src/modules/webhooks',
   dependencies: [],
-  install() {
-    copyRuntime(RUNTIME_DIR, DEST_DIR);
-    patchSchema();
+  install(context) {
+    context.copyRuntime();
+    context.patch(
+      SCHEMA_FILE,
+      'model WebhookEndpoint',
+      (schema) => schema.trimEnd() + '\n' + WEBHOOK_MODELS,
+    );
 
-    console.log('');
-    console.log(pc.cyan('Next steps:'));
-    console.log(`  1. Run "pnpm hery migrate --name add_webhooks"`);
-    console.log(
-      `  2. Import ${pc.bold('WebhooksModule')} into src/app.module.ts`,
-    );
-    console.log(
-      `  3. POST /webhooks/endpoints as an admin to mint an endpoint and its secret, then have the sender sign each request as HMAC-SHA256(secret, timestamp + '.' + rawBody) in the x-webhook-signature and x-webhook-timestamp headers`,
-    );
-    console.log(
-      `  4. Tune the replay window with WEBHOOK_SIGNATURE_TOLERANCE_SECONDS (default 300)`,
-    );
+    context.nextSteps([
+      'Run "pnpm hery migrate --name add_webhooks"',
+      `Import ${pc.bold('WebhooksModule')} into src/app.module.ts`,
+      "POST /webhooks/endpoints as an admin to mint an endpoint and its secret, then have the sender sign each request as HMAC-SHA256(secret, timestamp + '.' + rawBody) in the x-webhook-signature and x-webhook-timestamp headers",
+      'Tune the replay window with WEBHOOK_SIGNATURE_TOLERANCE_SECONDS (default 300)',
+    ]);
   },
 });

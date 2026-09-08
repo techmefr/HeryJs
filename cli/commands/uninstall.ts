@@ -1,8 +1,7 @@
 import { execSync } from 'node:child_process';
 import type { Command } from 'commander';
 import pc from 'picocolors';
-import { getModule } from '../lib/module-registry';
-import { loadModules } from '../lib/module-discovery';
+import { findModule, loadModules } from '../lib/module-discovery';
 
 // module.dependencies holds pnpm-add specs ("@elastic/elasticsearch@^8.17.0"),
 // but "pnpm remove" takes bare package names -- a version suffix there is a
@@ -31,8 +30,7 @@ export function registerUninstallCommand(program: Command): void {
       "Remove a module's own dependencies and print what to clean up by hand (see hery module:list)",
     )
     .action((name: string) => {
-      loadModules();
-      const module = getModule(name);
+      const module = findModule(loadModules(), name);
 
       if (!module) {
         console.log(
@@ -49,10 +47,6 @@ export function registerUninstallCommand(program: Command): void {
       if (module.dependencies?.length) {
         const names = module.dependencies.map(packageName);
         execSync(`pnpm remove -w ${names.join(' ')}`, { stdio: 'inherit' });
-      }
-
-      if (module.uninstall) {
-        void module.uninstall();
       }
 
       console.log(pc.green(`✔ ${module.name}'s own dependencies removed`));

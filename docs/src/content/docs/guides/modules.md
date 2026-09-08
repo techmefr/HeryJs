@@ -54,24 +54,74 @@ Discovery walks `packages/*` at startup and requires whatever `src/module.ts` it
 
 Because this repository has every module installed into itself, each one exists twice: authored under `packages/<name>/src/runtime`, installed where that module's own `module.ts` copies it to. `pnpm lint:module-drift` compares the two and fails when they diverge — a fix applied to the copy that runs here and not to the copy a project would install is a fix nobody else gets, and the whole gate stayed green through it until this check existed. The runtime file is written against the kernel through a `#kernel/` specifier, rewritten to the app's own `#technical/` on the way in, which is the only difference between the two copies.
 
-The **community** channel is the same mechanism turned outward: any npm package a project installs can register itself as a module by adding a `heryjs.module: true` marker to its own `package.json`. `hery module:list` and `hery install` scan the project's declared dependencies for that marker and require whichever ones carry it — there is no separate registry to submit to and nothing HeryJs curates on that side; the convention itself is the whole channel.
+The **community** channel is the same mechanism turned outward: any npm package a project installs is a module once it adds a `heryjs.module: true` marker to its own `package.json` and default-exports a definition. `hery module:list` and `hery install` scan the project's declared dependencies for that marker and read the export of whichever ones carry it — there is no separate registry to submit to and nothing HeryJs curates on that side; the convention itself is the whole channel.
+
+A package that carries the marker but exports the wrong shape is **reported**, not skipped:
+
+```
+✖ bad-module is not a usable module:
+    it declares no description
+    it declares no dest
+    it declares no install function
+    it declares no meta
+```
+
+That is the one failure worth being loud about, because the alternative symptom is an `install` command that says nothing at all.
 
 ## A module is these fields
 
 ```ts
-export type ModuleChannel = 'official' | 'community';
-
 export interface ModuleDefinition {
   name: string; // the id you type
   description: string; // the line module:list prints
-  channel: ModuleChannel;
+  meta: { compatibility: string }; // the HeryJs range it was written against
+  dest: string; // where src/runtime/ lands, from the project root
   dependencies?: string[];
-  install(): void | Promise<void>;
-  uninstall?(): void | Promise<void>;
+  install(context: InstallContext): void | Promise<void>;
 }
 ```
 
-`dependencies` are npm specifiers handed to `pnpm add -w` before `install()` runs. `install()` does all the writing and prints its own next steps. `uninstall()` is optional and rarely needed — see below for why removing a module stops short of being fully automatic.
+`dependencies` are npm specifiers handed to `pnpm add -w` before `install()` runs.
+
+`dest` is declared rather than hidden in a local constant, so `lint:module-drift` can find the installed half of every file without parsing anyone's source.
+
+`meta.compatibility` is a semver range. It matters more here than in a framework whose modules stay resident: a HeryJs module runs once and leaves code behind, so installing one written against another kernel is not a runtime error anyone can undo — it is files on disk written against a contract that has moved.
+
+There is no `channel` field. The loader stamps it from where it found the module, so nothing can claim to be official.
+
+## A module is its default export
+
+```ts
+export default defineModule({
+  name: 'storage',
+  description: 'Add file storage behind a swappable provider.',
+  meta: { compatibility: '>=0.0.1' },
+  dest: 'src/modules/storage',
+  install(context) {
+    context.copyPackageFile('docker-compose.storage.yml');
+    context.copyRuntime();
+    context.nextSteps(['Import StorageModule into src/app.module.ts']);
+  },
+});
+```
+
+`defineModule` exists for the type inference only — a plain object literal is a valid module, and a third-party package needs **no runtime import from HeryJs at all**. That is deliberate: the contract used to be a `registerModule()` call into a module-level Map, which only ever worked for the modules living in this repository. A third-party package had nothing to import that function from, and a bundled copy of it would have been a second Map the CLI never reads — so a community module loaded fine and registered nothing, silently.
+
+## `install()` cannot touch the filesystem itself
+
+A module never imports `node:fs`. Every write goes through the context it is handed, which is what makes idempotence, the skip logging and the record of what was touched hold for **every** module rather than for the ones whose author remembered them:
+
+| | |
+|---|---|
+| `copyRuntime()` | copies `src/runtime/` to `dest`, rewriting `#kernel/` on the way, skipping any file already there |
+| `copyPackageFile(name)` | copies a file from the package root into the project, skipping one already there |
+| `patch(file, marker, edit)` | writes `edit(source)` unless `marker` is already present, or the file is absent |
+| `patchModelFields(file, model, fields)` | adds columns to a Prisma model the module does not own |
+| `patchExactStrings(file, pairs, guard)` | exact-match replacements in a kernel file the module extends |
+| `nextSteps(steps)` | the closing numbered list |
+| `touched` | every path this install wrote, in order |
+
+A file that does not exist is skipped rather than created: every one of these callers extends something the project already owns, so a missing file means the project is not shaped the way the module expected, and inventing it would be worse than saying so.
 
 ## Installing is idempotent, per file
 
