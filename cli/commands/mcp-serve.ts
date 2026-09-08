@@ -3,6 +3,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import type { Command } from 'commander';
 import { z } from 'zod';
 import { describeResource, listResources } from '../lib/introspect';
+import { KERNEL_VERSION } from '../lib/kernel-version';
 
 function textResult(payload: unknown) {
   return {
@@ -17,7 +18,7 @@ export function registerMcpServeCommand(program: Command): void {
       'Start a read-only MCP server introspecting the generated code',
     )
     .action(async () => {
-      const server = new McpServer({ name: 'heryjs', version: '0.0.1' });
+      const server = new McpServer({ name: 'heryjs', version: KERNEL_VERSION });
 
       server.registerTool(
         'list_resources',

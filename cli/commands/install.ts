@@ -4,6 +4,12 @@ import pc from 'picocolors';
 import type { LoadedModule } from '../lib/module-definition';
 import { createInstallContext } from '../lib/module-context';
 import { findModule, loadModules } from '../lib/module-discovery';
+import { installableModules } from '../lib/module-compatibility';
+
+interface InstallOptions {
+  all?: boolean;
+  force?: boolean;
+}
 
 export function registerInstallCommand(program: Command): void {
   program
@@ -12,11 +18,16 @@ export function registerInstallCommand(program: Command): void {
       'Install one or more optional HeryJs modules (see hery module:list), or --all for the full package',
     )
     .option('--all', 'install every registered module')
-    .action(async (moduleNames: string[], options: { all?: boolean }) => {
+    .option(
+      '--force',
+      'install even a module written for another version of HeryJs',
+    )
+    .action(async (moduleNames: string[], options: InstallOptions) => {
       const available = loadModules();
-      const targets = options.all
+      const requested = options.all
         ? available
         : resolveModules(available, moduleNames);
+      const targets = installableModules(requested, options.force === true);
 
       if (targets.length === 0) {
         console.log(pc.yellow('nothing to install'));
