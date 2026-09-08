@@ -10,6 +10,7 @@ import { checkExampleFreshness } from './check-example-freshness';
 import { checkKernelVersion } from './check-kernel-version';
 import { checkLintCoverage } from './check-lint-coverage';
 import { checkModuleDrift } from './check-module-drift';
+import { checkModuleValidity } from './check-module-validity';
 import { checkNoInlineDevGuard } from './check-no-inline-dev-guard';
 import { checkPagination } from './check-pagination';
 import { checkRls } from './check-rls';
@@ -23,6 +24,7 @@ const CHECKS: Array<{ name: string; run: () => boolean | Promise<boolean> }> = [
   { name: 'rls', run: checkRls },
   { name: 'pagination', run: checkPagination },
   { name: 'module-drift', run: checkModuleDrift },
+  { name: 'module-validity', run: checkModuleValidity },
   { name: 'coverage', run: checkLintCoverage },
   { name: 'dev-guard', run: checkNoInlineDevGuard },
   { name: 'subject', run: checkSubjectConstruction },
