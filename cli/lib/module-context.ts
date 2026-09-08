@@ -4,6 +4,7 @@ import pc from 'picocolors';
 import type { InstallContext, LoadedModule } from './module-definition';
 import { patchExactStrings, patchModelFields } from './schema-patch';
 import { copyRuntime } from './runtime-copy';
+import { printNextSteps } from './next-steps';
 
 /**
  * Builds the one object an `install()` receives. Every method here either
@@ -92,11 +93,7 @@ export function createInstallContext(module: LoadedModule): InstallContext {
     },
 
     nextSteps(steps): void {
-      console.log('');
-      console.log(pc.cyan('Next steps:'));
-      steps.forEach((step, index) => {
-        console.log(`  ${index + 1}. ${step}`);
-      });
+      printNextSteps(steps);
     },
   };
 }

@@ -99,6 +99,27 @@ The version it is compared against is not your project's — that one is yours t
 
 There is no `channel` field. The loader stamps it from where it found the module, so nothing can claim to be official.
 
+## Starting one: `hery module:new`
+
+```bash
+pnpm hery module:new audit-trail
+```
+
+It writes a module that already satisfies the contract, so your first run is never spent on the shape of the definition:
+
+```
+packages/audit-trail/package.json          name, the heryjs.module marker, pinned dependencies
+packages/audit-trail/tsconfig.json         #kernel/* pointed at the kernel
+packages/audit-trail/src/module.ts         the definition, compatibility filled in
+packages/audit-trail/src/runtime/…         a service, a Nest module, and a spec
+```
+
+The name has to be kebab-case, and it is refused if a directory or an installable module already answers to it — that name becomes a directory, a package name, an npm id and the word you type, and those four have exactly one shape in common.
+
+Two things in there are the constraints rather than the convenience. `meta.compatibility` is written from the kernel you scaffolded against, so it is never the field nobody filled in. And **the spec is under `src/runtime`**, which means `copyRuntime` copies it into the project alongside the code, and the installing project's own suite runs it — a module with no spec is a module whose installer has nothing to run.
+
+Installing it is also what wires it into the gate here: `pnpm hery install audit-trail` puts the spec under `src/modules/`, where the test suite already looks. Before that, `typecheck:packages` and `lint` cover the authored half; nothing runs the spec.
+
 ## A module is its default export
 
 ```ts
@@ -141,9 +162,9 @@ Every module guards each file it writes:
 src/modules/storage/storage.module.ts already exists, skipping.
 ```
 
-Nothing is overwritten and nothing is re-templated, so a file you have edited by hand survives a re-install untouched. There is no `--force` on `install`, unlike `generate`.
+Nothing is overwritten and nothing is re-templated, so a file you have edited by hand survives a re-install untouched. `install --force` does not change this: it overrides the compatibility refusal above and nothing else, so there is no way to make `install` overwrite a file, unlike `generate`.
 
-The modules that patch an existing file guard on content rather than existence: `mail` skips if `prisma/schema.prisma` already contains `model MailLog`, `webhooks` skips the same file if it already has `model WebhookEndpoint`, `admin-astro` skips if `pnpm-workspace.yaml` already lists `admin`, and `impersonation` skips each of its four kernel-file patches independently, once its own marker is already there.
+The modules that patch an existing file guard on content rather than existence: `mail` skips if `prisma/schema.prisma` already contains `model MailLog`, `webhooks` skips the same file if it already has `model WebhookEndpoint`, `admin-astro` skips if `pnpm-workspace.yaml` already lists `admin`, and `impersonation` skips each of its six kernel-file patches independently, once its own marker is already there.
 
 Be aware of what this does _not_ give you. There is no record anywhere of which modules are installed — no manifest, no marker in `package.json`. "Installed" is inferred one file at a time, at write time.
 
