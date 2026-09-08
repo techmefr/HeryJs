@@ -240,17 +240,51 @@ function rewriteWorkflows(destRoot: string): void {
   );
 }
 
-function rewritePackageJson(destRoot: string, projectName: string): void {
-  const file = path.join(destRoot, 'package.json');
-  const manifest = JSON.parse(readFileSync(file, 'utf8')) as {
-    name: string;
-    description: string;
-    scripts: Record<string, string>;
-    jest: { roots: string[] };
-  };
+/**
+ * Everything in this repository's manifest that names *this* project rather
+ * than describing a HeryJs application. Copied over, they would make every
+ * generated project claim HeryJs's repository, its issue tracker, its author
+ * and its release number -- and `npm publish` in that project would offer all
+ * of it to the registry.
+ */
+const FRAMEWORK_FIELDS = [
+  'author',
+  'bugs',
+  'homepage',
+  'keywords',
+  'license',
+  'repository',
+] as const;
+
+export interface ProjectManifest {
+  name: string;
+  version: string;
+  description: string;
+  scripts: Record<string, string>;
+  jest: { roots: string[] };
+}
+
+/**
+ * The generated project's own manifest, from this repository's. Exported for
+ * the spec: the fields it drops are the ones nobody notices until a project
+ * publishes them.
+ */
+export function projectManifest(
+  source: Record<string, unknown>,
+  projectName: string,
+): ProjectManifest {
+  const manifest = { ...source } as unknown as ProjectManifest &
+    Record<string, unknown>;
+
+  FRAMEWORK_FIELDS.forEach((field) => delete manifest[field]);
 
   manifest.name = projectName;
   manifest.description = 'A HeryJs project.';
+
+  // Its own first release, not the kernel's. The kernel version a project was
+  // generated from lives in cli/lib/kernel-version.ts, which travels with it.
+  manifest.version = '0.0.1';
+
   delete manifest.scripts['lint:example'];
   manifest.jest.roots = ['<rootDir>/src'];
 
@@ -262,7 +296,20 @@ function rewritePackageJson(destRoot: string, projectName: string): void {
   manifest.scripts.lint =
     'eslint "{src,apps,libs,test,cli,scripts,prisma,packages}/**/*.ts" "prisma.config.ts" "hery.config.ts" "cors.config.ts" --ignore-pattern "packages/admin-astro/src/runtime/**" --fix';
 
-  writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`);
+  return manifest;
+}
+
+function rewritePackageJson(destRoot: string, projectName: string): void {
+  const file = path.join(destRoot, 'package.json');
+  const source = JSON.parse(readFileSync(file, 'utf8')) as Record<
+    string,
+    unknown
+  >;
+
+  writeFileSync(
+    file,
+    `${JSON.stringify(projectManifest(source, projectName), null, 2)}\n`,
+  );
 }
 
 /**

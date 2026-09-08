@@ -1,10 +1,28 @@
 {
   "name": "heryjs",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "A framework built on top of NestJS. Generate once, own your code.",
-  "author": "",
+  "author": "Gaetan Compigni",
   "private": true,
   "license": "MIT",
+  "homepage": "https://techmefr.github.io/HeryJs/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/techmefr/HeryJs.git"
+  },
+  "bugs": {
+    "url": "https://github.com/techmefr/HeryJs/issues"
+  },
+  "keywords": [
+    "nestjs",
+    "framework",
+    "scaffolding",
+    "code-generator",
+    "prisma",
+    "multi-tenant",
+    "authorization",
+    "cli"
+  ],
   "engines": {
     "node": ">=22.12"
   },
