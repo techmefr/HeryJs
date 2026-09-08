@@ -89,11 +89,17 @@ export interface ModuleDefinition {
   meta: ModuleMeta;
 
   /**
-   * Where `src/runtime/` lands, relative to the project root. Declared rather
-   * than hidden in a local constant so `lint:module-drift` can compare the two
-   * copies of every file without parsing anyone's source.
+   * Where `src/runtime/` lands, relative to the project root. Omitted, it is
+   * `src/modules/<name>` -- and declaring that value by hand is refused rather
+   * than accepted, so one destination has one spelling. What is left to
+   * declare is a module that lands somewhere else: inside the kernel, or
+   * beside `src/` entirely.
+   *
+   * Declared here rather than hidden in a local constant so
+   * `lint:module-drift` can compare the two copies of every file without
+   * parsing anyone's source.
    */
-  dest: string;
+  dest?: string;
 
   /** npm specifiers handed to `pnpm add -w` before `install()` runs. */
   dependencies?: string[];
@@ -121,14 +127,39 @@ export type ModuleChannel = 'official' | 'community';
 
 /**
  * A definition plus what the loader knows about it and the author does not get
- * to claim: which channel it came from, and where its package sits on disk.
+ * to claim: which channel it came from, where its package sits on disk, and
+ * the destination it did not have to spell out.
  */
 export interface LoadedModule extends ModuleDefinition {
   channel: ModuleChannel;
   packageDir: string;
+  dest: string;
 }
 
-const REQUIRED_FIELDS = ['name', 'description', 'dest'] as const;
+const REQUIRED_FIELDS = ['name', 'description'] as const;
+
+/**
+ * The one shape a module name has. It becomes a directory, a package name, an
+ * npm id and the word typed on the command line, and those four have exactly
+ * one spelling in common.
+ */
+const NAME_SHAPE = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
+
+/** Where a module's runtime lands when its definition does not say. */
+export function defaultDest(name: string): string {
+  return `src/modules/${name}`;
+}
+
+/**
+ * Why a name is not a module name, or nothing when it is one. Read both by
+ * the scaffold, which refuses to create the package, and by the loader, which
+ * refuses to load one however it was created.
+ */
+export function nameProblem(name: string): string | undefined {
+  return NAME_SHAPE.test(name)
+    ? undefined
+    : `a module name must be kebab-case, e.g. audit-trail (got "${name}")`;
+}
 
 /**
  * Returns the reasons a value is not a module definition, empty when it is.
@@ -145,6 +176,25 @@ export function definitionProblems(value: unknown): string[] {
   const problems = REQUIRED_FIELDS.filter(
     (field) => typeof candidate[field] !== 'string' || candidate[field] === '',
   ).map((field) => `it declares no ${field}`);
+
+  if (typeof candidate.name === 'string' && candidate.name !== '') {
+    const badName = nameProblem(candidate.name);
+
+    if (badName !== undefined) {
+      problems.push(badName);
+    } else if (candidate.dest === defaultDest(candidate.name)) {
+      problems.push(
+        `it declares dest "${candidate.dest}", which is where a module lands anyway — omit it`,
+      );
+    }
+  }
+
+  if (
+    candidate.dest !== undefined &&
+    (typeof candidate.dest !== 'string' || candidate.dest === '')
+  ) {
+    problems.push('its dest is not a path');
+  }
 
   if (typeof candidate.install !== 'function') {
     problems.push('it declares no install function');

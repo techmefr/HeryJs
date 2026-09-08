@@ -6,7 +6,6 @@ export default defineModule({
   description:
     'Add bidirectional WebSocket support (Socket.IO). Use "hery generate <Name> --live" to add a live gateway to a resource.',
   meta: { compatibility: '>=0.0.1' },
-  dest: 'src/modules/live',
   dependencies: [
     '@nestjs/websockets',
     '@nestjs/platform-socket.io',

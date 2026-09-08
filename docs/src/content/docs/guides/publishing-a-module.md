@@ -52,7 +52,6 @@ export default {
   name: 'maintenance',
   description: 'Answer 503 while the app is in maintenance, except for admins.',
   meta: { compatibility: '>=0.0.1' },
-  dest: 'src/modules/maintenance',
 
   install(context) {
     context.copyRuntime();
@@ -64,6 +63,8 @@ export default {
 A module is its default export, and the shape is the whole contract — so a published package carries **no runtime dependency on HeryJs**. `defineModule` exists for the type inference only; a plain object literal is a valid module.
 
 Today that means typing `context` yourself, structurally, with the methods you call. `InstallContext` lives in the CLI, which is not published yet, so there is nothing to import it from — that is a real gap, not a style choice, and it closes when the CLI ships as a package.
+
+Two fields are not in there. `name` is kebab-case, checked and refused otherwise: it becomes a directory, a package name, an npm id and the word the developer types. And there is no `dest` — your runtime lands in `src/modules/<name>`, and declaring that path yourself is refused rather than accepted, so one destination has one spelling. Declare it only if your module belongs somewhere else, the way a search driver replacing a kernel one lands in `src/technical/search`.
 
 ## `meta.compatibility` is checked before anything is written
 
@@ -118,15 +119,16 @@ The same checks run over this repository's own eleven modules in CI. What is ask
 
 It is the one requirement that is about the installing project rather than about your package: `copyRuntime` copies the spec in with the code it covers, so the developer's own suite runs it. A module with no spec is a module whose installer has nothing to run.
 
-Anything that needs a real service — an engine, a broker, a running app — belongs in `test/*.integration-spec.ts` at your package root instead. That half is not copied and not published; it is yours to run in your own CI.
+Anything that needs a real service — an engine, a broker, a running app — belongs in `test/*.integration-spec.ts` at your package root instead. That half is not copied and not published; it is yours to run in your own CI. Put `test` in your tsconfig's `include` when you add it, which `module:validate` checks: left out, the directory is outside your project and every typed lint rule reports every file in it as one it cannot find.
 
 ## The checklist
 
 - [ ] `heryjs.module: true` in `package.json`
 - [ ] `main` at compiled JavaScript, `src/runtime` in `files`
 - [ ] `@nestjs/common` as a peer dependency
-- [ ] a definition with `name`, `description`, `dest` and `meta.compatibility`
+- [ ] a definition with a kebab-case `name`, a `description` and `meta.compatibility`
+- [ ] no `dest` unless your runtime lands outside `src/modules/<name>`
 - [ ] no `node:fs` in `src/module.ts`
 - [ ] `#kernel/` for every kernel import, nothing relative climbing out
-- [ ] a spec under `src/runtime`
+- [ ] a spec under `src/runtime`, and `test` in your tsconfig if you keep integration tests
 - [ ] `hery module:validate <name>` green from a project that depends on you

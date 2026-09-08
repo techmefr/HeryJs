@@ -1,9 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { kebabToPascalCase } from './naming';
+import { nameProblem } from './module-definition';
 import { KERNEL_VERSION } from './kernel-version';
-
-const NAME_PATTERN = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
 
 /**
  * Pinned from whatever this repository resolves rather than written into the
@@ -17,8 +16,10 @@ export function scaffoldProblem(
   packagesDir: string,
   takenNames: string[] = [],
 ): string | undefined {
-  if (!NAME_PATTERN.test(name)) {
-    return `a module name must be kebab-case, e.g. audit-trail (got "${name}")`;
+  const badName = nameProblem(name);
+
+  if (badName !== undefined) {
+    return badName;
   }
 
   if (existsSync(path.join(packagesDir, name))) {
@@ -71,6 +72,12 @@ function manifest(name: string, repoRoot: string): string {
   )}\n`;
 }
 
+/**
+ * `test` is in the include list before the directory exists, because the day
+ * an author adds one is the day their typed lint rules start reporting every
+ * file in it as outside the project -- a message that says nothing about the
+ * tsconfig that caused it.
+ */
 const TSCONFIG = `{
   "extends": "../../tsconfig.json",
   "compilerOptions": {
@@ -79,7 +86,7 @@ const TSCONFIG = `{
     },
     "noEmit": true
   },
-  "include": ["src"],
+  "include": ["src", "test"],
   "exclude": ["node_modules"]
 }
 `;
@@ -93,7 +100,6 @@ export default defineModule({
   name: '${name}',
   description: 'One sentence, which is the line hery module:list prints.',
   meta: { compatibility: '>=${KERNEL_VERSION}' },
-  dest: 'src/modules/${name}',
   install(context) {
     context.copyRuntime();
 

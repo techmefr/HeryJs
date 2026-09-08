@@ -6,7 +6,6 @@ export default defineModule({
   description:
     'Add file storage behind a swappable provider: local disk (signed local URLs) by default, S3-compatible (real S3 or self-hosted MinIO) via STORAGE_DRIVER=s3.',
   meta: { compatibility: '>=0.0.1' },
-  dest: 'src/modules/storage',
   dependencies: ['@aws-sdk/client-s3', '@aws-sdk/s3-request-presigner'],
   install(context) {
     context.copyPackageFile('docker-compose.storage.yml');

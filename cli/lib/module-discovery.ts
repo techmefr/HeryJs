@@ -6,7 +6,7 @@ import type {
   ModuleChannel,
   ModuleDefinition,
 } from './module-definition';
-import { definitionProblems } from './module-definition';
+import { defaultDest, definitionProblems } from './module-definition';
 
 const OFFICIAL_PACKAGES_DIR = path.join(__dirname, '../../packages');
 
@@ -60,7 +60,14 @@ export function readDefinition(
     return undefined;
   }
 
-  return { ...(exported as ModuleDefinition), channel, packageDir };
+  const definition = exported as ModuleDefinition;
+
+  return {
+    ...definition,
+    dest: definition.dest ?? defaultDest(definition.name),
+    channel,
+    packageDir,
+  };
 }
 
 /**

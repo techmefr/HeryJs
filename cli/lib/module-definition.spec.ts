@@ -9,7 +9,6 @@ const VALID = {
   name: 'probe',
   description: 'A module used only by this test.',
   meta: { compatibility: '>=0.0.1' },
-  dest: 'src/modules/probe',
   install: () => undefined,
 };
 
@@ -41,13 +40,12 @@ describe('what makes a module definition', () => {
     expect(definitionProblems({})).toEqual([
       'it declares no name',
       'it declares no description',
-      'it declares no dest',
       'it declares no install function',
       'it declares no meta',
     ]);
   });
 
-  it.each(['name', 'description', 'dest'])(
+  it.each(['name', 'description'])(
     'rejects a definition whose %s is missing',
     (field) => {
       const partial = { ...VALID, [field]: undefined };
@@ -61,6 +59,41 @@ describe('what makes a module definition', () => {
   it('treats an empty string as a missing field', () => {
     expect(definitionProblems({ ...VALID, name: '' })).toEqual([
       'it declares no name',
+    ]);
+  });
+
+  // The name becomes a directory, a package name, an npm id and the word
+  // typed on the command line, so it has one shape -- checked here as well as
+  // in the scaffold, since a module can arrive without ever being scaffolded.
+  it.each(['AuditTrail', 'audit_trail', 'audit trail', '2fa', 'audit-'])(
+    'rejects "%s" as a module name',
+    (name) => {
+      expect(definitionProblems({ ...VALID, name })).toEqual([
+        `a module name must be kebab-case, e.g. audit-trail (got "${name}")`,
+      ]);
+    },
+  );
+
+  // Two spellings of one destination is exactly what this lot is removing:
+  // the module that lands where every module lands says nothing at all.
+  it('rejects a dest that is where a module lands anyway', () => {
+    expect(definitionProblems({ ...VALID, dest: 'src/modules/probe' })).toEqual(
+      [
+        'it declares dest "src/modules/probe", which is where a module lands anyway — omit it',
+      ],
+    );
+  });
+
+  it.each(['src', 'src/technical/search', 'admin'])(
+    'accepts a dest that is somewhere else, like %s',
+    (dest) => {
+      expect(definitionProblems({ ...VALID, dest })).toEqual([]);
+    },
+  );
+
+  it('rejects a dest that is not a path', () => {
+    expect(definitionProblems({ ...VALID, dest: 42 })).toEqual([
+      'its dest is not a path',
     ]);
   });
 
