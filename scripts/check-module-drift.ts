@@ -55,10 +55,12 @@ function normalized(source: string): string {
     .trim();
 }
 
-// A module's own spec does not ship: the authored package has no #app.module to
-// boot and no devtools/testing to register a user through, so the spec can only
-// live where the app does. It is named here rather than passed over silently --
-// the consequence is real, an installed module arrives with no test of its own.
+// A module ships a spec of its own under src/runtime, and copyRuntime copies it
+// in like any other file -- so the two copies of that one are compared like any
+// other file. What this tolerates is the spec that exists only app-side: an
+// integration spec booting #app.module and registering a user through
+// devtools/testing cannot be authored in a package that has neither, so nothing
+// on the authored side corresponds to it.
 function isSpec(file: string): boolean {
   return file.endsWith('.spec.ts');
 }
@@ -122,7 +124,7 @@ export function checkModuleDrift(): boolean {
   const problems: string[] = [];
   let compared = 0;
   let notInstalled = 0;
-  let unshippedSpecs = 0;
+  let appSideSpecs = 0;
 
   for (const module of packages) {
     for (const authored of filesUnder(module.runtimeDir)) {
@@ -159,7 +161,7 @@ export function checkModuleDrift(): boolean {
       }
 
       if (isSpec(installed)) {
-        unshippedSpecs += 1;
+        appSideSpecs += 1;
         continue;
       }
 
@@ -179,7 +181,7 @@ export function checkModuleDrift(): boolean {
   }
 
   console.log(
-    `✔ every installed module matches the module it was installed from (${compared} files compared across ${packages.length} packages, ${notInstalled} not installed here, ${unshippedSpecs} specs that stay behind)`,
+    `✔ every installed module matches the module it was installed from (${compared} files compared across ${packages.length} packages, ${notInstalled} not installed here, ${appSideSpecs} app-side specs with no authored counterpart)`,
   );
 
   return true;
