@@ -25,13 +25,19 @@ describe('the manifest a generated project starts from', () => {
    * framework, and a project publishing its own package would offer HeryJs's
    * repository, issue tracker and author to the registry as its own.
    */
-  it.each(['author', 'bugs', 'homepage', 'keywords', 'license', 'repository'])(
-    'does not inherit the framework field %s',
-    (field) => {
-      expect(REPO_MANIFEST[field]).toBeDefined();
-      expect(generated()[field]).toBeUndefined();
-    },
-  );
+  it.each([
+    'author',
+    'bin',
+    'bugs',
+    'files',
+    'homepage',
+    'keywords',
+    'license',
+    'repository',
+  ])('does not inherit the framework field %s', (field) => {
+    expect(REPO_MANIFEST[field]).toBeDefined();
+    expect(generated()[field]).toBeUndefined();
+  });
 
   // The kernel version a project was generated from travels in
   // cli/lib/kernel-version.ts; the number in package.json is the project's.
@@ -44,12 +50,46 @@ describe('the manifest a generated project starts from', () => {
     expect(generated().private).toBe(true);
   });
 
+  /**
+   * The framework cannot carry this one: as a lifecycle script it runs inside
+   * whoever installs the published package, where prisma is not resolvable,
+   * and it failed the install before the scaffolder was ever reached. A
+   * project does need it on every install.
+   */
+  it('regenerates the Prisma client on install, which the framework does not', () => {
+    expect(
+      (REPO_MANIFEST.scripts as Record<string, string>).postinstall,
+    ).toBeUndefined();
+    expect((generated().scripts as Record<string, string>).postinstall).toBe(
+      'prisma generate',
+    );
+  });
+
+  /**
+   * `hery new` deletes both checks from the project's registry, so leaving
+   * their shortcuts behind would offer a script that fails on a name the
+   * runner no longer knows. Each asks a question only this repository can
+   * answer: the demo against the generator that produced it, and the manifest
+   * against the kernel constant -- equal in a release, and deliberately not in
+   * a project, whose manifest carries its own version.
+   */
+  it.each(['lint:example', 'lint:kernel-version'])(
+    'drops %s, whose check does not survive the copy',
+    (script) => {
+      expect(
+        (REPO_MANIFEST.scripts as Record<string, string>)[script],
+      ).toBeDefined();
+      expect(
+        (generated().scripts as Record<string, string>)[script],
+      ).toBeUndefined();
+    },
+  );
+
   // Both assume something a fresh project does not have: an examples/
   // directory, and this repository's own admin/ and docs/ workspaces.
-  it('drops the checks that need this repository around them', () => {
+  it('lints only what a project has around it', () => {
     const scripts = generated().scripts as Record<string, string>;
 
-    expect(scripts['lint:example']).toBeUndefined();
     expect(scripts.lint).not.toContain('examples');
     expect(scripts.lint).not.toContain('pnpm --filter admin');
   });
@@ -60,10 +100,13 @@ describe('the manifest a generated project starts from', () => {
     ]);
   });
 
-  it('leaves the source manifest alone', () => {
+  // Not only the fields at the top: a shallow copy shares `scripts` and
+  // `jest`, and every edit below them reached back into the source.
+  it('leaves the source manifest alone, nested objects included', () => {
+    const before = JSON.stringify(REPO_MANIFEST);
+
     projectManifest(REPO_MANIFEST, 'my-app');
 
-    expect(REPO_MANIFEST.name).toBe('heryjs');
-    expect(REPO_MANIFEST.license).toBe('MIT');
+    expect(JSON.stringify(REPO_MANIFEST)).toBe(before);
   });
 });

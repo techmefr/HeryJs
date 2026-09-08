@@ -1,9 +1,10 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import type { ResourceContext } from './resource-context';
+import { modelSetMarker } from './model-set';
 import { prismaModelBlock } from './templates';
 
 /**
- * Adds a model name to one of the `new Set([...])` lists the kernel keeps, so a
+ * Adds a model name to one of the model registries the kernel keeps, so a
  * generated resource is tenant-scoped and audited without the developer having
  * to remember two edits in two files.
  */
@@ -13,7 +14,7 @@ export function patchModelSet(
   pascalName: string,
 ): void {
   const source = readFileSync(filePath, 'utf8');
-  const marker = `const ${setName} = new Set([`;
+  const marker = modelSetMarker(setName);
   const start = source.indexOf(marker);
 
   if (start === -1) {

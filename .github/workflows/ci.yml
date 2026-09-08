@@ -67,6 +67,8 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - run: pnpm run db:generate
+
       - run: pnpm exec prisma migrate deploy
 
       - run: pnpm run lint
@@ -106,8 +108,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      # Only postinstall's "prisma generate" reads this one -- nothing in this
-      # job connects to a database, so no postgres service is started for it.
+      # Only "prisma generate" reads this one -- nothing in this job connects
+      # to a database, so no postgres service is started for it.
       DATABASE_URL: postgresql://heryjs:heryjs@localhost:5432/heryjs
       ELASTICSEARCH_URL: http://localhost:9200
       MEILISEARCH_URL: http://localhost:7700
@@ -145,6 +147,8 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run db:generate
 
       # Neither image ships a health command this runner can rely on, so the
       # wait happens here rather than in the service definition.

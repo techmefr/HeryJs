@@ -12,10 +12,12 @@ import { spawnSync } from 'node:child_process';
 import type { Command } from 'commander';
 import pc from 'picocolors';
 import { loadBlueprint } from '../lib/blueprint';
+import { frameworkRoot } from '../lib/framework-root';
+import { MODEL_REGISTRIES } from '../lib/model-set';
 import { pascalCase } from '../lib/naming';
 import { stripModelsFromSchema, withoutSetEntries } from '../lib/strip-example';
 
-const REPO_ROOT = path.resolve(__dirname, '..', '..');
+const REPO_ROOT = frameworkRoot();
 
 /**
  * Everything a fresh project needs to run `hery generate`/`hery install` on
@@ -28,7 +30,7 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..');
  * that is this repository's own build/dev state (node_modules, dist, the
  * lockfile, .git, .env).
  */
-const COPY_ENTRIES = [
+export const COPY_ENTRIES = [
   'cli',
   'packages',
   'scripts',
@@ -57,7 +59,6 @@ const COPY_ENTRIES = [
   '.prettierrc',
   '.env.example',
   '.nvmrc',
-  '.gitignore',
   'docker-compose.yml',
   'docker-compose.storage.yml',
   'docker-compose.stream.yml',
@@ -67,28 +68,50 @@ const COPY_ENTRIES = [
 ];
 
 /**
- * The only convention check that does not survive the copy: it exists to
- * catch this repository's own example drifting from its generator, and a
- * fresh project ships no examples/ directory at all.
+ * The two convention checks that do not survive the copy, because each one
+ * asks a question only this repository can answer.
+ *
+ * `example-freshness` compares the demo against the generator that produced
+ * it, and a fresh project ships no examples/ at all. `kernel-version` holds
+ * package.json and cli/lib/kernel-version.ts to the same number, which is
+ * true of a release and false of a project: the manifest carries the
+ * project's own version, and the constant carries the kernel it came from.
  */
-function dropExampleFreshnessCheck(destRoot: string): void {
-  rmSync(path.join(destRoot, 'scripts/check-example-freshness.ts'));
+const CHECKS_THIS_REPOSITORY_OWNS = [
+  {
+    name: 'example-freshness',
+    file: 'check-example-freshness',
+    symbol: 'checkExampleFreshness',
+    script: 'lint:example',
+  },
+  {
+    name: 'kernel-version',
+    file: 'check-kernel-version',
+    symbol: 'checkKernelVersion',
+    script: 'lint:kernel-version',
+  },
+];
 
-  const file = path.join(destRoot, 'scripts/check-conventions.ts');
-  const source = readFileSync(file, 'utf8');
+function dropChecksThisRepositoryOwns(destRoot: string): void {
+  const registry = path.join(destRoot, 'scripts/check-conventions.ts');
+  let source = readFileSync(registry, 'utf8');
 
-  writeFileSync(
-    file,
-    source
-      .replace(
-        "import { checkExampleFreshness } from './check-example-freshness';\n",
-        '',
-      )
-      .replace(
-        "  { name: 'example-freshness', run: checkExampleFreshness },\n",
-        '',
-      ),
-  );
+  for (const check of CHECKS_THIS_REPOSITORY_OWNS) {
+    rmSync(path.join(destRoot, 'scripts', `${check.file}.ts`));
+
+    const importLine = `import { ${check.symbol} } from './${check.file}';\n`;
+    const registration = `  { name: '${check.name}', run: ${check.symbol} },\n`;
+
+    if (!source.includes(importLine) || !source.includes(registration)) {
+      throw new Error(
+        `scripts/check-conventions.ts no longer registers ${check.name} the way "hery new" removes it.`,
+      );
+    }
+
+    source = source.replace(importLine, '').replace(registration, '');
+  }
+
+  writeFileSync(registry, source);
 }
 
 /**
@@ -162,6 +185,16 @@ function dropSpecsNamingRemovedModels(
  * BlogPost table, a Tag table and a pivot between them -- "generate your first
  * resource" against a schema that already had one.
  */
+/**
+ * The demo resources this repository generates for itself, read from the
+ * blueprints that produced them -- which is why those blueprints are part of
+ * the published payload even though the code generated from them is not.
+ * Without them the strip below finds nothing and the demo's models stay in a
+ * fresh project's schema, silently.
+ *
+ * Empty is a legitimate answer, and only for one payload: a generated project
+ * is itself one, and has no demo to strip when `hery new` runs from inside it.
+ */
 function exampleModelNames(): Set<string> {
   const dir = path.join(REPO_ROOT, 'examples');
 
@@ -192,10 +225,9 @@ function dropExampleModels(destRoot: string): string[] {
 
   const gone = new Set(removed);
 
-  for (const [file, setName] of [
-    ['src/technical/prisma/prisma.client.ts', 'TENANT_SCOPED_MODELS'],
-    ['src/technical/audit/audit-log.ts', 'AUDITED_MODELS'],
-  ] as const) {
+  for (const { file, set: setName } of MODEL_REGISTRIES.filter(
+    (registry) => registry.stripped,
+  )) {
     const target = path.join(destRoot, file);
     writeFileSync(
       target,
@@ -249,7 +281,9 @@ function rewriteWorkflows(destRoot: string): void {
  */
 const FRAMEWORK_FIELDS = [
   'author',
+  'bin',
   'bugs',
+  'files',
   'homepage',
   'keywords',
   'license',
@@ -273,7 +307,9 @@ export function projectManifest(
   source: Record<string, unknown>,
   projectName: string,
 ): ProjectManifest {
-  const manifest = { ...source } as unknown as ProjectManifest &
+  // Cloned rather than spread: a shallow copy shares `scripts` and `jest` with
+  // the manifest it was read from, so every edit below reached back into it.
+  const manifest = structuredClone(source) as unknown as ProjectManifest &
     Record<string, unknown>;
 
   FRAMEWORK_FIELDS.forEach((field) => delete manifest[field]);
@@ -285,7 +321,16 @@ export function projectManifest(
   // generated from lives in cli/lib/kernel-version.ts, which travels with it.
   manifest.version = '0.0.1';
 
-  delete manifest.scripts['lint:example'];
+  // A project regenerates its Prisma client on every install. The framework
+  // cannot: shipped as a lifecycle script, `prisma generate` runs inside
+  // whoever installs the published package, where prisma is not resolvable --
+  // it failed the install outright, before the scaffolder was ever reached.
+  manifest.scripts.postinstall = 'prisma generate';
+
+  CHECKS_THIS_REPOSITORY_OWNS.forEach(({ script }) => {
+    delete manifest.scripts[script];
+  });
+
   manifest.jest.roots = ['<rootDir>/src'];
 
   // No admin/ workspace and no examples/ directory until the dev installs
@@ -338,11 +383,17 @@ A project built with [HeryJs](https://github.com/techmefr/HeryJs).
 
 \`\`\`bash
 cp .env.example .env
-docker compose up -d
 pnpm install
+pnpm hery up --start
 pnpm hery migrate --name init
 pnpm start:dev
 \`\`\`
+
+\`hery up --start\` brings the compose services up and writes the ports Docker
+actually assigned back into \`.env\`. They are not fixed: the compose file
+publishes on an ephemeral port so several projects can run side by side, and
+\`docker compose up -d\` alone leaves \`.env\` pointing at a port nothing listens
+on.
 
 \`hery migrate\` wraps \`prisma migrate dev\` and adds the row-level security
 policy for every tenant-scoped table, so the database boundary is created with
@@ -367,12 +418,36 @@ pnpm hery install <module>
   );
 }
 
+/**
+ * Written from a template instead of copied, because npm strips a file named
+ * `.gitignore` out of the tarball: carried under that name, a published
+ * package would scaffold a project with none, and the copy loop used to skip
+ * it without a word. The framework's own `.gitignore` is a different file with
+ * a different job, and the two are free to diverge.
+ */
+function writeGitignore(destRoot: string): void {
+  writeFileSync(
+    path.join(destRoot, '.gitignore'),
+    readFileSync(
+      path.join(REPO_ROOT, 'templates', 'project.gitignore'),
+      'utf8',
+    ),
+  );
+}
+
+/**
+ * Every entry is part of the payload, so a missing one is a broken payload,
+ * not a variation to absorb. Skipped quietly, it produced a project missing a
+ * file nobody would look for until something else failed because of it.
+ */
 function copyInto(destRoot: string): void {
   for (const entry of COPY_ENTRIES) {
     const source = path.join(REPO_ROOT, entry);
 
     if (!existsSync(source)) {
-      continue;
+      throw new Error(
+        `${REPO_ROOT} is not a complete HeryJs payload: it has no ${entry}.`,
+      );
     }
 
     const destination = path.join(destRoot, entry);
@@ -406,7 +481,7 @@ export function registerNewCommand(program: Command): void {
 
       mkdirSync(destRoot, { recursive: true });
       copyInto(destRoot);
-      dropExampleFreshnessCheck(destRoot);
+      dropChecksThisRepositoryOwns(destRoot);
       dropSpecsThatNeedTheExample(destRoot);
       const removedModels = dropExampleModels(destRoot);
       const droppedSpecs = dropSpecsNamingRemovedModels(
@@ -417,6 +492,7 @@ export function registerNewCommand(program: Command): void {
       rewritePackageJson(destRoot, name);
       rewriteWorkspaceFile(destRoot);
       writeReadme(destRoot, name);
+      writeGitignore(destRoot);
 
       spawnSync('git', ['init'], { cwd: destRoot, stdio: 'ignore' });
       spawnSync('git', ['add', '-A'], { cwd: destRoot, stdio: 'ignore' });
@@ -445,8 +521,8 @@ export function registerNewCommand(program: Command): void {
       console.log(pc.cyan('Next steps:'));
       console.log(`  cd ${name}`);
       console.log(`  cp .env.example .env`);
-      console.log(`  docker compose up -d`);
       console.log(`  pnpm install`);
+      console.log(`  pnpm hery up --start`);
       console.log(`  pnpm hery migrate --name init`);
       console.log(`  pnpm start:dev`);
     });
