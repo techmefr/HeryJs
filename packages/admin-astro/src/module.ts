@@ -27,11 +27,15 @@ function addWorkspaceMember(): void {
 }
 
 /**
- * The admin ships its own eslint config, so the root lint script has to delegate
- * to it. Without this the admin installs a workspace nothing lints, which the
- * coverage check reports as unreached source — correctly, since it is.
+ * The admin ships its own toolchain -- its own eslint config and its own test
+ * runner, because its code is browser code and the root suites run under node.
+ * So the root scripts have to delegate to it. Without the lint delegation the
+ * admin installs a workspace nothing lints, which the coverage check reports as
+ * unreached source — correctly, since it is; and without the test delegation it
+ * installs a runner and a suite nothing ever runs, which is worse than shipping
+ * neither.
  */
-function delegateLintToAdmin(): void {
+function delegateToAdmin(script: string): void {
   const packageFile = 'package.json';
 
   if (!existsSync(packageFile)) {
@@ -42,18 +46,19 @@ function delegateLintToAdmin(): void {
   const manifest = JSON.parse(source) as {
     scripts?: Record<string, string>;
   };
-  const lint = manifest.scripts?.lint;
+  const existing = manifest.scripts?.[script];
+  const delegation = `pnpm --filter admin ${script}`;
 
-  if (lint === undefined || lint.includes('--filter admin lint')) {
+  if (existing === undefined || existing.includes(delegation)) {
     return;
   }
 
   manifest.scripts = {
     ...manifest.scripts,
-    lint: `${lint} && pnpm --filter admin lint`,
+    [script]: `${existing} && ${delegation}`,
   };
   writeFileSync(packageFile, `${JSON.stringify(manifest, null, 2)}\n`);
-  console.log(pc.green(`✔ patched ${packageFile}`));
+  console.log(pc.green(`✔ patched ${packageFile} (${script})`));
 }
 
 registerModule({
@@ -66,7 +71,8 @@ registerModule({
     copyRuntime(RUNTIME_DIR, DEST_DIR);
 
     addWorkspaceMember();
-    delegateLintToAdmin();
+    delegateToAdmin('lint');
+    delegateToAdmin('test');
 
     console.log('');
     console.log(pc.cyan('Next steps:'));
