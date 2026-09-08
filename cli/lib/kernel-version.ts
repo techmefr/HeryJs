@@ -7,4 +7,4 @@
  * `meta.compatibility`, and this is what that range is checked against before
  * anything is written.
  */
-export const KERNEL_VERSION = '0.0.1';
+export const KERNEL_VERSION = '0.1.0';
