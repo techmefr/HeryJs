@@ -27,6 +27,22 @@ function isBareSpecifier(specifier: string): boolean {
   return !specifier.startsWith('.') && !specifier.startsWith('#');
 }
 
+const INCLUDE_LIST = /"include"\s*:\s*\[([^\]]*)\]/;
+
+/**
+ * Whether a tsconfig takes a directory in. One with no `include` at all takes
+ * the whole package, so only an explicit list can leave something out.
+ */
+function includes(directory: string, tsconfigSource: string): boolean {
+  const list = INCLUDE_LIST.exec(tsconfigSource);
+
+  if (list === null) {
+    return true;
+  }
+
+  return new RegExp(`["'](?:\\./)?${directory}(?:/|["'])`).test(list[1] ?? '');
+}
+
 function runtimeProblems(runtimeDir: string, packageDir: string): string[] {
   const problems: string[] = [];
   const files = filesUnder(runtimeDir);
@@ -124,14 +140,31 @@ export function validateModule(module: LoadedModule): string[] {
    * the moment it was validated from the project that depends on it, which is
    * where this command is meant to be run.
    */
-  if (
-    usesKernel &&
-    existsSync(tsconfig) &&
-    !readFileSync(tsconfig, 'utf8').includes('#kernel/*')
-  ) {
-    problems.push(
-      'its runtime imports #kernel/ but its tsconfig.json maps no #kernel/* path, so nothing here typechecks against the kernel',
-    );
+  if (existsSync(tsconfig)) {
+    const declared = readFileSync(tsconfig, 'utf8');
+
+    if (usesKernel && !declared.includes('#kernel/*')) {
+      problems.push(
+        'its runtime imports #kernel/ but its tsconfig.json maps no #kernel/* path, so nothing here typechecks against the kernel',
+      );
+    }
+
+    /**
+     * A module that keeps integration tests outside `src/runtime` -- because
+     * they exercise it against a running kernel rather than being copied into
+     * the installing project -- has to say so in its own tsconfig. Left out,
+     * the directory is outside the project, and every typed lint rule reports
+     * every file in it as "not found by the project service", which names
+     * neither the tsconfig nor the missing entry.
+     */
+    if (
+      existsSync(path.join(module.packageDir, 'test')) &&
+      !includes('test', declared)
+    ) {
+      problems.push(
+        'it ships a test/ directory its tsconfig.json does not include, so neither its typecheck nor its typed lint rules can see it',
+      );
+    }
   }
 
   return problems;

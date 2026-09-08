@@ -107,6 +107,12 @@ describe('what is scaffolded', () => {
     expect(loaded?.dest).toBe('src/modules/audit-trail');
   });
 
+  // The destination it lands at is the derived one, so the definition says
+  // nothing about it -- declaring the default is refused, not tolerated.
+  it('leaves the destination out of the definition', () => {
+    expect(read('packages/audit-trail/src/module.ts')).not.toContain('dest:');
+  });
+
   it('declares a compatibility this kernel satisfies', () => {
     const declared = /compatibility: '([^']+)'/.exec(
       read('packages/audit-trail/src/module.ts'),
@@ -161,6 +167,15 @@ describe('what is scaffolded', () => {
   it('points the runtime at the kernel through the rewritable specifier', () => {
     expect(read('packages/audit-trail/tsconfig.json')).toContain(
       '"#kernel/*": ["../../src/technical/*"]',
+    );
+  });
+
+  // Before the directory exists, because the day an author adds integration
+  // tests is the day their typed lint rules start reporting every file in it
+  // as outside the project -- and module:validate refuses that shape.
+  it('includes a test directory the author has not created yet', () => {
+    expect(read('packages/audit-trail/tsconfig.json')).toContain(
+      '"include": ["src", "test"]',
     );
   });
 });

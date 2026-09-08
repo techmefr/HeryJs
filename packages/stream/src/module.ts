@@ -6,7 +6,6 @@ export default defineModule({
   description:
     'Add one-to-many audio/video streaming via LiveKit (SFU). Use "hery generate <Name> --stream" to add publish/viewer token endpoints to a resource.',
   meta: { compatibility: '>=0.0.1' },
-  dest: 'src/modules/stream',
   dependencies: ['livekit-server-sdk'],
   install(context) {
     context.copyPackageFile('docker-compose.stream.yml');

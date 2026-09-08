@@ -226,6 +226,53 @@ describe('validating a module', () => {
 
     expect(problems()).toEqual([]);
   });
+
+  /**
+   * Integration tests live outside src/runtime because they exercise the
+   * module against a running kernel rather than being copied into the
+   * installing project. Left out of the include list, that directory is
+   * outside the project, and every typed lint rule reports every file in it as
+   * "not found by the project service" -- naming neither the tsconfig nor the
+   * entry it is missing.
+   */
+  it('refuses a test directory the tsconfig leaves out', () => {
+    write(
+      'tsconfig.json',
+      JSON.stringify({ ...JSON.parse(TSCONFIG_WITH_KERNEL), include: ['src'] }),
+    );
+    write('test/probe.integration-spec.ts', 'it("runs", () => {});');
+
+    expect(problems()).toEqual([expect.stringContaining('does not include')]);
+  });
+
+  it('accepts one the tsconfig includes', () => {
+    write(
+      'tsconfig.json',
+      JSON.stringify({
+        ...JSON.parse(TSCONFIG_WITH_KERNEL),
+        include: ['src', 'test'],
+      }),
+    );
+    write('test/probe.integration-spec.ts', 'it("runs", () => {});');
+
+    expect(problems()).toEqual([]);
+  });
+
+  // A tsconfig with no include list takes the whole package already.
+  it('asks nothing of a tsconfig that includes everything', () => {
+    write('test/probe.integration-spec.ts', 'it("runs", () => {});');
+
+    expect(problems()).toEqual([]);
+  });
+
+  it('says nothing about a test directory that is not there', () => {
+    write(
+      'tsconfig.json',
+      JSON.stringify({ ...JSON.parse(TSCONFIG_WITH_KERNEL), include: ['src'] }),
+    );
+
+    expect(problems()).toEqual([]);
+  });
 });
 
 /**
@@ -264,6 +311,12 @@ describe('the example community module', () => {
 
   it('satisfies the contract module:validate checks', () => {
     expect(validateModule(loaded())).toEqual([]);
+  });
+
+  // Its definition never mentions a destination: the one place a module lands
+  // is the loader's to fill in, and declaring it there is refused.
+  it('lands under src/modules without declaring it', () => {
+    expect(loaded().dest).toBe('src/modules/maintenance');
   });
 
   // The marker is the whole community channel: no marker, and the package is

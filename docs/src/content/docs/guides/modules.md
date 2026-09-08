@@ -61,7 +61,6 @@ A package that carries the marker but exports the wrong shape is **reported**, n
 ```
 ✖ bad-module is not a usable module:
     it declares no description
-    it declares no dest
     it declares no install function
     it declares no meta
 ```
@@ -75,15 +74,17 @@ export interface ModuleDefinition {
   name: string; // the id you type
   description: string; // the line module:list prints
   meta: { compatibility: string }; // the HeryJs range it was written against
-  dest: string; // where src/runtime/ lands, from the project root
+  dest?: string; // only when src/runtime/ lands somewhere unusual
   dependencies?: string[];
   install(context: InstallContext): void | Promise<void>;
 }
 ```
 
+`name` is kebab-case, and that is checked rather than recommended: the name becomes a directory, a package name, an npm id and the word you type, and those four have exactly one spelling in common.
+
 `dependencies` are npm specifiers handed to `pnpm add -w` before `install()` runs.
 
-`dest` is declared rather than hidden in a local constant, so `lint:module-drift` can find the installed half of every file without parsing anyone's source.
+`dest` is where `src/runtime/` lands, from the project root — and most modules do not declare it. Left out it is `src/modules/<name>`, which is where a module that adds something of its own goes; declaring that value by hand is **refused**, not tolerated, so one destination has one spelling. What remains worth declaring is a module that lands somewhere else: `search-elasticsearch` lands in `src/technical/search` because it replaces a kernel driver, `impersonation` lands on `src` because it extends six kernel files, `admin-astro` lands on `admin` because it is not application code at all. It stays a declared field rather than a local constant so `lint:module-drift` can find the installed half of every file without parsing anyone's source.
 
 `meta.compatibility` is a semver range. It matters more here than in a framework whose modules stay resident: a HeryJs module runs once and leaves code behind, so installing one written against another kernel is not a runtime error anyone can undo — it is files on disk written against a contract that has moved. So it is checked while nothing has been written yet, before the first dependency is even added:
 
@@ -114,9 +115,9 @@ packages/audit-trail/src/module.ts         the definition, compatibility filled 
 packages/audit-trail/src/runtime/…         a service, a Nest module, and a spec
 ```
 
-The name has to be kebab-case, and it is refused if a directory or an installable module already answers to it — that name becomes a directory, a package name, an npm id and the word you type, and those four have exactly one shape in common.
+The name has to be kebab-case, and it is refused if a directory or an installable module already answers to it. The shape is the same rule the loader applies, from the same function: a module that arrives without ever having been scaffolded is held to it too.
 
-Two things in there are the constraints rather than the convenience. `meta.compatibility` is written from the kernel you scaffolded against, so it is never the field nobody filled in. And **the spec is under `src/runtime`**, which means `copyRuntime` copies it into the project alongside the code, and the installing project's own suite runs it — a module with no spec is a module whose installer has nothing to run.
+Three things in there are the constraints rather than the convenience. `meta.compatibility` is written from the kernel you scaffolded against, so it is never the field nobody filled in. **The spec is under `src/runtime`**, which means `copyRuntime` copies it into the project alongside the code, and the installing project's own suite runs it — a module with no spec is a module whose installer has nothing to run. And the `tsconfig.json` includes `test` before that directory exists, because the day you add integration tests is the day your typed lint rules would otherwise report every file in it as outside the project.
 
 Moving that directory into its own repository is all it takes to make it a community module — see [Publishing a module](/guides/publishing-a-module/) for what the package has to declare, and `examples/hery-module-maintenance` for a complete one.
 
@@ -150,6 +151,7 @@ Everything it asks for is checked from the package alone, so a third-party autho
 | the only subpath import is `#kernel/` | it is the one specifier rewritten on the way in; any other arrives pointing at nothing |
 | no relative import climbs out of the package | nothing above `src/runtime` is copied |
 | a `tsconfig.json` that is present maps `#kernel/*` | otherwise the author's own `tsc` typechecks against no kernel at all — and a published package ships none, so this one applies where the module is authored |
+| a `test/` directory that is present is in the tsconfig's `include` | left out, it is outside the project: every typed lint rule reports every file in it as "not found by the project service", which names neither the tsconfig nor the missing entry |
 
 Typechecking the runtime is deliberately not in that list: that is the author's own `tsc`, against their own `tsconfig`.
 
@@ -162,7 +164,6 @@ export default defineModule({
   name: 'storage',
   description: 'Add file storage behind a swappable provider.',
   meta: { compatibility: '>=0.0.1' },
-  dest: 'src/modules/storage',
   install(context) {
     context.copyPackageFile('docker-compose.storage.yml');
     context.copyRuntime();

@@ -39,7 +39,6 @@ export default defineModule({
   description:
     'Receive inbound webhooks with HMAC-SHA256 signature verification (constant-time, timestamp-tolerant against replay) and run each accepted payload through Event, Job, Notification, Audit and Signal.',
   meta: { compatibility: '>=0.0.1' },
-  dest: 'src/modules/webhooks',
   dependencies: [],
   install(context) {
     context.copyRuntime();

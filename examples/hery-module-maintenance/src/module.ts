@@ -9,7 +9,6 @@ export default {
   name: 'maintenance',
   description: 'Answer 503 while the app is in maintenance, except for admins.',
   meta: { compatibility: '>=0.0.1' },
-  dest: 'src/modules/maintenance',
 
   install(context: {
     copyRuntime(): void;
