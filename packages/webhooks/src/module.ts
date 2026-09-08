@@ -1,8 +1,6 @@
 import pc from 'picocolors';
 import { defineModule } from '../../../cli/lib/module-definition';
 
-const SCHEMA_FILE = 'prisma/schema.prisma';
-
 const WEBHOOK_MODELS = `
 // A webhook secret is stored in plaintext, unlike a password or an API key:
 // verifying an inbound signature means recomputing the same HMAC the sender
@@ -45,11 +43,7 @@ export default defineModule({
   dependencies: [],
   install(context) {
     context.copyRuntime();
-    context.patch(
-      SCHEMA_FILE,
-      'model WebhookEndpoint',
-      (schema) => schema.trimEnd() + '\n' + WEBHOOK_MODELS,
-    );
+    context.addPrismaModels(WEBHOOK_MODELS);
 
     context.nextSteps([
       'Run "pnpm hery migrate --name add_webhooks"',

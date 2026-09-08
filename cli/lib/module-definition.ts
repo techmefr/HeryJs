@@ -33,27 +33,38 @@ export interface InstallContext {
   copyPackageFile(name: string): void;
 
   /**
-   * Reads `file`, does nothing when `marker` is already in it, otherwise
-   * writes what `edit` returns. Returning undefined from `edit` means there
-   * was nothing to do after all. A file that does not exist is skipped rather
-   * than created, because every caller here extends something the project
-   * already owns.
+   * Appends model blocks the module owns outright to the project's Prisma
+   * schema. The schema's path is not a parameter: it belongs to the project,
+   * and a module naming it for itself is a module that can name it wrong.
+   * Guarded on any of those models already being declared.
    */
-  patch(
-    file: string,
-    marker: string,
-    edit: (source: string) => string | undefined,
-  ): void;
+  addPrismaModels(models: string): void;
 
   /**
-   * Adds field lines to an existing Prisma model the module does not own.
-   * Guarded on the first line already being present.
+   * Adds field lines to an existing Prisma model the module does *not* own --
+   * impersonation needs `role` on the kernel's `User`. Guarded on the first
+   * line already being present.
    */
-  patchModelFields(file: string, model: string, fields: string[]): void;
+  addModelFields(model: string, fields: string[]): void;
+
+  /**
+   * Chains a command onto one of the project's root scripts, for a module that
+   * installs a workspace with a toolchain of its own.
+   */
+  chainScript(script: string, command: string): void;
+
+  /** Declares a directory as a pnpm workspace, for a module that installs one. */
+  addWorkspace(directory: string): void;
 
   /**
    * Exact-match replacements in a kernel file the module extends. The whole
    * patch is skipped once `guard` is present.
+   *
+   * The one general-purpose write, and it is declarative on purpose: a module
+   * hands over the exact strings it replaces, so `lint:module-patches` can
+   * later check the project still holds them. There is no callback taking the
+   * file's source and returning a new one -- what a module writes has to be
+   * readable without running it.
    */
   patchExactStrings(
     file: string,

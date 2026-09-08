@@ -88,10 +88,14 @@ The install context is the only way to write, and there is no way around it:
 |---|---|
 | `copyRuntime()` | copies `src/runtime/` to `dest`, rewriting `#kernel/` on the way, skipping any file already there |
 | `copyPackageFile(name)` | copies a file from your package root into the project |
-| `patch(file, marker, edit)` | a guarded edit of a file the project owns |
-| `patchModelFields(file, model, fields)` | adds columns to a Prisma model you do not own |
+| `addPrismaModels(models)` | appends models you own to the project's Prisma schema |
+| `addModelFields(model, fields)` | adds columns to a Prisma model you do not own |
+| `chainScript(script, command)` | appends a command to one of the root `package.json` scripts |
+| `addWorkspace(directory)` | declares a directory in `pnpm-workspace.yaml` |
 | `patchExactStrings(file, pairs, guard)` | exact-match replacements in a kernel file you extend |
 | `nextSteps(steps)` | the closing numbered list |
+
+That list is the whole vocabulary, and each intent appears in it once — there is no freeform edit taking the file's source and handing back a new one, and no path argument on the operations whose file the project always keeps in the same place. So what your module writes can be read without being run, which is also how `lint:module-patches` on the installing side can tell that a patch of yours has stopped applying.
 
 Your `module.ts` never imports `node:fs`. That is checked, and it is what makes idempotence, the skip logging and the record of what was touched hold for every module rather than for the careful ones. Your **runtime** is free to touch the filesystem — writing files is the whole point of a storage module.
 

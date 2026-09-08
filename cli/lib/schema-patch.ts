@@ -36,6 +36,36 @@ export function patchModelSet(
   writeFileSync(filePath, patched);
 }
 
+export const PRISMA_SCHEMA = 'prisma/schema.prisma';
+
+const MODEL_DECLARATION = /^model\s+(\w+)\s*\{/gm;
+
+export function modelNamesIn(source: string): string[] {
+  return [...source.matchAll(MODEL_DECLARATION)].map((match) => match[1] ?? '');
+}
+
+/**
+ * Appends whole model blocks a module owns outright -- a MailLog, a
+ * WebhookEndpoint -- to the end of the schema. Guarded on any of their names
+ * already being declared, so a second install is a no-op.
+ */
+export function addPrismaModels(filePath: string, models: string): boolean {
+  const names = modelNamesIn(models);
+
+  if (names.length === 0) {
+    throw new Error('addPrismaModels was given no model block');
+  }
+
+  const source = readFileSync(filePath, 'utf8');
+
+  if (names.some((name) => source.includes(`model ${name} {`))) {
+    return false;
+  }
+
+  writeFileSync(filePath, `${source.trimEnd()}\n${models}`);
+  return true;
+}
+
 /**
  * Adds field lines to an existing model block, for a module whose runtime
  * needs a column on a model it does not own (impersonation needs `role` on
@@ -43,7 +73,7 @@ export function patchModelSet(
  * Guarded on the first field already being present, the same one-check
  * idempotence `patchModelSet` uses.
  */
-export function patchModelFields(
+export function addModelFields(
   filePath: string,
   modelName: string,
   fieldLines: string[],
@@ -59,7 +89,7 @@ export function patchModelFields(
   const guard = fieldLines[0];
 
   if (guard === undefined) {
-    throw new Error('patchModelFields called with no field lines');
+    throw new Error('addModelFields was given no field lines');
   }
 
   if (source.slice(start, close).includes(guard.trim())) {
