@@ -6,14 +6,12 @@ import {
   writeFileSync,
 } from 'node:fs';
 import * as path from 'node:path';
+import { modelSetPattern } from './model-set';
 
 const MODEL_BLOCK = /^model\s+(\w+)\s*\{([\s\S]*?)^\}/gm;
 const TENANT_FIELD = /^\s*tenantId\s+String(\?)?/m;
 const ENABLED_TABLE =
   /ALTER\s+TABLE\s+"(\w+)"\s+ENABLE\s+ROW\s+LEVEL\s+SECURITY/gi;
-const MODEL_SET = (name: string) =>
-  new RegExp(`const ${name} = new Set\\(\\[([^\\]]*)\\]\\)`);
-
 export interface TenantModel {
   name: string;
   optional: boolean;
@@ -52,7 +50,9 @@ export function declaredModelsIn(schemaSource: string): string[] {
 export function modelSetIn(source: string, setName: string): string[] {
   // Comments go first: an apostrophe in one of them (better-auth's own adapter)
   // is indistinguishable from a quote once the entries are read by pattern.
-  const match = MODEL_SET(setName).exec(source.replace(/\/\/[^\n]*/g, ''));
+  const match = modelSetPattern(setName).exec(
+    source.replace(/\/\/[^\n]*/g, ''),
+  );
 
   if (!match) {
     return [];
@@ -179,15 +179,56 @@ export function pendingRlsModels(root: string): TenantModel[] {
   );
 }
 
+const MIGRATION_PREFIX = /^\d{14}/;
+
+/**
+ * Prisma applies migrations in directory-name order, so a policy migration has
+ * to sort after the one that created the tables it locks down. On a project's
+ * first `hery migrate` both are written within the same second, and
+ * `..._enable_rls_team` sorts before `..._init`: the policies then ran against
+ * tables that did not exist yet, and the very first migration of a scaffolded
+ * project failed.
+ */
+export function afterEveryMigration(
+  migrationsDir: string,
+  timestamp: string,
+): string {
+  const latest = existsSync(migrationsDir)
+    ? readdirSync(migrationsDir)
+        .map((entry) => MIGRATION_PREFIX.exec(entry)?.[0])
+        .filter((prefix): prefix is string => prefix !== undefined)
+        .sort()
+        .at(-1)
+    : undefined;
+
+  if (latest === undefined || timestamp > latest) {
+    return timestamp;
+  }
+
+  return migrationTimestamp(
+    new Date(
+      Date.UTC(
+        Number(latest.slice(0, 4)),
+        Number(latest.slice(4, 6)) - 1,
+        Number(latest.slice(6, 8)),
+        Number(latest.slice(8, 10)),
+        Number(latest.slice(10, 12)),
+        Number(latest.slice(12, 14)) + 1,
+      ),
+    ),
+  );
+}
+
 export function writeRlsMigration(
   root: string,
   models: TenantModel[],
   timestamp: string,
 ): string {
-  const name = `${timestamp}_enable_rls_${models
+  const migrationsDir = path.join(root, 'prisma', 'migrations');
+  const name = `${afterEveryMigration(migrationsDir, timestamp)}_enable_rls_${models
     .map((model) => model.name.toLowerCase())
     .join('_')}`;
-  const dir = path.join(root, 'prisma', 'migrations', name);
+  const dir = path.join(migrationsDir, name);
 
   mkdirSync(dir, { recursive: true });
   writeFileSync(path.join(dir, 'migration.sql'), rlsSqlFor(models));

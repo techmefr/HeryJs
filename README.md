@@ -34,6 +34,7 @@ This is a bet, not a certainty: that developers — and the agents increasingly 
 git clone https://github.com/techmefr/HeryJs.git
 cd HeryJs
 pnpm install
+pnpm run db:generate
 pnpm hery new my-app
 cd my-app
 cp .env.example .env

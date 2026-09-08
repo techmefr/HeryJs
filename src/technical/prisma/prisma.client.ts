@@ -15,7 +15,7 @@ interface PrismaQueryEvent {
   duration: number;
 }
 
-const TENANT_SCOPED_MODELS = new Set([
+const TENANT_SCOPED_MODELS = new Set<string>([
   'Team',
   'TeamMember',
   'BlogPost',
@@ -36,7 +36,7 @@ const TENANT_SCOPED_MODELS = new Set([
  * `pnpm lint:rls` refuses a model that is in neither this list nor one of the
  * two below.
  */
-export const TENANT_FREE_MODELS = new Set([
+export const TENANT_FREE_MODELS = new Set<string>([
   // better-auth's own tables. Each row hangs off a User, which does carry a
   // tenantId, and better-auth reads them through its own adapter with its own
   // queries -- a column here would be stamped by nobody.
@@ -63,7 +63,7 @@ export const TENANT_FREE_MODELS = new Set([
  * sets, so adding a tenant table forces the choice instead of defaulting to
  * "no policy, nobody noticed".
  */
-export const APP_ENFORCED_TENANT_MODELS = new Set([
+export const APP_ENFORCED_TENANT_MODELS = new Set<string>([
   // Written by better-auth's own adapter, which runs its own transactions.
   'User',
   // Written by writeAuditLog against the raw client, deliberately outside the

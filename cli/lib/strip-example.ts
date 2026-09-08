@@ -1,3 +1,5 @@
+import { modelSetMarker } from './model-set';
+
 // The comment lines directly above a model belong to it: leaving them behind
 // gives a scaffolded schema a paragraph about a pivot table that is no longer
 // there.
@@ -57,7 +59,7 @@ export function withoutSetEntries(
   setName: string,
   names: Set<string>,
 ): string {
-  const marker = `const ${setName} = new Set([`;
+  const marker = modelSetMarker(setName);
   const start = source.indexOf(marker);
 
   if (start === -1) {
