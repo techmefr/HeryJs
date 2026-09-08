@@ -31,7 +31,7 @@ function readPackageJson(pkgJsonPath: string): PackageJson | undefined {
  * nothing to import that function from. Reading the export instead means the
  * author needs no runtime dependency on HeryJs at all.
  */
-function readDefinition(
+export function readDefinition(
   entry: string,
   channel: ModuleChannel,
   packageDir: string,
