@@ -1,7 +1,14 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import type { LoadedModule } from './module-definition';
+import { readDefinition } from './module-discovery';
 import { unloadablePackages, validateModule } from './module-validation';
 
 const TSCONFIG_WITH_KERNEL = JSON.stringify({
@@ -202,6 +209,91 @@ describe('validating a module', () => {
     write('tsconfig.json', JSON.stringify({ compilerOptions: {} }));
 
     expect(problems()).toEqual([]);
+  });
+
+  /**
+   * A published module ships its compiled entry and src/runtime as sources;
+   * the tsconfig stays in the author's repository. Demanding one here failed
+   * every correctly published package the moment it was validated from the
+   * project that depends on it -- which is where this command is meant to run.
+   */
+  it('asks for no tsconfig from a package that ships none', () => {
+    rmSync(path.join(packageDir, 'tsconfig.json'));
+    write(
+      'src/runtime/probe.service.ts',
+      "import { subjectOf } from '#kernel/capabilities/subject';\nexport const probe = subjectOf;",
+    );
+
+    expect(problems()).toEqual([]);
+  });
+});
+
+/**
+ * The example module is the documentation's own claim that a package can be a
+ * module with no runtime dependency on HeryJs. Loaded here exactly the way the
+ * CLI loads a community package, and put through the same checks, so the claim
+ * cannot quietly stop being true.
+ */
+describe('the example community module', () => {
+  const packageDir = path.resolve(
+    __dirname,
+    '..',
+    '..',
+    'examples',
+    'hery-module-maintenance',
+  );
+
+  function loaded(): LoadedModule {
+    const module = readDefinition(
+      path.join(packageDir, 'src', 'module.ts'),
+      'community',
+      packageDir,
+      'hery-module-maintenance',
+    );
+
+    if (module === undefined) {
+      throw new Error('the example module no longer loads');
+    }
+
+    return module;
+  }
+
+  it('loads as a module the CLI can install', () => {
+    expect(loaded().name).toBe('maintenance');
+  });
+
+  it('satisfies the contract module:validate checks', () => {
+    expect(validateModule(loaded())).toEqual([]);
+  });
+
+  // The marker is the whole community channel: no marker, and the package is
+  // an ordinary dependency the loader walks straight past.
+  it('carries the heryjs.module marker', () => {
+    const manifest = JSON.parse(
+      readFileSync(path.join(packageDir, 'package.json'), 'utf8'),
+    ) as { heryjs?: { module?: boolean }; files?: string[] };
+
+    expect(manifest.heryjs?.module).toBe(true);
+  });
+
+  // copyRuntime copies files rather than building them, so a published module
+  // ships src/runtime as TypeScript sources next to its compiled entry.
+  it('publishes its runtime as sources', () => {
+    const manifest = JSON.parse(
+      readFileSync(path.join(packageDir, 'package.json'), 'utf8'),
+    ) as { files?: string[]; main?: string };
+
+    expect(manifest.files).toContain('src/runtime');
+    expect(manifest.main).toBe('dist/module.js');
+  });
+
+  it('imports nothing from HeryJs in its definition', () => {
+    const definition = readFileSync(
+      path.join(packageDir, 'src', 'module.ts'),
+      'utf8',
+    );
+
+    expect(definition).not.toMatch(/\bfrom\s+['"]/);
   });
 });
 
