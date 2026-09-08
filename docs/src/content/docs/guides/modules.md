@@ -187,6 +187,14 @@ A module never imports `node:fs`. Every write goes through the context it is han
 
 A file that does not exist is skipped rather than created: every one of these callers extends something the project already owns, so a missing file means the project is not shaped the way the module expected, and inventing it would be worse than saying so.
 
+### A patch that stops applying is a silent failure
+
+`patchExactStrings` throws when it cannot find its search text — but only on a project that has not been patched yet. Once the guard is in the file, the whole patch is skipped as already applied, so a kernel refactor that moves the anchored text turns the patch into a no-op that reports success. In this repository that is exactly how one module went on installing a value the kernel had stopped reading.
+
+`pnpm run lint:module-patches` closes that: it runs each installed module's `install()` against a context that writes nothing and only records what it would patch, then checks the project still holds every mark — each replacement of an exact patch, the marker of a guarded edit, the field name of a Prisma patch. Either the module patches what the kernel says now, or the kernel keeps what the module extends; a skipped patch is not a third option.
+
+It is part of `lint:conventions`, and so of CI, alongside `lint:module-drift` — which compares the two copies of a module's runtime and cannot see a patched kernel file, since that file is a copy of nothing.
+
 ## Installing is idempotent, per file
 
 Every module guards each file it writes:
