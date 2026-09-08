@@ -118,7 +118,40 @@ The name has to be kebab-case, and it is refused if a directory or an installabl
 
 Two things in there are the constraints rather than the convenience. `meta.compatibility` is written from the kernel you scaffolded against, so it is never the field nobody filled in. And **the spec is under `src/runtime`**, which means `copyRuntime` copies it into the project alongside the code, and the installing project's own suite runs it — a module with no spec is a module whose installer has nothing to run.
 
-Installing it is also what wires it into the gate here: `pnpm hery install audit-trail` puts the spec under `src/modules/`, where the test suite already looks. Before that, `typecheck:packages` and `lint` cover the authored half; nothing runs the spec.
+That spec runs where it is written, without being installed first: `pnpm run test:module-specs` runs every `src/runtime/**/*.spec.ts` under `packages/`, against the kernel's own sources. Installing the module then runs the copy too, under the project's own suite.
+
+## Checking one: `hery module:validate`
+
+```bash
+pnpm hery module:validate audit-trail
+```
+
+Called with no name it checks every module it can discover, official and community alike:
+
+```
+✔ mail
+✖ audit-trail its src/module.ts imports node:fs — every write goes through the
+    install context, which is what makes idempotence and the record of what was
+    touched hold for every module
+✖ audit-trail src/runtime/audit.service.ts imports #technical/auth/session.guard
+    — a module reaches the kernel through #kernel/, which is rewritten to the
+    app's own #technical/ on the way in
+```
+
+Everything it asks for is checked from the package alone, so a third-party author runs it on their own package with none of this project present. It reads the definition the same way `install` does, then looks at what is around it:
+
+| | |
+|---|---|
+| `src/module.ts` never imports `node:fs` | every write goes through the install context |
+| `src/runtime/` exists, and holds more than specs | a module ships real files, never runtime code in string constants |
+| something under `src/runtime/` is a spec | `copyRuntime` copies it in with the code, so the installer has something to run |
+| the only subpath import is `#kernel/` | it is the one specifier rewritten on the way in; any other arrives pointing at nothing |
+| no relative import climbs out of the package | nothing above `src/runtime` is copied |
+| `tsconfig.json` maps `#kernel/*` when the runtime uses it | otherwise the author's own `tsc` typechecks against no kernel at all |
+
+Typechecking the runtime is deliberately not in that list: that is the author's own `tsc`, against their own `tsconfig`.
+
+The same checks run over the eleven modules in this repository as `pnpm run lint:module-validity`, part of `lint:conventions` and so of CI — what is demanded of a community module is demanded of the official ones first.
 
 ## A module is its default export
 

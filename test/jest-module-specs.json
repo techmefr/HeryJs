@@ -3,7 +3,8 @@
   "rootDir": "..",
   "roots": ["<rootDir>/packages"],
   "testEnvironment": "node",
-  "testRegex": ".integration-spec.ts$",
+  "testRegex": "src/runtime/.*\\.spec\\.ts$",
+  "testPathIgnorePatterns": ["/node_modules/", "packages/admin-astro/"],
   "globalSetup": "<rootDir>/test/global-setup.ts",
   "moduleNameMapper": {
     "^#kernel/(.*)$": "<rootDir>/src/technical/$1",
@@ -15,6 +16,6 @@
   "transform": {
     "^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": "test/tsconfig.modules.json" }]
   },
-  "testTimeout": 60000,
+  "testTimeout": 15000,
   "forceExit": true
 }
