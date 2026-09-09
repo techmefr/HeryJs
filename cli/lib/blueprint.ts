@@ -31,6 +31,11 @@ export const blueprintRelationLinkSchema = z
     foreignKey: fieldNameSchema,
     discriminator: fieldNameSchema.optional(),
     discriminatorValue: z.string().optional(),
+    // Opts an include into its own collection route, scoped to the parent --
+    // `POST /<parent>/:id/<relation>/search` -- on top of being reachable as
+    // a nested include. Meaningless on an aggregate: there is no collection
+    // for an aggregate result to page through.
+    ownRoute: z.boolean().default(false),
   })
   .refine(
     (link) =>
@@ -41,7 +46,10 @@ export const blueprintRelationLinkSchema = z
       message:
         'a morphMany link needs both discriminator and discriminatorValue',
     },
-  );
+  )
+  .refine((link) => !link.ownRoute || link.type === 'hasMany', {
+    message: 'ownRoute needs a real Prisma relation, only hasMany has one',
+  });
 
 export type BlueprintRelationLink = z.infer<typeof blueprintRelationLinkSchema>;
 
@@ -114,6 +122,11 @@ export interface ResolvedInclude extends BlueprintRelationLink {
   // morphMany link never gets one -- it has no Prisma relation for a nested
   // `include` to compose into, see list-query.ts's buildIncludeClause.
   includes?: readonly ResolvedInclude[];
+  // The referenced blueprint's own pagination, carried along the same way
+  // filters/sorts/selects already are. Only read when ownRoute is set --
+  // the parent-scoped route pages exactly the way the child's own blueprint
+  // says it should, absent meaning "every match" like any other resource.
+  pagination?: RawBlueprint['pagination'];
 }
 
 // Aggregates validate a `field` (for avg/sum/min/max) against the referenced
@@ -216,6 +229,24 @@ function assertSortsAndFiltersAreKnownFields(
       if (!fieldNames.has(entry) && !knownTargets.has(entry)) {
         report(`${kind} "${entry}" names no declared field`);
       }
+    }
+  }
+}
+
+/**
+ * ownRoute only makes sense on an include: an aggregate resolves to a single
+ * number, not a collection, so there is nothing for a scoped route to page
+ * through.
+ */
+function assertOwnRouteOnlyOnIncludes(
+  blueprint: RawBlueprint,
+  report: (message: string) => void,
+): void {
+  for (const link of blueprint.aggregates) {
+    if (link.ownRoute) {
+      report(
+        `aggregate "${link.relation}" declares ownRoute, which only applies to an include`,
+      );
     }
   }
 }
@@ -329,6 +360,7 @@ function resolveRelationLinks(
           .map((field) => field.name),
       ],
       includes: nestedIncludes.length > 0 ? nestedIncludes : undefined,
+      pagination: link.ownRoute ? referenced.pagination : undefined,
     });
   }
 
@@ -384,6 +416,7 @@ export function loadBlueprint(filePath: string): Blueprint {
     problems.push(message),
   );
   assertRelationsAreUnique(blueprint, (message) => problems.push(message));
+  assertOwnRouteOnlyOnIncludes(blueprint, (message) => problems.push(message));
 
   const { includes, aggregates } = resolveRelationLinks(
     blueprint,

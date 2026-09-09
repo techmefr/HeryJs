@@ -191,6 +191,165 @@ includes:
     expect(replies?.includes).toBeUndefined();
   });
 
+  it('carries the referenced blueprint pagination onto an ownRoute include', () => {
+    writeBlueprint(
+      dir,
+      'reply',
+      `
+name: Reply
+routed: false
+fields:
+  - name: body
+    type: string
+sorts: []
+pagination:
+  limits: [5, 10]
+  default: 5
+`,
+    );
+
+    writeBlueprint(
+      dir,
+      'note',
+      `
+name: Note
+routed: false
+fields:
+  - name: body
+    type: string
+sorts: []
+includes:
+  - relation: replies
+    resource: Reply
+    type: hasMany
+    foreignKey: noteId
+    ownRoute: true
+`,
+    );
+
+    const blueprint = loadBlueprint(path.join(dir, 'note.yaml'));
+    const replies = blueprint.includes.find((i) => i.relation === 'replies');
+
+    expect(replies?.pagination).toEqual({ limits: [5, 10], default: 5 });
+  });
+
+  it('leaves pagination undefined on an include that did not opt into ownRoute', () => {
+    writeBlueprint(
+      dir,
+      'reply',
+      `
+name: Reply
+routed: false
+fields:
+  - name: body
+    type: string
+sorts: []
+pagination:
+  limits: [5, 10]
+  default: 5
+`,
+    );
+
+    writeBlueprint(
+      dir,
+      'note',
+      `
+name: Note
+routed: false
+fields:
+  - name: body
+    type: string
+sorts: []
+includes:
+  - relation: replies
+    resource: Reply
+    type: hasMany
+    foreignKey: noteId
+`,
+    );
+
+    const blueprint = loadBlueprint(path.join(dir, 'note.yaml'));
+    const replies = blueprint.includes.find((i) => i.relation === 'replies');
+
+    expect(replies?.pagination).toBeUndefined();
+  });
+
+  it('rejects ownRoute on a morphMany link', () => {
+    writeBlueprint(
+      dir,
+      'flag',
+      `
+name: Flag
+routed: false
+fields:
+  - name: reason
+    type: string
+sorts: []
+`,
+    );
+
+    writeBlueprint(
+      dir,
+      'note',
+      `
+name: Note
+routed: false
+fields:
+  - name: body
+    type: string
+sorts: []
+includes:
+  - relation: flags
+    resource: Flag
+    type: morphMany
+    foreignKey: flaggableId
+    discriminator: flaggableType
+    discriminatorValue: Note
+    ownRoute: true
+`,
+    );
+
+    expect(() => loadBlueprint(path.join(dir, 'note.yaml'))).toThrow();
+  });
+
+  it('rejects ownRoute declared on an aggregate', () => {
+    writeBlueprint(
+      dir,
+      'reply',
+      `
+name: Reply
+routed: false
+fields:
+  - name: body
+    type: int
+sorts: []
+`,
+    );
+
+    writeBlueprint(
+      dir,
+      'note',
+      `
+name: Note
+routed: false
+fields:
+  - name: body
+    type: string
+sorts: []
+aggregates:
+  - relation: replies
+    resource: Reply
+    type: hasMany
+    foreignKey: noteId
+    ownRoute: true
+`,
+    );
+
+    expect(() => loadBlueprint(path.join(dir, 'note.yaml'))).toThrow(
+      /ownRoute/,
+    );
+  });
+
   it('leaves includes undefined when the referenced blueprint declares none', () => {
     writeBlueprint(
       dir,

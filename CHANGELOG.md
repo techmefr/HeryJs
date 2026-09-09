@@ -53,6 +53,10 @@ Twelve packages, versioned together:
   relation, capped at two levels total, the same fixed-constant idiom
   `MAX_FILTER_DEPTH` already uses. `morphMany` never nests: it has no Prisma
   relation to attach a nested `include` to.
+- A `hasMany` include declaring `ownRoute: true` gets its own collection
+  route scoped to the parent by id — `POST /<parent>/:id/<relation>/search`
+  — gated by the parent's own record-level view capability, since the
+  included resource is `routed: false` and has none of its own.
 - `message` on the error envelope translates per request from `Accept-Language`
   when `hery.config.ts` declares more than one locale; `key` never changes.
   `capability.forbidden` is excluded on purpose, and a `key` with no catalogue

@@ -142,6 +142,35 @@ A search request can then ask for `notes` and, inside it, `replies`, in one call
 
 Two levels total — a relation of a relation — is the fixed bound, the same fixed-constant idiom `MAX_FILTER_DEPTH` already uses rather than a per-blueprint depth to configure. Only `hasMany` nests: `morphMany` has no Prisma relation to attach a nested `include` to, so it stays reachable at the top level only. A nested include's rows are never renamed by an alias — they come back nested under their real relation name, exactly where Prisma put them.
 
+### A route scoped to the parent
+
+An include embedded inside the parent's own record is not the only way to reach it — a `hasMany` include can also opt into its own collection route, scoped to the parent by id:
+
+```yaml
+includes:
+  - relation: notes
+    resource: BlogPostNote
+    type: hasMany
+    foreignKey: blogPostId
+    ownRoute: true
+```
+
+That generates `POST /blog-posts/:id/notes/search`, the same search contract shape as any resource's own — `filters`, `sorts`, `selects`, `pagination`, all still declared on `BlogPostNote`'s own blueprint — reached without asking for the whole parent record just to get at its notes:
+
+```
+POST /blog-posts/cly8x7g9k0000abc123def456/notes/search
+{ "sorts": [{ "field": "createdAt", "direction": "desc" }] }
+```
+
+```json
+{
+  "data": [{ "id": "n1", "body": "first note", "rating": 4, "createdAt": "2026-01-01T00:00:00.000Z" }],
+  "meta": { "page": 1, "limit": 5, "total": 1, "last_page": 1 }
+}
+```
+
+There is no separate capability for `BlogPostNote` to check — it is `routed: false`, same as any other include target. The route gates on the parent's own record-level view capability instead: seeing a blog post's notes is exactly seeing the blog post they belong to, checked the same way `stream`'s per-resource routes already check it before acting on something the resource owns. `ownRoute` only applies to `hasMany` — a `morphMany` link has no Prisma relation to scope a route to — and it means nothing on an `aggregate`, which resolves to one number, not a collection to page through.
+
 `relations` is the write side, and it is specifically the `belongsToMany` case `includes` cannot express: neither side owns the other, so attaching or detaching never touches the related row, only a row in the pivot table.
 
 ```yaml

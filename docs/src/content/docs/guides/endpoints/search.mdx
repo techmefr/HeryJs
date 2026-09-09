@@ -90,6 +90,8 @@ Every generated resource exposes one search route instead of a detail route: the
 
     Only when the referenced blueprint declares one; see [Nested includes](/guides/blueprint/#nested-includes). A nested include has no `alias` of its own — its rows come back nested under the relation's real name, and `morphMany` never nests.
 
+    A `hasMany` include declaring `ownRoute: true` is also reachable as its own collection, scoped to the parent by id — `POST /blog-posts/:id/notes/search`, gated by the parent's own record-level view capability rather than one of its own. See [A route scoped to the parent](/guides/blueprint/#a-route-scoped-to-the-parent).
+
     ## Operators
 
     A closed list — `=` `!=` `>` `>=` `<` `<=` `like` `not like` `in` `not in`. Nothing else parses. `in` / `not in` require an array `value`; anything else is a 400.

@@ -405,7 +405,7 @@ function parseSorts(
  * relation's declared selects already exclude those, so they are the default
  * rather than an opt-in the caller has to remember.
  */
-function declaredSelect(contract: FieldContract): Record<string, true> {
+export function declaredSelect(contract: FieldContract): Record<string, true> {
   return Object.fromEntries(contract.selects.map((field) => [field, true]));
 }
 

@@ -8,7 +8,7 @@ import {
   zodOutputTypeFor,
   zodTypeFor,
 } from './field-types';
-import { camelCase } from './naming';
+import { camelCase, screamingSnakeCase } from './naming';
 
 /**
  * A resource is owned by a team as soon as one of its presets says so, and only
@@ -336,6 +336,7 @@ export function serviceFile(ctx: ResourceContext): string {
   const searchableFields = ctx.fields
     .filter((field) => field.type === 'string')
     .map((field) => field.name);
+  const childIncludes = ownRouteIncludes(ctx);
 
   return `import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Prisma, ${ctx.pascalName} } from '@prisma/client';
@@ -351,7 +352,7 @@ import { writeAuditLog } from '#technical/audit/audit-log';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { resolveRelationInstructions } from '#technical/http/relation-resolver';
 import type { PrismaRelationClient } from '#technical/http/relation-resolver';
-import type { RelationInstruction } from '#technical/http/list-query';${ctx.relations.length > 0 ? `\nimport { applyRelationMutation } from '#technical/http/relation-mutations';\nimport type { PivotDelegate } from '#technical/http/relation-mutations';` : ''}
+import type { RelationInstruction${childIncludes.length > 0 ? ', ParsedListQuery' : ''} } from '#technical/http/list-query';${ctx.relations.length > 0 ? `\nimport { applyRelationMutation } from '#technical/http/relation-mutations';\nimport type { PivotDelegate } from '#technical/http/relation-mutations';` : ''}
 import {
   Create${ctx.pascalName}Input,${ctx.relations.length > 0 ? `\n  RelationMutationInput,` : ''}
   Update${ctx.pascalName}Input,
@@ -506,7 +507,45 @@ export class ${ctx.pascalName}Service {
 
     return { records, total, matches };
   }
+${childIncludes
+  .map((include) => {
+    const pascalRelation = pascalRelationName(include);
+    const childDelegate = camelCase(include.resource);
 
+    return `
+  // Scoped to the already-loaded parent by ${include.foreignKey} -- there is
+  // no capability of ${include.resource}'s own to apply, it is routed: false.
+  // The controller already gated this call on the parent's own view
+  // capability before it ever reaches here.
+  async search${pascalRelation}(parentId: string, query: ParsedListQuery) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? undefined;
+    const where = {
+      AND: [
+        { ${include.foreignKey}: parentId },
+        ...(query.where ? [query.where] : []),
+      ],
+    };
+
+    const [records, total] = await Promise.all([
+      this.prisma.${childDelegate}.findMany({
+        where,
+        orderBy:
+          query.sorts && query.sorts.length > 0
+            ? query.sorts.map((sort) => ({ [sort.field]: sort.direction }))
+            : undefined,
+        skip: limit ? (page - 1) * limit : undefined,
+        take: limit,
+        select: query.select as Prisma.${include.resource}Select | undefined,
+      }),
+      this.prisma.${childDelegate}.count({ where }),
+    ]);
+
+    return { records, total };
+  }
+`;
+  })
+  .join('')}
   async create(subject: CapabilitySubject, data: Create${ctx.pascalName}Input) {
 ${
   ownedByTeam(ctx)
@@ -701,13 +740,15 @@ ${arrange}
  * makes a caller naming `page` or `limit` a rejected request rather than an
  * ignored one.
  */
-function paginationContractLines(ctx: ResourceContext): string {
-  if (!ctx.pagination) {
+function paginationContractLines(
+  pagination: ResourceContext['pagination'],
+): string {
+  if (!pagination) {
     return '';
   }
 
-  return `  limits: [${ctx.pagination.limits.join(', ')}],
-  defaultLimit: ${ctx.pagination.default},
+  return `  limits: [${pagination.limits.join(', ')}],
+  defaultLimit: ${pagination.default},
 `;
 }
 
@@ -715,8 +756,10 @@ function paginationContractLines(ctx: ResourceContext): string {
  * An unpaginated route reports no page, no limit and no last_page rather than
  * inventing "page 1 of 1": there is no page, and `total` is the whole answer.
  */
-function paginationMetaLines(ctx: ResourceContext): string {
-  if (!ctx.pagination) {
+function paginationMetaLines(
+  pagination: ResourceContext['pagination'],
+): string {
+  if (!pagination) {
     return '      paginated: false,\n';
   }
 
@@ -751,10 +794,17 @@ ${indent}      },`,
   return `\n${indent}    includes: {\n${entries}\n${indent}    },`;
 }
 
-function includesContractLiteral(ctx: ResourceContext, indent: string): string {
-  if (ctx.includes.length === 0) return '{}';
+// Shared by the resource's own top-level includes map and, one level down,
+// by a parent-scoped child route's contract -- both need the same
+// relation-name-to-IncludeContract object literal, just sourced from a
+// different list of resolved includes.
+function includeMapLiteral(
+  includes: readonly ResourceContext['includes'][number][],
+  indent: string,
+): string {
+  if (includes.length === 0) return '{}';
 
-  const entries = ctx.includes
+  const entries = includes
     .map(
       (include) => `${indent}  ${include.relation}: {
 ${relationLinkLiteral(include, indent)}
@@ -766,6 +816,34 @@ ${indent}  },`,
     .join('\n');
 
   return `{\n${entries}\n${indent}}`;
+}
+
+function includesContractLiteral(ctx: ResourceContext, indent: string): string {
+  return includeMapLiteral(ctx.includes, indent);
+}
+
+// The includes on a blueprint that additionally opted into their own
+// parent-scoped route -- POST /<parent>/:id/<relation>/search alongside
+// being reachable as a nested include.
+function ownRouteIncludes(ctx: ResourceContext): ResourceContext['includes'] {
+  return ctx.includes.filter((include) => include.ownRoute);
+}
+
+// A parent-scoped child route needs the same full ListQueryContract shape a
+// resource's own search route gets -- filters/sorts/selects/pagination, plus
+// whatever the child itself nests -- built from the include's already
+// resolved shape rather than the child's blueprint having a controller of
+// its own to derive one from.
+function childRouteContractLiteral(
+  include: ResourceContext['includes'][number],
+  indent: string,
+): string {
+  return `{
+${indent}  filters: ['id', ${include.filters.map((field) => `'${field}'`).join(', ')}],
+${indent}  sorts: [${include.sorts.map((field) => `'${field}'`).join(', ')}],
+${indent}  selects: [${include.selects.map((field) => `'${field}'`).join(', ')}],
+${indent}  includes: ${includeMapLiteral(include.includes ?? [], `${indent}  `)},
+${paginationContractLines(include.pagination)}${indent}} as const satisfies ListQueryContract`;
 }
 
 function aggregatesContractLiteral(
@@ -797,6 +875,7 @@ export function controllerFile(ctx: ResourceContext): string {
     'updatedAt',
     'deletedAt',
   ];
+  const childIncludes = ownRouteIncludes(ctx);
 
   return `import { Body, Controller, Get, HttpCode, Inject, Post, Req, UseGuards } from '@nestjs/common';
 import type { ${ctx.pascalName} } from '@prisma/client';
@@ -805,7 +884,9 @@ import { SessionGuard } from '#technical/auth/session.guard';
 import type { RequestWithUser } from '#technical/auth/session.guard';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { subjectOf } from '#technical/capabilities/subject';
-import { Capability } from '#technical/capabilities/capability.decorator';
+import {
+  Capability,${childIncludes.length > 0 ? '\n  LoadRecordWith,' : ''}
+} from '#technical/capabilities/capability.decorator';
 import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
 import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
 import { AlreadyRestoredException } from '#technical/errors/already-restored.exception';
@@ -815,7 +896,7 @@ import { ok } from '#technical/http/envelope';
 import {
   parseSearchRequest,
   searchRequestSchema,
-  withIncludesAndAggregates,
+  withIncludesAndAggregates,${childIncludes.length > 0 ? '\n  declaredSelect,' : ''}
 } from '#technical/http/list-query';
 import type {
   ListQueryContract,
@@ -855,7 +936,7 @@ import {${ctx.relations
   canRestore${ctx.pascalName},
   canRestoreAny${ctx.pascalName},
   canUpdate${ctx.pascalName},
-  canUpdateAny${ctx.pascalName},
+  canUpdateAny${ctx.pascalName},${childIncludes.length > 0 ? `\n  canView${ctx.pascalName},` : ''}
   canViewAny${ctx.pascalName},
   ${ctx.pascalName}Policy,
 } from './${ctx.kebabName}.policy';
@@ -878,7 +959,7 @@ const ${ctx.screamingSnakeName}_CONTRACT = {
   selects: [${selectableFields.map((field) => `'${field}'`).join(', ')}],
   includes: ${includesContractLiteral(ctx, '  ')},
   aggregates: ${aggregatesContractLiteral(ctx, '  ')},
-${paginationContractLines(ctx)}} as const satisfies ListQueryContract;
+${paginationContractLines(ctx.pagination)}} as const satisfies ListQueryContract;
 
 // Computed once at module load, not per request: the blueprint's shape never
 // changes at runtime, and the Zod schemas already own the create/update
@@ -898,7 +979,21 @@ ${ctx.fields.map((field) => `    { name: '${field.name}', type: '${field.type}',
     update: z.toJSONSchema(update${ctx.pascalName}Schema),
   },
 };
-
+${
+  childIncludes.length > 0
+    ? `\ntype RequestWith${ctx.pascalName} = RequestWithUser & { record: ${ctx.pascalName} };
+`
+    : ''
+}${childIncludes
+    .map(
+      (include) => `
+// What \`POST /${ctx.pluralKebabName}/:id/${include.relation}/search\` accepts --
+// the same shape as a resource's own search contract, derived from
+// ${include.resource}'s blueprint rather than retyped here.
+const ${ctx.screamingSnakeName}_${screamingSnakeCase(include.relation)}_CONTRACT = ${childRouteContractLiteral(include, '')};
+`,
+    )
+    .join('')}
 @Controller('${ctx.pluralKebabName}')
 @UseGuards(SessionGuard, CapabilitiesGuard)
 export class ${ctx.pascalName}Controller {
@@ -982,7 +1077,7 @@ export class ${ctx.pascalName}Controller {
         : view;
 ${ctx.pagination ? `    const pageLimit = query.limit ?? ${ctx.pagination.default};\n` : ''}    const meta = {
       channels: [${ctx.screamingSnakeName}_SIGNAL_CHANNEL],
-${paginationMetaLines(ctx)}      total,
+${paginationMetaLines(ctx.pagination)}      total,
       ...(matches
         ? { search: { matchLimit: matches.limit, truncated: matches.truncated } }
         : {}),
@@ -1032,7 +1127,38 @@ ${paginationMetaLines(ctx)}      total,
   describe() {
     return ok(${ctx.screamingSnakeName}_DESCRIBE);
   }
+${childIncludes
+  .map((include) => {
+    const pascalRelation = pascalRelationName(include);
+    const contractName = `${ctx.screamingSnakeName}_${screamingSnakeCase(include.relation)}_CONTRACT`;
 
+    return `
+  // The parent's own view capability is what gates this route: ${include.resource}
+  // has none of its own -- it is routed: false -- so seeing its rows is
+  // exactly seeing the ${ctx.kebabName} they belong to.
+  @Post(':id/${include.relation}/search')
+  @HttpCode(200)
+  @Capability(canView${ctx.pascalName})
+  @LoadRecordWith(${ctx.screamingSnakeName}_RECORD_LOADER, '${ctx.kebabName}')
+  async search${pascalRelation}(
+    @Req() req: RequestWith${ctx.pascalName},
+    @Body(new ZodValidationPipe(searchRequestSchema)) body: SearchRequestBody,
+  ) {
+    const query = parseSearchRequest(body, ${contractName});
+    const select = query.select ?? declaredSelect(${contractName});
+    const { records, total } = await this.${ctx.camelName}s.search${pascalRelation}(
+      req.record.id,
+      { ...query, select },
+    );
+${include.pagination ? `    const pageLimit = query.limit ?? ${include.pagination.default};\n` : ''}    const meta = {
+${paginationMetaLines(include.pagination)}      total,
+    };
+
+    return ok(records, meta);
+  }
+`;
+  })
+  .join('')}
   @Post('create')
   @Capability(canCreate${ctx.pascalName})
   async create(

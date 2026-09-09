@@ -14,7 +14,10 @@ import { SessionGuard } from '#technical/auth/session.guard';
 import type { RequestWithUser } from '#technical/auth/session.guard';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { subjectOf } from '#technical/capabilities/subject';
-import { Capability } from '#technical/capabilities/capability.decorator';
+import {
+  Capability,
+  LoadRecordWith,
+} from '#technical/capabilities/capability.decorator';
 import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
 import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
 import { AlreadyRestoredException } from '#technical/errors/already-restored.exception';
@@ -25,6 +28,7 @@ import {
   parseSearchRequest,
   searchRequestSchema,
   withIncludesAndAggregates,
+  declaredSelect,
 } from '#technical/http/list-query';
 import type {
   ListQueryContract,
@@ -57,6 +61,7 @@ import {
   canRestoreAnyBlogPost,
   canUpdateBlogPost,
   canUpdateAnyBlogPost,
+  canViewBlogPost,
   canViewAnyBlogPost,
   BlogPostPolicy,
 } from './blog-post.policy';
@@ -132,6 +137,20 @@ const BLOG_POST_DESCRIBE = {
     update: z.toJSONSchema(updateBlogPostSchema),
   },
 };
+
+type RequestWithBlogPost = RequestWithUser & { record: BlogPost };
+
+// What `POST /blog-posts/:id/notes/search` accepts --
+// the same shape as a resource's own search contract, derived from
+// BlogPostNote's blueprint rather than retyped here.
+const BLOG_POST_NOTES_CONTRACT = {
+  filters: ['id', 'body'],
+  sorts: ['createdAt'],
+  selects: ['id', 'body', 'rating', 'createdAt'],
+  includes: {},
+  limits: [5, 10],
+  defaultLimit: 5,
+} as const satisfies ListQueryContract;
 
 @Controller('blog-posts')
 @UseGuards(SessionGuard, CapabilitiesGuard)
@@ -285,6 +304,34 @@ export class BlogPostController {
   @Capability(canViewAnyBlogPost)
   describe() {
     return ok(BLOG_POST_DESCRIBE);
+  }
+
+  // The parent's own view capability is what gates this route: BlogPostNote
+  // has none of its own -- it is routed: false -- so seeing its rows is
+  // exactly seeing the blog-post they belong to.
+  @Post(':id/notes/search')
+  @HttpCode(200)
+  @Capability(canViewBlogPost)
+  @LoadRecordWith(BLOG_POST_RECORD_LOADER, 'blog-post')
+  async searchNotes(
+    @Req() req: RequestWithBlogPost,
+    @Body(new ZodValidationPipe(searchRequestSchema)) body: SearchRequestBody,
+  ) {
+    const query = parseSearchRequest(body, BLOG_POST_NOTES_CONTRACT);
+    const select = query.select ?? declaredSelect(BLOG_POST_NOTES_CONTRACT);
+    const { records, total } = await this.blogPosts.searchNotes(req.record.id, {
+      ...query,
+      select,
+    });
+    const pageLimit = query.limit ?? 5;
+    const meta = {
+      page: query.page ?? 1,
+      limit: pageLimit,
+      last_page: Math.max(1, Math.ceil(total / pageLimit)),
+      total,
+    };
+
+    return ok(records, meta);
   }
 
   @Post('create')
