@@ -32,14 +32,18 @@ The `hery` CLI is the only thing in this project that reads a blueprint. It is a
 Scaffolds a fresh HeryJs project in `./<name>`: the CLI, every module's authoring package, the kernel (`technical/`), the always-on DX tools (`devtools/`), the modules wired in by default, and a rewritten `package.json`. It then runs `git init` and commits the result, and prints the commands to take from there:
 
 ```bash
-pnpm hery new my-app
+pnpm dlx heryjs new my-app
 cd my-app
 cp .env.example .env
-docker compose up -d
 pnpm install
+pnpm hery up --start
 pnpm hery migrate --name init
 pnpm start:dev
 ```
+
+`heryjs` is the published package and `new` is the only command it carries — the rest of the CLI reads the project around it, so it travels into the project rather than being installed globally. From inside `my-app` every command is `pnpm hery`, at the version that project was created with.
+
+`hery up --start` rather than `docker compose up -d`: the compose services publish ports Docker assigns, so several projects can run at once, and `up --start` writes the ones it got back into `.env`. Bringing compose up by hand leaves `.env` pointing at ports nothing listens on.
 
 `hery migrate` rather than `prisma migrate dev` on purpose, and the scaffolded project prints it that way: it wraps Prisma's own migration and then emits the row-level security policy for every tenant-scoped table, so the database boundary is created with the tables instead of remembered afterwards.
 
