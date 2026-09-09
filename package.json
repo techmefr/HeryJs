@@ -104,6 +104,7 @@
     "lint:scope-parity": "pnpm run lint:conventions scope-parity",
     "lint:rls": "pnpm run lint:conventions rls",
     "lint:pagination": "pnpm run lint:conventions pagination",
+    "lint:rate-limit": "pnpm run lint:conventions rate-limit",
     "lint:module-drift": "pnpm run lint:conventions module-drift",
     "lint:module-validity": "pnpm run lint:conventions module-validity",
     "lint:module-patches": "pnpm run lint:conventions module-patches",

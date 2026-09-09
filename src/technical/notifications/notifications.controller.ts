@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { SessionGuard } from '#technical/auth/session.guard';
+import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
 import type { RequestWithUser } from '#technical/auth/session.guard';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { Capability } from '#technical/capabilities/capability.decorator';
@@ -26,6 +27,7 @@ export class NotificationsController {
     private readonly notifications: NotificationProvider,
   ) {}
 
+  @RateLimit('read')
   @Get()
   @Capability(canReadOwnNotifications)
   async list(@Req() req: RequestWithUser, @Query() query: unknown) {
@@ -34,6 +36,7 @@ export class NotificationsController {
     return okPage(await this.notifications.listFor(req.user.id, page), page);
   }
 
+  @RateLimit('write')
   @Patch(':id/read')
   @Capability(canReadOwnNotifications)
   async markRead(@Req() req: RequestWithUser, @Param('id') id: string) {

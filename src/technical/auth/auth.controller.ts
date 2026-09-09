@@ -1,5 +1,6 @@
 import { Body, Controller, Inject, Post, UseGuards } from '@nestjs/common';
 import { PublicRoute } from '#technical/capabilities/public-route.decorator';
+import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
 import { DevOnlyGuard } from '#technical/dev-only/dev-only.guard';
 import { ok } from '#technical/http/envelope';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
@@ -14,6 +15,7 @@ export class AuthController {
     @Inject(AUTH_PROVIDER) private readonly authProvider: AuthProvider,
   ) {}
 
+  @RateLimit('auth')
   @Post('register')
   @PublicRoute('there is no caller yet: this route is what creates one')
   async register(
@@ -22,6 +24,7 @@ export class AuthController {
     return ok(await this.authProvider.register(body.email, body.password));
   }
 
+  @RateLimit('auth')
   @Post('login')
   @PublicRoute(
     'there is no caller yet: the credentials in the body are the check',
@@ -30,6 +33,7 @@ export class AuthController {
     return ok(await this.authProvider.login(body.email, body.password));
   }
 
+  @RateLimit('auth')
   @Post('dev-token')
   @UseGuards(DevOnlyGuard)
   @PublicRoute(

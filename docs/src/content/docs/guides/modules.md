@@ -24,18 +24,18 @@ Running `pnpm hery install` with no arguments prints `nothing to install` and ex
 
 ## What is available
 
-| Id                     | What it adds                                                                                             |
-| ---------------------- | -------------------------------------------------------------------------------------------------------- |
-| `search-elasticsearch` | Swaps free-text search onto Elasticsearch — docker service, driver, DI wiring.                           |
-| `search-meilisearch`   | The same, onto Meilisearch.                                                                              |
-| `graphql`              | A GraphQL endpoint (Apollo driver) with a session guard mirroring the REST auth flow.                    |
-| `mcp`                  | An authenticated MCP gateway over Streamable HTTP, exposing resources as tools.                          |
-| `live`                 | Bidirectional WebSocket support (Socket.IO).                                                             |
-| `stream`               | One-to-many audio/video over LiveKit.                                                                    |
-| `mail`                 | Outgoing mail: a `MailLog` model, string templates, and a BullMQ job that sends.                         |
-| `storage`              | File storage behind a swappable provider — local disk by default, S3-compatible via `STORAGE_DRIVER=s3`. |
-| `admin-astro`          | An admin panel built with Astro, discovering its sections from `GET /introspect`.                          |
-| `impersonation`        | Let an admin act as another user, tenant-bounded and audit-logged, via a bearer token for the target.     |
+| Id                     | What it adds                                                                                                                          |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `search-elasticsearch` | Swaps free-text search onto Elasticsearch — docker service, driver, DI wiring.                                                        |
+| `search-meilisearch`   | The same, onto Meilisearch.                                                                                                           |
+| `graphql`              | A GraphQL endpoint (Apollo driver) with a session guard mirroring the REST auth flow.                                                 |
+| `mcp`                  | An authenticated MCP gateway over Streamable HTTP, exposing resources as tools.                                                       |
+| `live`                 | Bidirectional WebSocket support (Socket.IO).                                                                                          |
+| `stream`               | One-to-many audio/video over LiveKit.                                                                                                 |
+| `mail`                 | Outgoing mail: a `MailLog` model, string templates, and a BullMQ job that sends.                                                      |
+| `storage`              | File storage behind a swappable provider — local disk by default, S3-compatible via `STORAGE_DRIVER=s3`.                              |
+| `admin-astro`          | An admin panel built with Astro, discovering its sections from `GET /introspect`.                                                     |
+| `impersonation`        | Let an admin act as another user, tenant-bounded and audit-logged, via a bearer token for the target.                                 |
 | `webhooks`             | Receive inbound webhooks with HMAC-SHA256 signature verification and run each one through Event, Job, Notification, Audit and Signal. |
 
 Six of them have a runtime half in `src/modules/`: `live`, `stream`, `mail`, `storage`, `impersonation`, `webhooks`. The search drivers install into the existing `technical/search/` folder, because they implement a contract the kernel already owns.
@@ -143,14 +143,14 @@ Called with no name it checks every module it can discover, official and communi
 
 Everything it asks for is checked from the package alone, so a third-party author runs it on their own package with none of this project present. It reads the definition the same way `install` does, then looks at what is around it:
 
-| | |
-|---|---|
-| `src/module.ts` never imports `node:fs` | every write goes through the install context |
-| `src/runtime/` exists, and holds more than specs | a module ships real files, never runtime code in string constants |
-| something under `src/runtime/` is a spec | `copyRuntime` copies it in with the code, so the installer has something to run |
-| the only subpath import is `#kernel/` | it is the one specifier rewritten on the way in; any other arrives pointing at nothing |
-| no relative import climbs out of the package | nothing above `src/runtime` is copied |
-| a `tsconfig.json` that is present maps `#kernel/*` | otherwise the author's own `tsc` typechecks against no kernel at all — and a published package ships none, so this one applies where the module is authored |
+|                                                                    |                                                                                                                                                                                   |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/module.ts` never imports `node:fs`                            | every write goes through the install context                                                                                                                                      |
+| `src/runtime/` exists, and holds more than specs                   | a module ships real files, never runtime code in string constants                                                                                                                 |
+| something under `src/runtime/` is a spec                           | `copyRuntime` copies it in with the code, so the installer has something to run                                                                                                   |
+| the only subpath import is `#kernel/`                              | it is the one specifier rewritten on the way in; any other arrives pointing at nothing                                                                                            |
+| no relative import climbs out of the package                       | nothing above `src/runtime` is copied                                                                                                                                             |
+| a `tsconfig.json` that is present maps `#kernel/*`                 | otherwise the author's own `tsc` typechecks against no kernel at all — and a published package ships none, so this one applies where the module is authored                       |
 | a `test/` directory that is present is in the tsconfig's `include` | left out, it is outside the project: every typed lint rule reports every file in it as "not found by the project service", which names neither the tsconfig nor the missing entry |
 
 Typechecking the runtime is deliberately not in that list: that is the author's own `tsc`, against their own `tsconfig`.
@@ -202,17 +202,17 @@ Remove the workspace copy you are not using. Keeping both means the name resolve
 
 A module never imports `node:fs`. Every write goes through the context it is handed, which is what makes idempotence, the skip logging and the record of what was touched hold for **every** module rather than for the ones whose author remembered them:
 
-| | |
-|---|---|
-| `copyRuntime()` | copies `src/runtime/` to `dest`, rewriting `#kernel/` on the way, skipping any file already there |
-| `copyPackageFile(name)` | copies a file from the package root into the project, skipping one already there |
-| `addPrismaModels(models)` | appends models the module owns to `prisma/schema.prisma` |
-| `addModelFields(model, fields)` | adds columns to a Prisma model the module does not own |
-| `chainScript(script, command)` | appends a command to one of the root `package.json` scripts |
-| `addWorkspace(directory)` | declares a directory in `pnpm-workspace.yaml` |
-| `patchExactStrings(file, pairs, guard)` | exact-match replacements in a kernel file the module extends |
-| `nextSteps(steps)` | the closing numbered list |
-| `touched` | every path this install wrote, in order |
+|                                         |                                                                                                   |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `copyRuntime()`                         | copies `src/runtime/` to `dest`, rewriting `#kernel/` on the way, skipping any file already there |
+| `copyPackageFile(name)`                 | copies a file from the package root into the project, skipping one already there                  |
+| `addPrismaModels(models)`               | appends models the module owns to `prisma/schema.prisma`                                          |
+| `addModelFields(model, fields)`         | adds columns to a Prisma model the module does not own                                            |
+| `chainScript(script, command)`          | appends a command to one of the root `package.json` scripts                                       |
+| `addWorkspace(directory)`               | declares a directory in `pnpm-workspace.yaml`                                                     |
+| `patchExactStrings(file, pairs, guard)` | exact-match replacements in a kernel file the module extends                                      |
+| `nextSteps(steps)`                      | the closing numbered list                                                                         |
+| `touched`                               | every path this install wrote, in order                                                           |
 
 A file that does not exist is skipped rather than created: every one of these callers extends something the project already owns, so a missing file means the project is not shaped the way the module expected, and inventing it would be worse than saying so.
 
@@ -282,15 +282,15 @@ docker compose -f docker-compose.storage.yml up -d
 
 Every variable below has a working development default, and none of them are written to `.env` by the installer.
 
-| Module                           | Variables                                                                                                                                                 |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `search-elasticsearch`           | `ELASTICSEARCH_URL`                                                                                                                                       |
-| `search-meilisearch`             | `MEILISEARCH_URL`, `MEILISEARCH_API_KEY`                                                                                                                  |
-| `stream`                         | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`                                                                                                    |
-| `storage`                        | `STORAGE_URL_SECRET`, `STORAGE_DRIVER`, `STORAGE_S3_BUCKET`, `STORAGE_S3_REGION`, `STORAGE_S3_ENDPOINT`, `STORAGE_S3_ACCESS_KEY`, `STORAGE_S3_SECRET_KEY` |
-| `admin-astro`                    | `PUBLIC_API_URL`                                                                                                                                          |
-| `webhooks`                       | `WEBHOOK_SIGNATURE_TOLERANCE_SECONDS`                                                                                                                     |
-| `graphql`, `mcp`, `live`, `mail`, `impersonation` | none                                                                                                                                    |
+| Module                                            | Variables                                                                                                                                                 |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `search-elasticsearch`                            | `ELASTICSEARCH_URL`                                                                                                                                       |
+| `search-meilisearch`                              | `MEILISEARCH_URL`, `MEILISEARCH_API_KEY`                                                                                                                  |
+| `stream`                                          | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`                                                                                                    |
+| `storage`                                         | `STORAGE_URL_SECRET`, `STORAGE_DRIVER`, `STORAGE_S3_BUCKET`, `STORAGE_S3_REGION`, `STORAGE_S3_ENDPOINT`, `STORAGE_S3_ACCESS_KEY`, `STORAGE_S3_SECRET_KEY` |
+| `admin-astro`                                     | `PUBLIC_API_URL`                                                                                                                                          |
+| `webhooks`                                        | `WEBHOOK_SIGNATURE_TOLERANCE_SECONDS`                                                                                                                     |
+| `graphql`, `mcp`, `live`, `mail`, `impersonation` | none                                                                                                                                                      |
 
 The development defaults are development defaults in the literal sense — the LiveKit dev keys are `devkey`/`secret` and the MinIO credentials are `heryjs`/`heryjs-dev-secret`. You do not have to remember to replace them: under `NODE_ENV=production` every one of those defaults is refused at boot, naming the variable that is still set to it, because a credential printed in a public repository is not a credential and a URL pointing at localhost is not a service. The S3 credentials are checked when the S3 provider is constructed rather than when the module is imported, so a production app on the local driver is never refused a boot over credentials it does not use.
 

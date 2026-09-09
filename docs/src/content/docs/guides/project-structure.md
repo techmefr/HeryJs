@@ -39,7 +39,7 @@ That constraint is what makes the layout predictable enough to generate into, an
 
 Everything a resource needs but does not own itself: the capabilities engine, teams, the tenant-scoped Prisma client, the domain exception hierarchy and its filter, the response envelope, the session guard, the search contract.
 
-The kernel is **never optional**, and that is the property its rules protect. It must not depend on `functional/`, or it would stop being reusable. It must not depend on `modules/`, or it would stop being *removable* — uninstalling a module would break the kernel underneath it.
+The kernel is **never optional**, and that is the property its rules protect. It must not depend on `functional/`, or it would stop being reusable. It must not depend on `modules/`, or it would stop being _removable_ — uninstalling a module would break the kernel underneath it.
 
 ## `modules/` — the optional layer
 
@@ -67,14 +67,14 @@ Generated code belongs to you, which means the generator's guarantees expire the
 
 `pnpm arch:check` runs dependency-cruiser over `src/`:
 
-| Rule | What it forbids |
-|---|---|
-| `no-cross-domain-imports` | one `functional/` domain importing another |
+| Rule                              | What it forbids                                                     |
+| --------------------------------- | ------------------------------------------------------------------- |
+| `no-cross-domain-imports`         | one `functional/` domain importing another                          |
 | `no-infrastructure-to-functional` | `technical/`, `modules/` or `devtools/` importing a business domain |
-| `no-kernel-to-module` | `technical/` importing `modules/` |
-| `no-cross-module-imports` | one module importing another |
-| `no-production-to-devtools` | anything but a spec reaching into `devtools/` |
-| `no-circular` | circular dependencies anywhere |
+| `no-kernel-to-module`             | `technical/` importing `modules/`                                   |
+| `no-cross-module-imports`         | one module importing another                                        |
+| `no-production-to-devtools`       | anything but a spec reaching into `devtools/`                       |
+| `no-circular`                     | circular dependencies anywhere                                      |
 
 Alongside them, each its own CI step:
 
@@ -86,6 +86,6 @@ Alongside them, each its own CI step:
 - `pnpm lint:pagination` — every collection route the framework writes itself (`technical/`, `devtools/`, `modules/`, the module packages) pages through `parsePageQuery`/`okPage`, or declares `@UnpaginatedRoute('<why>')`. A generated resource is out of scope: its blueprint decides.
 - `pnpm lint:dev-guard` — no controller hand-rolls its own production check instead of using `DevOnlyGuard`.
 - `pnpm lint:module-drift` — a module exists twice, authored under `packages/<name>/src/runtime` and installed where its own `module.ts` copies it to, and this repository keeps both. The check compares them file by file and fails when they stop saying the same thing, in either direction: a file edited on one side only, or one that exists here and would never reach a project installing the module. A module's own spec is the one exemption, named in the script.
-- `pnpm lint:coverage` — a meta-check that every top-level directory is reached by *some* linter, so a newly added folder cannot quietly escape all of them. Two roots are allow-listed (`docs`, which ships its own toolchain, and `packages/admin-astro/src/runtime`, the admin template whose copy is only verified for real once `hery install` writes it into `admin/`), plus two file types read by the tools that own them (`.cjs`, `.mjs`) — the script describes that list as recorded debt rather than a licence.
+- `pnpm lint:coverage` — a meta-check that every top-level directory is reached by _some_ linter, so a newly added folder cannot quietly escape all of them. Two roots are allow-listed (`docs`, which ships its own toolchain, and `packages/admin-astro/src/runtime`, the admin template whose copy is only verified for real once `hery install` writes it into `admin/`), plus two file types read by the tools that own them (`.cjs`, `.mjs`) — the script describes that list as recorded debt rather than a licence.
 
 All of this exists so the structure above is still true after months of hand-editing generated code, not just on day one.

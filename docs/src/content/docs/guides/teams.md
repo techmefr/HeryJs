@@ -3,7 +3,7 @@ title: Teams
 description: Team membership as a perimeter resolved from the database on every request, and the team permission preset that reads it.
 ---
 
-A tenant is a boundary: it decides which rows exist at all for a request. A team is a *perimeter* inside that boundary: it decides which of those rows a member may touch. The two are enforced at different layers and neither substitutes for the other.
+A tenant is a boundary: it decides which rows exist at all for a request. A team is a _perimeter_ inside that boundary: it decides which of those rows a member may touch. The two are enforced at different layers and neither substitutes for the other.
 
 Teams are real infrastructure, not a convention you implement per project. There are Prisma models, HTTP routes, a session that resolves memberships, and a `team` permission preset that reads them.
 
@@ -69,7 +69,7 @@ Two behaviours fall out of that single expression. A current team the caller has
 
 ## `subjectOf` — the one place a subject is built
 
-A capability decision is taken against a *subject*: the caller reduced to what a permission preset needs to know.
+A capability decision is taken against a _subject_: the caller reduced to what a permission preset needs to know.
 
 ```ts
 export interface CapabilitySubject {
@@ -122,7 +122,7 @@ permissions:
   delete: own
 ```
 
-The generator treats a resource as team-owned as soon as *any* of its presets says `team`, and only then does the create path have a team to stamp.
+The generator treats a resource as team-owned as soon as _any_ of its presets says `team`, and only then does the create path have a team to stamp.
 
 ## Reading spans every team; writing lands in the current one
 
@@ -177,11 +177,13 @@ if (!subject.currentTeamId) {
 
 The failure mode this design exists to prevent is quiet: a record that returns 403 on its detail route and is handed out in full by the list route. Nothing errors — the endpoint simply answers with data it should have withheld.
 
-It cannot happen here because the collection filter and the per-record decision are derived from the *same* preset. The generated policy declares:
+It cannot happen here because the collection filter and the per-record decision are derived from the _same_ preset. The generated policy declares:
 
 ```ts
-export const canViewDocument: PolicyCheck<DocumentRecordLike> = (subject, record) =>
-  record ? resolveCapability('team', subject, record) : { allowed: false };
+export const canViewDocument: PolicyCheck<DocumentRecordLike> = (
+  subject,
+  record,
+) => (record ? resolveCapability('team', subject, record) : { allowed: false });
 
 // Same preset as canViewDocument: whoever may read one record may ask for the
 // collection, and scopeWhereFor narrows that collection to the very same rows.
@@ -197,12 +199,12 @@ The generated spec asserts it over real HTTP rather than trusting the argument �
 
 Four routes, all behind `SessionGuard` and `CapabilitiesGuard`, each carrying its own capability like any resource route. Every one reads membership from the session rather than from the body.
 
-| Route | What it does |
-|---|---|
-| `GET /teams` | The caller's own teams, paged (`?page=&limit=`). `meta.currentTeamId` carries the current one, alongside the usual `page`/`limit`/`total`/`last_page`. |
-| `POST /teams` | Creates a team, `{ name }`. |
-| `POST /teams/:id/members` | Adds `{ userId }` to the team. |
-| `PATCH /teams/current` | Switches the current team, `{ teamId }`. |
+| Route                     | What it does                                                                                                                                           |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /teams`              | The caller's own teams, paged (`?page=&limit=`). `meta.currentTeamId` carries the current one, alongside the usual `page`/`limit`/`total`/`last_page`. |
+| `POST /teams`             | Creates a team, `{ name }`.                                                                                                                            |
+| `POST /teams/:id/members` | Adds `{ userId }` to the team.                                                                                                                         |
+| `PATCH /teams/current`    | Switches the current team, `{ teamId }`.                                                                                                               |
 
 Both routes that name an existing team check membership first:
 

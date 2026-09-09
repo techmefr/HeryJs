@@ -17,6 +17,7 @@ import { MailModule } from '#modules/mail/mail.module';
 import { MonitoringModule } from '#technical/monitoring/monitoring.module';
 import { NotificationsModule } from '#technical/notifications/notifications.module';
 import { PruneModule } from '#technical/prune/prune.module';
+import { RateLimitModule } from '#technical/rate-limit/rate-limit.module';
 import { SchedulerModule } from '#technical/scheduler/scheduler.module';
 import { SecurityHeadersMiddleware } from '#technical/http/security-headers.middleware';
 import { SeedersModule } from '#technical/seeders/seeders.module';
@@ -80,6 +81,7 @@ import { redactedRequestSerializer } from '#technical/logging/redacted-request-s
     NotificationsModule,
     PipelineModule,
     PruneModule,
+    RateLimitModule,
     SchedulerModule,
     SeedersModule.forRoot([]),
     SignalModule,

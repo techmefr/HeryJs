@@ -1,5 +1,6 @@
 import { Controller, Get, Header, UseGuards } from '@nestjs/common';
 import { SessionGuard } from '#technical/auth/session.guard';
+import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { Capability } from '#technical/capabilities/capability.decorator';
 import { canReadMetrics } from './monitoring.policy';
@@ -17,6 +18,7 @@ export class MetricsController {
   @UnpaginatedRoute(
     'the Prometheus text format, which the scraper reads whole or not at all',
   )
+  @RateLimit('read')
   @Get()
   @Capability(canReadMetrics)
   @Header('Content-Type', 'text/plain')

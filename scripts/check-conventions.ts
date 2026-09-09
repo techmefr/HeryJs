@@ -14,6 +14,7 @@ import { checkModulePatches } from './check-module-patches';
 import { checkModuleValidity } from './check-module-validity';
 import { checkNoInlineDevGuard } from './check-no-inline-dev-guard';
 import { checkPagination } from './check-pagination';
+import { checkRateLimitDecorator } from './check-rate-limit-decorator';
 import { checkRls } from './check-rls';
 import { checkScopeParity } from './check-scope-parity';
 import { checkSubjectConstruction } from './check-subject-construction';
@@ -24,6 +25,7 @@ const CHECKS: Array<{ name: string; run: () => boolean | Promise<boolean> }> = [
   { name: 'scope-parity', run: checkScopeParity },
   { name: 'rls', run: checkRls },
   { name: 'pagination', run: checkPagination },
+  { name: 'rate-limit', run: checkRateLimitDecorator },
   { name: 'module-drift', run: checkModuleDrift },
   { name: 'module-validity', run: checkModuleValidity },
   { name: 'module-patches', run: checkModulePatches },

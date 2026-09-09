@@ -9,14 +9,14 @@ The pages in this section walk through a real one, `BlogPost`, end to end. Each 
 
 ## The six routes
 
-| Method | Path                  | What it does                                                          | Documented in                          |
-| ------ | --------------------- | ---------------------------------------------------------------------- | --------------------------------------- |
-| `POST` | `/blog-posts/search`    | List, with search, sort, filter, pagination — also how one record is read, filtered to its id | [Search](/guides/endpoints/search/), [Details](/guides/endpoints/details/) |
-| `GET`  | `/blog-posts/describe`  | The resource's contract — fields, sorts, filters, selects, includes, aggregates, limits, validation rules | [Details](/guides/endpoints/details/)  |
-| `POST` | `/blog-posts/create`    | Create one or many records in one call                                | [Create](/guides/endpoints/create/)    |
-| `POST` | `/blog-posts/update`    | Update one or many records in one call, including relations           | [Update](/guides/endpoints/update/)    |
-| `POST` | `/blog-posts/delete`    | Soft-delete (or hard-delete with `mode: "hard"`) one or many records  | [Delete](/guides/endpoints/delete/)    |
-| `POST` | `/blog-posts/restore`   | Undo a soft-delete for one or many records                            | [Restore](/guides/endpoints/restore/)  |
+| Method | Path                   | What it does                                                                                              | Documented in                                                              |
+| ------ | ---------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `POST` | `/blog-posts/search`   | List, with search, sort, filter, pagination — also how one record is read, filtered to its id             | [Search](/guides/endpoints/search/), [Details](/guides/endpoints/details/) |
+| `GET`  | `/blog-posts/describe` | The resource's contract — fields, sorts, filters, selects, includes, aggregates, limits, validation rules | [Details](/guides/endpoints/details/)                                      |
+| `POST` | `/blog-posts/create`   | Create one or many records in one call                                                                    | [Create](/guides/endpoints/create/)                                        |
+| `POST` | `/blog-posts/update`   | Update one or many records in one call, including relations                                               | [Update](/guides/endpoints/update/)                                        |
+| `POST` | `/blog-posts/delete`   | Soft-delete (or hard-delete with `mode: "hard"`) one or many records                                      | [Delete](/guides/endpoints/delete/)                                        |
+| `POST` | `/blog-posts/restore`  | Undo a soft-delete for one or many records                                                                | [Restore](/guides/endpoints/restore/)                                      |
 
 Every mutating route takes an array — `data` for create/update, `ids` for delete/restore — even for a single record, and answers with one result per entry, each carrying its own `status`. One entry failing never blocks the others in the same request.
 
@@ -60,17 +60,17 @@ A fresh project ships `origins: ['*']`, so a front end on another port works wit
 
 A page size is a product decision, so a blueprint declares it. The size of the request itself is not, and every one of these is refused with `query.invalid` rather than planned by the database:
 
-| In a request                                            | At most  |
-| ------------------------------------------------------- | -------- |
-| `filters` (per level, three levels deep at most)         | 50       |
-| values in one `in` / `not in`                            | 500      |
-| `sorts`                                                  | 10       |
-| `selects`                                                | 100      |
-| `includes`, `aggregates`                                 | 20 each  |
-| `limit` on an include                                    | 1000     |
-| `page`                                                   | 100 000  |
-| `capabilities`                                           | 50       |
-| records in one `create`/`update`/`delete`/`restore` call  | 100      |
+| In a request                                             | At most |
+| -------------------------------------------------------- | ------- |
+| `filters` (per level, three levels deep at most)         | 50      |
+| values in one `in` / `not in`                            | 500     |
+| `sorts`                                                  | 10      |
+| `selects`                                                | 100     |
+| `includes`, `aggregates`                                 | 20 each |
+| `limit` on an include                                    | 1000    |
+| `page`                                                   | 100 000 |
+| `capabilities`                                           | 50      |
+| records in one `create`/`update`/`delete`/`restore` call | 100     |
 
 The batch cap is `MAX_BATCH_ENTRIES` in `technical/http/batch.ts`, and the generated DTO is your file — a resource that genuinely needs larger batches raises it there, on that resource, deliberately.
 

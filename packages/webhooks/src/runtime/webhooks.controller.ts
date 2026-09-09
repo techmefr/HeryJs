@@ -8,6 +8,10 @@ import {
 } from '@nestjs/common';
 import { z } from 'zod';
 import { Capability } from '#kernel/capabilities/capability.decorator';
+import {
+  RateLimit,
+  UnthrottledRoute,
+} from '#kernel/rate-limit/rate-limit.decorator';
 import { CapabilitiesGuard } from '#kernel/capabilities/capabilities.guard';
 import { PublicRoute } from '#kernel/capabilities/public-route.decorator';
 import { ZodValidationPipe } from '#kernel/validation/zod-validation.pipe';
@@ -27,6 +31,7 @@ const createEndpointSchema = z.object({
 export class WebhooksController {
   constructor(private readonly webhooks: WebhooksService) {}
 
+  @RateLimit('write')
   @Post('endpoints')
   @UseGuards(SessionGuard, CapabilitiesGuard)
   @Capability(canManageWebhooks)
@@ -43,6 +48,9 @@ export class WebhooksController {
     return ok(endpoint, ['Webhook endpoint created.']);
   }
 
+  @UnthrottledRoute(
+    'signed by its sender: the HMAC signature is the credential, not a request budget',
+  )
   @Post(':endpointId')
   @HttpCode(202)
   @UseGuards(WebhookSignatureGuard)

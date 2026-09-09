@@ -13,7 +13,7 @@ Both raise the same question, and it is the only one that really matters: **a se
 
 So neither module reuses the guard. Both reuse the **policy functions** instead — the same exported `canViewBlogPost`, `canUpdateBlogPost`, `canDeleteBlogPost` that the REST controller declares. That is precisely why those are plain exported functions rather than methods on an injected class: a plain function can be called from a guard, a resolver, a socket handler or a tool registrar without any of them needing to be a route.
 
-The generated resource remains the single source of truth for its rules. What changes between protocols is only *who calls them*.
+The generated resource remains the single source of truth for its rules. What changes between protocols is only _who calls them_.
 
 ## MCP — the write gateway
 
@@ -24,13 +24,13 @@ pnpm hery generate BlogPost --mcp
 
 Mounted at `/mcp` behind `SessionGuard`, over Streamable HTTP in stateless mode. Each generated resource contributes five tools:
 
-| Tool | Input | Effect |
-|---|---|---|
-| `search_blog-post` | — | reads, scoped to the caller |
-| `get_blog-post` | `{ id }` | reads one |
-| `create_blog-post` | the resource's create schema | creates |
-| `update_blog-post` | `{ id, …update schema }` | updates |
-| `remove_blog-post` | `{ id }` | soft-deletes |
+| Tool               | Input                        | Effect                      |
+| ------------------ | ---------------------------- | --------------------------- |
+| `search_blog-post` | —                            | reads, scoped to the caller |
+| `get_blog-post`    | `{ id }`                     | reads one                   |
+| `create_blog-post` | the resource's create schema | creates                     |
+| `update_blog-post` | `{ id, …update schema }`     | updates                     |
+| `remove_blog-post` | `{ id }`                     | soft-deletes                |
 
 `remove_*` is a soft delete. There is no hard-delete tool, which means an agent cannot destroy a row — the worst it can do is move it to the bin that `{ onlyTrashed: true }` and the restore route already know how to reach.
 
@@ -59,7 +59,7 @@ if (!decision.allowed) {
 
 Input is validated by the resource's own Zod schemas, and results pass through the resource's view function, so a field marked `hidden` in the blueprint stays hidden from an agent exactly as it does from a browser. Read tools load through the visible-record loader, so a soft-deleted row is not resurfaced as if it still existed.
 
-One behavioural note for client authors: a denial comes back as tool *content* (`{ error: 'capability denied' }`), not as a protocol error or an HTTP 403. An agent sees a refusal it can reason about rather than a transport failure.
+One behavioural note for client authors: a denial comes back as tool _content_ (`{ error: 'capability denied' }`), not as a protocol error or an HTTP 403. An agent sees a refusal it can reason about rather than a transport failure.
 
 ### Why `/mcp` sits behind a session, not native MCP auth
 
@@ -75,13 +75,13 @@ This is a considered decision, not an oversight, and it is not permanent: the tr
 
 `hery mcp:serve` and the `mcp` module are easy to confuse. They share almost nothing.
 
-| | `hery mcp:serve` | `hery install mcp` |
-|---|---|---|
-| Runs as | a standalone CLI process over stdio | a route inside your app |
-| Auth | none | session, `SessionGuard` |
-| Reads | source files on disk | the live database |
-| Tools | `list_resources`, `describe_resource` | `search_*` … `remove_*` |
-| Mutates | nothing | yes |
+|         | `hery mcp:serve`                      | `hery install mcp`      |
+| ------- | ------------------------------------- | ----------------------- |
+| Runs as | a standalone CLI process over stdio   | a route inside your app |
+| Auth    | none                                  | session, `SessionGuard` |
+| Reads   | source files on disk                  | the live database       |
+| Tools   | `list_resources`, `describe_resource` | `search_*` … `remove_*` |
+| Mutates | nothing                               | yes                     |
 
 `mcp:serve` is for an editor or agent that wants to know **what exists** in the codebase — it parses controllers and the Prisma schema, needs no running app and no credentials, and can only read. The module is for an agent that wants to **use** the application, with a real session and real capability checks. Install the module when you want the second thing; you do not need it for the first.
 

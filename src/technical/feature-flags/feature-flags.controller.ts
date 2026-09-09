@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Capability } from '#technical/capabilities/capability.decorator';
+import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { SessionGuard } from '#technical/auth/session.guard';
 import { ok } from '#technical/http/envelope';
@@ -23,6 +24,7 @@ import type { SetFeatureFlagDto } from './set-feature-flag.dto';
 export class FeatureFlagsController {
   constructor(private readonly featureFlags: FeatureFlagsService) {}
 
+  @RateLimit('read')
   @Get()
   @Capability(canManageFeatureFlags)
   async list(@Query() query: unknown) {
@@ -31,6 +33,7 @@ export class FeatureFlagsController {
     return okPage(await this.featureFlags.listAll(page), page);
   }
 
+  @RateLimit('write')
   @Patch(':key')
   @Capability(canManageFeatureFlags)
   async set(

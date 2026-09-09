@@ -7,6 +7,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Capability } from '#kernel/capabilities/capability.decorator';
+import { RateLimit } from '#kernel/rate-limit/rate-limit.decorator';
 import { CapabilitiesGuard } from '#kernel/capabilities/capabilities.guard';
 import { MissingSessionException } from '#kernel/errors/invalid-session.exception';
 import { ok } from '#kernel/http/envelope';
@@ -37,6 +38,7 @@ function bearerToken(req: RequestWithUser): string {
 export class ImpersonationController {
   constructor(private readonly impersonation: ImpersonationService) {}
 
+  @RateLimit('write')
   @Post(':userId')
   @Capability(canImpersonate)
   async start(@Req() req: RequestWithUser, @Param('userId') userId: string) {
@@ -49,6 +51,7 @@ export class ImpersonationController {
     return ok(session, ['Impersonation session created.']);
   }
 
+  @RateLimit('write')
   @Delete()
   @Capability(canStopImpersonation)
   async stop(@Req() req: RequestWithUser) {
