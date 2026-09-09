@@ -45,6 +45,8 @@ Twelve packages, versioned together:
 - Multi-tenancy resolved once per request and enforced underneath permissions,
   with row-level security available per model.
 - Teams with the `own` / `team` / `all` / `none` presets.
+- A tenant-namespaced cache on the same Valkey the kernel already depends on,
+  exported globally with no module to install.
 - An architecture linter that fails CI on a domain missing a concern, plus
   eleven convention checks covering capabilities, pagination, RLS, module
   drift and patched kernel files.
