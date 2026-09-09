@@ -7,6 +7,10 @@ export interface HeryConfigPruneRule {
   lock?: boolean;
 }
 
+export interface HeryConfigCache {
+  defaultTtlSeconds: number;
+}
+
 /**
  * `satisfies HeryConfig` at the config file's own export is the entire
  * contract mechanism: an unknown top-level key or a search engine missing
@@ -24,4 +28,5 @@ export interface HeryConfig {
     default: HeryConfigPruneRule;
     overrides?: Record<string, Partial<HeryConfigPruneRule>>;
   };
+  cache?: HeryConfigCache;
 }

@@ -10,4 +10,7 @@ export default {
   prune: {
     default: { retentionDays: 30 },
   },
+  cache: {
+    defaultTtlSeconds: 300,
+  },
 } satisfies HeryConfig;
