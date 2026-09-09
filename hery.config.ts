@@ -13,4 +13,8 @@ export default {
   cache: {
     defaultTtlSeconds: 300,
   },
+  i18n: {
+    supportedLocales: ['en', 'fr'],
+    defaultLocale: 'en',
+  },
 } satisfies HeryConfig;

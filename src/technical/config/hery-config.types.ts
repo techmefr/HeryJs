@@ -20,6 +20,11 @@ export interface HeryConfigRateLimit {
   buckets: Record<string, HeryConfigRateLimitBucket>;
 }
 
+export interface HeryConfigI18n {
+  supportedLocales: string[];
+  defaultLocale: string;
+}
+
 /**
  * `satisfies HeryConfig` at the config file's own export is the entire
  * contract mechanism: an unknown top-level key or a search engine missing
@@ -39,4 +44,5 @@ export interface HeryConfig {
   };
   cache?: HeryConfigCache;
   rateLimit?: HeryConfigRateLimit;
+  i18n?: HeryConfigI18n;
 }

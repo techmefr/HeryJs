@@ -7,6 +7,8 @@ export class RecordNotFoundException extends DomainException {
       HttpStatus.NOT_FOUND,
       `${resource}.notFound`,
       `${resource} not found.`,
+      { resource },
+      'record.notFound',
     );
   }
 }

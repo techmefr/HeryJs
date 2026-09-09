@@ -8,6 +8,7 @@ export class InvalidQueryException extends DomainException {
       'query.invalid',
       `Invalid value for "${param}". Allowed: ${allowed.join(', ')}.`,
       { param, allowed },
+      'query.invalid.param',
     );
   }
 }
@@ -31,6 +32,7 @@ export class InvalidQueryValueException extends DomainException {
       'query.invalid',
       'One of the values in this request does not match the type of the field it is used on. Check each filter, aggregate and mutation value against the types the describe endpoint reports.',
       { param: 'value', allowed: [] },
+      'query.invalid.value',
     );
   }
 }
@@ -48,6 +50,7 @@ export class PaginationNotOfferedException extends DomainException {
       'query.invalid',
       `"${param}" is not accepted: this resource declares no pagination, so its search route returns every match. Its describe endpoint reports "paginated": false.`,
       { param, allowed: [] },
+      'query.invalid.pagination',
     );
   }
 }

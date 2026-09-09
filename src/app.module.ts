@@ -27,6 +27,7 @@ import { WebhooksModule } from '#modules/webhooks/webhooks.module';
 import { InspectorMiddleware } from '#devtools/inspector/inspector.middleware';
 import { PipelineMiddleware } from '#devtools/pipeline/pipeline.middleware';
 import { SignalModule } from '#technical/signal/signal.module';
+import { LocaleMiddleware } from '#technical/i18n/locale.middleware';
 import { TenantMiddleware } from '#technical/tenancy/tenant.middleware';
 import { DomainExceptionFilter } from '#technical/errors/domain-exception.filter';
 import { redactedRequestSerializer } from '#technical/logging/redacted-request-serializer';
@@ -103,6 +104,7 @@ export class AppModule implements NestModule {
     // downstream (tenant resolution included) can attach a step to the same
     // request-scoped context.
     consumer.apply(SecurityHeadersMiddleware).forRoutes('*');
+    consumer.apply(LocaleMiddleware).forRoutes('*');
     consumer.apply(PipelineMiddleware).forRoutes('*');
     consumer.apply(TenantMiddleware).forRoutes('*');
     consumer.apply(InspectorMiddleware).forRoutes('*');

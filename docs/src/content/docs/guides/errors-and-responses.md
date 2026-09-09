@@ -65,6 +65,10 @@ The same id prefixes the logged line — `logger.error` with the full stack, whi
 
 One more branch: a request whose `Accept` header asks for HTML gets an HTML error page instead of JSON. Hitting a wrong URL in a browser produces something readable rather than a wall of JSON, without a client that asked for JSON ever receiving markup.
 
+## Message translation
+
+`key` never changes; `message` can, per request, when a project declares more than one locale. See [Internationalization](/guides/i18n/) for how a locale is resolved and how to add a translation.
+
 ## The success envelope
 
 Successful responses share the same shape on the way out, and `ok()` is overloaded so the common cases stay short:

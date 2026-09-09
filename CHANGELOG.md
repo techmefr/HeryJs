@@ -49,6 +49,10 @@ Twelve packages, versioned together:
   exported globally with no module to install.
 - A rate limit on by default across every kernel and module route, with
   `read` / `write` / `auth` buckets a project can retune but never remove.
+- `message` on the error envelope translates per request from `Accept-Language`
+  when `hery.config.ts` declares more than one locale; `key` never changes.
+  `capability.forbidden` is excluded on purpose, and a `key` with no catalogue
+  entry for the caller's locale falls back to its hardcoded English message.
 - An architecture linter that fails CI on a domain missing a concern, plus
   fourteen convention checks covering capabilities, pagination, RLS, rate
   limiting, module drift and patched kernel files.
