@@ -11,6 +11,14 @@ import { KERNEL_VERSION } from './kernel-version';
  */
 const SCAFFOLD_DEPENDENCIES = ['@nestjs/common', 'typescript'];
 
+/**
+ * The runtime a module ships lands inside the developer's application and is
+ * instantiated by their Nest container, so NestJS is theirs to provide. A
+ * bundled copy would be a second set of decorators their container cannot
+ * resolve.
+ */
+const NEST_PEER_RANGE = '^12.0.0';
+
 export function scaffoldProblem(
   name: string,
   packagesDir: string,
@@ -53,19 +61,50 @@ function dependencyRanges(repoRoot: string): Record<string, string> {
 }
 
 /**
- * The `heryjs.module` marker is what the community channel discovers, so it is
- * written from the start: the package a third party installs from npm is then
- * the same package as the one authored here, with nothing to remember at
- * publish time.
+ * `workspace:*` inside this repository, where the package is the workspace
+ * root, and the kernel range anywhere else, where it is a release from npm.
+ * The build resolves the contract through the package rather than through a
+ * path, which is what makes a module's own build prove the published
+ * declaration is usable -- the same way a third party's does.
+ */
+function contractRange(repoRoot: string): string {
+  const manifestPath = path.join(repoRoot, 'package.json');
+  const name = existsSync(manifestPath)
+    ? (JSON.parse(readFileSync(manifestPath, 'utf8')) as { name?: string }).name
+    : undefined;
+
+  return name === 'heryjs' ? 'workspace:*' : `^${KERNEL_VERSION}`;
+}
+
+/**
+ * The whole published contract, written from the start rather than left for
+ * publish day: the `heryjs.module` marker the community channel discovers,
+ * a `main` at compiled JavaScript because the CLI requires the entry under
+ * ts-node and ts-node ignores `node_modules`, and a `files` shipping `dist`
+ * for the entry and `src/runtime` as the sources `copyRuntime` copies. A
+ * scaffold that left those out produced a package that only ever worked in
+ * the directory it was written in.
  */
 function manifest(name: string, repoRoot: string): string {
   return `${JSON.stringify(
     {
       name,
-      private: true,
       version: '0.0.1',
+      description: 'One sentence, which is the line hery module:list prints.',
+      license: 'MIT',
       heryjs: { module: true },
-      devDependencies: dependencyRanges(repoRoot),
+      main: 'dist/module.js',
+      types: 'dist/module.d.ts',
+      files: ['dist', 'src/runtime'],
+      scripts: {
+        build: 'tsc -p tsconfig.build.json',
+        prepack: 'pnpm run build',
+      },
+      peerDependencies: { '@nestjs/common': NEST_PEER_RANGE },
+      devDependencies: {
+        ...dependencyRanges(repoRoot),
+        heryjs: contractRange(repoRoot),
+      },
     },
     null,
     2,
@@ -82,7 +121,8 @@ const TSCONFIG = `{
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "paths": {
-      "#kernel/*": ["../../src/technical/*"]
+      "#kernel/*": ["../../src/technical/*"],
+      "heryjs": ["../../cli/module-contract.ts"]
     },
     "noEmit": true
   },
@@ -91,12 +131,31 @@ const TSCONFIG = `{
 }
 `;
 
+/**
+ * Emitting is a second configuration rather than a flag on the first, because
+ * the two resolve the contract differently on purpose. This one goes through
+ * the package, the way a third party's build does, so it proves the published
+ * declaration is usable; the authoring config above goes through a path, so a
+ * typecheck and a lint need no build first and work the same inside a
+ * generated project, which has `cli/` but no `heryjs` package.
+ */
+const TSCONFIG_BUILD = `{
+  "extends": "../../tsconfig.module.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  "include": ["src/module.ts"],
+  "exclude": ["node_modules", "dist"]
+}
+`;
+
 function definition(name: string): string {
   const pascal = kebabToPascalCase(name);
 
-  return `import { defineModule } from '../../../cli/lib/module-definition';
+  return `import type { ModuleDefinition } from 'heryjs';
 
-export default defineModule({
+export default {
   name: '${name}',
   description: 'One sentence, which is the line hery module:list prints.',
   meta: { compatibility: '>=${KERNEL_VERSION}' },
@@ -105,7 +164,32 @@ export default defineModule({
 
     context.nextSteps(['Import ${pascal}Module into src/app.module.ts']);
   },
-});
+} satisfies ModuleDefinition;
+`;
+}
+
+/**
+ * npm renders this as the package's whole page, so a module published without
+ * one arrives blank. Scaffolded with the two things a reader needs first --
+ * the command that installs it and where its runtime lands.
+ */
+function readme(name: string): string {
+  return `# ${name}
+
+One sentence about what this module adds. The same sentence belongs in
+\`package.json\` and in the definition's \`description\`, which is the line
+\`hery module:list\` prints.
+
+## Install
+
+\`\`\`bash
+pnpm add ${name}
+pnpm hery install ${name}
+\`\`\`
+
+The install copies \`src/runtime/\` into \`src/modules/${name}\` and prints what is
+left to wire up. From then on the code belongs to the project: it is never
+resynchronised, and a new version of this package does not touch what it wrote.
 `;
 }
 
@@ -175,6 +259,8 @@ export function scaffoldModule(
   const files: Array<[string, string]> = [
     [path.join(packageDir, 'package.json'), manifest(name, repoRoot)],
     [path.join(packageDir, 'tsconfig.json'), TSCONFIG],
+    [path.join(packageDir, 'tsconfig.build.json'), TSCONFIG_BUILD],
+    [path.join(packageDir, 'README.md'), readme(name)],
     [path.join(packageDir, 'src', 'module.ts'), definition(name)],
     [path.join(runtimeDir, `${name}.service.ts`), service(name)],
     [path.join(runtimeDir, `${name}.module.ts`), nestModule(name)],

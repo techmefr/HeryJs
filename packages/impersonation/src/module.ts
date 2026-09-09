@@ -1,5 +1,4 @@
-import pc from 'picocolors';
-import { defineModule } from '../../../cli/lib/module-definition';
+import type { ModuleDefinition } from 'heryjs';
 
 const ENV_SCHEMA_FILE = 'src/technical/config/env-schema.ts';
 const BETTER_AUTH_INSTANCE_FILE = 'src/technical/auth/better-auth.instance.ts';
@@ -10,7 +9,7 @@ const CAPABILITIES_TYPES_FILE =
   'src/technical/capabilities/capabilities.types.ts';
 const CAPABILITIES_SUBJECT_FILE = 'src/technical/capabilities/subject.ts';
 
-export default defineModule({
+export default {
   name: 'impersonation',
   description:
     "Let an admin act as another user for support, without ever leaving the tenant boundary or the audit trail: a bearer token for the target user, minted from the admin's own, that never touches the admin's original session.",
@@ -166,9 +165,9 @@ export default defineModule({
 
     context.nextSteps([
       'Run "pnpm hery migrate --name add_impersonation"',
-      `Import ${pc.bold('ImpersonationModule')} into src/app.module.ts`,
+      `Import "ImpersonationModule" into src/app.module.ts`,
       "There is no role-management endpoint, by design (see Teams): promote a user to admin by hand, e.g. UPDATE \"User\" SET role = 'admin' WHERE email = '...'",
       'POST /impersonation/:userId as an admin to get a bearer token for the target; DELETE /impersonation with that token to end it and go back to using your own',
     ]);
   },
-});
+} satisfies ModuleDefinition;

@@ -29,6 +29,13 @@
   "bin": {
     "heryjs": "dist/scaffold/cli/heryjs.js"
   },
+  "types": "dist/scaffold/cli/module-contract.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/scaffold/cli/module-contract.d.ts"
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist/scaffold",
     "cli",
@@ -73,6 +80,7 @@
     "db:generate": "prisma generate",
     "build": "nest build",
     "build:scaffold": "tsc -p tsconfig.scaffold.json",
+    "build:modules": "pnpm run build:scaffold && pnpm --filter \"./packages/*\" run build",
     "prepack": "pnpm run build:scaffold",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start -b swc",

@@ -1,13 +1,11 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "outDir": "./dist/scaffold",
     "declaration": true,
     "sourceMap": false,
     "incremental": false,
     "removeComments": false,
+    "noEmit": false,
     "types": ["node"]
-  },
-  "include": ["cli/heryjs.ts", "cli/module-contract.ts"],
-  "exclude": ["node_modules", "dist"]
+  }
 }

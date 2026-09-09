@@ -1,9 +1,43 @@
 {
-  "name": "stream",
-  "private": true,
-  "version": "0.0.1",
+  "name": "@heryjs/stream",
+  "version": "0.1.0",
+  "description": "Add one-to-many audio/video streaming via LiveKit (SFU). Use \"hery generate <Name> --stream\" to add publish/viewer token endpoints to a resource.",
+  "author": "Gaetan Compigni",
+  "license": "MIT",
+  "homepage": "https://techmefr.github.io/HeryJs/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/techmefr/HeryJs.git",
+    "directory": "packages/stream"
+  },
+  "bugs": {
+    "url": "https://github.com/techmefr/HeryJs/issues"
+  },
+  "keywords": [
+    "heryjs",
+    "heryjs-module",
+    "nestjs"
+  ],
+  "heryjs": {
+    "module": true
+  },
+  "main": "dist/module.js",
+  "types": "dist/module.d.ts",
+  "files": [
+    "dist",
+    "src/runtime",
+    "docker-compose.stream.yml"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "pnpm --filter heryjs run build:scaffold && pnpm run build"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^12.0.0"
+  },
   "devDependencies": {
     "@nestjs/common": "^12.0.1",
+    "heryjs": "workspace:*",
     "livekit-server-sdk": "^2.18.0",
     "picocolors": "^1.1.1",
     "typescript": "^6.0.3"

@@ -1,5 +1,4 @@
-import pc from 'picocolors';
-import { defineModule } from '../../../cli/lib/module-definition';
+import type { ModuleDefinition } from 'heryjs';
 
 const MAIL_LOG_MODEL = `
 model MailLog {
@@ -16,7 +15,7 @@ model MailLog {
 }
 `;
 
-export default defineModule({
+export default {
   name: 'mail',
   description:
     'Add outgoing mail: a MailLog resource, string templates, and a BullMQ job that actually sends. Ships with a console-logging provider by default -- swap MAIL_PROVIDER for a real one.',
@@ -28,8 +27,8 @@ export default defineModule({
 
     context.nextSteps([
       'Run "pnpm hery migrate --name add_mail_log"',
-      `Import ${pc.bold('MailModule')} into src/app.module.ts`,
-      `Inject ${pc.bold('MailService')} and call ${pc.bold('.queue(to, templateName, data)')} from any resource that needs to send mail`,
+      `Import "MailModule" into src/app.module.ts`,
+      `Inject "MailService" and call ".queue(to, templateName, data)" from any resource that needs to send mail`,
     ]);
   },
-});
+} satisfies ModuleDefinition;

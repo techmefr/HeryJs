@@ -1,9 +1,43 @@
 {
-  "name": "search-meilisearch",
-  "private": true,
-  "version": "0.0.1",
+  "name": "@heryjs/search-meilisearch",
+  "version": "0.1.0",
+  "description": "Swap free-text search from Prisma contains() to Meilisearch (docker service, driver, DI wiring)",
+  "author": "Gaetan Compigni",
+  "license": "MIT",
+  "homepage": "https://techmefr.github.io/HeryJs/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/techmefr/HeryJs.git",
+    "directory": "packages/search-meilisearch"
+  },
+  "bugs": {
+    "url": "https://github.com/techmefr/HeryJs/issues"
+  },
+  "keywords": [
+    "heryjs",
+    "heryjs-module",
+    "nestjs"
+  ],
+  "heryjs": {
+    "module": true
+  },
+  "main": "dist/module.js",
+  "types": "dist/module.d.ts",
+  "files": [
+    "dist",
+    "src/runtime",
+    "docker-compose.search-meilisearch.yml"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "pnpm --filter heryjs run build:scaffold && pnpm run build"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^12.0.0"
+  },
   "devDependencies": {
     "@nestjs/common": "^12.0.1",
+    "heryjs": "workspace:*",
     "meilisearch": "^0.60.0",
     "picocolors": "^1.1.1",
     "typescript": "^6.0.3"

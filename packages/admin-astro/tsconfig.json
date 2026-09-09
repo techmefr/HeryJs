@@ -1,9 +1,21 @@
 {
   "extends": "astro/tsconfigs/strict",
   "compilerOptions": {
-    "types": ["astro/client"],
-    "noEmit": true
+    "types": [
+      "astro/client"
+    ],
+    "noEmit": true,
+    "paths": {
+      "heryjs": [
+        "../../cli/module-contract.ts"
+      ]
+    }
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "src/runtime/**/*.spec.ts"]
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "node_modules",
+    "src/runtime/**/*.spec.ts"
+  ]
 }

@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
-import { defineModule, definitionProblems } from './module-definition';
+import { definitionProblems } from './module-definition';
 import type { LoadedModule } from './module-definition';
 import { createInstallContext } from './module-context';
 
@@ -15,10 +15,6 @@ const VALID = {
 describe('what makes a module definition', () => {
   it('accepts a complete definition', () => {
     expect(definitionProblems(VALID)).toEqual([]);
-  });
-
-  it('keeps the definition it is handed', () => {
-    expect(defineModule(VALID)).toBe(VALID);
   });
 
   // The whole point of reading an export instead of a side effect: a package

@@ -1,7 +1,6 @@
-import pc from 'picocolors';
-import { defineModule } from '../../../cli/lib/module-definition';
+import type { ModuleDefinition } from 'heryjs';
 
-export default defineModule({
+export default {
   name: 'stream',
   description:
     'Add one-to-many audio/video streaming via LiveKit (SFU). Use "hery generate <Name> --stream" to add publish/viewer token endpoints to a resource.',
@@ -14,7 +13,7 @@ export default defineModule({
     context.nextSteps([
       'Run "docker compose -f docker-compose.stream.yml up -d" (dev mode, key "devkey"/"secret")',
       'Run "hery generate <Name> --stream" to add publish/viewer token endpoints to a resource',
-      `Import ${pc.bold('StreamModule')} and add ${pc.bold('<Name>StreamController')} to <name>.module.ts`,
+      `Import "StreamModule" and add "<Name>StreamController" to <name>.module.ts`,
     ]);
   },
-});
+} satisfies ModuleDefinition;

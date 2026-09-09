@@ -1,7 +1,6 @@
-import pc from 'picocolors';
-import { defineModule } from '../../../cli/lib/module-definition';
+import type { ModuleDefinition } from 'heryjs';
 
-export default defineModule({
+export default {
   name: 'graphql',
   description:
     'Add a GraphQL endpoint (Apollo driver) with a session guard mirroring the REST auth flow. Use "hery generate <Name> --graphql" to add a resolver to a resource.',
@@ -18,8 +17,8 @@ export default defineModule({
     context.copyRuntime();
 
     context.nextSteps([
-      `Import ${pc.bold('GraphqlModule')} into src/app.module.ts`,
+      `Import "GraphqlModule" into src/app.module.ts`,
       'Run "hery generate <Name> --graphql" to add a resolver to a resource',
     ]);
   },
-});
+} satisfies ModuleDefinition;

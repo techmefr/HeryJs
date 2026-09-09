@@ -1,5 +1,4 @@
-import pc from 'picocolors';
-import { defineModule } from '../../../cli/lib/module-definition';
+import type { ModuleDefinition } from 'heryjs';
 
 const WEBHOOK_MODELS = `
 // A webhook secret is stored in plaintext, unlike a password or an API key:
@@ -34,7 +33,7 @@ model WebhookEvent {
 }
 `;
 
-export default defineModule({
+export default {
   name: 'webhooks',
   description:
     'Receive inbound webhooks with HMAC-SHA256 signature verification (constant-time, timestamp-tolerant against replay) and run each accepted payload through Event, Job, Notification, Audit and Signal.',
@@ -46,9 +45,9 @@ export default defineModule({
 
     context.nextSteps([
       'Run "pnpm hery migrate --name add_webhooks"',
-      `Import ${pc.bold('WebhooksModule')} into src/app.module.ts`,
+      `Import "WebhooksModule" into src/app.module.ts`,
       "POST /webhooks/endpoints as an admin to mint an endpoint and its secret, then have the sender sign each request as HMAC-SHA256(secret, timestamp + '.' + rawBody) in the x-webhook-signature and x-webhook-timestamp headers",
       'Tune the replay window with WEBHOOK_SIGNATURE_TOLERANCE_SECONDS (default 300)',
     ]);
   },
-});
+} satisfies ModuleDefinition;
