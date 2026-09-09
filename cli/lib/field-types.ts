@@ -1,10 +1,14 @@
 import type { BlueprintField } from './blueprint';
 
+// A `file` field never carries the bytes themselves -- it stores the key an
+// upload to POST /storage/upload already returned, the same way every other
+// scalar field stores a value the caller already has in hand.
 const ZOD_TYPES: Record<BlueprintField['type'], string> = {
   string: 'z.string().min(1).max(255)',
   int: 'z.number().int()',
   boolean: 'z.boolean()',
   datetime: 'z.coerce.date()',
+  file: 'z.string().min(1).max(255)',
 };
 
 const PRISMA_TYPES: Record<BlueprintField['type'], string> = {
@@ -12,6 +16,7 @@ const PRISMA_TYPES: Record<BlueprintField['type'], string> = {
   int: 'Int',
   boolean: 'Boolean',
   datetime: 'DateTime',
+  file: 'String',
 };
 
 export function zodTypeFor(field: BlueprintField): string {
@@ -39,6 +44,8 @@ export function sampleValueFor(field: BlueprintField): string {
       return 'true';
     case 'datetime':
       return 'new Date().toISOString()';
+    case 'file':
+      return `'${field.name}-key.png'`;
   }
 }
 
@@ -47,6 +54,7 @@ const GRAPHQL_TYPES: Record<BlueprintField['type'], string> = {
   int: 'Int',
   boolean: 'Boolean',
   datetime: 'GraphQLISODateTime',
+  file: 'String',
 };
 
 export function graphqlTypeFor(field: BlueprintField): string {
@@ -58,6 +66,7 @@ const TS_TYPES: Record<BlueprintField['type'], string> = {
   int: 'number',
   boolean: 'boolean',
   datetime: 'Date',
+  file: 'string',
 };
 
 export function tsTypeFor(field: BlueprintField): string {
@@ -69,6 +78,7 @@ const FAKER_VALUES: Record<BlueprintField['type'], string> = {
   int: 'faker.number.int({ min: 1, max: 1000 })',
   boolean: 'faker.datatype.boolean()',
   datetime: 'faker.date.recent()',
+  file: '`${faker.string.uuid()}.png`',
 };
 
 export function fakerValueFor(field: BlueprintField): string {

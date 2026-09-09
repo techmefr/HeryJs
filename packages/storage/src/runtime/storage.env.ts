@@ -3,6 +3,14 @@ import { devOnlyDefault, parseModuleEnv } from '#kernel/config/module-env';
 
 export const storageEnv = parseModuleEnv('storage', {
   STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
+  STORAGE_MAX_UPLOAD_BYTES: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(10 * 1024 * 1024),
+  // A comma-separated allowlist, left unset to keep the built-in default
+  // (images and PDFs) rather than requiring every project to repeat it.
+  STORAGE_ALLOWED_CONTENT_TYPES: z.string().min(1).optional(),
 });
 
 /**

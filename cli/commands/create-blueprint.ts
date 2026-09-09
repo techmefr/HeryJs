@@ -47,6 +47,10 @@ async function promptFields(): Promise<BlueprintField[]> {
         { title: 'int', value: 'int' },
         { title: 'boolean', value: 'boolean' },
         { title: 'datetime', value: 'datetime' },
+        {
+          title: 'file (a storage key from POST /storage/upload)',
+          value: 'file',
+        },
       ],
     })) as { type?: BlueprintField['type'] };
 

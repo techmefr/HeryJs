@@ -41,6 +41,10 @@ Every route carries `@Capability(...)` or `@PublicRoute('<why>')` — the second
 
 Capabilities are computed in memory on objects already loaded, with conditions restricted to fields already selected. There is no per-row query, so no permission check degrades into an N+1 that someone later "optimises" by removing it.
 
+## Rate limiting is on by default
+
+Every kernel and module route carries `@RateLimit(<bucket>)` or `@UnthrottledRoute('<why>')`, the same way every route carries a capability decision — a route with neither fails CI. Three buckets (`read`, `write`, `auth`) cap requests per tenant and identity, tight enough on `auth` to blunt credential stuffing without a project having to configure anything. See [Rate limiting](/guides/rate-limiting/).
+
 ## Sessions and API keys
 
 Interactive login is [better-auth](https://better-auth.com) over Prisma, with email and password enabled and a bearer plugin.
@@ -66,7 +70,6 @@ Audited writes are appended with the acting user, so "who changed this" is answe
 
 Naming these is part of the model:
 
-- **No rate limiting.** Nothing throttles login attempts, search calls or anything else. Put it in front of the app or add it yourself; do not assume a generated project has it.
 - **No secret management.** Configuration comes from the environment. Where those values live in production is yours.
 - **No authorisation for your own code.** Capabilities cover generated routes. A controller you write by hand carries whatever you put on it — which the CI check will demand, but only as a decorator, not as a correct rule.
 - **No protection against your own generated code once edited.** Every generated file is yours to change, including the policy. The linter checks shape, not intent.
