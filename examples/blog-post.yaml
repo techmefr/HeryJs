@@ -21,6 +21,7 @@ includes:
     resource: BlogPostNote
     type: hasMany
     foreignKey: blogPostId
+    ownRoute: true
   - relation: comments
     resource: Comment
     type: morphMany

@@ -85,7 +85,11 @@ async function formatted(source: string, filePath: string): Promise<string> {
  * (`specFile`), so the spec is generated like everything else above.
  */
 function handOwned(ctx: ResourceContext): Set<string> {
-  return new Set([`${ctx.kebabName}.seeder.ts`, 'doc-examples.spec.ts']);
+  return new Set([
+    `${ctx.kebabName}.seeder.ts`,
+    'doc-examples.spec.ts',
+    'blog-post-notes-route.spec.ts',
+  ]);
 }
 
 export async function checkExampleFreshness(): Promise<boolean> {

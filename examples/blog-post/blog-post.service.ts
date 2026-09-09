@@ -12,7 +12,10 @@ import { writeAuditLog } from '#technical/audit/audit-log';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { resolveRelationInstructions } from '#technical/http/relation-resolver';
 import type { PrismaRelationClient } from '#technical/http/relation-resolver';
-import type { RelationInstruction } from '#technical/http/list-query';
+import type {
+  RelationInstruction,
+  ParsedListQuery,
+} from '#technical/http/list-query';
 import { applyRelationMutation } from '#technical/http/relation-mutations';
 import type { PivotDelegate } from '#technical/http/relation-mutations';
 import {
@@ -169,6 +172,34 @@ export class BlogPostService {
     );
 
     return { records, total, matches };
+  }
+
+  // Scoped to the already-loaded parent by blogPostId -- there is
+  // no capability of BlogPostNote's own to apply, it is routed: false.
+  // The controller already gated this call on the parent's own view
+  // capability before it ever reaches here.
+  async searchNotes(parentId: string, query: ParsedListQuery) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? undefined;
+    const where = {
+      AND: [{ blogPostId: parentId }, ...(query.where ? [query.where] : [])],
+    };
+
+    const [records, total] = await Promise.all([
+      this.prisma.blogPostNote.findMany({
+        where,
+        orderBy:
+          query.sorts && query.sorts.length > 0
+            ? query.sorts.map((sort) => ({ [sort.field]: sort.direction }))
+            : undefined,
+        skip: limit ? (page - 1) * limit : undefined,
+        take: limit,
+        select: query.select as Prisma.BlogPostNoteSelect | undefined,
+      }),
+      this.prisma.blogPostNote.count({ where }),
+    ]);
+
+    return { records, total };
   }
 
   async create(subject: CapabilitySubject, data: CreateBlogPostInput) {
