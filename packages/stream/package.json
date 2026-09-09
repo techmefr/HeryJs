@@ -4,6 +4,9 @@
   "description": "Add one-to-many audio/video streaming via LiveKit (SFU). Use \"hery generate <Name> --stream\" to add publish/viewer token endpoints to a resource.",
   "author": "Gaetan Compigni",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "homepage": "https://techmefr.github.io/HeryJs/",
   "repository": {
     "type": "git",

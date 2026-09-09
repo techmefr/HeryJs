@@ -294,6 +294,7 @@ export interface ProjectManifest {
   name: string;
   version: string;
   description: string;
+  private: boolean;
   scripts: Record<string, string>;
   jest: { roots: string[] };
 }
@@ -320,6 +321,12 @@ export function projectManifest(
   // Its own first release, not the kernel's. The kernel version a project was
   // generated from lives in cli/lib/kernel-version.ts, which travels with it.
   manifest.version = '0.0.1';
+
+  // Declared rather than inherited: the framework's own manifest is published,
+  // so this stopped travelling the moment it was. An application is not a
+  // package, and a project that publishes itself by accident publishes its
+  // whole source.
+  manifest.private = true;
 
   // A project regenerates its Prisma client on every install. The framework
   // cannot: shipped as a lifecycle script, `prisma generate` runs inside

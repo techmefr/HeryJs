@@ -3,7 +3,6 @@
   "version": "0.1.0",
   "description": "A framework built on top of NestJS. Generate once, own your code.",
   "author": "Gaetan Compigni",
-  "private": true,
   "license": "MIT",
   "homepage": "https://techmefr.github.io/HeryJs/",
   "repository": {

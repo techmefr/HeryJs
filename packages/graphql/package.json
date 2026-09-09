@@ -4,6 +4,9 @@
   "description": "Add a GraphQL endpoint (Apollo driver) with a session guard mirroring the REST auth flow. Use \"hery generate <Name> --graphql\" to add a resolver to a resource.",
   "author": "Gaetan Compigni",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "homepage": "https://techmefr.github.io/HeryJs/",
   "repository": {
     "type": "git",

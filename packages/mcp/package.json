@@ -4,6 +4,9 @@
   "description": "Add an authenticated MCP gateway (Streamable HTTP, stateless) exposing generated resources as tools. Use \"hery generate <Name> --mcp\" to add write tools to a resource.",
   "author": "Gaetan Compigni",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "homepage": "https://techmefr.github.io/HeryJs/",
   "repository": {
     "type": "git",
