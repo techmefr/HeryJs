@@ -75,6 +75,55 @@ describe('infra checks', () => {
     expect(valkey?.hint).toBe('run "docker compose up -d valkey"');
   });
 
+  /**
+   * A container publishes its port before the service behind it replies, so
+   * the check that runs straight after `--start` saw a socket that accepted
+   * the connection and a protocol that stayed silent -- and blamed the one
+   * thing that cannot be true there, a port belonging to another service.
+   */
+  it('waits for a service that starts answering, rather than blaming the port', async () => {
+    let answering = false;
+    const { server, port } = await listen((socket) =>
+      socket.on('data', () => {
+        if (answering) {
+          socket.write('+PONG\r\n');
+        }
+      }),
+    );
+    servers.push(server);
+    setTimeout(() => {
+      answering = true;
+    }, 1200);
+
+    process.env.DATABASE_URL = `postgresql://heryjs:heryjs@127.0.0.1:${port}/heryjs`;
+    process.env.REDIS_URL = `redis://127.0.0.1:${port}`;
+
+    const [, waited] = await runInfraChecks({ waitMs: 5000 });
+
+    expect(waited?.ok).toBe(true);
+    expect(waited?.hint).toBeUndefined();
+  });
+
+  /**
+   * Without a wait it reports the state of the world now, which is what the
+   * plain command is for -- the same silent socket, called out immediately.
+   * One pass over a silent port costs the probe timeouts themselves, so the
+   * bound below is what separates one pass from a second one.
+   */
+  it('does not wait when it was not asked to', async () => {
+    const { server, port } = await listen();
+    servers.push(server);
+
+    process.env.DATABASE_URL = `postgresql://heryjs:heryjs@127.0.0.1:${port}/heryjs`;
+    process.env.REDIS_URL = `redis://127.0.0.1:${port}`;
+
+    const started = Date.now();
+    const [, valkey] = await runInfraChecks();
+
+    expect(valkey?.ok).toBe(false);
+    expect(Date.now() - started).toBeLessThan(5000);
+  });
+
   it('accepts a server that answers the PING', async () => {
     const { server, port } = await listen((socket) =>
       socket.on('data', () => socket.write('+PONG\r\n')),

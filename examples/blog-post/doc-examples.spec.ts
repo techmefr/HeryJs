@@ -4,6 +4,7 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
+import * as prettier from 'prettier';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
@@ -131,7 +132,7 @@ describe('doc examples', () => {
   });
 
   afterAll(async () => {
-    writeGeneratedFile();
+    await writeGeneratedFile();
     await app.close();
     await prisma.$disconnect();
   });
@@ -565,7 +566,25 @@ function untimed(collected: PlaygroundScenario[]) {
   }));
 }
 
-function writeGeneratedFile(): void {
+/**
+ * Serialized JSON is not what prettier would have written, so the file this
+ * suite produced failed `prettier --check` from the moment it was generated.
+ * Any run that touched it therefore turned the gate red over formatting, never
+ * over content -- and told a contributor who had only regenerated the docs
+ * that something was wrong. Formatting it here is what makes the output of a
+ * run and the state of the repository the same thing.
+ */
+async function formatted(source: string): Promise<string> {
+  const options = await prettier.resolveConfig(OUTPUT_PATH);
+
+  return prettier.format(source, {
+    ...options,
+    filepath: OUTPUT_PATH,
+    parser: 'typescript',
+  });
+}
+
+async function writeGeneratedFile(): Promise<void> {
   const untimedScenarios = {
     search: untimed(scenarios.search),
     create: untimed(scenarios.create),
@@ -601,5 +620,5 @@ function writeGeneratedFile(): void {
     '',
   ];
 
-  writeFileSync(OUTPUT_PATH, lines.join('\n'));
+  writeFileSync(OUTPUT_PATH, await formatted(lines.join('\n')));
 }
