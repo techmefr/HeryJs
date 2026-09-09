@@ -82,6 +82,14 @@ Every generated resource exposes one search route instead of a detail route: the
 
     An include's default result key is its relation name; an aggregate's is `${relation}_${type}` — both overridable with `alias`. A `morphMany` include has no `limit`: it cannot be windowed per parent the way a native relation can, since there is no Prisma relation to attach a nested `include` to.
 
+    A `hasMany` include may itself carry a further `includes` — a relation of a relation, up to two levels total:
+
+    ```json
+    { "includes": [{ "relation": "notes", "includes": [{ "relation": "replies" }] }] }
+    ```
+
+    Only when the referenced blueprint declares one; see [Nested includes](/guides/blueprint/#nested-includes). A nested include has no `alias` of its own — its rows come back nested under the relation's real name, and `morphMany` never nests.
+
     ## Operators
 
     A closed list — `=` `!=` `>` `>=` `<` `<=` `like` `not like` `in` `not in`. Nothing else parses. `in` / `not in` require an array `value`; anything else is a 400.

@@ -49,6 +49,10 @@ Twelve packages, versioned together:
   exported globally with no module to install.
 - A rate limit on by default across every kernel and module route, with
   `read` / `write` / `auth` buckets a project can retune but never remove.
+- A `hasMany` include may itself carry a further `includes` — a relation of a
+  relation, capped at two levels total, the same fixed-constant idiom
+  `MAX_FILTER_DEPTH` already uses. `morphMany` never nests: it has no Prisma
+  relation to attach a nested `include` to.
 - `message` on the error envelope translates per request from `Accept-Language`
   when `hery.config.ts` declares more than one locale; `key` never changes.
   `capability.forbidden` is excluded on purpose, and a `key` with no catalogue

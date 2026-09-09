@@ -109,6 +109,11 @@ export interface ResolvedInclude extends BlueprintRelationLink {
   filters: readonly string[];
   sorts: readonly string[];
   selects: readonly string[];
+  // One level only, and only for a hasMany link: the referenced blueprint's
+  // own includes, stripped of anything they might nest further into. A
+  // morphMany link never gets one -- it has no Prisma relation for a nested
+  // `include` to compose into, see list-query.ts's buildIncludeClause.
+  includes?: readonly ResolvedInclude[];
 }
 
 // Aggregates validate a `field` (for avg/sum/min/max) against the referenced
@@ -306,6 +311,13 @@ function resolveRelationLinks(
       continue;
     }
 
+    const nestedIncludes =
+      link.type === 'hasMany'
+        ? referenced.includes
+            .filter((nested) => nested.type === 'hasMany')
+            .map((nested) => ({ ...nested, includes: undefined }))
+        : [];
+
     includes.push({
       ...link,
       filters: referenced.filters,
@@ -316,6 +328,7 @@ function resolveRelationLinks(
           .filter((field) => !field.hidden)
           .map((field) => field.name),
       ],
+      includes: nestedIncludes.length > 0 ? nestedIncludes : undefined,
     });
   }
 

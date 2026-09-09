@@ -726,6 +726,31 @@ function paginationMetaLines(ctx: ResourceContext): string {
 `;
 }
 
+// A relation of a relation: emitted only when the referenced blueprint itself
+// declared includes, so a resource with none produces exactly the same
+// output as before this existed -- no key ever appears empty.
+function nestedIncludesContractLiteral(
+  include: ResourceContext['includes'][number],
+  indent: string,
+): string {
+  if (!include.includes || include.includes.length === 0) {
+    return '';
+  }
+
+  const entries = include.includes
+    .map(
+      (nested) => `${indent}      ${nested.relation}: {
+${relationLinkLiteral(nested, `${indent}  `)}
+${indent}        filters: [${nested.filters.map((field) => `'${field}'`).join(', ')}],
+${indent}        sorts: [${nested.sorts.map((field) => `'${field}'`).join(', ')}],
+${indent}        selects: [${nested.selects.map((field) => `'${field}'`).join(', ')}],
+${indent}      },`,
+    )
+    .join('\n');
+
+  return `\n${indent}    includes: {\n${entries}\n${indent}    },`;
+}
+
 function includesContractLiteral(ctx: ResourceContext, indent: string): string {
   if (ctx.includes.length === 0) return '{}';
 
@@ -735,7 +760,7 @@ function includesContractLiteral(ctx: ResourceContext, indent: string): string {
 ${relationLinkLiteral(include, indent)}
 ${indent}    filters: [${include.filters.map((field) => `'${field}'`).join(', ')}],
 ${indent}    sorts: [${include.sorts.map((field) => `'${field}'`).join(', ')}],
-${indent}    selects: [${include.selects.map((field) => `'${field}'`).join(', ')}],
+${indent}    selects: [${include.selects.map((field) => `'${field}'`).join(', ')}],${nestedIncludesContractLiteral(include, indent)}
 ${indent}  },`,
     )
     .join('\n');

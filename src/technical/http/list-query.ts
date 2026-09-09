@@ -38,6 +38,16 @@ const MAX_CAPABILITIES = 50;
 const MAX_INCLUDE_LIMIT = 1000;
 const MAX_PAGE = 100_000;
 
+// A relation of a relation, and no deeper: two levels covers the shape the
+// issue this shipped for actually named ("a relation of a relation"), and a
+// fixed kernel constant is the same idiom MAX_FILTER_DEPTH already uses
+// rather than a per-blueprint knob nobody has asked for yet. Only a hasMany
+// relation may carry a nested `includes` -- Prisma expresses it natively as a
+// nested `select`, so it composes for free. morphMany has no Prisma relation
+// to nest under (see relation-resolver.ts): it stays reachable at the top
+// level only, exactly as before.
+const MAX_INCLUDE_DEPTH = 2;
+
 const filterValueSchema = z.union([
   z.string(),
   z.number(),
@@ -117,9 +127,12 @@ const aggregateEntrySchema: z.ZodType<AggregateEntry> = z.object({
   filters: z.array(filterEntrySchema).max(MAX_FILTERS).optional(),
 });
 
-// One level deep: an include may filter/sort/select/paginate the relation it
-// loads, but it cannot itself carry a further include or aggregate. See
-// blueprint.ts's blueprintRelationLinkSchema for why that bound is where it is.
+// An include may filter/sort/select/paginate the relation it loads, and may
+// itself carry a further `includes` -- a relation of a relation, bounded by
+// MAX_INCLUDE_DEPTH. It cannot carry an aggregate: aggregates never nest.
+// A nested include has no alias of its own (see buildIncludeClause): its
+// rows stay nested under the relation's real name in the Prisma result,
+// exactly where a raw Prisma `include` would already put them.
 export interface IncludeEntry {
   relation: string;
   alias?: string;
@@ -127,16 +140,20 @@ export interface IncludeEntry {
   sorts?: SortEntry[];
   selects?: SelectEntry[];
   limit?: number;
+  includes?: IncludeEntry[];
 }
 
-const includeEntrySchema: z.ZodType<IncludeEntry> = z.object({
-  relation: z.string(),
-  alias: aliasSchema,
-  filters: z.array(filterEntrySchema).max(MAX_FILTERS).optional(),
-  sorts: z.array(sortEntrySchema).max(MAX_SORTS).optional(),
-  selects: z.array(selectEntrySchema).max(MAX_SELECTS).optional(),
-  limit: z.number().int().positive().max(MAX_INCLUDE_LIMIT).optional(),
-});
+const includeEntrySchema: z.ZodType<IncludeEntry> = z.lazy(() =>
+  z.object({
+    relation: z.string(),
+    alias: aliasSchema,
+    filters: z.array(filterEntrySchema).max(MAX_FILTERS).optional(),
+    sorts: z.array(sortEntrySchema).max(MAX_SORTS).optional(),
+    selects: z.array(selectEntrySchema).max(MAX_SELECTS).optional(),
+    limit: z.number().int().positive().max(MAX_INCLUDE_LIMIT).optional(),
+    includes: z.array(includeEntrySchema).max(MAX_RELATIONS).optional(),
+  }),
+);
 
 export const searchRequestSchema = z.object({
   page: z.number().int().positive().max(MAX_PAGE).optional(),
@@ -182,7 +199,12 @@ export interface RelationContract {
   childDelegate: string;
 }
 
-export interface IncludeContract extends FieldContract, RelationContract {}
+export interface IncludeContract extends FieldContract, RelationContract {
+  // Populated only for a hasMany relation whose referenced blueprint itself
+  // declares includes -- one level, matching IncludeEntry.includes. Absent
+  // means this relation has nothing further to nest into.
+  includes?: Record<string, IncludeContract>;
+}
 
 export interface AggregateContract extends RelationContract {
   filters: readonly string[];
@@ -424,8 +446,9 @@ function claimAlias(name: string, claimed: Set<string>): string {
 
 function buildIncludeClause(
   entries: IncludeEntry[] | undefined,
-  contract: ListQueryContract,
+  contract: Pick<ListQueryContract, 'includes'>,
   claimed: Set<string>,
+  depth = 1,
 ):
   | {
       nativeInclude: Record<string, unknown>;
@@ -435,6 +458,10 @@ function buildIncludeClause(
   | undefined {
   if (!entries || entries.length === 0) {
     return undefined;
+  }
+
+  if (depth > MAX_INCLUDE_DEPTH) {
+    throw new InvalidQueryException('includes', []);
   }
 
   const includable = contract.includes ?? {};
@@ -449,7 +476,15 @@ function buildIncludeClause(
       throw new InvalidQueryException('includes', Object.keys(includable));
     }
 
-    const key = claimAlias(entry.alias ?? entry.relation, claimed);
+    // A nested relation is never reached the manual, batched way: it has to
+    // compose into the parent's own native Prisma `select`, which only a
+    // hasMany relation can do. Blocking morphMany here, at every depth past
+    // the first, means relation-resolver.ts never has to know a manual
+    // instruction could apply to anything but a top-level page row.
+    if (depth > 1 && relationContract.type === 'morphMany') {
+      throw new InvalidQueryException('includes', []);
+    }
+
     const where =
       entry.filters && entry.filters.length > 0
         ? buildFilterWhere(entry.filters, relationContract, 1)
@@ -481,15 +516,36 @@ function buildIncludeClause(
         select,
       });
     } else {
+      // A nested include composes as a further relation key inside this
+      // relation's own `select` -- the exact shape Prisma expects for
+      // `include: { parent: { select: { child: { where, select, ... } } } }`,
+      // so the same per-relation payload this function already builds for a
+      // top-level entry is reused verbatim one level down.
+      const nested = buildIncludeClause(
+        entry.includes,
+        relationContract,
+        claimed,
+        depth + 1,
+      );
+      const mergedSelect = nested
+        ? { ...select, ...nested.nativeInclude }
+        : select;
+
       nativeInclude[entry.relation] = {
         ...(where ? { where } : {}),
         ...(orderBy ? { orderBy } : {}),
-        select,
+        select: mergedSelect,
         ...(entry.limit ? { take: entry.limit } : {}),
       };
     }
 
-    manifest.push({ key, relation: entry.relation });
+    // A nested include is never flattened into the response view -- its rows
+    // stay nested under the relation's real name, exactly where Prisma put
+    // them, so only the top level needs an alias and a manifest entry.
+    if (depth === 1) {
+      const key = claimAlias(entry.alias ?? entry.relation, claimed);
+      manifest.push({ key, relation: entry.relation });
+    }
   }
 
   return { nativeInclude, instructions, manifest };

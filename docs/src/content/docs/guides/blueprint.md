@@ -114,6 +114,34 @@ aggregates:
 
 The referenced resource's own blueprint is what supplies the nested contract: the `filters`, `sorts` and `selects` a request may name _inside_ an include come from there rather than being retyped on every parent that includes it. That is what `routed: false` is for — a resource generated with no controller, no service and no capabilities of its own, existing only to describe the shape of a relation once.
 
+### Nested includes
+
+A `hasMany` include may itself be nested one level further, if the resource it points at declares its own `includes`:
+
+```yaml
+# blog-post.yaml
+includes:
+  - relation: notes
+    resource: BlogPostNote
+    type: hasMany
+    foreignKey: blogPostId
+
+# blog-post-note.yaml
+includes:
+  - relation: replies
+    resource: NoteReply
+    type: hasMany
+    foreignKey: noteId
+```
+
+A search request can then ask for `notes` and, inside it, `replies`, in one call:
+
+```json
+{ "includes": [{ "relation": "notes", "includes": [{ "relation": "replies" }] }] }
+```
+
+Two levels total — a relation of a relation — is the fixed bound, the same fixed-constant idiom `MAX_FILTER_DEPTH` already uses rather than a per-blueprint depth to configure. Only `hasMany` nests: `morphMany` has no Prisma relation to attach a nested `include` to, so it stays reachable at the top level only. A nested include's rows are never renamed by an alias — they come back nested under their real relation name, exactly where Prisma put them.
+
 `relations` is the write side, and it is specifically the `belongsToMany` case `includes` cannot express: neither side owns the other, so attaching or detaching never touches the related row, only a row in the pivot table.
 
 ```yaml

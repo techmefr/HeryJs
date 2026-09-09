@@ -22,6 +22,36 @@ const contract: ListQueryContract = {
       filters: ['body'],
       sorts: ['createdAt'],
       selects: ['id', 'body'],
+      includes: {
+        replies: {
+          type: 'hasMany',
+          foreignKey: 'noteId',
+          childDelegate: 'noteReply',
+          filters: ['body'],
+          sorts: ['createdAt'],
+          selects: ['id', 'body'],
+          includes: {
+            reactions: {
+              type: 'hasMany',
+              foreignKey: 'replyId',
+              childDelegate: 'reaction',
+              filters: [],
+              sorts: [],
+              selects: ['id'],
+            },
+          },
+        },
+        flags: {
+          type: 'morphMany',
+          foreignKey: 'flaggableId',
+          discriminator: 'flaggableType',
+          discriminatorValue: 'BlogPostNote',
+          childDelegate: 'flag',
+          filters: [],
+          sorts: [],
+          selects: ['id'],
+        },
+      },
     },
     comments: {
       type: 'morphMany',
@@ -357,6 +387,94 @@ describe('parseSearchRequest', () => {
             { relation: 'notes', alias: 'sameKey' },
             { relation: 'notes', alias: 'sameKey' },
           ],
+        },
+        contract,
+      ),
+    ).toThrow(InvalidQueryException);
+  });
+
+  it('nests a hasMany include inside its parent as a native Prisma select', () => {
+    const query = parseSearchRequest(
+      {
+        includes: [
+          {
+            relation: 'notes',
+            includes: [
+              {
+                relation: 'replies',
+                filters: [{ field: 'body', operator: 'like', value: 'hi' }],
+              },
+            ],
+          },
+        ],
+      },
+      contract,
+    );
+
+    expect(query.include).toEqual({
+      notes: {
+        select: {
+          id: true,
+          body: true,
+          replies: {
+            where: { body: { contains: 'hi' } },
+            select: { id: true, body: true },
+          },
+        },
+      },
+    });
+  });
+
+  it('does not flatten a nested include into includeManifest -- only the top level gets one', () => {
+    const query = parseSearchRequest(
+      {
+        includes: [{ relation: 'notes', includes: [{ relation: 'replies' }] }],
+      },
+      contract,
+    );
+
+    expect(query.includeManifest).toEqual([
+      { key: 'notes', relation: 'notes' },
+    ]);
+  });
+
+  it('rejects a nested include naming a relation the child contract does not list', () => {
+    expect(() =>
+      parseSearchRequest(
+        {
+          includes: [{ relation: 'notes', includes: [{ relation: 'secret' }] }],
+        },
+        contract,
+      ),
+    ).toThrow(InvalidQueryException);
+  });
+
+  it('rejects a third level of nesting past the depth cap', () => {
+    expect(() =>
+      parseSearchRequest(
+        {
+          includes: [
+            {
+              relation: 'notes',
+              includes: [
+                {
+                  relation: 'replies',
+                  includes: [{ relation: 'reactions' }],
+                },
+              ],
+            },
+          ],
+        },
+        contract,
+      ),
+    ).toThrow(InvalidQueryException);
+  });
+
+  it('rejects a morphMany relation nested past the top level', () => {
+    expect(() =>
+      parseSearchRequest(
+        {
+          includes: [{ relation: 'notes', includes: [{ relation: 'flags' }] }],
         },
         contract,
       ),
