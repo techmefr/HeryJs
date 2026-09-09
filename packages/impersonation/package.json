@@ -4,6 +4,9 @@
   "description": null,
   "author": "Gaetan Compigni",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "homepage": "https://techmefr.github.io/HeryJs/",
   "repository": {
     "type": "git",

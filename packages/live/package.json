@@ -4,6 +4,9 @@
   "description": "Add bidirectional WebSocket support (Socket.IO). Use \"hery generate <Name> --live\" to add a live gateway to a resource.",
   "author": "Gaetan Compigni",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "homepage": "https://techmefr.github.io/HeryJs/",
   "repository": {
     "type": "git",

@@ -46,8 +46,14 @@ describe('the manifest a generated project starts from', () => {
     expect(generated().version).not.toBe(REPO_MANIFEST.version);
   });
 
-  it('keeps the project private, the way this repository is', () => {
+  /**
+   * Declared by the scaffolder, not inherited: this repository's manifest is
+   * published, so `private` stopped travelling with it. An application that
+   * publishes itself by accident publishes its whole source.
+   */
+  it('keeps the project private, which the framework no longer is', () => {
     expect(generated().private).toBe(true);
+    expect(REPO_MANIFEST.private).toBeUndefined();
   });
 
   /**

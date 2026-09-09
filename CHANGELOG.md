@@ -13,6 +13,17 @@ category is called out here explicitly.
 
 First public release.
 
+### Installing it
+
+Twelve packages, versioned together:
+
+- `heryjs` carries the `heryjs new` command and the module contract's types.
+  A project is created with `pnpm dlx heryjs new my-app`, and the CLI travels
+  into the project it writes — there is nothing global to install and nothing
+  to keep in step with a release.
+- `@heryjs/<name>` for each of the eleven modules, so one can be added to a
+  project that was not scaffolded with it, and updated on its own.
+
 ### The CLI
 
 - `hery new` scaffolds a standalone project: the kernel, the CLI, the default
@@ -44,6 +55,8 @@ First public release.
 `mcp`, `search-elasticsearch`, `search-meilisearch` and `admin-astro`, each
 installable with `hery install` and removable with `hery uninstall`.
 
-A module is its default export, so a third-party package needs no runtime
-import from HeryJs: any dependency carrying `heryjs.module: true` is discovered
-and installed the same way an official one is.
+A module is its default export, closed with `satisfies ModuleDefinition` and
+typed through an `import type` the compiler erases — so a published module has
+no runtime dependency on HeryJs at all. Any dependency carrying
+`heryjs.module: true` is discovered and installed the same way an official one
+is, and the eleven official modules declare exactly what a third party's does.
