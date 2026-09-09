@@ -34,7 +34,7 @@ The trade-off is deliberate. This is not Laravel's Telescope: there is one entry
 
 The inspector is Express middleware recording on the response's `finish` event, not an interceptor. That placement is what lets it capture requests that never reached a handler — a 401 rejected by a guard, a 404 that matched no route, a validation 400. An interceptor would only ever see the successful path.
 
-It also sits *after* `TenantMiddleware` in the chain, which is why `tenantId` is populated at all. An unauthenticated request records the literal `unauthenticated`, which is the value the tenant middleware assigns rather than a missing field.
+It also sits _after_ `TenantMiddleware` in the chain, which is why `tenantId` is populated at all. An unauthenticated request records the literal `unauthenticated`, which is the value the tenant middleware assigns rather than a missing field.
 
 ### In-memory, capped, and lost on restart
 
@@ -44,9 +44,9 @@ Two consequences: an app restart wipes the history, and with multiple instances 
 
 ### Dev-only, with a caveat worth knowing
 
-The read route is guarded by `SessionGuard` and `DevOnlyGuard`, so it needs a session and it 404s when `NODE_ENV=production`. The guard order matters: `SessionGuard` runs first, so an *unauthenticated* production call gets a 401 rather than the 404 that would suggest the route does not exist. Authenticated production calls do get the 404.
+The read route is guarded by `SessionGuard` and `DevOnlyGuard`, so it needs a session and it 404s when `NODE_ENV=production`. The guard order matters: `SessionGuard` runs first, so an _unauthenticated_ production call gets a 401 rather than the 404 that would suggest the route does not exist. Authenticated production calls do get the 404.
 
-Note that only the *route* is gated. The middleware records unconditionally, in every environment.
+Note that only the _route_ is gated. The middleware records unconditionally, in every environment.
 
 ## The scheduler
 
@@ -96,7 +96,7 @@ Worth being explicit, because each of these is something a reader may assume:
 
 ### Tasks are not tenant-aware
 
-This is the one that bites. A cron callback runs outside any request, so there is no ambient tenant context — and the tenant-scoped Prisma client *requires* one. Touching a tenant-scoped model from a task without establishing that context throws.
+This is the one that bites. A cron callback runs outside any request, so there is no ambient tenant context — and the tenant-scoped Prisma client _requires_ one. Touching a tenant-scoped model from a task without establishing that context throws.
 
 A task that spans tenants has to say which tenant each piece of work belongs to, which is what `runInTenant` is for — the kernel's one entry point for work with no request behind it:
 
@@ -127,10 +127,10 @@ hery> await prisma.blogPost.findMany()
 
 Three bindings are pre-loaded, and that is all:
 
-| | |
-|---|---|
-| `app` | the Nest application context |
-| `prisma` | the tenant-scoped Prisma client |
+|              |                                   |
+| ------------ | --------------------------------- |
+| `app`        | the Nest application context      |
+| `prisma`     | the tenant-scoped Prisma client   |
 | `get(token)` | resolve any provider by its token |
 
 `get` is the useful one — anything in the container is reachable:
@@ -141,7 +141,7 @@ hery> const blogPosts = get(BlogPostService)
 
 ### The whole session runs inside a tenant
 
-The REPL starts *inside* `TenantContextStorage.run({ tenantId })`, which is what makes the scoped `prisma` client work outside a request. `--tenant` picks which one, defaulting to `default`. Queries you type are filtered and stamped exactly as they would be in a request for that tenant — including the surprise that a record you just created is invisible from a console pointed at a different tenant.
+The REPL starts _inside_ `TenantContextStorage.run({ tenantId })`, which is what makes the scoped `prisma` client work outside a request. `--tenant` picks which one, defaulting to `default`. Queries you type are filtered and stamped exactly as they would be in a request for that tenant — including the surprise that a record you just created is invisible from a console pointed at a different tenant.
 
 **There is no team context.** No current team, no capability subject. Anything that resolves a capability needs a subject you build yourself at the prompt — and per the rule that there is only one place a subject is built, that means calling `subjectOf` on a user you loaded, not writing the object literal.
 

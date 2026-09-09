@@ -47,9 +47,11 @@ Twelve packages, versioned together:
 - Teams with the `own` / `team` / `all` / `none` presets.
 - A tenant-namespaced cache on the same Valkey the kernel already depends on,
   exported globally with no module to install.
+- A rate limit on by default across every kernel and module route, with
+  `read` / `write` / `auth` buckets a project can retune but never remove.
 - An architecture linter that fails CI on a domain missing a concern, plus
-  eleven convention checks covering capabilities, pagination, RLS, module
-  drift and patched kernel files.
+  fourteen convention checks covering capabilities, pagination, RLS, rate
+  limiting, module drift and patched kernel files.
 
 ### The modules
 

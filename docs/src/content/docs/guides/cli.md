@@ -5,27 +5,27 @@ description: Every hery command — generating resources, installing modules, an
 
 The `hery` CLI is the only thing in this project that reads a blueprint. It is a build-time tool, not a runtime dependency of the generated application.
 
-| Command | What it does |
-|---|---|
-| `new <name>` | Scaffolds a fresh HeryJs project in its own directory. |
-| `create:blueprint <Name>` | Writes a blueprint from prompts or defaults. |
-| `generate <Name>` | Writes a full resource from that blueprint. |
-| `migrate --name <name>` | Runs `prisma migrate dev`, then emits and applies any missing row-level policy. |
-| `install [modules...]` | Installs optional modules. |
-| `uninstall <module>` | Removes a module and reverses what installing it did. |
-| `module:list` | Lists the modules available to install. |
-| `module:monitoring` | Scaffolds Prometheus, Grafana and Loki. |
-| `search:reindex <Name>` | Rebuilds a resource's search index from Postgres. |
-| `expose:list` | Prints the catalog of `@ExposeAction`s. |
-| `expose:run <action>` | Runs one exposed action, `--param name=value` per field. |
-| `up` | Checks that local dependencies are ready. |
-| `doctor` | One command for environment, config and infra together. |
-| `env pull` | Writes the resolved variables into `.env`. |
-| `env run -- <command>` | Runs a command with the resolved variables injected. |
-| `lint` | Scores the project against conventions eslint and the architecture linter do not reach. |
-| `console` | Boots the app into a REPL. |
-| `hosts` | Adds the local hostname to your hosts file. |
-| `mcp:serve` | A read-only MCP server over stdio. |
+| Command                   | What it does                                                                            |
+| ------------------------- | --------------------------------------------------------------------------------------- |
+| `new <name>`              | Scaffolds a fresh HeryJs project in its own directory.                                  |
+| `create:blueprint <Name>` | Writes a blueprint from prompts or defaults.                                            |
+| `generate <Name>`         | Writes a full resource from that blueprint.                                             |
+| `migrate --name <name>`   | Runs `prisma migrate dev`, then emits and applies any missing row-level policy.         |
+| `install [modules...]`    | Installs optional modules.                                                              |
+| `uninstall <module>`      | Removes a module and reverses what installing it did.                                   |
+| `module:list`             | Lists the modules available to install.                                                 |
+| `module:monitoring`       | Scaffolds Prometheus, Grafana and Loki.                                                 |
+| `search:reindex <Name>`   | Rebuilds a resource's search index from Postgres.                                       |
+| `expose:list`             | Prints the catalog of `@ExposeAction`s.                                                 |
+| `expose:run <action>`     | Runs one exposed action, `--param name=value` per field.                                |
+| `up`                      | Checks that local dependencies are ready.                                               |
+| `doctor`                  | One command for environment, config and infra together.                                 |
+| `env pull`                | Writes the resolved variables into `.env`.                                              |
+| `env run -- <command>`    | Runs a command with the resolved variables injected.                                    |
+| `lint`                    | Scores the project against conventions eslint and the architecture linter do not reach. |
+| `console`                 | Boots the app into a REPL.                                                              |
+| `hosts`                   | Adds the local hostname to your hosts file.                                             |
+| `mcp:serve`               | A read-only MCP server over stdio.                                                      |
 
 ## `hery new <name>`
 
@@ -210,4 +210,4 @@ Starts a read-only [MCP](https://modelcontextprotocol.io) server over stdio, for
 
 It never reads a blueprint file. A blueprint is a one-time input to `generate`, not a live source of truth — the generated code is.
 
-This is the read-only surface, needs no running app and no credentials. For an agent that should be able to *use* the application — with a real session and real capability checks — install the [MCP module](/guides/graphql-and-mcp/) instead.
+This is the read-only surface, needs no running app and no credentials. For an agent that should be able to _use_ the application — with a real session and real capability checks — install the [MCP module](/guides/graphql-and-mcp/) instead.

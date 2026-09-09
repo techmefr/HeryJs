@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { SessionGuard } from '#technical/auth/session.guard';
+import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
 import type { RequestWithUser } from '#technical/auth/session.guard';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { Capability } from '#technical/capabilities/capability.decorator';
@@ -33,6 +34,7 @@ export class SeedersController {
   @UnpaginatedRoute(
     'the seeders registered in code, as long as the code that registers them',
   )
+  @RateLimit('read')
   @Get()
   @Capability(canUseDevtools)
   list() {
@@ -46,6 +48,7 @@ export class SeedersController {
     );
   }
 
+  @RateLimit('write')
   @Post(':name/run')
   @Capability(canUseDevtools)
   async run(

@@ -7,6 +7,7 @@ import {
 } from '@nestjs/terminus';
 import IORedis from 'ioredis';
 import { SessionGuard } from '#technical/auth/session.guard';
+import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { Capability } from '#technical/capabilities/capability.decorator';
 import { env } from '#technical/config/env';
@@ -31,6 +32,7 @@ export class HealthController {
   ) {}
 
   @UnpaginatedRoute('one object, not a collection')
+  @RateLimit('read')
   @Get()
   @Capability(canReadHealth)
   @HealthCheck()

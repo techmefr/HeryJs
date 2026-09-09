@@ -11,6 +11,15 @@ export interface HeryConfigCache {
   defaultTtlSeconds: number;
 }
 
+export interface HeryConfigRateLimitBucket {
+  limit: number;
+  windowSeconds: number;
+}
+
+export interface HeryConfigRateLimit {
+  buckets: Record<string, HeryConfigRateLimitBucket>;
+}
+
 /**
  * `satisfies HeryConfig` at the config file's own export is the entire
  * contract mechanism: an unknown top-level key or a search engine missing
@@ -29,4 +38,5 @@ export interface HeryConfig {
     overrides?: Record<string, Partial<HeryConfigPruneRule>>;
   };
   cache?: HeryConfigCache;
+  rateLimit?: HeryConfigRateLimit;
 }

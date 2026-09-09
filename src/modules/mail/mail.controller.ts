@@ -1,5 +1,6 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { SessionGuard } from '#technical/auth/session.guard';
+import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { Capability } from '#technical/capabilities/capability.decorator';
 import { okPage, parsePageQuery } from '#technical/http/page-query';
@@ -12,6 +13,7 @@ import { MailService } from './mail.service';
 export class MailController {
   constructor(private readonly mail: MailService) {}
 
+  @RateLimit('read')
   @Get()
   @Capability(canReadMailLog)
   async list(@Query() query: unknown) {

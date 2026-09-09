@@ -31,7 +31,12 @@ export interface DescribedController {
       "name": "BlogPostController",
       "basePath": "/blog-posts",
       "routes": [
-        { "method": "POST", "path": "/search", "handler": "search", "capability": "canViewAnyBlogPost" }
+        {
+          "method": "POST",
+          "path": "/search",
+          "handler": "search",
+          "capability": "canViewAnyBlogPost"
+        }
       ]
     }
   ],
@@ -68,12 +73,11 @@ Five pages. An overview counting controllers, routes and how many sit behind a c
 The rule that turns introspection into a UI is a two-branch filter:
 
 ```ts
-controller.routes
-  .filter(
-    (route) =>
-      (route.method === 'GET' && !route.path.includes(':')) ||
-      (route.method === 'POST' && route.path.endsWith('/search')),
-  )
+controller.routes.filter(
+  (route) =>
+    (route.method === 'GET' && !route.path.includes(':')) ||
+    (route.method === 'POST' && route.path.endsWith('/search')),
+);
 ```
 
 A `GET` with no path parameter is something that can be listed without knowing anything else, so it becomes a sidebar entry, and its payload becomes a table. Routes taking an `:id` are skipped because there is no id to supply. A resource's search route is the one deliberate exception to "non-`GET` routes are skipped": the Lomkit-style search contract takes its query in a JSON body rather than the query string, so the panel calls it with `{}` as the body and renders the result exactly like a plain listing. A handful of paths that are not resource listings — the root, `/introspect` itself, `/health`, `/metrics` and the signal stream — are excluded by name.

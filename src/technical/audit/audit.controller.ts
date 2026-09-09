@@ -1,5 +1,6 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { Capability } from '#technical/capabilities/capability.decorator';
+import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { SessionGuard } from '#technical/auth/session.guard';
 import { ok } from '#technical/http/envelope';
@@ -14,6 +15,7 @@ import { AuditService } from './audit.service';
 export class AuditController {
   constructor(private readonly audit: AuditService) {}
 
+  @RateLimit('read')
   @Get()
   @Capability(canReadAuditLog)
   async list(@Query() query: unknown) {
@@ -26,6 +28,7 @@ export class AuditController {
   }
 
   @UnpaginatedRoute('one verdict on the whole chain, not a collection')
+  @RateLimit('read')
   @Get('verify')
   @Capability(canReadAuditLog)
   async verify() {

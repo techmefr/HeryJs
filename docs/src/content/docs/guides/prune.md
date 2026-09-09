@@ -54,7 +54,7 @@ prune: {
 },
 ```
 
-`lock` does not add a second permission tier — `canManagePrune` already restricts the whole feature to `role: 'admin'`, and there is no stronger role to gate a locked model behind. What `lock` changes is who decides *when*: an unlocked model is swept by the daily cron the moment it is due; a locked one is skipped by that cron and only prunes when an admin explicitly triggers it. Use it for a model where hard-deleting a full year of records is not something you want to happen unattended, even by a rule you wrote yourself weeks ago.
+`lock` does not add a second permission tier — `canManagePrune` already restricts the whole feature to `role: 'admin'`, and there is no stronger role to gate a locked model behind. What `lock` changes is who decides _when_: an unlocked model is swept by the daily cron the moment it is due; a locked one is skipped by that cron and only prunes when an admin explicitly triggers it. Use it for a model where hard-deleting a full year of records is not something you want to happen unattended, even by a rule you wrote yourself weeks ago.
 
 ## Exposed to the mine, not routed by hand
 

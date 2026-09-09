@@ -10,14 +10,16 @@ Every resource `hery generate` writes comes with a spec, and `src/architecture.s
 The generated spec boots the actual application and talks to it over HTTP:
 
 ```ts
-const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+const moduleRef = await Test.createTestingModule({
+  imports: [AppModule],
+}).compile();
 app = moduleRef.createNestApplication();
 await app.init();
 ```
 
 Nothing is mocked. No `overrideProvider`, no in-memory database, no stubbed auth. `AppModule` starts for real, against real Postgres, and requests go through supertest against `app.getHttpServer()`.
 
-That is a deliberate cost. The properties these specs exist to prove — a tenant boundary, a capability decision, a 403 that is genuinely a 403 — are properties of the *whole pipeline*: middleware, guard, record loader, policy, Prisma extension. A test that mocks the guard proves the mock works. Tenant isolation in particular is only meaningful end to end, because the thing being tested is that no layer forgot to apply it.
+That is a deliberate cost. The properties these specs exist to prove — a tenant boundary, a capability decision, a 403 that is genuinely a 403 — are properties of the _whole pipeline_: middleware, guard, record loader, policy, Prisma extension. A test that mocks the guard proves the mock works. Tenant isolation in particular is only meaningful end to end, because the thing being tested is that no layer forgot to apply it.
 
 Sessions are real too. `registerAndLogin` from `devtools/testing` registers a user with a random email, logs in, and hands back the token:
 
@@ -59,7 +61,7 @@ Seventeen cases for the default permission presets, with two users — an owner 
 16. **Rejects a search engine keyword `hery.config.ts` never declared** — a 400, not a silent fallback.
 17. **Attaches, syncs and detaches a relation through the update route** — one case per mutable relation the blueprint declares.
 
-Cases that depend on a write disappear when the blueprint's presets make them unreachable — `create`/`update`/`delete: none` skips the setup they need. Cases 11 and 12 only appear when the blueprint declares pagination, 13-14 only when it declares an include or an aggregate, 15-16 only when it has a visible string field to search on, and 17 only when it declares a mutable relation. Case 9 is the one that needs the raw client. The spec opens its own unextended `PrismaClient`, deliberately *not* the tenant-scoped one, because reassigning a user's tenant is exactly the operation the scoped client is built to prevent. Setting up an adversarial condition requires stepping outside the thing being tested.
+Cases that depend on a write disappear when the blueprint's presets make them unreachable — `create`/`update`/`delete: none` skips the setup they need. Cases 11 and 12 only appear when the blueprint declares pagination, 13-14 only when it declares an include or an aggregate, 15-16 only when it has a visible string field to search on, and 17 only when it declares a mutable relation. Case 9 is the one that needs the raw client. The spec opens its own unextended `PrismaClient`, deliberately _not_ the tenant-scoped one, because reassigning a user's tenant is exactly the operation the scoped client is built to prevent. Setting up an adversarial condition requires stepping outside the thing being tested.
 
 ### The scope-parity and trash-parity cases adapt to the blueprint
 

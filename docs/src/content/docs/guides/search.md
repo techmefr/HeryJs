@@ -69,9 +69,19 @@ export function searchDriverToken(driverName: string): symbol {
 }
 
 export interface SearchDriver {
-  index(collection: string, id: string, document: Record<string, unknown>, tenantId: string): Promise<void>;
+  index(
+    collection: string,
+    id: string,
+    document: Record<string, unknown>,
+    tenantId: string,
+  ): Promise<void>;
   remove(collection: string, id: string, tenantId: string): Promise<void>;
-  search(collection: string, term: string, fields: readonly string[], tenantId: string): Promise<string[]>;
+  search(
+    collection: string,
+    term: string,
+    fields: readonly string[],
+    tenantId: string,
+  ): Promise<string[]>;
 }
 ```
 
@@ -95,7 +105,7 @@ return {
 
 A case-insensitive substring match, OR-ed across the resource's searchable fields. Honest about what it is: no tokenising, no stemming, no fuzziness, no relevance ranking. `q=squat press` matches only that literal contiguous string inside a single field, and a leading-wildcard `LIKE` cannot use a normal index, so it is a sequential scan.
 
-What it does have, and what an engine gives up, is that the text predicate and the security predicates are evaluated in the *same SQL statement*. That turns out to matter — see below.
+What it does have, and what an engine gives up, is that the text predicate and the security predicates are evaluated in the _same SQL statement_. That turns out to matter — see below.
 
 ## Which fields are searchable
 
@@ -107,7 +117,7 @@ const SEARCHABLE_FIELDS = ['title', 'notes'] as const;
 
 Because it is a plain constant in a file you own, narrowing it is an edit, not a configuration change. Two things worth knowing before you rely on the default:
 
-- A field marked `hidden: true` in the blueprint is still searchable. It is stripped from responses by the view, so its *contents* never reach the client — but a caller can still discover that some record matches a guessed value, and with an engine installed the field is shipped into the external index.
+- A field marked `hidden: true` in the blueprint is still searchable. It is stripped from responses by the view, so its _contents_ never reach the client — but a caller can still discover that some record matches a guessed value, and with an engine installed the field is shipped into the external index.
 - A resource with no string fields gets an empty list, and `search.q` silently matches nothing rather than erroring.
 
 ## Search cannot widen what you may see
@@ -127,7 +137,7 @@ return this.prisma.blogPost.findMany({
 });
 ```
 
-The capability scope sits in its own `AND` branch; the search clause sits in another. Because they are separate elements of an `AND`, search can only ever *intersect* — it is arithmetically incapable of re-admitting a row the scope excluded. That holds for the engine path too, where `searchWhere` is an `id: { in: [...] }` list handed back by a system that, for an external engine, already filtered by tenant on its own side before returning anything.
+The capability scope sits in its own `AND` branch; the search clause sits in another. Because they are separate elements of an `AND`, search can only ever _intersect_ — it is arithmetically incapable of re-admitting a row the scope excluded. That holds for the engine path too, where `searchWhere` is an `id: { in: [...] }` list handed back by a system that, for an external engine, already filtered by tenant on its own side before returning anything.
 
 Tenancy is enforced a layer lower still, by the tenant-scoping Prisma extension, which adds its own `tenantId` filter to the same query. Neither clause can be reached from the query string.
 
@@ -188,12 +198,12 @@ Installing a search module on an existing dataset does not retroactively index a
 
 Both modules ship a compose file with the container port unpublished, so Docker assigns a host port and `hery up --start` writes the resolved URL into `.env`.
 
-| | Elasticsearch | Meilisearch |
-|---|---|---|
-| Module | `search-elasticsearch` | `search-meilisearch` |
-| Query | `multi_match` across the fields | `attributesToSearchOn` |
-| Default window | 10 hits | 20 hits |
-| URL variable | `ELASTICSEARCH_URL` | `MEILISEARCH_URL` |
-| Also | — | `MEILISEARCH_API_KEY` |
+|                | Elasticsearch                   | Meilisearch            |
+| -------------- | ------------------------------- | ---------------------- |
+| Module         | `search-elasticsearch`          | `search-meilisearch`   |
+| Query          | `multi_match` across the fields | `attributesToSearchOn` |
+| Default window | 10 hits                         | 20 hits                |
+| URL variable   | `ELASTICSEARCH_URL`             | `MEILISEARCH_URL`      |
+| Also           | —                               | `MEILISEARCH_API_KEY`  |
 
 Neither driver creates an explicit mapping or index settings — indices are created implicitly on first write with the engine's dynamic defaults, and field restriction happens per query rather than in a stored configuration. Installing either prints a reminder to declare the engine in `hery.config.ts`; until it is declared, `search.engine` has no keyword to select it by.

@@ -10,27 +10,31 @@ Every error case throws an instance of `DomainException` (or a subclass) instead
 ```ts
 export class RecordNotFoundException extends DomainException {
   constructor(resource: string) {
-    super(HttpStatus.NOT_FOUND, `${resource}.notFound`, `${resource} not found.`);
+    super(
+      HttpStatus.NOT_FOUND,
+      `${resource}.notFound`,
+      `${resource} not found.`,
+    );
   }
 }
 ```
 
 Every subclass follows that shape: an HTTP status, a stable machine-readable `key`, a human-readable message, and optional `details`.
 
-| Exception | Status | Key |
-|---|---|---|
-| `MissingSessionException` | 401 | `auth.session.missing` |
-| `InvalidSessionException` | 401 | `auth.session.invalid` |
-| `InvalidCredentialsException` | 401 | `auth.invalidCredentials` |
-| `CapabilityForbiddenException` | 403 | `capability.forbidden` |
-| `ApiKeyEscalationException` | 403 | `apiKey.forbidden` |
-| `RecordNotFoundException` | 404 | `<resource>.notFound` |
-| `NoCurrentTeamException` | 409 | `team.noCurrentTeam` |
-| `InvalidQueryException` | 400 | `query.invalid` |
+| Exception                      | Status | Key                       |
+| ------------------------------ | ------ | ------------------------- |
+| `MissingSessionException`      | 401    | `auth.session.missing`    |
+| `InvalidSessionException`      | 401    | `auth.session.invalid`    |
+| `InvalidCredentialsException`  | 401    | `auth.invalidCredentials` |
+| `CapabilityForbiddenException` | 403    | `capability.forbidden`    |
+| `ApiKeyEscalationException`    | 403    | `apiKey.forbidden`        |
+| `RecordNotFoundException`      | 404    | `<resource>.notFound`     |
+| `NoCurrentTeamException`       | 409    | `team.noCurrentTeam`      |
+| `InvalidQueryException`        | 400    | `query.invalid`           |
 
 The two 401s are split on purpose. "You sent no token" and "you sent a token that is not valid" are different problems with different client fixes — one means sign in, the other means your session expired — and collapsing them into one key forces the client to guess.
 
-`NoCurrentTeamException` is the clearest illustration of why the status matters as much as the key. Creating a team-owned record with no current team is not *forbidden*: nothing about the request is wrong, and retrying it unchanged will succeed once the caller joins a team. That is a 409, not a 403, and the distinction is what lets a client tell "you may not do this" apart from "do this first".
+`NoCurrentTeamException` is the clearest illustration of why the status matters as much as the key. Creating a team-owned record with no current team is not _forbidden_: nothing about the request is wrong, and retrying it unchanged will succeed once the caller joins a team. That is a 409, not a 403, and the distinction is what lets a client tell "you may not do this" apart from "do this first".
 
 ## The global filter
 
@@ -66,15 +70,14 @@ One more branch: a request whose `Accept` header asks for HTML gets an HTML erro
 Successful responses share the same shape on the way out, and `ok()` is overloaded so the common cases stay short:
 
 ```ts
-ok(record)                                  // { data, messages: [] }
-ok(record, ['Team created.'])               // { data, messages }
-ok(records, { channels: ['blogPost'] })     // { data, meta, messages: [] }
-ok(records, { currentTeamId }, ['Saved.'])  // all three
+ok(record); // { data, messages: [] }
+ok(record, ['Team created.']); // { data, messages }
+ok(records, { channels: ['blogPost'] }); // { data, meta, messages: [] }
+ok(records, { currentTeamId }, ['Saved.']); // all three
 ```
 
 Every generated controller method returns `ok(...)`. Three keys, always the same three, so a client can be written once against the envelope rather than per endpoint.
 
-`meta` carries what is *about* the response rather than in it — the channels to subscribe to for invalidation, the collection-level capabilities a search request asked for in its `capabilities` array, the page window on a paged route, the caller's current team on `GET /teams`.
+`meta` carries what is _about_ the response rather than in it — the channels to subscribe to for invalidation, the collection-level capabilities a search request asked for in its `capabilities` array, the page window on a paged route, the caller's current team on `GET /teams`.
 
 `messages` carries text meant for a human. This is what lets a backend that has just done something non-obvious say so — a save that also queued a job, a create that also joined you to a team — without inventing a response shape for the occasion. Because the field is always present, a client can render it unconditionally and never has to ask whether this particular endpoint might have something to say.
-

@@ -90,7 +90,7 @@ The scaffold writes both, and they differ in one thing:
 
 Only the entry point is compiled. `src/runtime` is published as TypeScript source, because `copyRuntime` copies it into a project that compiles it itself — building it here would produce a `dist/runtime` nothing ever reads.
 
-The build clears `dist` before it runs, and that is not tidiness. A declaration file left in `dist` is an input as far as `tsc` is concerned: `@types/node` imports `"stream"`, and that specifier resolves to a package of that name as soon as it has types to find — which is how the module named `stream` failed its own second build with *"would overwrite input file"*. Build from nothing but your sources.
+The build clears `dist` before it runs, and that is not tidiness. A declaration file left in `dist` is an input as far as `tsc` is concerned: `@types/node` imports `"stream"`, and that specifier resolves to a package of that name as soon as it has types to find — which is how the module named `stream` failed its own second build with _"would overwrite input file"_. Build from nothing but your sources.
 
 `heryjs` resolves from `node_modules` like any other dependency, so nothing in either config points at it. Inside this repository the eleven official modules add a path for it, because there is no `heryjs` package to resolve — that mapping is an artefact of living in the framework's own tree, not part of the contract.
 
@@ -113,16 +113,16 @@ Declare the range you have actually tested. `*` is accepted and says nothing; th
 
 The install context is the only way to write, and there is no way around it:
 
-| | |
-|---|---|
-| `copyRuntime()` | copies `src/runtime/` to `dest`, rewriting `#kernel/` on the way, skipping any file already there |
-| `copyPackageFile(name)` | copies a file from your package root into the project |
-| `addPrismaModels(models)` | appends models you own to the project's Prisma schema |
-| `addModelFields(model, fields)` | adds columns to a Prisma model you do not own |
-| `chainScript(script, command)` | appends a command to one of the root `package.json` scripts |
-| `addWorkspace(directory)` | declares a directory in `pnpm-workspace.yaml` |
-| `patchExactStrings(file, pairs, guard)` | exact-match replacements in a kernel file you extend |
-| `nextSteps(steps)` | the closing numbered list |
+|                                         |                                                                                                   |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `copyRuntime()`                         | copies `src/runtime/` to `dest`, rewriting `#kernel/` on the way, skipping any file already there |
+| `copyPackageFile(name)`                 | copies a file from your package root into the project                                             |
+| `addPrismaModels(models)`               | appends models you own to the project's Prisma schema                                             |
+| `addModelFields(model, fields)`         | adds columns to a Prisma model you do not own                                                     |
+| `chainScript(script, command)`          | appends a command to one of the root `package.json` scripts                                       |
+| `addWorkspace(directory)`               | declares a directory in `pnpm-workspace.yaml`                                                     |
+| `patchExactStrings(file, pairs, guard)` | exact-match replacements in a kernel file you extend                                              |
+| `nextSteps(steps)`                      | the closing numbered list                                                                         |
 
 That list is the whole vocabulary, and each intent appears in it once — there is no freeform edit taking the file's source and handing back a new one, and no path argument on the operations whose file the project always keeps in the same place. So what your module writes can be read without being run, which is also how `lint:module-patches` on the installing side can tell that a patch of yours has stopped applying.
 

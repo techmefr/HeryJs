@@ -11,7 +11,7 @@ Zod schemas for create and update payloads, derived from the blueprint's fields.
 
 ## `task.presets.ts`
 
-One object, `TASK_PRESETS`, holding the four permission presets the blueprint declared. This is what the blueprint *became*: it is never read again at runtime, so the presets have to live somewhere in code, and they live here once.
+One object, `TASK_PRESETS`, holding the four permission presets the blueprint declared. This is what the blueprint _became_: it is never read again at runtime, so the presets have to live somewhere in code, and they live here once.
 
 Everything downstream reads this object — the policy functions, the service's collection query, the view. Nothing repeats a `'own'` or `'team'` literal of its own, which is the point: a preset tightened in the policy and forgotten in the service produces a record the detail route refuses and the list route hands out in full. `pnpm lint:scope-parity` fails the build on any call that passes a literal instead.
 
@@ -25,7 +25,7 @@ One function per question a route or a payload entry can ask. They come in pairs
 
 Each is a one-liner resolving a blueprint preset, and they are plain exported functions rather than class methods so a decorator can reference them at import time — and so a GraphQL resolver or an MCP tool can call the same rule without going through a guard.
 
-Two are worth noticing. `canViewAnyTask` uses the same preset as `canViewTask`, which is what makes the collection route and a single-record read answer the same question. And `canListTrashedTask` follows the *delete* preset rather than the read one, on the grounds that opening the bin is a moderation move.
+Two are worth noticing. `canViewAnyTask` uses the same preset as `canViewTask`, which is what makes the collection route and a single-record read answer the same question. And `canListTrashedTask` follows the _delete_ preset rather than the read one, on the grounds that opening the bin is a moderation move.
 
 `TaskPolicy` is the injectable half, resolving the decisions attached to each record and to the collection when a search request names them in its `capabilities` array.
 
@@ -61,14 +61,14 @@ Each mutation also publishes on the resource's signal channel and syncs the sear
 
 The HTTP surface: six routes, each behind `SessionGuard` and `CapabilitiesGuard`, each response passed through `task.view.ts` before it leaves the process. There is no `GET /tasks/:id` — reading one record is the search route filtered to an id, so there is one contract to learn instead of two, and [Details](/guides/endpoints/details/) explains why.
 
-| Route | Capability at the guard | Per-record check |
-|---|---|---|
-| `POST /tasks/search` | `canViewAnyTask` | the view preset, as a `where` clause |
-| `GET /tasks/describe` | `canViewAnyTask` | — |
-| `POST /tasks/create` | `canCreateTask` | — |
-| `POST /tasks/update` | `canUpdateAnyTask` | `canUpdateTask` per entry, on the loaded record |
-| `POST /tasks/delete` | `canDeleteAnyTask`, plus `canHardDeleteTask` once for the whole request when `mode: 'hard'` | `canDeleteTask` per entry |
-| `POST /tasks/restore` | `canRestoreAnyTask` | `canRestoreTask` per entry |
+| Route                 | Capability at the guard                                                                     | Per-record check                                |
+| --------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `POST /tasks/search`  | `canViewAnyTask`                                                                            | the view preset, as a `where` clause            |
+| `GET /tasks/describe` | `canViewAnyTask`                                                                            | —                                               |
+| `POST /tasks/create`  | `canCreateTask`                                                                             | —                                               |
+| `POST /tasks/update`  | `canUpdateAnyTask`                                                                          | `canUpdateTask` per entry, on the loaded record |
+| `POST /tasks/delete`  | `canDeleteAnyTask`, plus `canHardDeleteTask` once for the whole request when `mode: 'hard'` | `canDeleteTask` per entry                       |
+| `POST /tasks/restore` | `canRestoreAnyTask`                                                                         | `canRestoreTask` per entry                      |
 
 Every mutating route takes an array and answers with one result per entry, each carrying its own `status`, so one refused record never blocks the others. The guard admits the caller to the route; the per-record function above is what decides each entry.
 
@@ -91,9 +91,9 @@ If nothing is hidden it is effectively an identity function — still generated,
 A plain exported function, not a class, backed by `@faker-js/faker` for default field values:
 
 ```ts
-taskFactory({ ownerId }, { count: 5 });      // five records at once
-taskFactory({ ownerId, trashed: true });     // a soft-deleted record
-taskFactory({ ownerId: existingUser.id });   // "recycle" — just pass the existing id
+taskFactory({ ownerId }, { count: 5 }); // five records at once
+taskFactory({ ownerId, trashed: true }); // a soft-deleted record
+taskFactory({ ownerId: existingUser.id }); // "recycle" — just pass the existing id
 ```
 
 ## `task.spec.ts`
@@ -104,12 +104,12 @@ An end-to-end HTTP test, generated once and meant to be extended by hand. Sevent
 
 Four flags each add one more file, for a resource that should also be reachable another way:
 
-| Flag | File | Adds |
-|---|---|---|
-| `--graphql` | `task.resolver.ts` | queries and mutations |
-| `--mcp` | `task.mcp-tools.ts` | five MCP tools |
-| `--live` | `task.live.gateway.ts` | a WebSocket namespace |
-| `--stream` | `task.stream.controller.ts` | LiveKit token routes |
+| Flag        | File                        | Adds                  |
+| ----------- | --------------------------- | --------------------- |
+| `--graphql` | `task.resolver.ts`          | queries and mutations |
+| `--mcp`     | `task.mcp-tools.ts`         | five MCP tools        |
+| `--live`    | `task.live.gateway.ts`      | a WebSocket namespace |
+| `--stream`  | `task.stream.controller.ts` | LiveKit token routes  |
 
 Each requires its module to be installed, and each re-checks the resource's own policy functions rather than inventing its own rules.
 

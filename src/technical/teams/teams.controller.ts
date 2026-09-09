@@ -14,6 +14,7 @@ import type { RequestWithUser } from '#technical/auth/session.guard';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { Capability } from '#technical/capabilities/capability.decorator';
 import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
+import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
 import { ok } from '#technical/http/envelope';
 import { okPage, parsePageQuery } from '#technical/http/page-query';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
@@ -45,6 +46,7 @@ import { TeamsService } from './teams.service';
 export class TeamsController {
   constructor(private readonly teams: TeamsService) {}
 
+  @RateLimit('read')
   @Get()
   @Capability(canListOwnTeams)
   async list(@Req() req: RequestWithUser, @Query() query: unknown) {
@@ -55,6 +57,7 @@ export class TeamsController {
     });
   }
 
+  @RateLimit('write')
   @Post()
   @Capability(canCreateTeam)
   async create(
@@ -66,6 +69,7 @@ export class TeamsController {
     ]);
   }
 
+  @RateLimit('write')
   @Post(':id/members')
   @Capability(canManageTeamMembers)
   async addMember(
@@ -80,6 +84,7 @@ export class TeamsController {
     return ok(await this.teams.addMember(id, body.userId), ['Member added.']);
   }
 
+  @RateLimit('write')
   @Patch('current')
   @Capability(canSwitchCurrentTeam)
   async switchCurrent(

@@ -4,6 +4,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { Request, Response } from 'express';
 import { SessionGuard } from '#kernel/auth/session.guard';
+import { RateLimit } from '#kernel/rate-limit/rate-limit.decorator';
 import type { RequestWithUser } from '#kernel/auth/session.guard';
 import { CapabilitiesGuard } from '#kernel/capabilities/capabilities.guard';
 import { Capability } from '#kernel/capabilities/capability.decorator';
@@ -20,6 +21,7 @@ export class McpGatewayController {
     private readonly registrars: McpToolRegistrar[],
   ) {}
 
+  @RateLimit('write')
   @All()
   @Capability(canReachMcpGateway)
   async handle(@Req() req: RequestWithUser, @Res() res: Response) {

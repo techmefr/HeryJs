@@ -1,6 +1,7 @@
 import { Controller, Get, Param, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { PublicRoute } from '#kernel/capabilities/public-route.decorator';
+import { RateLimit } from '#kernel/rate-limit/rate-limit.decorator';
 import { LocalStorageProvider } from './local-storage.provider';
 import { StorageSignatureGuard } from './storage-signature.guard';
 
@@ -10,6 +11,7 @@ import { StorageSignatureGuard } from './storage-signature.guard';
 export class StorageController {
   constructor(private readonly local: LocalStorageProvider) {}
 
+  @RateLimit('read')
   @Get(':key')
   @UseGuards(StorageSignatureGuard)
   @PublicRoute('signed URL: the HMAC signature and expiry are the credential')

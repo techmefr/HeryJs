@@ -44,19 +44,19 @@ id  tenantId  ownerId  teamId  createdAt  updatedAt  deletedAt
 
 The reason is narrow and worth stating: declaring one of these would put a **client-writable field on top of a column the framework decides**. A blueprint with an `ownerId` field would generate a DTO accepting it, which is how a caller ends up choosing its own owner — or its own team, or its own tenant. Refusing at load time is cheaper than discovering it in review.
 
-`teamId` in particular is added *for* you, automatically, as soon as any permission preset is `team`.
+`teamId` in particular is added _for_ you, automatically, as soon as any permission preset is `team`.
 
 ## Permissions
 
 One preset per action, each resolved through the same capabilities engine described in the capabilities guide.
 
-`view` is the one worth pausing on: it drives the detail route *and* the `where` clause of the collection query, so both answer the same question from a single declaration. There is deliberately no separate `list` preset — two presets could diverge, and a record hidden from one route while handed out by the other is the exact bug this shape exists to make unwriteable. `view: all` with `update: own` gives the common case: everyone in the tenant reads, only the owner edits.
+`view` is the one worth pausing on: it drives the detail route _and_ the `where` clause of the collection query, so both answer the same question from a single declaration. There is deliberately no separate `list` preset — two presets could diverge, and a record hidden from one route while handed out by the other is the exact bug this shape exists to make unwriteable. `view: all` with `update: own` gives the common case: everyone in the tenant reads, only the owner edits.
 
 Choosing `team` anywhere changes the generated resource structurally: the Prisma model gains a `teamId` column and a relation, the create path stamps that column from the session and refuses with a 409 when the caller has no current team, and the view exposes it. See [Teams](/guides/teams/).
 
 ## Pagination, sorts and filters — the search contract
 
-This is the part that goes beyond validating input: it bounds *output* too.
+This is the part that goes beyond validating input: it bounds _output_ too.
 
 - `pagination` is optional, and it is the only place pagination is decided. Declare it and `limits` is the exhaustive list of page sizes a client may request — anything else is a 400 — while `default` is the size used when the caller names none. Leave the block out and the search route does not paginate: it returns every match, reports `"paginated": false` in `describe` and `meta`, and rejects a caller who sends `page` or `limit` rather than ignoring them. Bounding the result set is the developer's call, not the framework's.
 - `sorts` is the allow-list of fields a client can sort by — `sort` in the body, prefixed with `-` for descending.
@@ -85,7 +85,7 @@ The two trashed parameters are not just filters: asking for either one is checke
 
 ## Relations
 
-Three more keys describe what a resource is attached to, and they split by what a request may *do* with the relation rather than by how Prisma models it.
+Three more keys describe what a resource is attached to, and they split by what a request may _do_ with the relation rather than by how Prisma models it.
 
 `includes` and `aggregates` are the read side — a relation a search request may embed, or count. Each entry names the relation, the resource on the other end, and how they are linked:
 
@@ -108,9 +108,9 @@ aggregates:
     foreignKey: blogPostId
 ```
 
-`hasMany` is a real Prisma relation, so `foreignKey` is the column the related model points back with. `morphMany` has no Prisma-level relation at all — Prisma does not model polymorphic associations — so the related model's own discriminator column and the value it holds for *this* resource have to be declared; there is nothing to introspect. Both require `discriminator` and `discriminatorValue`, and a blueprint that omits either on a `morphMany` is rejected.
+`hasMany` is a real Prisma relation, so `foreignKey` is the column the related model points back with. `morphMany` has no Prisma-level relation at all — Prisma does not model polymorphic associations — so the related model's own discriminator column and the value it holds for _this_ resource have to be declared; there is nothing to introspect. Both require `discriminator` and `discriminatorValue`, and a blueprint that omits either on a `morphMany` is rejected.
 
-The referenced resource's own blueprint is what supplies the nested contract: the `filters`, `sorts` and `selects` a request may name *inside* an include come from there rather than being retyped on every parent that includes it. That is what `routed: false` is for — a resource generated with no controller, no service and no capabilities of its own, existing only to describe the shape of a relation once.
+The referenced resource's own blueprint is what supplies the nested contract: the `filters`, `sorts` and `selects` a request may name _inside_ an include come from there rather than being retyped on every parent that includes it. That is what `routed: false` is for — a resource generated with no controller, no service and no capabilities of its own, existing only to describe the shape of a relation once.
 
 `relations` is the write side, and it is specifically the `belongsToMany` case `includes` cannot express: neither side owns the other, so attaching or detaching never touches the related row, only a row in the pivot table.
 

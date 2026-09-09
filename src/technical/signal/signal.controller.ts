@@ -10,6 +10,7 @@ import {
 import type { Response } from 'express';
 import IORedis from 'ioredis';
 import { SessionGuard } from '#technical/auth/session.guard';
+import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { Capability } from '#technical/capabilities/capability.decorator';
 import { PublicRoute } from '#technical/capabilities/public-route.decorator';
@@ -27,6 +28,7 @@ import { SignalTokenService } from './signal-token.service';
 export class SignalController {
   constructor(private readonly tokens: SignalTokenService) {}
 
+  @RateLimit('write')
   @Post('token')
   @UseGuards(SessionGuard, CapabilitiesGuard)
   @Capability(canIssueSignalToken)
@@ -36,6 +38,7 @@ export class SignalController {
   }
 
   @UnpaginatedRoute('an open SSE stream: it has no end to page to')
+  @RateLimit('read')
   @Get('stream')
   @UseGuards(SignalTokenGuard)
   @PublicRoute(

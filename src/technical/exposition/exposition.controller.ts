@@ -8,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { SessionGuard } from '#technical/auth/session.guard';
+import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
 import type { RequestWithUser } from '#technical/auth/session.guard';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { Capability } from '#technical/capabilities/capability.decorator';
@@ -36,6 +37,7 @@ export class ExpositionController {
   @UnpaginatedRoute(
     'the actions declared in code, as long as the code that declares them',
   )
+  @RateLimit('read')
   @Get()
   @Capability(canReachExposedActions)
   list(@Req() request: RequestWithUser) {
@@ -49,6 +51,7 @@ export class ExpositionController {
     );
   }
 
+  @RateLimit('write')
   @Post(':action')
   @Capability(canReachExposedActions)
   async run(

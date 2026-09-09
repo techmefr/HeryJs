@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
+import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
 import { Capability } from '#technical/capabilities/capability.decorator';
 import { ApiKeyEscalationException } from '#technical/errors/api-key-escalation.exception';
 import { ok } from '#technical/http/envelope';
@@ -36,6 +37,7 @@ function assertNotApiKey(req: RequestWithUser): void {
 export class ApiKeyController {
   constructor(private readonly apiKeys: ApiKeyService) {}
 
+  @RateLimit('write')
   @Post()
   @Capability(canManageOwnApiKeys)
   async create(
@@ -49,6 +51,7 @@ export class ApiKeyController {
     ]);
   }
 
+  @RateLimit('read')
   @Get()
   @Capability(canManageOwnApiKeys)
   async list(@Req() req: RequestWithUser, @Query() query: unknown) {
@@ -58,6 +61,7 @@ export class ApiKeyController {
     return okPage(await this.apiKeys.list(req.user, page), page);
   }
 
+  @RateLimit('write')
   @Delete(':id')
   @Capability(canManageOwnApiKeys)
   async revoke(@Req() req: RequestWithUser, @Param('id') id: string) {

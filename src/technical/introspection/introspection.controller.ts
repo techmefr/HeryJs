@@ -1,5 +1,6 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { SessionGuard } from '#technical/auth/session.guard';
+import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { Capability } from '#technical/capabilities/capability.decorator';
 import { DevOnlyGuard } from '#technical/dev-only/dev-only.guard';
@@ -16,6 +17,7 @@ export class IntrospectionController {
   @UnpaginatedRoute(
     'the route table this application declares in code, as long as that code',
   )
+  @RateLimit('read')
   @Get()
   @Capability(canUseDevtools)
   list() {

@@ -5,11 +5,11 @@ description: Three different problems — signal for "something changed", live f
 
 Realtime is not one feature. Telling a browser that a list is stale, letting two clients exchange messages, and moving video between participants are three problems with three answers, and conflating them produces a WebSocket layer that does all three badly.
 
-| | Transport | In the box? | For |
-|---|---|---|---|
-| `signal` | Server-Sent Events over Redis pub/sub | kernel, always present | "something changed, refetch" |
-| `live` | Socket.IO | `hery install live` | two-way messaging on a record |
-| `stream` | LiveKit (SFU) | `hery install stream` | one-to-many audio/video |
+|          | Transport                             | In the box?            | For                           |
+| -------- | ------------------------------------- | ---------------------- | ----------------------------- |
+| `signal` | Server-Sent Events over Redis pub/sub | kernel, always present | "something changed, refetch"  |
+| `live`   | Socket.IO                             | `hery install live`    | two-way messaging on a record |
+| `stream` | LiveKit (SFU)                         | `hery install stream`  | one-to-many audio/video       |
 
 ## `signal` — the invalidation channel
 
@@ -73,10 +73,13 @@ Three inbound events — `join`, `leave` and `message`, all keyed by record id �
 
 ### Both boundaries are re-established on the socket
 
-This is the part worth reading closely, because a WebSocket bypasses everything the HTTP pipeline does for you. `TenantMiddleware` wraps the *handshake*, not each subsequent frame on an already-open connection, so a message handler runs with no ambient tenant unless one is put back. The module does that explicitly, from the connection-time user rather than anything the client sends:
+This is the part worth reading closely, because a WebSocket bypasses everything the HTTP pipeline does for you. `TenantMiddleware` wraps the _handshake_, not each subsequent frame on an already-open connection, so a message handler runs with no ambient tenant unless one is put back. The module does that explicitly, from the connection-time user rather than anything the client sends:
 
 ```ts
-export function withTenant<T>(client: LiveSocket, fn: () => Promise<T>): Promise<T> {
+export function withTenant<T>(
+  client: LiveSocket,
+  fn: () => Promise<T>,
+): Promise<T> {
   return TenantContextStorage.run(
     {
       tenantId: client.data.user.tenantId,
@@ -96,7 +99,7 @@ Authentication happens twice on purpose — `handleConnection` disconnects an un
 
 The default in-process Socket.IO adapter is used, with no Redis adapter, so **rooms do not span processes**: two clients on different instances are not in the same room. Behind more than one instance you will need to add an adapter.
 
-Also note the generated gateway has no server-side emitter — it relays messages between clients. Broadcasting *your own* changes to a browser is the `signal` path above, not this one.
+Also note the generated gateway has no server-side emitter — it relays messages between clients. Broadcasting _your own_ changes to a browser is the `signal` path above, not this one.
 
 ## `stream` — one-to-many audio and video
 
@@ -108,10 +111,10 @@ pnpm hery generate BlogPost --stream
 
 LiveKit does the media work; HeryJs only decides who may get a token. Two routes per resource, one room per record:
 
-| Route | Capability | Token grants |
-|---|---|---|
+| Route                                       | Capability          | Token grants          |
+| ------------------------------------------- | ------------------- | --------------------- |
 | `POST /blog-posts/:id/stream/publish-token` | `canUpdateBlogPost` | publish, no subscribe |
-| `POST /blog-posts/:id/stream/viewer-token` | `canViewBlogPost` | subscribe, no publish |
+| `POST /blog-posts/:id/stream/viewer-token`  | `canViewBlogPost`   | subscribe, no publish |
 
 Both return `ok({ room, token })`.
 

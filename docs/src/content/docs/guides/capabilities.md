@@ -3,7 +3,7 @@ title: Capabilities
 description: How HeryJs resolves permissions, and why the server never sends rules to the client.
 ---
 
-A capability is a resolved decision, not a rule: `{ allowed: boolean, scope?: 'own' | 'team' | 'all' }`. The server never sends a permission *rule* to the client — only the outcome of evaluating one, for the current user, against an already-loaded record.
+A capability is a resolved decision, not a rule: `{ allowed: boolean, scope?: 'own' | 'team' | 'all' }`. The server never sends a permission _rule_ to the client — only the outcome of evaluating one, for the current user, against an already-loaded record.
 
 ## Presets
 
@@ -16,12 +16,12 @@ Every permission in a blueprint picks one of four presets:
 
 Resolution happens **in memory**, against a record already fetched for the request — never as a separate query per item. This is what keeps a list endpoint from turning into an N+1 permission check.
 
-The `team` preset resolves against a `teamId` column, which the generator adds for you as soon as any preset asks for it — a blueprint must *not* declare `teamId` itself, since it is a reserved column the framework decides. Team memberships are resolved from the database on every request, so `team` is fully working; see [Teams](/guides/teams/) for how the perimeter is established.
+The `team` preset resolves against a `teamId` column, which the generator adds for you as soon as any preset asks for it — a blueprint must _not_ declare `teamId` itself, since it is a reserved column the framework decides. Team memberships are resolved from the database on every request, so `team` is fully working; see [Teams](/guides/teams/) for how the perimeter is established.
 
 ## Two levels: collection and record
 
 - **Collection-level** (`resolveCollectionCapability`) answers questions like "can this user create a BlogPost at all," where there is no specific record to check against yet.
-- **Record-level** (`resolveCapability`) answers "can this user update *this* BlogPost," given the record.
+- **Record-level** (`resolveCapability`) answers "can this user update _this_ BlogPost," given the record.
 
 ## The subject
 
@@ -43,7 +43,10 @@ One function builds it, `subjectOf(user)`, and `pnpm lint:subject` fails the bui
 A detail route resolves a preset against a loaded record. A list route cannot do that — the rows it should not return are exactly the ones it must avoid fetching. So the same preset has to become a `where` clause, and that is what `scopeWhereFor` does:
 
 ```ts
-export function scopeWhereFor(preset: PermissionPreset, subject: CapabilitySubject): ScopeWhere {
+export function scopeWhereFor(
+  preset: PermissionPreset,
+  subject: CapabilitySubject,
+): ScopeWhere {
   switch (preset) {
     case 'none':
       return { id: { in: [] } };
@@ -70,13 +73,21 @@ export const BLOG_POST_PRESETS = {
   create: 'own',
   update: 'own',
   delete: 'own',
-} as const satisfies Record<'view' | 'create' | 'update' | 'delete', PermissionPreset>;
+} as const satisfies Record<
+  'view' | 'create' | 'update' | 'delete',
+  PermissionPreset
+>;
 ```
 
 ```ts
 // blog-post.policy.ts
-export const canViewBlogPost: PolicyCheck<BlogPostRecordLike> = (subject, record) =>
-  record ? resolveCapability(BLOG_POST_PRESETS.view, subject, record) : { allowed: false };
+export const canViewBlogPost: PolicyCheck<BlogPostRecordLike> = (
+  subject,
+  record,
+) =>
+  record
+    ? resolveCapability(BLOG_POST_PRESETS.view, subject, record)
+    : { allowed: false };
 ```
 
 There is one declaration, so tightening a permission is a one-line edit and there is no second place to forget. `pnpm lint:scope-parity` fails the build on any call that passes a literal instead — that literal is the second declaration coming back.
@@ -102,8 +113,10 @@ Listing soft-deleted rows follows the `delete` preset instead of the read one (`
 A controller route declares its policy as a plain, exported function — not a class method:
 
 ```ts
-export const canUpdateBlogPost: PolicyCheck<BlogPostRecordLike> = (subject, record) =>
-  record ? resolveCapability('own', subject, record) : { allowed: false };
+export const canUpdateBlogPost: PolicyCheck<BlogPostRecordLike> = (
+  subject,
+  record,
+) => (record ? resolveCapability('own', subject, record) : { allowed: false });
 ```
 
 ```ts
@@ -130,7 +143,7 @@ Being plain functions has a second payoff. `CapabilitiesGuard` only works for HT
 
 ## The routes that cannot carry a capability
 
-A few routes have no caller to resolve a decision against. Logging in and registering are what *create* the caller. A signed storage URL is handed to a browser as an `<img src>` and carries no session — the HMAC signature and the expiry in the query string are the credential. An inbound webhook is sent by a third-party service that signs the raw body with the endpoint secret. Each of those is gated, just not by a capability: a guard checks the credential the request actually carries, and the route says so out loud:
+A few routes have no caller to resolve a decision against. Logging in and registering are what _create_ the caller. A signed storage URL is handed to a browser as an `<img src>` and carries no session — the HMAC signature and the expiry in the query string are the credential. An inbound webhook is sent by a third-party service that signs the raw body with the endpoint secret. Each of those is gated, just not by a capability: a guard checks the credential the request actually carries, and the route says so out loud:
 
 ```ts
 @Post(':endpointId')
@@ -151,4 +164,4 @@ Generated code belongs to you, which means the generator's guarantees stop the m
 - `pnpm lint:scope-parity` fails the build if a `search()` under `functional/**/*.service.ts` does not go through `scopeWhereFor(...)`, which is how a collection query silently loses its scope — and, in every service and policy it scans, if any call to `scopeWhereFor`, `resolveCapability`, `resolveCollectionCapability` or `CapabilitiesService.resolve` passes a preset literal instead of reading the resource's `<NAME>_PRESETS` entry. Detecting the call was not enough: two calls can both be present and disagree.
 - `pnpm lint:subject` fails the build if a capability subject is assembled anywhere but `subjectOf`, which is how a field on the subject silently stays empty.
 
-Forgetting any of them is a build failure, not a runtime surprise. Each one exists because the corresponding mistake was made at least once, and none of them is detectable by reading the code that contains it — the bug is always an *absence*.
+Forgetting any of them is a build failure, not a runtime surprise. Each one exists because the corresponding mistake was made at least once, and none of them is detectable by reading the code that contains it — the bug is always an _absence_.
