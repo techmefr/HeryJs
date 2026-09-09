@@ -157,6 +157,21 @@ describe('what is scaffolded', () => {
     expect(pkg.peerDependencies['@nestjs/common']).toBeDefined();
   });
 
+  /**
+   * A stale `dist` is not merely old output, it is an input: `@types/node`
+   * imports `"stream"`, and tsc resolves that specifier to a workspace package
+   * of that name once it has a declaration file to find -- so the module named
+   * `stream` failed its own second build with "would overwrite input file".
+   * Cleaning first is what makes a build depend on nothing but its sources.
+   */
+  it('builds from a clean dist', () => {
+    const pkg = JSON.parse(read('packages/audit-trail/package.json')) as {
+      scripts: Record<string, string>;
+    };
+
+    expect(pkg.scripts.build).toBe('rm -rf dist && tsc -p tsconfig.build.json');
+  });
+
   // Pinned from the project rather than written into the template, so a
   // scaffolded module typechecks against the same NestJS the kernel does.
   it('pins its dependencies to the ranges the project resolves', () => {
