@@ -38,7 +38,7 @@ It writes a package that already satisfies the contract — the definition, the 
   "files": ["dist", "src/runtime"],
   "heryjs": { "module": true },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "prepack": "pnpm run build"
   },
   "peerDependencies": { "@nestjs/common": "^12.0.0" },
@@ -89,6 +89,8 @@ The scaffold writes both, and they differ in one thing:
 - `tsconfig.build.json` — emits `dist/` from `src/module.ts` alone, with `declaration`. What `prepack` runs.
 
 Only the entry point is compiled. `src/runtime` is published as TypeScript source, because `copyRuntime` copies it into a project that compiles it itself — building it here would produce a `dist/runtime` nothing ever reads.
+
+The build clears `dist` before it runs, and that is not tidiness. A declaration file left in `dist` is an input as far as `tsc` is concerned: `@types/node` imports `"stream"`, and that specifier resolves to a package of that name as soon as it has types to find — which is how the module named `stream` failed its own second build with *"would overwrite input file"*. Build from nothing but your sources.
 
 `heryjs` resolves from `node_modules` like any other dependency, so nothing in either config points at it. Inside this repository the eleven official modules add a path for it, because there is no `heryjs` package to resolve — that mapping is an artefact of living in the framework's own tree, not part of the contract.
 

@@ -1,6 +1,12 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    // Cleared, not inherited: the root maps "heryjs" to the contract source so
+    // a typecheck needs no build, but a module's build has to resolve it
+    // through the package the way a third party's does -- both to prove the
+    // published declaration is usable, and because a source file outside the
+    // module's rootDir is not something tsc will emit for.
+    "paths": {},
     "declaration": true,
     "sourceMap": false,
     "incremental": false,

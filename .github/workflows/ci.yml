@@ -93,6 +93,13 @@ jobs:
 
       - run: pnpm run build
 
+      # The eleven modules, which nothing else here compiles: a typecheck reads
+      # them through a path to the contract source, while their build resolves
+      # it through the package the way a third party's does. Those are two
+      # different resolutions, and only this step exercises the published one --
+      # a broken module build reached main once already behind a green run.
+      - run: pnpm run build:modules
+
       # Both Astro workspaces, on every run rather than only when their own
       # files change: what broke the docs build during the last dependency
       # bump was the root lockfile, not anything under docs/.

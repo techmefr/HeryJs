@@ -13,7 +13,7 @@
     "module": true
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "prepack": "pnpm run build"
   },
   "peerDependencies": {

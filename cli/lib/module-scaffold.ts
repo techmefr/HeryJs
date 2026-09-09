@@ -97,7 +97,7 @@ function manifest(name: string, repoRoot: string): string {
       types: 'dist/module.d.ts',
       files: ['dist', 'src/runtime'],
       scripts: {
-        build: 'tsc -p tsconfig.build.json',
+        build: 'rm -rf dist && tsc -p tsconfig.build.json',
         prepack: 'pnpm run build',
       },
       peerDependencies: { '@nestjs/common': NEST_PEER_RANGE },
