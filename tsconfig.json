@@ -2,6 +2,11 @@
   "compilerOptions": {
     "module": "nodenext",
     "moduleResolution": "nodenext",
+    "paths": {
+      "heryjs": [
+        "./cli/module-contract.ts"
+      ]
+    },
     "resolvePackageJsonExports": true,
     "esModuleInterop": true,
     "isolatedModules": true,
