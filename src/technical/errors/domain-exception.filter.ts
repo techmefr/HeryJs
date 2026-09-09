@@ -10,6 +10,7 @@ import {
 import { Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
 import { TraceContextStorage } from '#technical/tracing/trace-context';
+import { translate, translateDomainException } from '#technical/i18n/translate';
 import { DomainException } from './domain.exception';
 import { InvalidQueryValueException } from './invalid-query.exception';
 import { renderErrorPage } from './error-page';
@@ -55,7 +56,7 @@ function reportUnknownError(exception: unknown): ResolvedError {
   return {
     status: HttpStatus.INTERNAL_SERVER_ERROR,
     key: 'internal.error',
-    message: 'Internal server error.',
+    message: translate('internal.error', undefined, 'Internal server error.'),
     details: { errorId },
   };
 }
@@ -86,7 +87,7 @@ function reportInvalidQueryValue(error: Error): ResolvedError {
   return {
     status: exception.getStatus(),
     key: exception.key,
-    message: exception.message,
+    message: translateDomainException(exception),
     details: { ...(exception.details as Record<string, unknown>), errorId },
   };
 }
@@ -112,7 +113,7 @@ export function resolveDomainError(exception: unknown): ResolvedError {
     return {
       status: exception.getStatus(),
       key: exception.key,
-      message: exception.message,
+      message: translateDomainException(exception),
       details: exception.details,
     };
   }

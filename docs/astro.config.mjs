@@ -60,6 +60,7 @@ export default defineConfig({
                   label: 'Errors and responses',
                   slug: 'guides/errors-and-responses',
                 },
+                { label: 'Internationalization', slug: 'guides/i18n' },
                 {
                   label: 'Exposing an action to the mine',
                   slug: 'guides/exposing-actions',

@@ -7,6 +7,7 @@ export class ExpositionEnvironmentBlockedException extends DomainException {
       HttpStatus.FORBIDDEN,
       'exposition.environmentBlocked',
       `"${action}" is not exposed in this environment.`,
+      { action },
     );
   }
 }

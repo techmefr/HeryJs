@@ -7,6 +7,8 @@ export class AlreadyRestoredException extends DomainException {
       HttpStatus.CONFLICT,
       `${resource}.alreadyRestored`,
       `${resource} is not trashed, so it cannot be restored.`,
+      { resource },
+      'record.alreadyRestored',
     );
   }
 }
