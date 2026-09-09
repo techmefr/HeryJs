@@ -31,24 +31,36 @@ This is a bet, not a certainty: that developers — and the agents increasingly 
 ## Getting started
 
 ```bash
-git clone https://github.com/techmefr/HeryJs.git
-cd HeryJs
-pnpm install
-pnpm run db:generate
-pnpm hery new my-app
+pnpm dlx heryjs new my-app
 cd my-app
 cp .env.example .env
-docker compose up -d
 pnpm install
+pnpm hery up --start
 pnpm hery migrate --name init
 pnpm start:dev
 ```
 
-`hery new` scaffolds a fresh, standalone project: the kernel, the CLI, the default modules, none of HeryJs's own demo or docs. From there, generate your first resource:
+`heryjs new` scaffolds a fresh, standalone project: the kernel, the CLI, the eleven modules, none of HeryJs's own demo or docs. The CLI travels into the project it creates, so every command after this one is `pnpm hery` from inside it — there is nothing global to install and nothing to keep in step with a release.
+
+`hery up --start` brings the compose services up and writes the ports Docker actually assigned back into `.env`; they are not fixed, so several projects can run side by side.
+
+From there, generate your first resource:
 
 ```bash
 pnpm hery create:blueprint BlogPost
 pnpm hery generate blueprints/blog-post.yaml
+```
+
+### From a clone
+
+Only to work on the framework itself. A clone is this repository — the demo resource, the docs site and the eleven module workspaces — not a starting point for an application:
+
+```bash
+git clone https://github.com/techmefr/HeryJs.git
+cd HeryJs
+pnpm install
+pnpm run db:generate
+pnpm hery up --start
 ```
 
 ## What it generates
@@ -94,6 +106,8 @@ pnpm hery install <module>
 
 Search (Prisma, Elasticsearch, Meilisearch), GraphQL, MCP (read and write), real-time (`live`, WebSocket), streaming (LiveKit), mail, file storage, admin impersonation, inbound webhooks with HMAC signature verification, and an admin dashboard (`admin-astro`) that every module contributes a section to automatically, with no registry to maintain.
 
+All eleven are published as `@heryjs/<name>` and versioned with the kernel, so a module can be added to a project that wasn't scaffolded with it, and a module you write yourself declares exactly what those do — the two channels are the same contract. See [Publishing a module](https://techmefr.github.io/HeryJs/guides/publishing-a-module/).
+
 ## What it deliberately does not do
 
 HeryJs covers a common backend core. It does not try to be a solution for everything. Billing, i18n — for those, you write ordinary NestJS code in a clean, conventional project. HeryJs never gets in the way, but it doesn't pretend to replace judgment either.
@@ -101,6 +115,10 @@ HeryJs covers a common backend core. It does not try to be a solution for everyt
 ## Status
 
 The vertical slice, the widening of features, and a hardening pass (opt-in row-level security, an adversarial security review, a more robust generator) are done. Since then: teams as a first-class permission scope, a module system with a growing catalog (search drivers, GraphQL, MCP, live, stream, mail, storage, impersonation), an admin dashboard every module plugs into automatically, a layered architecture enforced by an actual linter, and `hery new` — a real starting point for a project that isn't this repository. A pre-publication external audit has since closed out a round of fixes: tenant-safe search indexing, actor tracking on the audit trail, `hery.config.ts` as a real closed-config point, keyword-selected search engines, a bounded impersonation session with its own admin-on-admin test, and API keys for non-interactive callers. See the [commit history](https://github.com/techmefr/HeryJs/commits/main) for the detail.
+
+## Security
+
+Every request goes through the same four steps — who is calling, which tenant, what they may do, what they sent — and the tenant boundary is enforced twice, once in the Prisma client and once by a Postgres row-level policy that fails closed. What that covers, and what it deliberately leaves to you (rate limiting, for one), is written out in [the security model](https://techmefr.github.io/HeryJs/guides/security/). To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
 ## Contributing
 

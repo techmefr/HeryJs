@@ -160,7 +160,9 @@ The same checks run over the eleven modules in this repository as `pnpm run lint
 ## A module is its default export
 
 ```ts
-export default defineModule({
+import type { ModuleDefinition } from 'heryjs';
+
+export default {
   name: 'storage',
   description: 'Add file storage behind a swappable provider.',
   meta: { compatibility: '>=0.0.1' },
@@ -169,10 +171,32 @@ export default defineModule({
     context.copyRuntime();
     context.nextSteps(['Import StorageModule into src/app.module.ts']);
   },
-});
+} satisfies ModuleDefinition;
 ```
 
-`defineModule` exists for the type inference only — a plain object literal is a valid module, and a third-party package needs **no runtime import from HeryJs at all**. That is deliberate: the contract used to be a `registerModule()` call into a module-level Map, which only ever worked for the modules living in this repository. A third-party package had nothing to import that function from, and a bundled copy of it would have been a second Map the CLI never reads — so a community module loaded fine and registered nothing, silently.
+That is a plain object literal, and `import type` is erased by the compiler, so a published module has **no runtime dependency on HeryJs at all** — the contract is checked when the module is built and gone by the time it is installed.
+
+It is deliberate. The contract used to be a `registerModule()` call into a module-level Map, which only ever worked for the modules living in this repository: a third-party package had nothing to import that function from, and a bundled copy of it would have been a second Map the CLI never reads — so a community module loaded fine and registered nothing, silently.
+
+## The official modules are packages too
+
+The eleven modules in this repository are published as `@heryjs/<name>`, versioned with the kernel:
+
+```bash
+pnpm add @heryjs/storage
+pnpm hery install storage
+```
+
+The npm name is not what you install. `hery install` takes the name in the definition, so `@heryjs/storage` and a fork of it published under another id are both `storage` — which is also how a fork can replace the official one without the project's scripts changing.
+
+That does make one collision easy to reach. A project scaffolded by `hery new` already carries all eleven as workspaces, so adding one from npm gives you two modules answering to one name, and the loader says so rather than picking quietly:
+
+```
+! two modules are named "storage" — the official one wins, and the other is
+  unreachable by that name
+```
+
+Remove the workspace copy you are not using. Keeping both means the name resolves to whichever channel the loader read first, which is not a thing to build on.
 
 ## `install()` cannot touch the filesystem itself
 
