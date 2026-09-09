@@ -286,10 +286,17 @@ importers:
         version: 8.0.0(@astrojs/markdown-satteri@0.4.0)(astro@7.3.1(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@26.1.2)(ioredis@5.11.1)(jiti@2.7.0)(terser@5.49.0))
 
   packages/admin-astro:
+    dependencies:
+      '@nestjs/common':
+        specifier: ^12.0.0
+        version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
     devDependencies:
       astro:
         specifier: ^7.3.1
         version: 7.3.1(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@26.1.2)(ioredis@5.11.1)(jiti@2.7.0)(terser@5.49.0)
+      heryjs:
+        specifier: workspace:*
+        version: link:../..
       lucide:
         specifier: ^1.41.0
         version: 1.41.0
@@ -326,6 +333,9 @@ importers:
       graphql:
         specifier: ^16.11.0
         version: 16.14.2
+      heryjs:
+        specifier: workspace:*
+        version: link:../..
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
@@ -341,6 +351,9 @@ importers:
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      heryjs:
+        specifier: workspace:*
+        version: link:../..
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
@@ -359,6 +372,9 @@ importers:
       '@nestjs/websockets':
         specifier: ^12.0.1
         version: 12.0.1(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(@nestjs/platform-socket.io@12.0.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      heryjs:
+        specifier: workspace:*
+        version: link:../..
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
@@ -380,6 +396,9 @@ importers:
       bullmq:
         specifier: ^6.3.4
         version: 6.3.4(ioredis@6.0.0)(pg@8.23.0)
+      heryjs:
+        specifier: workspace:*
+        version: link:../..
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
@@ -407,6 +426,9 @@ importers:
       express:
         specifier: ^5.0.1
         version: 5.2.1
+      heryjs:
+        specifier: workspace:*
+        version: link:../..
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
@@ -425,6 +447,9 @@ importers:
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      heryjs:
+        specifier: workspace:*
+        version: link:../..
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
@@ -437,6 +462,9 @@ importers:
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      heryjs:
+        specifier: workspace:*
+        version: link:../..
       meilisearch:
         specifier: ^0.60.0
         version: 0.60.0
@@ -461,6 +489,9 @@ importers:
       '@types/express':
         specifier: ^5.0.0
         version: 5.0.6
+      heryjs:
+        specifier: workspace:*
+        version: link:../..
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
@@ -473,6 +504,9 @@ importers:
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      heryjs:
+        specifier: workspace:*
+        version: link:../..
       livekit-server-sdk:
         specifier: ^2.18.0
         version: 2.18.0
@@ -497,6 +531,9 @@ importers:
       bullmq:
         specifier: ^6.3.4
         version: 6.3.4(ioredis@6.0.0)(pg@8.23.0)
+      heryjs:
+        specifier: workspace:*
+        version: link:../..
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1

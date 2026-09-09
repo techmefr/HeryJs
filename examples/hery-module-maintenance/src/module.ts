@@ -1,19 +1,16 @@
+import type { ModuleDefinition } from 'heryjs';
+
 /**
- * A module is its default export, and nothing here imports HeryJs: the shape
- * is the contract, so a published package carries no runtime dependency on the
- * framework it extends. `defineModule` exists for the inference only, and a
- * package that wants it can import it from a devDependency without shipping
- * one.
+ * A module is its default export, and the only thing this imports from HeryJs
+ * is a type -- erased at compile time, so the published package has no runtime
+ * dependency on the framework it extends. The shape is the whole contract.
  */
 export default {
   name: 'maintenance',
   description: 'Answer 503 while the app is in maintenance, except for admins.',
   meta: { compatibility: '>=0.0.1' },
 
-  install(context: {
-    copyRuntime(): void;
-    nextSteps(steps: string[]): void;
-  }): void {
+  install(context) {
     context.copyRuntime();
 
     context.nextSteps([
@@ -22,4 +19,4 @@ export default {
       'Run "pnpm test" -- the module ships its own spec, and copyRuntime copied it in',
     ]);
   },
-};
+} satisfies ModuleDefinition;

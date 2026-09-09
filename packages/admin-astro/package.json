@@ -1,9 +1,42 @@
 {
-  "name": "admin-astro-module",
-  "private": true,
-  "version": "0.0.1",
+  "name": "@heryjs/admin-astro",
+  "version": "0.1.0",
+  "description": "Add an admin panel built with Astro. Sections are discovered from GET /introspect, so any module that ships a listable route appears without touching the admin.",
+  "author": "Gaetan Compigni",
+  "license": "MIT",
+  "homepage": "https://techmefr.github.io/HeryJs/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/techmefr/HeryJs.git",
+    "directory": "packages/admin-astro"
+  },
+  "bugs": {
+    "url": "https://github.com/techmefr/HeryJs/issues"
+  },
+  "keywords": [
+    "heryjs",
+    "heryjs-module",
+    "nestjs"
+  ],
+  "heryjs": {
+    "module": true
+  },
+  "main": "dist/module.js",
+  "types": "dist/module.d.ts",
+  "files": [
+    "dist",
+    "src/runtime"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "pnpm --filter heryjs run build:scaffold && pnpm run build"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^12.0.0"
+  },
   "devDependencies": {
     "astro": "^7.3.1",
+    "heryjs": "workspace:*",
     "lucide": "^1.41.0",
     "typescript": "^6.0.3"
   }

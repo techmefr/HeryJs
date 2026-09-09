@@ -1,7 +1,6 @@
-import pc from 'picocolors';
-import { defineModule } from '../../../cli/lib/module-definition';
+import type { ModuleDefinition } from 'heryjs';
 
-export default defineModule({
+export default {
   name: 'live',
   description:
     'Add bidirectional WebSocket support (Socket.IO). Use "hery generate <Name> --live" to add a live gateway to a resource.',
@@ -16,8 +15,8 @@ export default defineModule({
 
     context.nextSteps([
       'Run "hery generate <Name> --live" to add a live gateway to a resource',
-      `Import ${pc.bold('LiveModule')} and add ${pc.bold('<Name>LiveGateway')} to the imports/providers of <name>.module.ts`,
+      `Import "LiveModule" and add "<Name>LiveGateway" to the imports/providers of <name>.module.ts`,
       `Clients connect with "io('/live/<name>', { auth: { token } })" using the same bearer token as REST`,
     ]);
   },
-});
+} satisfies ModuleDefinition;

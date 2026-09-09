@@ -1,12 +1,46 @@
 {
-  "name": "storage",
-  "private": true,
-  "version": "0.0.1",
+  "name": "@heryjs/storage",
+  "version": "0.1.0",
+  "description": "Add file storage behind a swappable provider: local disk (signed local URLs) by default, S3-compatible (real S3 or self-hosted MinIO) via STORAGE_DRIVER=s3.",
+  "author": "Gaetan Compigni",
+  "license": "MIT",
+  "homepage": "https://techmefr.github.io/HeryJs/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/techmefr/HeryJs.git",
+    "directory": "packages/storage"
+  },
+  "bugs": {
+    "url": "https://github.com/techmefr/HeryJs/issues"
+  },
+  "keywords": [
+    "heryjs",
+    "heryjs-module",
+    "nestjs"
+  ],
+  "heryjs": {
+    "module": true
+  },
+  "main": "dist/module.js",
+  "types": "dist/module.d.ts",
+  "files": [
+    "dist",
+    "src/runtime",
+    "docker-compose.storage.yml"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "pnpm --filter heryjs run build:scaffold && pnpm run build"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^12.0.0"
+  },
   "devDependencies": {
     "@aws-sdk/client-s3": "^3.1127.0",
     "@aws-sdk/s3-request-presigner": "^3.1127.0",
     "@nestjs/common": "^12.0.1",
     "@types/express": "^5.0.0",
+    "heryjs": "workspace:*",
     "picocolors": "^1.1.1",
     "typescript": "^6.0.3"
   }

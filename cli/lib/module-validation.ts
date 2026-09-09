@@ -99,8 +99,84 @@ function runtimeProblems(runtimeDir: string, packageDir: string): string[] {
  * project present. Typechecking the runtime is deliberately not here: that is
  * the author's own tsc, against their own tsconfig.
  */
-export function validateModule(module: LoadedModule): string[] {
+interface ModuleManifest {
+  heryjs?: { module?: boolean };
+  main?: string;
+  files?: string[];
+}
+
+/**
+ * Whether `files` publishes a path. An entry is a prefix: `dist` ships
+ * everything under it. A manifest with no `files` at all publishes whatever
+ * npm does not strip, which is not something a module can rely on -- the
+ * absence is reported by the caller rather than treated as coverage.
+ */
+export function publishes(entry: string, files: string[]): boolean {
+  return files.some(
+    (pattern) => pattern === entry || entry.startsWith(`${pattern}/`),
+  );
+}
+
+/**
+ * What the package has to declare for anyone but its author to receive a
+ * working module. None of it is visible from the definition, and all of it
+ * fails quietly: a missing `heryjs.module` makes the package invisible to the
+ * loader, a `main` at a `.ts` file loads nowhere but in its own repository
+ * (the CLI runs under ts-node, which ignores `node_modules`), and a `files`
+ * that leaves out `src/runtime` publishes a module with nothing to copy.
+ */
+function manifestProblems(packageDir: string): string[] {
+  const manifestPath = path.join(packageDir, 'package.json');
+
+  if (!existsSync(manifestPath)) {
+    return ['it has no package.json'];
+  }
+
+  let manifest: ModuleManifest;
+
+  try {
+    manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as ModuleManifest;
+  } catch {
+    return ['its package.json is not readable JSON'];
+  }
+
   const problems: string[] = [];
+
+  if (manifest.heryjs?.module !== true) {
+    problems.push(
+      'its package.json declares no "heryjs": { "module": true } — that marker is the whole community channel, and without it a project depending on this package sees no module at all',
+    );
+  }
+
+  if (manifest.main === undefined) {
+    problems.push('its package.json declares no main');
+  } else if (!manifest.main.endsWith('.js')) {
+    problems.push(
+      `its main is ${manifest.main}, which is not compiled JavaScript — the CLI requires the entry under ts-node, and ts-node does not transpile node_modules`,
+    );
+  }
+
+  if (manifest.files === undefined) {
+    problems.push(
+      'its package.json declares no files, so what reaches npm is whatever npm does not strip on its own',
+    );
+
+    return problems;
+  }
+
+  const shipped = ['src/runtime', path.dirname(manifest.main ?? 'dist/x')];
+
+  shipped.forEach((entry) => {
+    if (!publishes(entry, manifest.files as string[])) {
+      problems.push(`its files does not publish ${entry}`);
+    }
+  });
+
+  return problems;
+}
+
+export function validateModule(module: LoadedModule): string[] {
+  const problems: string[] = manifestProblems(module.packageDir);
   const entry = path.join(module.packageDir, 'src', 'module.ts');
   const runtimeDir = path.join(module.packageDir, 'src', 'runtime');
 

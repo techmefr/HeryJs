@@ -2,10 +2,20 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "paths": {
-      "#kernel/*": ["../../src/technical/*"]
+      "#kernel/*": [
+        "../../src/technical/*"
+      ],
+      "heryjs": [
+        "../../cli/module-contract.ts"
+      ]
     },
     "noEmit": true
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }

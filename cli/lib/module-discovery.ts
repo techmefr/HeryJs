@@ -160,10 +160,42 @@ export function loadCommunityModules(projectRoot: string): LoadedModule[] {
   return modules;
 }
 
+/**
+ * Two modules answering to one name, which the official channel and the
+ * community channel can now both hold: every official module is also
+ * published as `@heryjs/<name>`, and a generated project already carries the
+ * whole of `packages/`. Adding one from npm on top of that is a name resolving
+ * to whichever the loader saw first -- which is the official copy, silently.
+ * Reported rather than resolved, because which one the developer meant is not
+ * something this can know.
+ */
+export function shadowedNames(modules: LoadedModule[]): string[] {
+  const seen = new Set<string>();
+
+  return modules
+    .filter((module) => (seen.has(module.name) ? true : !seen.add(module.name)))
+    .map((module) => module.name);
+}
+
 export function loadModules(
   projectRoot: string = process.cwd(),
 ): LoadedModule[] {
-  return [...loadOfficialModules(), ...loadCommunityModules(projectRoot)];
+  const modules = [
+    ...loadOfficialModules(),
+    ...loadCommunityModules(projectRoot),
+  ];
+
+  shadowedNames(modules).forEach((name) => {
+    const winner = modules.find((module) => module.name === name);
+
+    console.log(
+      pc.yellow(
+        `! two modules are named "${name}" — the ${winner?.channel} one wins, and the other is unreachable by that name`,
+      ),
+    );
+  });
+
+  return modules;
 }
 
 export function findModule(

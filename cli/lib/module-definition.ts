@@ -79,6 +79,19 @@ export interface InstallContext {
   readonly touched: readonly string[];
 }
 
+/**
+ * A module is the default export of its entry point, not a side effect. It
+ * used to call `registerModule()` into a module-level Map, which only ever
+ * worked for the modules living in this repository: a third-party package has
+ * no way to reach that Map, and a bundled copy of it would be a second Map the
+ * CLI never reads -- so a community module loaded fine and registered nothing,
+ * silently.
+ *
+ * Exporting a plain object instead means the author imports nothing at run
+ * time. This type is what they import to have the shape checked, and
+ * `import type` leaves no dependency behind: a published module has none on
+ * HeryJs at all.
+ */
 export interface ModuleDefinition {
   /** The id typed on the command line. */
   name: string;
@@ -105,22 +118,6 @@ export interface ModuleDefinition {
   dependencies?: string[];
 
   install(context: InstallContext): void | Promise<void>;
-}
-
-/**
- * A module is its default export, not a side effect. It used to call
- * `registerModule()` into a module-level Map, which only ever worked for the
- * modules living in this repository: a third-party package has no way to reach
- * that Map -- nothing is published for it to import -- and a bundled copy of it
- * would be a second Map the CLI never reads. So a community module loaded fine
- * and registered nothing, silently. Exporting the definition removes the need
- * for the author to import anything at runtime at all.
- *
- * This helper only exists for the inference; a plain object literal is a valid
- * module.
- */
-export function defineModule(definition: ModuleDefinition): ModuleDefinition {
-  return definition;
 }
 
 export type ModuleChannel = 'official' | 'community';

@@ -15,6 +15,25 @@ const TSCONFIG_WITH_KERNEL = JSON.stringify({
   compilerOptions: { paths: { '#kernel/*': ['../../src/technical/*'] } },
 });
 
+/** What a published module declares, so the fixtures below vary one thing. */
+const PUBLISHED_MANIFEST = JSON.stringify({
+  name: 'probe',
+  heryjs: { module: true },
+  main: 'dist/module.js',
+  files: ['dist', 'src/runtime'],
+});
+
+/**
+ * A package directory whose manifest is already the published one, so a
+ * fixture below varies its runtime and nothing else.
+ */
+function published(directory: string): string {
+  mkdirSync(directory, { recursive: true });
+  writeFileSync(path.join(directory, 'package.json'), PUBLISHED_MANIFEST);
+
+  return directory;
+}
+
 function moduleAt(packageDir: string): LoadedModule {
   return {
     name: path.basename(packageDir),
@@ -46,6 +65,7 @@ describe('validating a module', () => {
     packageDir = path.join(packagesDir, 'probe');
     runtimeDir = path.join(packageDir, 'src', 'runtime');
     mkdirSync(runtimeDir, { recursive: true });
+    write('package.json', PUBLISHED_MANIFEST);
     write('tsconfig.json', TSCONFIG_WITH_KERNEL);
     write('src/module.ts', 'export default { name: "probe" };');
     write('src/runtime/probe.service.ts', 'export class ProbeService {}');
@@ -56,11 +76,54 @@ describe('validating a module', () => {
     expect(problems()).toEqual([]);
   });
 
+  /**
+   * None of this is visible from the definition, and all of it fails quietly.
+   * The framework's own eleven modules declared none of it for months: the
+   * contract was documented, asked of third parties, and never checked here.
+   */
+  it('refuses a package with no heryjs.module marker', () => {
+    write('package.json', JSON.stringify({ name: 'probe', main: 'dist/m.js' }));
+
+    expect(problems()).toEqual([
+      expect.stringContaining('"heryjs": { "module": true }'),
+      expect.stringContaining('declares no files'),
+    ]);
+  });
+
+  it('refuses a main that is not compiled JavaScript', () => {
+    write(
+      'package.json',
+      JSON.stringify({
+        heryjs: { module: true },
+        main: 'src/module.ts',
+        files: ['src'],
+      }),
+    );
+
+    expect(problems()).toEqual([
+      expect.stringContaining('which is not compiled JavaScript'),
+    ]);
+  });
+
+  it('refuses a files that leaves the runtime behind', () => {
+    write(
+      'package.json',
+      JSON.stringify({
+        heryjs: { module: true },
+        main: 'dist/module.js',
+        files: ['dist'],
+      }),
+    );
+
+    expect(problems()).toEqual(['its files does not publish src/runtime']);
+  });
+
   // Runtime code held in a string constant is the one shape this framework
   // refuses outright: the file the author edits has to be the file the project
   // receives, or the two drift the moment either is touched.
   it('refuses a module with no src/runtime at all', () => {
     const bare = path.join(packagesDir, 'bare');
+    published(bare);
     mkdirSync(path.join(bare, 'src'), { recursive: true });
     writeFileSync(path.join(bare, 'src', 'module.ts'), 'export default {};');
 
@@ -71,6 +134,7 @@ describe('validating a module', () => {
 
   it('refuses an empty src/runtime', () => {
     const empty = path.join(packagesDir, 'empty');
+    published(empty);
     mkdirSync(path.join(empty, 'src', 'runtime'), { recursive: true });
 
     expect(validateModule(moduleAt(empty))).toEqual([
@@ -82,6 +146,7 @@ describe('validating a module', () => {
   // shipping none leaves its installer a suite that proves nothing.
   it('refuses a runtime shipping no spec', () => {
     const noSpec = path.join(packagesDir, 'no-spec');
+    published(noSpec);
     mkdirSync(path.join(noSpec, 'src', 'runtime'), { recursive: true });
     writeFileSync(
       path.join(noSpec, 'src', 'runtime', 'probe.service.ts'),
@@ -95,6 +160,7 @@ describe('validating a module', () => {
 
   it('refuses a runtime holding nothing but specs', () => {
     const specsOnly = path.join(packagesDir, 'specs-only');
+    published(specsOnly);
     mkdirSync(path.join(specsOnly, 'src', 'runtime'), { recursive: true });
     writeFileSync(
       path.join(specsOnly, 'src', 'runtime', 'probe.spec.ts'),
@@ -340,13 +406,24 @@ describe('the example community module', () => {
     expect(manifest.main).toBe('dist/module.js');
   });
 
-  it('imports nothing from HeryJs in its definition', () => {
+  /**
+   * The contract is a type, so importing it leaves nothing behind: `import
+   * type` is erased by the compiler and the published package has no runtime
+   * dependency on HeryJs. A value import would be a real one, and the module
+   * would stop loading anywhere the framework is not installed -- which is
+   * what a plain `import` here would quietly become.
+   */
+  it('imports the contract as a type and nothing else', () => {
     const definition = readFileSync(
       path.join(packageDir, 'src', 'module.ts'),
       'utf8',
     );
 
-    expect(definition).not.toMatch(/\bfrom\s+['"]/);
+    const imports = [...definition.matchAll(/^import\s+(.*)$/gm)].map(
+      (match) => match[1] as string,
+    );
+
+    expect(imports).toEqual(["type { ModuleDefinition } from 'heryjs';"]);
   });
 });
 

@@ -1,7 +1,6 @@
-import pc from 'picocolors';
-import { defineModule } from '../../../cli/lib/module-definition';
+import type { ModuleDefinition } from 'heryjs';
 
-export default defineModule({
+export default {
   name: 'admin-astro',
   description:
     'Add an admin panel built with Astro. Sections are discovered from GET /introspect, so any module that ships a listable route appears without touching the admin.',
@@ -25,9 +24,9 @@ export default defineModule({
     context.chainScript('test', 'pnpm --filter admin test');
 
     context.nextSteps([
-      `Run ${pc.bold('pnpm install')} to install the admin workspace`,
-      `Run ${pc.bold('pnpm --filter admin dev')} and sign in with an account of your API`,
-      `Point it elsewhere with ${pc.bold('PUBLIC_API_URL')} if the API is not on http://localhost:3000`,
+      `Run "pnpm install" to install the admin workspace`,
+      `Run "pnpm --filter admin dev" and sign in with an account of your API`,
+      `Point it elsewhere with "PUBLIC_API_URL" if the API is not on http://localhost:3000`,
     ]);
   },
-});
+} satisfies ModuleDefinition;

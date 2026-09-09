@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import { readDefinition } from './module-discovery';
 import { compatibilityProblem } from './module-compatibility';
 import { scaffoldModule, scaffoldProblem } from './module-scaffold';
+import { KERNEL_VERSION } from './kernel-version';
 
 describe('what may be scaffolded', () => {
   let packagesDir: string;
@@ -66,16 +67,6 @@ describe('what is scaffolded', () => {
       }),
     );
 
-    // The generated definition imports defineModule the way every module under
-    // packages/ does, by the path out of the package -- so the fake project
-    // has to have that file for the import to resolve, and the assertion below
-    // can then load the real generated file rather than a reconstruction.
-    mkdirSync(path.join(repoRoot, 'cli', 'lib'), { recursive: true });
-    writeFileSync(
-      path.join(repoRoot, 'cli', 'lib', 'module-definition.ts'),
-      `export * from '${path.join(__dirname, 'module-definition')}';\n`,
-    );
-
     written = scaffoldModule('audit-trail', packagesDir, repoRoot);
   });
 
@@ -83,6 +74,8 @@ describe('what is scaffolded', () => {
     expect(written).toEqual([
       'packages/audit-trail/package.json',
       'packages/audit-trail/tsconfig.json',
+      'packages/audit-trail/tsconfig.build.json',
+      'packages/audit-trail/README.md',
       'packages/audit-trail/src/module.ts',
       'packages/audit-trail/src/runtime/audit-trail.service.ts',
       'packages/audit-trail/src/runtime/audit-trail.module.ts',
@@ -90,9 +83,13 @@ describe('what is scaffolded', () => {
     ]);
   });
 
-  // The whole point of scaffolding rather than documenting: what comes out is
-  // read by the CLI's own loader, so the author's first run is never spent on
-  // the shape of the definition.
+  /**
+   * The loader requires the entry, and it loads with nothing around it: the
+   * scaffolded definition's only import of HeryJs is `import type`, which the
+   * compiler erases. That is the contract the whole channel rests on -- a
+   * published module has no runtime dependency on the framework -- and this
+   * fake project has no `heryjs` to resolve, which is what proves it.
+   */
   it('produces a module the loader accepts', () => {
     const packageDir = path.join(repoRoot, 'packages/audit-trail');
 
@@ -133,14 +130,31 @@ describe('what is scaffolded', () => {
     ).toContain('export class AuditTrailService');
   });
 
-  it('carries the marker the community channel looks for', () => {
+  /**
+   * The whole published contract, on the first run rather than on publish
+   * day. A scaffold that wrote only the marker produced a package that worked
+   * in the directory it was written in and nowhere else: no `main`, so the
+   * loader had nothing to require, and no `files`, so what reached npm was
+   * whatever npm chose not to strip.
+   */
+  it('declares what a published module has to declare', () => {
     const pkg = JSON.parse(read('packages/audit-trail/package.json')) as {
       name: string;
       heryjs: { module: boolean };
+      main: string;
+      types: string;
+      files: string[];
+      scripts: Record<string, string>;
+      peerDependencies: Record<string, string>;
     };
 
     expect(pkg.name).toBe('audit-trail');
     expect(pkg.heryjs.module).toBe(true);
+    expect(pkg.main).toBe('dist/module.js');
+    expect(pkg.types).toBe('dist/module.d.ts');
+    expect(pkg.files).toEqual(['dist', 'src/runtime']);
+    expect(pkg.scripts.prepack).toBe('pnpm run build');
+    expect(pkg.peerDependencies['@nestjs/common']).toBeDefined();
   });
 
   // Pinned from the project rather than written into the template, so a
@@ -150,10 +164,22 @@ describe('what is scaffolded', () => {
       devDependencies: Record<string, string>;
     };
 
-    expect(pkg.devDependencies).toEqual({
-      '@nestjs/common': '^12.0.1',
-      typescript: '^6.0.3',
-    });
+    expect(pkg.devDependencies['@nestjs/common']).toBe('^12.0.1');
+    expect(pkg.devDependencies.typescript).toBe('^6.0.3');
+  });
+
+  /**
+   * The build resolves the contract through the package, the way a third
+   * party's does, so a module's own build proves the published declaration is
+   * usable. Inside this repository that package is the workspace root; the
+   * scaffolded manifest says which of the two it is looking at.
+   */
+  it('depends on the kernel release when it is scaffolded outside this repository', () => {
+    const pkg = JSON.parse(read('packages/audit-trail/package.json')) as {
+      devDependencies: Record<string, string>;
+    };
+
+    expect(pkg.devDependencies.heryjs).toBe(`^${KERNEL_VERSION}`);
   });
 
   // Not decoration: copyRuntime copies it into the project with the code, and

@@ -1,7 +1,6 @@
-import pc from 'picocolors';
-import { defineModule } from '../../../cli/lib/module-definition';
+import type { ModuleDefinition } from 'heryjs';
 
-export default defineModule({
+export default {
   name: 'search-elasticsearch',
   description:
     'Swap free-text search from Prisma contains() to Elasticsearch (docker service, driver, DI wiring)',
@@ -13,9 +12,9 @@ export default defineModule({
     context.copyRuntime();
 
     context.nextSteps([
-      `Import ${pc.bold('ElasticsearchSearchModule')} into src/app.module.ts`,
+      `Import "ElasticsearchSearchModule" into src/app.module.ts`,
       "Declare it in hery.config.ts, e.g. { search: { default: 'prisma', engines: { prisma: { driver: 'prisma' }, elasticsearch: { driver: 'elasticsearch' } } } }",
       'Run "pnpm hery up --start" to boot Elasticsearch and resolve ELASTICSEARCH_URL',
     ]);
   },
-});
+} satisfies ModuleDefinition;

@@ -1,7 +1,6 @@
-import pc from 'picocolors';
-import { defineModule } from '../../../cli/lib/module-definition';
+import type { ModuleDefinition } from 'heryjs';
 
-export default defineModule({
+export default {
   name: 'mcp',
   description:
     'Add an authenticated MCP gateway (Streamable HTTP, stateless) exposing generated resources as tools. Use "hery generate <Name> --mcp" to add write tools to a resource.',
@@ -14,7 +13,7 @@ export default defineModule({
     context.nextSteps([
       'Run "hery generate <Name> --mcp" to add a tool registrar to a resource',
       "Export that registrar from the resource's own module (provider + exports)",
-      `Import ${pc.bold('McpGatewayModule.forRoot({ imports, registrars })')} into src/app.module.ts, listing each resource module and its registrar`,
+      `Import "McpGatewayModule.forRoot({ imports, registrars })" into src/app.module.ts, listing each resource module and its registrar`,
     ]);
   },
-});
+} satisfies ModuleDefinition;
