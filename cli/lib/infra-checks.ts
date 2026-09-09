@@ -110,6 +110,46 @@ export function speaksRedis(
   });
 }
 
+const POLL_INTERVAL_MS = 500;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * A container that has just been started publishes its port before the service
+ * behind it answers, so the check that runs straight after `--start` found a
+ * socket that accepted the connection and a protocol that did not reply -- and
+ * reported the one thing that could not be true there, a port belonging to
+ * another service. Waiting is what tells "still starting" from "not this
+ * service": given time, the first one answers.
+ *
+ * `waitMs` of zero polls once, which is what a plain `hery up` wants -- it
+ * reports the state of the world now, it does not wait for it to improve.
+ */
+async function untilItAnswers(
+  host: string,
+  port: number,
+  answers: () => Promise<boolean>,
+  waitMs: number,
+): Promise<{ reachable: boolean; answers: boolean }> {
+  const deadline = Date.now() + waitMs;
+
+  for (;;) {
+    const reachable = await checkTcp(host, port);
+
+    if (reachable && (await answers())) {
+      return { reachable: true, answers: true };
+    }
+
+    if (Date.now() >= deadline) {
+      return { reachable, answers: false };
+    }
+
+    await delay(POLL_INTERVAL_MS);
+  }
+}
+
 export function checkMigrations(): CheckResult {
   const result = spawnSync('npx', ['prisma', 'migrate', 'status'], {
     encoding: 'utf-8',
@@ -134,7 +174,9 @@ export function checkMigrations(): CheckResult {
   };
 }
 
-export async function runInfraChecks(): Promise<CheckResult[]> {
+export async function runInfraChecks({
+  waitMs = 0,
+}: { waitMs?: number } = {}): Promise<CheckResult[]> {
   const databaseUrl = process.env.DATABASE_URL;
   const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6479';
 
@@ -144,8 +186,12 @@ export async function runInfraChecks(): Promise<CheckResult[]> {
     const parsed = parseHostPort(databaseUrl, 5432);
 
     if (parsed) {
-      const reachable = await checkTcp(parsed.host, parsed.port);
-      const answers = reachable && (await speaksPostgres(databaseUrl));
+      const { reachable, answers } = await untilItAnswers(
+        parsed.host,
+        parsed.port,
+        () => speaksPostgres(databaseUrl),
+        waitMs,
+      );
 
       checks.push({
         label: `PostgreSQL (${parsed.host}:${parsed.port})`,
@@ -174,9 +220,13 @@ export async function runInfraChecks(): Promise<CheckResult[]> {
   const redisParsed = parseHostPort(redisUrl, 6379);
 
   if (redisParsed) {
-    const redisReachable = await checkTcp(redisParsed.host, redisParsed.port);
-    const redisAnswers =
-      redisReachable && (await speaksRedis(redisParsed.host, redisParsed.port));
+    const { reachable: redisReachable, answers: redisAnswers } =
+      await untilItAnswers(
+        redisParsed.host,
+        redisParsed.port,
+        () => speaksRedis(redisParsed.host, redisParsed.port),
+        waitMs,
+      );
 
     checks.push({
       label: `Valkey (${redisParsed.host}:${redisParsed.port})`,

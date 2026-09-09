@@ -6,6 +6,8 @@ import pc from 'picocolors';
 import { replaceUrlPort, upsertEnvVar } from '../lib/env-file';
 import { runInfraChecks } from '../lib/infra-checks';
 
+const STARTUP_GRACE_MS = 30_000;
+
 const OPTIONAL_COMPOSE_SERVICES = [
   {
     composeFile: 'docker-compose.search-elasticsearch.yml',
@@ -105,9 +107,16 @@ export function registerUpCommand(program: Command): void {
         }
 
         startOptionalComposeServices(envPath);
+        console.log(pc.cyan('waiting for the services to answer...'));
       }
 
-      const checks = await runInfraChecks();
+      // A container publishes its port before the service behind it replies,
+      // so checking immediately after starting one reports a failure that
+      // resolves itself a second later. Only this path waits: a plain
+      // `hery up` answers for the state of the world now.
+      const checks = await runInfraChecks({
+        waitMs: options.start ? STARTUP_GRACE_MS : 0,
+      });
 
       let allOk = true;
 
