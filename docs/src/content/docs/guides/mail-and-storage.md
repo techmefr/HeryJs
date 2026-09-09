@@ -67,16 +67,55 @@ The local driver writes under `<cwd>/storage/<key>`, creating nested directories
 
 The S3 driver uses the AWS SDK and real presigned URLs, and works against any S3-compatible endpoint. Setting `STORAGE_S3_ENDPOINT` both points at that endpoint and switches on path-style addressing, which is what self-hosted MinIO needs. The bundled compose file runs MinIO for exactly that purpose — note that it does not create the bucket for you.
 
-### Two things the module does not do
+### Uploading
 
-**There is no upload endpoint.** No multipart handling, no file interceptor. The only storage route in the framework is the local read route above. Accepting an upload means writing your own controller that validates whatever your product should accept and calls `.put()`. `.put()` itself refuses a body over 25 MB with `StorageBodyTooLargeException`, but that is a blanket ceiling, not a MIME check — the framework declines to guess your content-type limits.
+`POST /storage/upload` is a real multipart route, driver-agnostic: it calls `.put()` under the hood, so it works the same whether the object lands on disk or in S3/MinIO. Send a single part named `file`, behind a session:
 
-**Keys are not tenant-scoped.** Nothing in the module prefixes a key, and it does not read the tenant context at all. The key you pass is the key that is used, verbatim. This is the one place in HeryJs where a tenant boundary is _not_ established for you, so it is worth stating bluntly: two tenants that both write `avatars/profile.png` write the same object.
+```bash
+curl -H "Authorization: Bearer $TOKEN" -F file=@avatar.png https://app.example/storage/upload
+```
 
-Put the tenant in the key, at the one place you build keys:
+```ts
+{ data: { key: 'tenant-a/6f1c…​9e2.png', url: '/storage/tenant-a%2F6f1c…9e2.png?exp=…&sig=…' }, messages: ['File uploaded.'] }
+```
+
+Four gates run before a byte is written, none of them optional:
+
+- **Content-type allowlist.** Images and PDF by default (`image/png`, `image/jpeg`, `image/webp`, `image/gif`, `application/pdf`); override with a comma-separated `STORAGE_ALLOWED_CONTENT_TYPES`.
+- **Size cap.** 10 MB by default; override with `STORAGE_MAX_UPLOAD_BYTES`. This is checked before the local driver's own 25 MB `.put()` ceiling ever matters.
+- **A key the caller never names.** The response key is `<tenantId>/<uuid>.<ext>`, where the extension comes from the validated content type — never from the client's filename. The filename is not read at all beyond the multipart part itself.
+- **The tenant, read from the request, not from the caller.** `StorageService.upload()` reads `TenantContextStorage.getTenantId()` the same way `CacheService` does, so two tenants uploading on the same second never contend for a key.
+
+`StorageService` is exported alongside `STORAGE_PROVIDER` for anything that wants the same gates from server-side code rather than through the route.
+
+### Reaching for `.put()` directly
+
+The upload route covers "a user attaches a file." Anything else — a scheduled export, a generated PDF, a backfill — still reaches for `STORAGE_PROVIDER.put()` directly, and none of the upload route's gates apply there: no size cap beyond the local driver's blanket 25 MB, no content-type check, and **no tenant prefix**. The key you pass is the key that is used, verbatim.
+
+Put the tenant in the key yourself, at the one place you build it:
 
 ```ts
 const key = `${TenantContextStorage.getTenantId()}/avatars/${record.id}.png`;
 ```
 
 The same discipline applies to key _shape_: the local provider resolves every key against the storage root and throws `InvalidStorageKeyException` if the result escapes it, so `../`, `../../` and similar sequences are rejected rather than silently reaching the filesystem. Still derive keys from ids you control rather than from a supplied filename — the check exists so a client cannot walk outside your storage root, not so you can skip thinking about what a filename could contain.
+
+### The `file` blueprint field
+
+A resource owns its attachment the same way it owns any other scalar:
+
+```yaml
+fields:
+  - name: avatar
+    type: file
+    optional: true
+```
+
+The generated column is a plain string — the storage key an upload already returned, nothing more. The two-step flow mirrors the two things that actually happen: upload first (`POST /storage/upload`), then create or update the resource with the key it gave back:
+
+```ts
+const { data } = await api.post('/storage/upload', form); // { key: 'tenant-a/6f1c….png', url: '…' }
+await api.post('/users/update', { data: [{ id, avatar: data.key }] });
+```
+
+Reading the record back gives you the key, not a URL — resolve it through `GET /storage/:key` (or `StorageService.signedUrl(key)` server-side) the same way any other stored key is served. A `file` field is not a shortcut around the tenant boundary either: it is validated and stored exactly like any other field the generator writes, so the resource's own capability checks are what gate who can set it, same as `own`/`team`/`all`/`none` gate everything else.

@@ -8,7 +8,7 @@ export const permissionPresetSchema = z.enum(['own', 'team', 'all', 'none']);
 
 export const blueprintFieldSchema = z.object({
   name: z.string().regex(/^[a-z][a-zA-Z0-9]*$/),
-  type: z.enum(['string', 'int', 'boolean', 'datetime']),
+  type: z.enum(['string', 'int', 'boolean', 'datetime', 'file']),
   optional: z.boolean().default(false),
   hidden: z.boolean().default(false),
 });

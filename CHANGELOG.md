@@ -59,6 +59,11 @@ Twelve packages, versioned together:
 `mcp`, `search-elasticsearch`, `search-meilisearch` and `admin-astro`, each
 installable with `hery install` and removable with `hery uninstall`.
 
+- `storage` gained `POST /storage/upload`: a driver-agnostic multipart route
+  behind a session, gating on a content-type allowlist and a size cap before
+  handing back a tenant-prefixed key the caller never names. A blueprint
+  field can now declare `type: file` to own that key like any other column.
+
 A module is its default export, closed with `satisfies ModuleDefinition` and
 typed through an `import type` the compiler erases — so a published module has
 no runtime dependency on HeryJs at all. Any dependency carrying
