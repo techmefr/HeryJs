@@ -526,6 +526,15 @@ export const updateScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
+          sql: 'SELECT "public"."Tag"."id" FROM "public"."Tag" WHERE ("public"."Tag"."id" IN ($1) AND "public"."Tag"."tenantId" = $2) OFFSET $3',
+          params: '["cxmpl00000000000000000011","default","0"]',
+        },
+      },
+      {
+        stage: 'prisma',
+        label: 'query',
+        status: 'ok',
+        detail: {
           sql: 'SELECT pg_advisory_xact_lock(hashtext($1))',
           params: '["default"]',
         },

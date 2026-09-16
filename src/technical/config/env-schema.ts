@@ -48,6 +48,24 @@ export function buildServerSchema(nodeEnv: string | undefined) {
     // and inheriting three different silent limits is what this replaces: one
     // declared limit, applied by every driver, reported when it is reached.
     SEARCH_MATCH_LIMIT: z.coerce.number().int().positive().default(1000),
+    /**
+     * Turning the global rate-limit guard off used to ride on NODE_ENV alone,
+     * which is the most-copied variable in any deployment: a staging or CI env
+     * file carried into something production-like shipped an app with no
+     * brute-force ceiling on auth and no throttling anywhere, silently.
+     *
+     * A dedicated flag makes that opt-out deliberate, and production refuses
+     * it outright -- two independent mistakes are now needed to lose rate
+     * limiting, instead of one stray variable.
+     */
+    RATE_LIMIT_DISABLED: z
+      .string()
+      .default('false')
+      .transform((value) => value === 'true')
+      .refine((disabled) => !disabled || nodeEnv !== 'production', {
+        message:
+          'cannot be true in production: it would leave every route, including auth, with no rate limit',
+      }),
     AUTH_TWO_FACTOR_ISSUER: z.string().min(1).default('HeryJs'),
     AUTH_REQUIRE_EMAIL_VERIFICATION: z
       .string()
