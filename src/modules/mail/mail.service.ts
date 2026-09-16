@@ -4,7 +4,7 @@ import type { PageQuery } from '#technical/http/page-query';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
-import { MAIL_SEND_JOB } from './mail.constants';
+import { MAIL_SEND_JOB, MAIL_SEND_POLICY } from './mail.constants';
 import { renderTemplate } from './mail.templates';
 import type { Mailable, MailMessage } from '#technical/mail/mail-driver';
 
@@ -69,6 +69,10 @@ export class MailService {
       },
     });
 
-    await this.jobs.dispatch(MAIL_SEND_JOB, { mailLogId: log.id, ...message });
+    await this.jobs.dispatch(
+      MAIL_SEND_JOB,
+      { mailLogId: log.id, ...message },
+      MAIL_SEND_POLICY,
+    );
   }
 }

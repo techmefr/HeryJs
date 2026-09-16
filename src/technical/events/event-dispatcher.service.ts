@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EVENTS_QUEUE } from '#technical/jobs/jobs.constants';
 import { JobsService } from '#technical/jobs/jobs.service';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
-import { EVENT_DISPATCH_JOB } from './event.types';
+import { EVENT_DISPATCH_JOB, EVENT_DISPATCH_POLICY } from './event.types';
 import type {
   EventConstructor,
   EventDispatchJobData,
@@ -148,7 +148,12 @@ export class EventDispatcher {
       tenantId: currentTenantId(),
     };
 
-    await this.jobs.dispatchTo(EVENTS_QUEUE, EVENT_DISPATCH_JOB, data);
+    await this.jobs.dispatchTo(
+      EVENTS_QUEUE,
+      EVENT_DISPATCH_JOB,
+      data,
+      EVENT_DISPATCH_POLICY,
+    );
   }
 }
 

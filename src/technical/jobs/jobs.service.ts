@@ -1,6 +1,8 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import type { Queue } from 'bullmq';
+import { jobOptions } from './job-policy';
+import type { JobPolicy } from './job-policy';
 import {
   DEFAULT_QUEUE,
   EVENTS_QUEUE,
@@ -26,8 +28,12 @@ export class JobsService {
     };
   }
 
-  dispatch(name: string, data: Record<string, unknown> = {}) {
-    return this.queue.add(name, data);
+  dispatch(
+    name: string,
+    data: Record<string, unknown> = {},
+    policy?: JobPolicy,
+  ) {
+    return this.queue.add(name, data, jobOptions(policy));
   }
 
   /**
@@ -41,6 +47,7 @@ export class JobsService {
     queueName: string,
     name: string,
     data: Record<string, unknown> = {},
+    policy?: JobPolicy,
   ) {
     const queue = this.queues[queueName];
 
@@ -50,6 +57,6 @@ export class JobsService {
       );
     }
 
-    return queue.add(name, data);
+    return queue.add(name, data, jobOptions(policy));
   }
 }

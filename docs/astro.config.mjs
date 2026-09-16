@@ -66,6 +66,7 @@ export default defineConfig({
                   slug: 'guides/exposing-actions',
                 },
                 { label: 'The events bus', slug: 'guides/events' },
+                { label: 'Jobs', slug: 'guides/jobs' },
                 { label: 'Prune', slug: 'guides/prune' },
               ],
             },
