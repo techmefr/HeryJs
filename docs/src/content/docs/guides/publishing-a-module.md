@@ -13,7 +13,7 @@ There is no registry to submit to and nothing curated on this side. The communit
 
 Any package a project depends on that carries that marker is scanned; anything else the loader walks straight past. `hery list` shows it alongside the official ones, tagged `community`, and `hery install <name>` runs it.
 
-The two channels declare the same things. The eleven official modules are published as `@heryjs/<name>` and carry that marker too — so what this page asks of your package is what they ship, and a fork of one of them is a module like any other.
+The two channels declare the same things. The seventeen official modules are published as `@heryjs/<name>` and carry that marker too — so what this page asks of your package is what they ship, and a fork of one of them is a module like any other.
 
 A complete example lives in [`examples/hery-module-maintenance`](https://github.com/techmefr/HeryJs/tree/main/examples/hery-module-maintenance) — a guard answering `503` while the app is in maintenance, with its definition, its runtime, its exception and its spec. It is the smallest module that still exercises every part of the contract, and this repository's own test suite loads it the way the CLI does.
 
@@ -92,7 +92,7 @@ Only the entry point is compiled. `src/runtime` is published as TypeScript sourc
 
 The build clears `dist` before it runs, and that is not tidiness. A declaration file left in `dist` is an input as far as `tsc` is concerned: `@types/node` imports `"stream"`, and that specifier resolves to a package of that name as soon as it has types to find — which is how the module named `stream` failed its own second build with _"would overwrite input file"_. Build from nothing but your sources.
 
-`heryjs` resolves from `node_modules` like any other dependency, so nothing in either config points at it. Inside this repository the eleven official modules add a path for it, because there is no `heryjs` package to resolve — that mapping is an artefact of living in the framework's own tree, not part of the contract.
+`heryjs` resolves from `node_modules` like any other dependency, so nothing in either config points at it. Inside this repository the seventeen official modules add a path for it, because there is no `heryjs` package to resolve — that mapping is an artefact of living in the framework's own tree, not part of the contract.
 
 ## `meta.compatibility` is checked before anything is written
 
@@ -141,7 +141,7 @@ From a project that depends on your package, so the check runs against the modul
 
 Run it in your own package directory too. There it also sees your `tsconfig.json`, and asks that it map `#kernel/*` — a mapping that only matters where the module is authored, since your tsconfig is not something you publish.
 
-The same checks run over this repository's own eleven modules in CI. What is asked of your module is asked of the official ones first.
+The same checks run over this repository's own seventeen modules in CI. What is asked of your module is asked of the official ones first.
 
 ## Ship a spec, in `src/runtime`
 

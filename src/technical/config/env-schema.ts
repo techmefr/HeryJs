@@ -48,6 +48,31 @@ export function buildServerSchema(nodeEnv: string | undefined) {
     // and inheriting three different silent limits is what this replaces: one
     // declared limit, applied by every driver, reported when it is reached.
     SEARCH_MATCH_LIMIT: z.coerce.number().int().positive().default(1000),
+    AUTH_TWO_FACTOR_ISSUER: z.string().min(1).default('HeryJs'),
+    AUTH_REQUIRE_EMAIL_VERIFICATION: z
+      .string()
+      .default('false')
+      .transform((value) => value === 'true'),
+    AUTH_EMAIL_VERIFICATION_EXPIRES_SECONDS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(60 * 60),
+    AUTH_RESET_PASSWORD_EXPIRES_SECONDS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(60 * 60),
+    // No devOnlySecret for these four: that helper covers secrets the
+    // framework owns end to end, and an OAuth client secret is issued by
+    // Google or GitHub, so a placeholder could only ever produce a login
+    // button that fails at the provider. Absent means "provider not
+    // configured", which is the only honest reading -- see
+    // buildSocialProviders, which drops a provider missing either half.
+    AUTH_GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+    AUTH_GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+    AUTH_GITHUB_CLIENT_ID: z.string().min(1).optional(),
+    AUTH_GITHUB_CLIENT_SECRET: z.string().min(1).optional(),
   });
 }
 

@@ -21,6 +21,7 @@ model User {
   banned        Boolean   @default(false)
   banReason     String?
   banExpires    DateTime?
+  twoFactorEnabled Boolean @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -30,6 +31,7 @@ model User {
   notifications AppNotification[]
   memberships   TeamMember[]
   apiKeys       ApiKey[]
+  twoFactors    TwoFactor[]
   currentTeam   Team?             @relation("CurrentTeam", fields: [currentTeamId], references: [id], onDelete: SetNull)
 }
 
@@ -284,4 +286,23 @@ model WebhookEvent {
 
   @@index([tenantId])
   @@index([endpointId])
+}
+
+// Shape taken from better-auth's own two-factor plugin schema, not invented
+// here: the adapter checks every field at boot and refuses the whole instance
+// on a mismatch, which turns a missing column into "every registration returns
+// 500" rather than into a 2FA-only failure.
+model TwoFactor {
+  id                      String    @id @default(cuid())
+  secret                  String
+  backupCodes             String
+  userId                  String
+  verified                Boolean   @default(true)
+  failedVerificationCount Int       @default(0)
+  lockedUntil             DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([secret])
+  @@index([userId])
 }

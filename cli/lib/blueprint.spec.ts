@@ -388,3 +388,84 @@ includes:
     expect(replies?.includes).toBeUndefined();
   });
 });
+
+describe('loadBlueprint resolving soft deletes', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(tmpdir(), 'hery-blueprint-'));
+  });
+
+  it('turns soft deletes on for a blueprint that says nothing about them', () => {
+    writeBlueprint(
+      dir,
+      'note',
+      `
+name: Note
+fields:
+  - name: body
+    type: string
+sorts: []
+`,
+    );
+
+    expect(loadBlueprint(path.join(dir, 'note.yaml')).softDeletes).toBe(true);
+  });
+
+  it('carries an explicit opt-out through to the resolved blueprint', () => {
+    writeBlueprint(
+      dir,
+      'note',
+      `
+name: Note
+softDeletes: false
+fields:
+  - name: body
+    type: string
+sorts: []
+`,
+    );
+
+    expect(loadBlueprint(path.join(dir, 'note.yaml')).softDeletes).toBe(false);
+  });
+
+  it('refuses softDeletes on an unrouted resource', () => {
+    writeBlueprint(
+      dir,
+      'note',
+      `
+name: Note
+routed: false
+softDeletes: false
+fields:
+  - name: body
+    type: string
+sorts: []
+`,
+    );
+
+    expect(() => loadBlueprint(path.join(dir, 'note.yaml'))).toThrow(
+      /softDeletes only applies to a routed resource/,
+    );
+  });
+
+  it('refuses a filter on deletedAt when soft deletes are turned off', () => {
+    writeBlueprint(
+      dir,
+      'note',
+      `
+name: Note
+softDeletes: false
+fields:
+  - name: body
+    type: string
+sorts: []
+filters: [deletedAt]
+`,
+    );
+
+    expect(() => loadBlueprint(path.join(dir, 'note.yaml'))).toThrow(
+      /deletedAt/,
+    );
+  });
+});

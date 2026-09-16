@@ -86,7 +86,7 @@
     "start:dev": "nest start -b swc --watch",
     "start:debug": "nest start -b swc --debug --watch",
     "start:prod": "node dist/src/main",
-    "lint": "eslint \"{src,apps,libs,test,cli,scripts,prisma,examples,packages}/**/*.ts\" \"prisma.config.ts\" \"hery.config.ts\" \"cors.config.ts\" --ignore-pattern \"packages/admin-astro/src/runtime/**\" --fix && pnpm --filter admin lint",
+    "lint": "NODE_OPTIONS=--max-old-space-size=8192 eslint \"{src,apps,libs,test,cli,scripts,prisma,examples,packages}/**/*.ts\" \"prisma.config.ts\" \"hery.config.ts\" \"cors.config.ts\" --ignore-pattern \"packages/admin-astro/src/runtime/**\" --fix && pnpm --filter admin lint",
     "lint:fast": "oxlint -c .oxlintrc.json src apps libs test cli scripts prisma prisma.config.ts hery.config.ts cors.config.ts",
     "lint:types": "oxlint -c .oxlintrc.json --type-aware src apps libs test cli scripts prisma prisma.config.ts hery.config.ts cors.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",

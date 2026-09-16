@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { AuditModule } from '#technical/audit/audit.module';
 import { AuthModule } from '#technical/auth/auth.module';
 import { CacheModule } from '#technical/cache/cache.module';
+import { EventsModule } from '#technical/events/events.module';
 import { ExpositionModule } from '#technical/exposition/exposition.module';
 import { IntrospectionModule } from '#technical/introspection/introspection.module';
 import { FeatureFlagsModule } from '#technical/feature-flags/feature-flags.module';
@@ -13,6 +14,7 @@ import { InspectorModule } from '#devtools/inspector/inspector.module';
 import { PipelineModule } from '#devtools/pipeline/pipeline.module';
 import { ImpersonationModule } from '#modules/impersonation/impersonation.module';
 import { JobsModule } from '#technical/jobs/jobs.module';
+import { ExportModule } from '#modules/export/export.module';
 import { MailModule } from '#modules/mail/mail.module';
 import { MonitoringModule } from '#technical/monitoring/monitoring.module';
 import { NotificationsModule } from '#technical/notifications/notifications.module';
@@ -71,6 +73,8 @@ import { redactedRequestSerializer } from '#technical/logging/redacted-request-s
     AuditModule,
     AuthModule,
     CacheModule,
+    EventsModule,
+    ExportModule,
     ExpositionModule,
     FeatureFlagsModule,
     ImpersonationModule,

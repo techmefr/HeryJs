@@ -2,7 +2,7 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import type { Request } from 'express';
 import { NotFoundException } from '@nestjs/common';
 import { TraceContextStorage } from '#kernel/tracing/trace-context';
-import { LocalStorageProvider } from './local-storage.provider';
+import { LocalStorageDriver } from './local-storage.driver';
 
 /**
  * A signed URL is handed to a browser -- an `<img src>`, a download link -- so
@@ -13,7 +13,7 @@ import { LocalStorageProvider } from './local-storage.provider';
  */
 @Injectable()
 export class StorageSignatureGuard implements CanActivate {
-  constructor(private readonly local: LocalStorageProvider) {}
+  constructor(private readonly local: LocalStorageDriver) {}
 
   canActivate(context: ExecutionContext): boolean {
     const start = process.hrtime.bigint();

@@ -13,6 +13,8 @@ The `hery` CLI is the only thing in this project that reads a blueprint. It is a
 | `migrate --name <name>`   | Runs `prisma migrate dev`, then emits and applies any missing row-level policy.         |
 | `install [modules...]`    | Installs optional modules.                                                              |
 | `uninstall <module>`      | Removes a module and reverses what installing it did.                                   |
+| `make:mail <Name>`        | Writes a `Mailable` into `src/functional/<domain>`.                                     |
+| `make:export <Name>`      | Writes an `Exportable` into `src/functional/<domain>`.                                  |
 | `module:list`             | Lists the modules available to install.                                                 |
 | `module:monitoring`       | Scaffolds Prometheus, Grafana and Loki.                                                 |
 | `search:reindex <Name>`   | Rebuilds a resource's search index from Postgres.                                       |
@@ -97,6 +99,19 @@ Installs optional modules à la carte or, with `--all`, the full package. `hery 
 pnpm hery install storage mail
 pnpm hery install --all
 ```
+
+## `hery make:mail <Name>` and `hery make:export <Name>`
+
+Where a module has a recurring per-use-case object, it gets a `make:` command. Both write one class into `src/functional/<domain>/`, next to the code that uses it, and both refuse to overwrite an existing file unless you pass `--force`:
+
+```bash
+pnpm hery make:mail WelcomeMail          # src/functional/welcome/welcome-mail.ts
+pnpm hery make:export TaskListExport -d task   # src/functional/task/task-list-export.ts
+```
+
+The domain is derived from the name with a trailing `mail` or `export` stripped, and `--domain` overrides it. What gets generated implements a small interface — `Mailable`, `Exportable` — and **never picks a driver, reads config, or names a format**: that is the registry's job, and keeping it out is what lets the same class survive a transport change. See [Modules and drivers](/guides/modules-and-drivers/).
+
+There is deliberately no `module:add`: `hery install` already does that.
 
 ## `hery uninstall <module>`
 

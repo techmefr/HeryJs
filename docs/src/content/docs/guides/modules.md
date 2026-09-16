@@ -3,7 +3,7 @@ title: The module system
 description: hery install — the optional layer, à la carte or as a full package, and why it never edits your app module.
 ---
 
-The kernel in `technical/` is what every project gets. Everything beyond it — search engines, GraphQL, WebSockets, mail, storage, webhooks, an admin panel — arrives through `hery install` and lands in `src/modules/`, where it can be removed again.
+The kernel in `technical/` is what every project gets. Everything beyond it — search engines, GraphQL, WebSockets, mail, storage, exports, imports, an outbound HTTP client, webhooks, an admin panel — arrives through `hery install` and lands in `src/modules/`, where it can be removed again.
 
 A module is an installer, not a dependency. It runs once, writes real files into your project, and disappears. There is no module resident at runtime, no plugin lifecycle, no hook system: the same "generate once, own your code" bargain as `hery generate`, applied to infrastructure instead of resources.
 
@@ -32,13 +32,21 @@ Running `pnpm hery install` with no arguments prints `nothing to install` and ex
 | `mcp`                  | An authenticated MCP gateway over Streamable HTTP, exposing resources as tools.                                                       |
 | `live`                 | Bidirectional WebSocket support (Socket.IO).                                                                                          |
 | `stream`               | One-to-many audio/video over LiveKit.                                                                                                 |
-| `mail`                 | Outgoing mail: a `MailLog` model, string templates, and a BullMQ job that sends.                                                      |
-| `storage`              | File storage behind a swappable provider — local disk by default, S3-compatible via `STORAGE_DRIVER=s3`.                              |
+| `mail`                 | Outgoing mail: a `MailLog` model, a driver registry, and a BullMQ job that sends.                                                     |
+| `mail-resend`          | A `MailDriver` sending over Resend, landing inside `mail`.                                                                            |
+| `storage`              | File storage behind a driver registry — local disk with signed local URLs by default.                                                 |
+| `export`               | Turn records into a downloadable file: an `Exportable`, a CSV driver, and a queued path.                                              |
+| `export-xlsx`          | An `ExportDriver` writing real spreadsheets through exceljs, landing inside `export`.                                                 |
+| `export-pdf`           | An `ExportDriver` writing paginated PDF tables through pdfkit, landing inside `export`.                                               |
+| `import`               | Turn an uploaded file back into records, with a per-row report of what was rejected.                                                  |
+| `http-client`          | Call other people's APIs behind one contract, with a fake driver that cannot reach the network.                                       |
 | `admin-astro`          | An admin panel built with Astro, discovering its sections from `GET /introspect`.                                                     |
 | `impersonation`        | Let an admin act as another user, tenant-bounded and audit-logged, via a bearer token for the target.                                 |
 | `webhooks`             | Receive inbound webhooks with HMAC-SHA256 signature verification and run each one through Event, Job, Notification, Audit and Signal. |
 
-Six of them have a runtime half in `src/modules/`: `live`, `stream`, `mail`, `storage`, `impersonation`, `webhooks`. The search drivers install into the existing `technical/search/` folder, because they implement a contract the kernel already owns.
+Eight of them are modules of their own under `src/modules/`: `live`, `stream`, `mail`, `storage`, `export`, `import`, `http-client`, `webhooks`. Three are **drivers** rather than modules, and land inside the module they extend — `mail-resend` into `src/modules/mail`, `export-xlsx` and `export-pdf` into `src/modules/export` — because a module may not import another module, so a driver living in a folder of its own could never reach the contract it implements. The search drivers install into the existing `technical/search/` folder for the same reason: they implement a contract the kernel already owns. `graphql` and `mcp` land in `technical/` too, and `impersonation` extends kernel files in place.
+
+That split is one convention, not a per-module accident. [Modules and drivers](/guides/modules-and-drivers/) is the whole shape, and every module above follows it.
 
 `hery module:monitoring` looks like a module but is a separate command: it scaffolds Prometheus, Grafana and Loki as a local compose stack. It is not in the registry, so it does not appear in `module:list` and `--all` does not cover it.
 
@@ -52,7 +60,7 @@ admin-astro [official] - Add an admin panel built with Astro...
 
 Discovery walks `packages/*` at startup and requires whatever `src/module.ts` it finds there — there is no barrel file listing packages by hand, so a new official module needs nothing beyond its own folder to show up.
 
-Because this repository has every module installed into itself, each one exists twice: authored under `packages/<name>/src/runtime`, installed where that module's own `module.ts` copies it to. `pnpm lint:module-drift` compares the two and fails when they diverge — a fix applied to the copy that runs here and not to the copy a project would install is a fix nobody else gets, and the whole gate stayed green through it until this check existed. The runtime file is written against the kernel through a `#kernel/` specifier, rewritten to the app's own `#technical/` on the way in, which is the only difference between the two copies.
+Because this repository installs the modules it exercises into itself, those exist twice: authored under `packages/<name>/src/runtime`, installed where that module's own `module.ts` copies it to. `pnpm lint:module-drift` compares the two and fails when they diverge — a fix applied to the copy that runs here and not to the copy a project would install is a fix nobody else gets, and the whole gate stayed green through it until this check existed. The runtime file is written against the kernel through a `#kernel/` specifier, rewritten to the app's own `#technical/` on the way in, which is the only difference between the two copies.
 
 The **community** channel is the same mechanism turned outward: any npm package a project installs is a module once it adds a `heryjs.module: true` marker to its own `package.json` and default-exports a definition. `hery module:list` and `hery install` scan the project's declared dependencies for that marker and read the export of whichever ones carry it — there is no separate registry to submit to and nothing HeryJs curates on that side; the convention itself is the whole channel.
 
@@ -155,7 +163,7 @@ Everything it asks for is checked from the package alone, so a third-party autho
 
 Typechecking the runtime is deliberately not in that list: that is the author's own `tsc`, against their own `tsconfig`.
 
-The same checks run over the eleven modules in this repository as `pnpm run lint:module-validity`, part of `lint:conventions` and so of CI — what is demanded of a community module is demanded of the official ones first.
+The same checks run over the seventeen modules in this repository as `pnpm run lint:module-validity`, part of `lint:conventions` and so of CI — what is demanded of a community module is demanded of the official ones first.
 
 ## A module is its default export
 
@@ -180,7 +188,7 @@ It is deliberate. The contract used to be a `registerModule()` call into a modul
 
 ## The official modules are packages too
 
-The eleven modules in this repository are published as `@heryjs/<name>`, versioned with the kernel:
+The seventeen modules in this repository are published as `@heryjs/<name>`, versioned with the kernel:
 
 ```bash
 pnpm add @heryjs/storage
@@ -189,7 +197,7 @@ pnpm hery install storage
 
 The npm name is not what you install. `hery install` takes the name in the definition, so `@heryjs/storage` and a fork of it published under another id are both `storage` — which is also how a fork can replace the official one without the project's scripts changing.
 
-That does make one collision easy to reach. A project scaffolded by `hery new` already carries all eleven as workspaces, so adding one from npm gives you two modules answering to one name, and the loader says so rather than picking quietly:
+That does make one collision easy to reach. A project scaffolded by `hery new` already carries all seventeen as workspaces, so adding one from npm gives you two modules answering to one name, and the loader says so rather than picking quietly:
 
 ```
 ! two modules are named "storage" — the official one wins, and the other is
@@ -252,15 +260,18 @@ One consequence of the unconditional dependency step: `pnpm add -w` runs on ever
 
 ## `install` never edits your app module
 
-This is deliberate and consistent across all eleven. Every module that needs wiring ends its output with a numbered list telling you what to add, and where:
+This is deliberate and consistent across all seventeen. Every module that needs wiring ends its output with a numbered list telling you what to add, and where:
 
 ```
 Next steps:
   1. Import StorageModule into src/app.module.ts
-  2. Inject STORAGE_PROVIDER anywhere and call .put()/.signedUrl()/.remove()
+  2. Inject StorageService anywhere and call .upload()/.signedUrl()/.remove()
+  3. Declare the driver in hery.config.ts under storage.drivers
 ```
 
 `src/app.module.ts` is the single composition point between the kernel and the optional layer, and it is yours. A tool that rewrote it would be a tool you could no longer freely edit — and the whole premise here is that you can.
+
+A driver package needs **two** imports there, not one: the module it extends and the driver's own `@Global()` module, because the driver binds its token from outside the registry's import graph. Installing `mail-resend` and forgetting `ResendMailModule` is a boot that stops with a missing-driver message naming the install command.
 
 Two modules wire into a _resource_ module rather than the app module, because they are per-resource by nature: `live` (a gateway) and `stream` (a controller) both go into `src/functional/<name>/<name>.module.ts`.
 
@@ -282,15 +293,18 @@ docker compose -f docker-compose.storage.yml up -d
 
 Every variable below has a working development default, and none of them are written to `.env` by the installer.
 
-| Module                                            | Variables                                                                                                                                                 |
-| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `search-elasticsearch`                            | `ELASTICSEARCH_URL`                                                                                                                                       |
-| `search-meilisearch`                              | `MEILISEARCH_URL`, `MEILISEARCH_API_KEY`                                                                                                                  |
-| `stream`                                          | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`                                                                                                    |
-| `storage`                                         | `STORAGE_URL_SECRET`, `STORAGE_DRIVER`, `STORAGE_S3_BUCKET`, `STORAGE_S3_REGION`, `STORAGE_S3_ENDPOINT`, `STORAGE_S3_ACCESS_KEY`, `STORAGE_S3_SECRET_KEY` |
-| `admin-astro`                                     | `PUBLIC_API_URL`                                                                                                                                          |
-| `webhooks`                                        | `WEBHOOK_SIGNATURE_TOLERANCE_SECONDS`                                                                                                                     |
-| `graphql`, `mcp`, `live`, `mail`, `impersonation` | none                                                                                                                                                      |
+| Module                                                                                                            | Variables                                                                                                           |
+| ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `search-elasticsearch`                                                                                            | `ELASTICSEARCH_URL`                                                                                                 |
+| `search-meilisearch`                                                                                              | `MEILISEARCH_URL`, `MEILISEARCH_API_KEY`                                                                            |
+| `stream`                                                                                                          | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`                                                              |
+| `storage`                                                                                                         | `STORAGE_URL_SECRET`, `STORAGE_DRIVER`, `STORAGE_MAX_UPLOAD_BYTES`, `STORAGE_ALLOWED_CONTENT_TYPES`, `STORAGE_S3_*` |
+| `mail-resend`                                                                                                     | `RESEND_API_KEY`, `RESEND_FROM` — no defaults, and read lazily on first send                                        |
+| `admin-astro`                                                                                                     | `PUBLIC_API_URL`                                                                                                    |
+| `webhooks`                                                                                                        | `WEBHOOK_SIGNATURE_TOLERANCE_SECONDS`                                                                               |
+| `graphql`, `mcp`, `live`, `mail`, `export`, `export-xlsx`, `export-pdf`, `import`, `http-client`, `impersonation` | none                                                                                                                |
+
+Which driver a module runs is **not** in that table, because it is not environment at all — it is `hery.config.ts`, typed and committed. The env vars a module-and-drivers slice reads are only the secrets the chosen driver needs, plus the one name-selecting variable a `default` may read (`MAIL_DRIVER`, `HTTP_CLIENT_DRIVER`). Those two axes are separate on purpose, and mixing them is the most common way to get the convention wrong — see [Modules and drivers](/guides/modules-and-drivers/).
 
 The development defaults are development defaults in the literal sense — the LiveKit dev keys are `devkey`/`secret` and the MinIO credentials are `heryjs`/`heryjs-dev-secret`. You do not have to remember to replace them: under `NODE_ENV=production` every one of those defaults is refused at boot, naming the variable that is still set to it, because a credential printed in a public repository is not a credential and a URL pointing at localhost is not a service. The S3 credentials are checked when the S3 provider is constructed rather than when the module is imported, so a production app on the local driver is never refused a boot over credentials it does not use.
 

@@ -1,7 +1,10 @@
 import { rm } from 'node:fs/promises';
 import * as path from 'node:path';
+import type { ModuleRef } from '@nestjs/core';
+import { DriverResolver } from '#kernel/drivers/driver-resolver';
 import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
-import { LocalStorageProvider } from './local-storage.provider';
+import { LocalStorageDriver } from './local-storage.driver';
+import { StorageDriverRegistry } from './storage-driver.registry';
 import { StorageService } from './storage.service';
 import { StorageUploadRejectedException } from './storage-upload-rejected.exception';
 
@@ -10,8 +13,14 @@ function inTenant<T>(tenantId: string, run: () => Promise<T>): Promise<T> {
 }
 
 describe('StorageService uploads', () => {
-  const provider = new LocalStorageProvider();
-  const service = new StorageService(provider);
+  const driver = new LocalStorageDriver();
+  const registry = new StorageDriverRegistry(
+    {},
+    driver,
+    new DriverResolver({} as ModuleRef),
+  );
+  registry.onModuleInit();
+  const service = new StorageService(registry);
   const writtenKeys: string[] = [];
 
   afterAll(async () => {
@@ -44,7 +53,7 @@ describe('StorageService uploads', () => {
 
     expect(stored.key).toMatch(/^tenant-a\/[0-9a-f-]{36}\.png$/);
     expect(stored.url).toContain(encodeURIComponent(stored.key));
-    await expect(provider.contentTypeOf(stored.key)).resolves.toBe('image/png');
+    await expect(driver.contentTypeOf(stored.key)).resolves.toBe('image/png');
   });
 
   it('never derives the key from anything the caller sent', async () => {

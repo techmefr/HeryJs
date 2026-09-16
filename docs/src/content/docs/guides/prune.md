@@ -7,7 +7,7 @@ Soft delete never actually frees anything — a `deletedAt` row sits in the tabl
 
 ## What is prunable
 
-A model is prunable exactly when it carries both `deletedAt` and `tenantId` — the two reserved fields every blueprint with a `delete` preset gets automatically. `src/technical/prune/prunable-models.ts` reads this straight off Prisma's own DMMF at runtime:
+A model is prunable exactly when it carries both `deletedAt` and `tenantId` — the two reserved fields every blueprint gets automatically unless it declares [`softDeletes: false`](/guides/blueprint/#soft-deletes), which drops `deletedAt` and, with it, takes the model out of this list: its delete already freed the row, so there is nothing left to sweep. `src/technical/prune/prunable-models.ts` reads this straight off Prisma's own DMMF at runtime:
 
 ```ts
 const REQUIRED_FIELDS = ['deletedAt', 'tenantId'];
