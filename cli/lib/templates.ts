@@ -1600,6 +1600,7 @@ import {
   canView${ctx.pascalName},
   canViewAny${ctx.pascalName},
 } from './${ctx.kebabName}.policy';
+import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
 import { ${ctx.pascalName}Service } from './${ctx.kebabName}.service';
 import {
   ${ctx.screamingSnakeName}_RECORD_LOADER,
@@ -1637,6 +1638,7 @@ export class ${ctx.pascalName}Resolver {
     private readonly loader: ${ctx.pascalName}RecordLoader,
   ) {}
 
+  @RateLimit('read')
   @Query(() => [${ctx.pascalName}Type], { name: '${ctx.pluralCamelName}' })
   async search(@CurrentGqlRequest() req: GqlRequestWithUser) {
     const subject = subjectOf(req.user);
@@ -1650,6 +1652,7 @@ export class ${ctx.pascalName}Resolver {
     return records.map(to${ctx.pascalName}View);
   }
 
+  @RateLimit('read')
   @Query(() => ${ctx.pascalName}Type, { name: '${ctx.camelName}' })
   async findOne(
     @Args('id', { type: () => ID }) id: string,
@@ -1669,6 +1672,7 @@ export class ${ctx.pascalName}Resolver {
     return to${ctx.pascalName}View(record);
   }
 
+  @RateLimit('write')
   @Mutation(() => ${ctx.pascalName}Type, { name: 'create${ctx.pascalName}' })
   async create(
     @Args('input') input: Create${ctx.pascalName}Input,
@@ -1685,6 +1689,7 @@ export class ${ctx.pascalName}Resolver {
     );
   }
 
+  @RateLimit('write')
   @Mutation(() => ${ctx.pascalName}Type, { name: 'update${ctx.pascalName}' })
   async update(
     @Args('id', { type: () => ID }) id: string,
@@ -1707,6 +1712,7 @@ export class ${ctx.pascalName}Resolver {
     );
   }
 
+  @RateLimit('write')
   @Mutation(() => ${ctx.pascalName}Type, { name: 'remove${ctx.pascalName}' })
   async remove(
     @Args('id', { type: () => ID }) id: string,
@@ -1784,15 +1790,41 @@ export class ${ctx.pascalName}McpToolRegistrar implements McpToolRegistrar {
       'search_${ctx.kebabName}',
       {
         description: 'Search ${ctx.pluralKebabName}, scoped to the current tenant and caller',
-        inputSchema: {},
+        // The tool used to declare no input at all while describing itself as
+        // a search, so a client passing a term got the most recent page back
+        // and no indication the term had been dropped. Everything accepted
+        // here is something the service already understands; what is not
+        // offered -- includes, aggregates, relation instructions -- is left
+        // out because an MCP client has no way to name them.
+        inputSchema: {
+          search: z.string().optional(),
+          sortBy: z.enum([${ctx.sorts.map((sort) => `'${sort}'`).join(', ')}]).optional(),
+          sortDirection: z.enum(['asc', 'desc']).optional(),${ctx.pagination ? `
+          page: z.number().int().positive().optional(),
+          limit: z.enum([${ctx.pagination.limits.map((limit) => `'${limit}'`).join(', ')}]).optional(),` : ''}${ctx.softDeletes ? '\n          withTrashed: z.boolean().optional(),' : ''}
+        },
       },
-      async () => {
+      async (input) => {
         const decision = canViewAny${ctx.pascalName}(subject);
         if (!decision.allowed) {
           return deniedResult();
         }
 
-        const { records } = await this.${ctx.camelName}s.search(subject, ${ctx.pagination ? `{\n          limit: ${ctx.pagination.default},\n        }` : '{}'});
+        const { records } = await this.${ctx.camelName}s.search(subject, {
+          ...(input.search ? { search: input.search } : {}),
+          ...(input.sortBy
+            ? {
+                sorts: [
+                  {
+                    field: input.sortBy,
+                    direction: input.sortDirection ?? 'asc',
+                  },
+                ],
+              }
+            : {}),${ctx.pagination ? `
+          page: input.page ?? 1,
+          limit: input.limit ? Number(input.limit) : ${ctx.pagination.default},` : ''}${ctx.softDeletes ? '\n          withTrashed: input.withTrashed ?? false,' : ''}
+        });
         return textResult(records.map(to${ctx.pascalName}View));
       },
     );
