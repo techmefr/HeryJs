@@ -1,3 +1,6 @@
+import { DEFAULT_JOB_POLICY } from '#technical/jobs/job-policy';
+import type { JobPolicy } from '#technical/jobs/job-policy';
+
 /**
  * An event is a class carrying data and nothing else, and its constructor is
  * the subscription key -- not a string, and not a token declared beside it.
@@ -45,3 +48,12 @@ export interface EventDispatchJobData extends Record<string, unknown> {
 }
 
 export const EVENT_DISPATCH_JOB = 'event.dispatch';
+
+/**
+ * Retried, because a queued listener is retried as a unit and the event it
+ * receives is rebuilt from the same payload every time. A listener whose work
+ * cannot be repeated safely is one that should not be queued at all: at that
+ * point the failure belongs in the dispatching request, where the caller can
+ * still be told.
+ */
+export const EVENT_DISPATCH_POLICY: JobPolicy = DEFAULT_JOB_POLICY;

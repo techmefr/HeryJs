@@ -2,7 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { EXPORT_QUEUE } from '#technical/jobs/jobs.constants';
 import { JobsService } from '#technical/jobs/jobs.service';
 import type { Exportable, ExportResult } from '#technical/export/export-driver';
-import { EXPORT_GENERATE_JOB } from './export.constants';
+import {
+  EXPORT_GENERATE_JOB,
+  EXPORT_GENERATE_POLICY,
+} from './export.constants';
 import { ExportDriverRegistry } from './export-driver.registry';
 
 /**
@@ -49,13 +52,18 @@ export class ExportService {
        * itself, which means a named exportable rather than an instance.
        */
       queue: async (exportable, userId) => {
-        await this.jobs.dispatchTo(EXPORT_QUEUE, EXPORT_GENERATE_JOB, {
-          format: format ?? this.registry.defaultKeyword,
-          filename: exportable.filename,
-          columns: [...exportable.columns],
-          rows: await exportable.rows(),
-          userId,
-        });
+        await this.jobs.dispatchTo(
+          EXPORT_QUEUE,
+          EXPORT_GENERATE_JOB,
+          {
+            format: format ?? this.registry.defaultKeyword,
+            filename: exportable.filename,
+            columns: [...exportable.columns],
+            rows: await exportable.rows(),
+            userId,
+          },
+          EXPORT_GENERATE_POLICY,
+        );
       },
     };
   }
