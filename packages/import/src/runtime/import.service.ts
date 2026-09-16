@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { IMPORT_QUEUE } from '#kernel/jobs/jobs.constants';
 import { JobsService } from '#kernel/jobs/jobs.service';
 import type { Importable, ImportOutcome } from '#kernel/import/import-driver';
-import { IMPORT_CONSUME_JOB } from './import.constants';
+import { IMPORT_CONSUME_JOB, IMPORT_CONSUME_POLICY } from './import.constants';
 import { ImportDriverRegistry } from './import-driver.registry';
 import { mergeOutcome, partitionRows } from './import-rows.validator';
 
@@ -51,12 +51,17 @@ export class ImportService {
        * to be written to storage first and the job given its key.
        */
       queue: async (body, importable, userId) => {
-        await this.jobs.dispatchTo(IMPORT_QUEUE, IMPORT_CONSUME_JOB, {
-          format: format ?? this.registry.defaultKeyword,
-          importable: importable.name,
-          body: body.toString('base64'),
-          userId,
-        });
+        await this.jobs.dispatchTo(
+          IMPORT_QUEUE,
+          IMPORT_CONSUME_JOB,
+          {
+            format: format ?? this.registry.defaultKeyword,
+            importable: importable.name,
+            body: body.toString('base64'),
+            userId,
+          },
+          IMPORT_CONSUME_POLICY,
+        );
       },
     };
   }
