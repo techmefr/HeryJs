@@ -1,5 +1,5 @@
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import {
   AUDITED_MODELS,
   AUDITED_OPERATIONS,
@@ -25,6 +25,111 @@ const TENANT_SCOPED_MODELS = new Set<string>([
   'Comment',
   'AppNotification',
 ]);
+
+/**
+ * A relation pulled in through `include` or a nested `select` is fetched by
+ * the same query as its parent, and the interceptor below only ever saw the
+ * top-level operation -- so the relation came back with whatever the caller
+ * asked for and no tenant predicate at all. Any related row reachable by id
+ * was therefore readable across the boundary, verbatim, inside the parent's
+ * payload.
+ *
+ * The rewrite happens here rather than where the query is built because it has
+ * to hold for every caller: a generated search route, a hand-written service,
+ * a future one nobody has written yet. Query building stays a pure function of
+ * its input, with no ambient request to read.
+ */
+function relationTargets(model: string): Map<string, string> {
+  const cached = RELATION_TARGETS.get(model);
+
+  if (cached) {
+    return cached;
+  }
+
+  const definition = Prisma.dmmf.datamodel.models.find(
+    (candidate) => candidate.name === model,
+  );
+  const targets = new Map(
+    (definition?.fields ?? [])
+      .filter((field) => field.kind === 'object')
+      .map((field) => [field.name, field.type]),
+  );
+
+  RELATION_TARGETS.set(model, targets);
+
+  return targets;
+}
+
+const RELATION_TARGETS = new Map<string, Map<string, string>>();
+
+function carriesTenantId(model: string): boolean {
+  return (
+    TENANT_SCOPED_MODELS.has(model) || APP_ENFORCED_TENANT_MODELS.has(model)
+  );
+}
+
+/**
+ * Walks `include`/`select` and stamps the predicate onto every nested relation
+ * whose model carries a tenantId. `_count` is walked too: a count of another
+ * tenant's rows discloses their existence as surely as returning them.
+ */
+function scopeNestedRelations(
+  model: string,
+  node: unknown,
+  tenantId: string,
+): void {
+  if (!node || typeof node !== 'object') {
+    return;
+  }
+
+  const targets = relationTargets(model);
+
+  for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+    if (key === '_count') {
+      scopeNestedRelations(
+        model,
+        (value as { select?: unknown })?.select,
+        tenantId,
+      );
+      continue;
+    }
+
+    const target = targets.get(key);
+
+    if (!target) {
+      continue;
+    }
+
+    // `include: { notes: true }` is the common shape and carries nowhere to
+    // put a predicate, so it is rewritten into the object form that does.
+    // Skipping it -- as a `typeof value === 'object'` check would -- leaves
+    // the most ordinary include in the codebase unscoped.
+    if (value === true) {
+      if (carriesTenantId(target)) {
+        (node as Record<string, unknown>)[key] = { where: { tenantId } };
+      }
+
+      continue;
+    }
+
+    if (!value || typeof value !== 'object') {
+      continue;
+    }
+
+    const branch = value as {
+      where?: Record<string, unknown>;
+      select?: unknown;
+      include?: unknown;
+    };
+
+    if (carriesTenantId(target)) {
+      branch.where = { ...branch.where, tenantId };
+    }
+
+    scopeNestedRelations(target, branch.select, tenantId);
+    scopeNestedRelations(target, branch.include, tenantId);
+  }
+}
 
 /**
  * Models with no tenantId at all, and the reason each one has none. Everything
@@ -215,6 +320,17 @@ export function createTenantScopedPrismaClient() {
           } else {
             scopedArgs.where = { ...scopedArgs.where, tenantId };
           }
+
+          scopeNestedRelations(
+            model,
+            (args as { include?: unknown }).include,
+            tenantId,
+          );
+          scopeNestedRelations(
+            model,
+            (args as { select?: unknown }).select,
+            tenantId,
+          );
 
           if (!env.RLS_ENABLED) {
             return query(args);

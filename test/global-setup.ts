@@ -13,4 +13,13 @@
  */
 import '../src/technical/config/load-env';
 
-export default function loadEnvBeforeTests(): void {}
+/**
+ * The suite shares one Redis and, for unauthenticated routes, one IP, so the
+ * auth budget of five hits per five minutes trips within the first few specs
+ * that register a user. Set here rather than left to NODE_ENV: the guard now
+ * keys off this flag alone, so that losing rate limiting in a real deployment
+ * takes a deliberate variable rather than a copied one.
+ */
+export default function loadEnvBeforeTests(): void {
+  process.env.RATE_LIMIT_DISABLED = 'true';
+}
