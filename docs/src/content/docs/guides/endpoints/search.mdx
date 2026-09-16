@@ -19,7 +19,7 @@ Every generated resource exposes one search route instead of a detail route: the
     | `selects` | array | Each entry: `field` (must be an exposed field) — trims the response down to just these |
     | `page` | number | Defaults to `1` |
     | `limit` | number | Must be one of the blueprint's `pagination.limits`, and is refused outright on a resource that declares no `pagination` |
-    | `search.q` / `search.engine` | string | Free-text search — see [Full-text search](/guides/search/) |
+    | `search.q` / `search.engine` | string | Free-text search — see [Full-text search](../../guides/search/) |
     | `withTrashed` / `onlyTrashed` | boolean | Gated behind the delete permission, not the read one |
     | `capabilities` | array | Which per-record capability decisions to attach — see below |
     | `includes` | array | Each entry: `relation` (must be in the blueprint's `includes`), `alias`, `filters`/`sorts`/`selects` scoped to the related resource, `limit` — see below |
@@ -88,9 +88,9 @@ Every generated resource exposes one search route instead of a detail route: the
     { "includes": [{ "relation": "notes", "includes": [{ "relation": "replies" }] }] }
     ```
 
-    Only when the referenced blueprint declares one; see [Nested includes](/guides/blueprint/#nested-includes). A nested include has no `alias` of its own — its rows come back nested under the relation's real name, and `morphMany` never nests.
+    Only when the referenced blueprint declares one; see [Nested includes](../../guides/blueprint/#nested-includes). A nested include has no `alias` of its own — its rows come back nested under the relation's real name, and `morphMany` never nests.
 
-    A `hasMany` include declaring `ownRoute: true` is also reachable as its own collection, scoped to the parent by id — `POST /blog-posts/:id/notes/search`, gated by the parent's own record-level view capability rather than one of its own. See [A route scoped to the parent](/guides/blueprint/#a-route-scoped-to-the-parent).
+    A `hasMany` include declaring `ownRoute: true` is also reachable as its own collection, scoped to the parent by id — `POST /blog-posts/:id/notes/search`, gated by the parent's own record-level view capability rather than one of its own. See [A route scoped to the parent](../../guides/blueprint/#a-route-scoped-to-the-parent).
 
     ## Operators
 
@@ -114,7 +114,7 @@ Every generated resource exposes one search route instead of a detail route: the
     }
     ```
 
-    To know a resource's actual allow-lists ahead of time instead of guessing from a 400, see the [Details](/guides/endpoints/details/) page.
+    To know a resource's actual allow-lists ahead of time instead of guessing from a 400, see the [Details](../../guides/endpoints/details/) page.
 
     ## Response meta
 
@@ -122,7 +122,7 @@ Every generated resource exposes one search route instead of a detail route: the
     { "meta": { "channels": ["blogPost"], "page": 1, "limit": 15, "total": 3, "last_page": 1 } }
     ```
 
-    `channels` is what a live UI subscribes to — see [Realtime](/guides/realtime/) — to know when to refetch, instead of polling. `page`/`limit`/`total`/`last_page` are the real pagination window, not a truncated guess. A resource whose blueprint declares no `pagination` has no window to report: its `meta` carries `total` and `"paginated": false`, and `data` holds every match.
+    `channels` is what a live UI subscribes to — see [Realtime](../../guides/realtime/) — to know when to refetch, instead of polling. `page`/`limit`/`total`/`last_page` are the real pagination window, not a truncated guess. A resource whose blueprint declares no `pagination` has no window to report: its `meta` carries `total` and `"paginated": false`, and `data` holds every match.
 
     ## Capabilities in the response
 

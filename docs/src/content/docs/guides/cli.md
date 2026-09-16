@@ -5,29 +5,32 @@ description: Every hery command — generating resources, installing modules, an
 
 The `hery` CLI is the only thing in this project that reads a blueprint. It is a build-time tool, not a runtime dependency of the generated application.
 
-| Command                   | What it does                                                                            |
-| ------------------------- | --------------------------------------------------------------------------------------- |
-| `new <name>`              | Scaffolds a fresh HeryJs project in its own directory.                                  |
-| `create:blueprint <Name>` | Writes a blueprint from prompts or defaults.                                            |
-| `generate <Name>`         | Writes a full resource from that blueprint.                                             |
-| `migrate --name <name>`   | Runs `prisma migrate dev`, then emits and applies any missing row-level policy.         |
-| `install [modules...]`    | Installs optional modules.                                                              |
-| `uninstall <module>`      | Removes a module and reverses what installing it did.                                   |
-| `make:mail <Name>`        | Writes a `Mailable` into `src/functional/<domain>`.                                     |
-| `make:export <Name>`      | Writes an `Exportable` into `src/functional/<domain>`.                                  |
-| `module:list`             | Lists the modules available to install.                                                 |
-| `module:monitoring`       | Scaffolds Prometheus, Grafana and Loki.                                                 |
-| `search:reindex <Name>`   | Rebuilds a resource's search index from Postgres.                                       |
-| `expose:list`             | Prints the catalog of `@ExposeAction`s.                                                 |
-| `expose:run <action>`     | Runs one exposed action, `--param name=value` per field.                                |
-| `up`                      | Checks that local dependencies are ready.                                               |
-| `doctor`                  | One command for environment, config and infra together.                                 |
-| `env pull`                | Writes the resolved variables into `.env`.                                              |
-| `env run -- <command>`    | Runs a command with the resolved variables injected.                                    |
-| `lint`                    | Scores the project against conventions eslint and the architecture linter do not reach. |
-| `console`                 | Boots the app into a REPL.                                                              |
-| `hosts`                   | Adds the local hostname to your hosts file.                                             |
-| `mcp:serve`               | A read-only MCP server over stdio.                                                      |
+| Command                      | What it does                                                                            |
+| ---------------------------- | --------------------------------------------------------------------------------------- |
+| `new <name>`                 | Scaffolds a fresh HeryJs project in its own directory.                                  |
+| `create:blueprint <Name>`    | Writes a blueprint from prompts or defaults.                                            |
+| `generate <Name>`            | Writes a full resource from that blueprint.                                             |
+| `migrate --name <name>`      | Runs `prisma migrate dev`, then emits and applies any missing row-level policy.         |
+| `install [modules...]`       | Installs optional modules.                                                              |
+| `uninstall <module>`         | Removes a module and reverses what installing it did.                                   |
+| `make:mail <Name>`           | Writes a `Mailable` into `src/functional/<domain>`.                                     |
+| `make:export <Name>`         | Writes an `Exportable` into `src/functional/<domain>`.                                  |
+| `make:job <Name>`            | Writes a queued job, its name and its retry policy.                                     |
+| `make:listener <Name>`       | Writes an event listener.                                                               |
+| `make:scheduled-task <Name>` | Writes a cron task that records its runs.                                               |
+| `module:list`                | Lists the modules available to install.                                                 |
+| `module:monitoring`          | Scaffolds Prometheus, Grafana and Loki.                                                 |
+| `search:reindex <Name>`      | Rebuilds a resource's search index from Postgres.                                       |
+| `expose:list`                | Prints the catalog of `@ExposeAction`s.                                                 |
+| `expose:run <action>`        | Runs one exposed action, `--param name=value` per field.                                |
+| `up`                         | Checks that local dependencies are ready.                                               |
+| `doctor`                     | One command for environment, config and infra together.                                 |
+| `env pull`                   | Writes the resolved variables into `.env`.                                              |
+| `env run -- <command>`       | Runs a command with the resolved variables injected.                                    |
+| `lint`                       | Scores the project against conventions eslint and the architecture linter do not reach. |
+| `console`                    | Boots the app into a REPL.                                                              |
+| `hosts`                      | Adds the local hostname to your hosts file.                                             |
+| `mcp:serve`                  | A read-only MCP server over stdio.                                                      |
 
 ## `hery new <name>`
 
@@ -73,7 +76,7 @@ Every run also (re)writes `blueprints/schema.json` — a JSON Schema generated s
 
 ## `hery generate <Name|path>`
 
-Reads the blueprint and writes ten files into `src/functional/<name>/`. See [What gets generated](/guides/generated-files/) for what each one owns.
+Reads the blueprint and writes ten files into `src/functional/<name>/`. See [What gets generated](../guides/generated-files/) for what each one owns.
 
 The argument is a name resolved under `blueprints/`, or a path to a YAML file if you would rather keep a blueprint next to whatever it produced:
 
@@ -93,7 +96,7 @@ Runs `prisma migrate dev`, then does the second half `generate` deliberately lef
 
 ## `hery install [modules...]`
 
-Installs optional modules à la carte or, with `--all`, the full package. `hery module:list` prints what is available. See [The module system](/guides/modules/).
+Installs optional modules à la carte or, with `--all`, the full package. `hery module:list` prints what is available. See [The module system](../guides/modules/).
 
 ```bash
 pnpm hery install storage mail
@@ -109,17 +112,42 @@ pnpm hery make:mail WelcomeMail          # src/functional/welcome/welcome-mail.t
 pnpm hery make:export TaskListExport -d task   # src/functional/task/task-list-export.ts
 ```
 
-The domain is derived from the name with a trailing `mail` or `export` stripped, and `--domain` overrides it. What gets generated implements a small interface — `Mailable`, `Exportable` — and **never picks a driver, reads config, or names a format**: that is the registry's job, and keeping it out is what lets the same class survive a transport change. See [Modules and drivers](/guides/modules-and-drivers/).
+The domain is derived from the name with a trailing `mail` or `export` stripped, and `--domain` overrides it. What gets generated implements a small interface — `Mailable`, `Exportable` — and **never picks a driver, reads config, or names a format**: that is the registry's job, and keeping it out is what lets the same class survive a transport change. See [Modules and drivers](../guides/modules-and-drivers/).
+
+## `hery make:job`, `make:listener`, `make:scheduled-task`
+
+The same shape, for the three concern types the kernel already runs and nothing
+scaffolded:
+
+```bash
+pnpm hery make:job SendDigestJob            # src/functional/send-digest/send-digest.ts
+pnpm hery make:listener WelcomeListener     # src/functional/welcome/welcome.ts
+pnpm hery make:scheduled-task ExpireTokens -d auth
+```
+
+The kind's suffix is stripped before anything is derived, so `make:job
+SendDigestJob` and `make:job SendDigest` produce the same file — `SEND_DIGEST_JOB`,
+`SendDigestProcessor`, and a domain of `send-digest`.
+
+Each carries the part a copy-paste quietly drops:
+
+- a **job** ships a retry policy. Written by hand it inherits BullMQ's defaults — one attempt, no backoff — and a job that fails once is simply gone.
+- a **listener** carries a stable `name`, because a queued job travels with it: renaming it while jobs are enqueued strands them.
+- a **scheduled task** goes through `ScheduledTaskStore`, so a task that stops firing is visible rather than merely silent.
+
+Each also prints what is left to do — the payload, the event class, the cron
+expression, and the module to register it in. Generated code is yours from the
+moment it lands; these fill in the decisions, not the work.
 
 There is deliberately no `module:add`: `hery install` already does that.
 
 ## `hery uninstall <module>`
 
-Removes the module's own npm dependencies (`pnpm remove`) and prints the rest of what to clean up by hand — the runtime files it copied in and the kernel files it patched. It only automates what is safe to automate outright: your own edits to those files since installing are exactly what "own your code" says the tool must never guess about and silently revert. Run `hery module:list` to see what's installed. See [The module system](/guides/modules/).
+Removes the module's own npm dependencies (`pnpm remove`) and prints the rest of what to clean up by hand — the runtime files it copied in and the kernel files it patched. It only automates what is safe to automate outright: your own edits to those files since installing are exactly what "own your code" says the tool must never guess about and silently revert. Run `hery module:list` to see what's installed. See [The module system](../guides/modules/).
 
 ## `hery search:reindex <Name>`
 
-Rebuilds a resource's search index from what is actually in Postgres — the source of truth stays the database, the index is a derived cache that can always be thrown away and rebuilt. Run it after installing a search engine module on a resource that already has data, or any time the index and the database might have drifted. See [Full-text search](/guides/search/).
+Rebuilds a resource's search index from what is actually in Postgres — the source of truth stays the database, the index is a derived cache that can always be thrown away and rebuilt. Run it after installing a search engine module on a resource that already has data, or any time the index and the database might have drifted. See [Full-text search](../guides/search/).
 
 ## `hery expose:list` and `hery expose:run`
 
@@ -129,7 +157,7 @@ The two CLI halves of the exposition registry: `expose:list` prints every `@Expo
 pnpm hery expose:run prune.run --param prune.run.model=BlogPost
 ```
 
-There is no signed-in user at a terminal, so the capability check is skipped where the HTTP route enforces it — trust comes from having a shell on the machine, the same reasoning `console --tenant` relies on. The environment filter and the audit entry still apply. See [Exposing an action to the mine](/guides/exposing-actions/).
+There is no signed-in user at a terminal, so the capability check is skipped where the HTTP route enforces it — trust comes from having a shell on the machine, the same reasoning `console --tenant` relies on. The environment filter and the audit entry still apply. See [Exposing an action to the mine](../guides/exposing-actions/).
 
 ## `hery module:monitoring`
 
@@ -210,7 +238,7 @@ This framework's own baseline is empty, and CI runs `--min-score 100` against it
 
 ## `hery console`
 
-Boots the real application into a REPL with the DI container and the tenant-scoped Prisma client. `--tenant <id>` picks the tenant the whole session runs inside. See [Developer tooling](/guides/devtools/).
+Boots the real application into a REPL with the DI container and the tenant-scoped Prisma client. `--tenant <id>` picks the tenant the whole session runs inside. See [Developer tooling](../guides/devtools/).
 
 ## `hery hosts`
 
@@ -225,4 +253,4 @@ Starts a read-only [MCP](https://modelcontextprotocol.io) server over stdio, for
 
 It never reads a blueprint file. A blueprint is a one-time input to `generate`, not a live source of truth — the generated code is.
 
-This is the read-only surface, needs no running app and no credentials. For an agent that should be able to _use_ the application — with a real session and real capability checks — install the [MCP module](/guides/graphql-and-mcp/) instead.
+This is the read-only surface, needs no running app and no credentials. For an agent that should be able to _use_ the application — with a real session and real capability checks — install the [MCP module](../guides/graphql-and-mcp/) instead.

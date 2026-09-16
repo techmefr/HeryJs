@@ -61,6 +61,31 @@ This replaced a grep. "Must not reach production" used to be approximated by a s
 
 The `hery` CLI is a separate, self-contained tool that reads a blueprint and writes files into `src/functional/`. It is not part of the running application: it never ships to production, and nothing in `src/` depends on it.
 
+## `pnpm-workspace.yaml` — the 24-hour install cooldown
+
+`hery new` copies this file verbatim, and it carries one setting worth knowing
+about before it surprises you:
+
+```yaml
+minimumReleaseAge: 1440
+```
+
+pnpm refuses to install a package version published less than 24 hours ago.
+It is a defence against a compromised release: the window in which a malicious
+version is live and not yet pulled is usually measured in hours, and a project
+that simply waits a day is not in it.
+
+The cost is that **a dependency you published yourself minutes ago will not
+install**, and neither will a hotfix someone else just shipped. That is the
+trade, and it is yours to make:
+
+```yaml
+minimumReleaseAge: 0
+```
+
+Lower it, remove it, or keep it. What it must not be is a rule nobody knew was
+there — which is what it was until this section existed.
+
 ## The checks that hold the line
 
 Generated code belongs to you, which means the generator's guarantees expire the moment you edit it. Structural rules and standalone linters stand in for them.

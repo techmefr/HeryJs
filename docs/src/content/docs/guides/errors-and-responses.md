@@ -67,7 +67,7 @@ One more branch: a request whose `Accept` header asks for HTML gets an HTML erro
 
 ## Message translation
 
-`key` never changes; `message` can, per request, when a project declares more than one locale. See [Internationalization](/guides/i18n/) for how a locale is resolved and how to add a translation.
+`key` never changes; `message` can, per request, when a project declares more than one locale. See [Internationalization](../guides/i18n/) for how a locale is resolved and how to add a translation.
 
 ## The success envelope
 

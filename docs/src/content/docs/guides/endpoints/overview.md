@@ -11,16 +11,16 @@ The pages in this section walk through a real one, `BlogPost`, end to end. Each 
 
 | Method | Path                   | What it does                                                                                              | Documented in                                                              |
 | ------ | ---------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| `POST` | `/blog-posts/search`   | List, with search, sort, filter, pagination — also how one record is read, filtered to its id             | [Search](/guides/endpoints/search/), [Details](/guides/endpoints/details/) |
-| `GET`  | `/blog-posts/describe` | The resource's contract — fields, sorts, filters, selects, includes, aggregates, limits, validation rules | [Details](/guides/endpoints/details/)                                      |
-| `POST` | `/blog-posts/create`   | Create one or many records in one call                                                                    | [Create](/guides/endpoints/create/)                                        |
-| `POST` | `/blog-posts/update`   | Update one or many records in one call, including relations                                               | [Update](/guides/endpoints/update/)                                        |
-| `POST` | `/blog-posts/delete`   | Soft-delete (or hard-delete with `mode: "hard"`) one or many records                                      | [Delete](/guides/endpoints/delete/)                                        |
-| `POST` | `/blog-posts/restore`  | Undo a soft-delete for one or many records                                                                | [Restore](/guides/endpoints/restore/)                                      |
+| `POST` | `/blog-posts/search`   | List, with search, sort, filter, pagination — also how one record is read, filtered to its id             | [Search](../../guides/endpoints/search/), [Details](../../guides/endpoints/details/) |
+| `GET`  | `/blog-posts/describe` | The resource's contract — fields, sorts, filters, selects, includes, aggregates, limits, validation rules | [Details](../../guides/endpoints/details/)                                      |
+| `POST` | `/blog-posts/create`   | Create one or many records in one call                                                                    | [Create](../../guides/endpoints/create/)                                        |
+| `POST` | `/blog-posts/update`   | Update one or many records in one call, including relations                                               | [Update](../../guides/endpoints/update/)                                        |
+| `POST` | `/blog-posts/delete`   | Soft-delete (or hard-delete with `mode: "hard"`) one or many records                                      | [Delete](../../guides/endpoints/delete/)                                        |
+| `POST` | `/blog-posts/restore`  | Undo a soft-delete for one or many records                                                                | [Restore](../../guides/endpoints/restore/)                                      |
 
 Every mutating route takes an array — `data` for create/update, `ids` for delete/restore — even for a single record, and answers with one result per entry, each carrying its own `status`. One entry failing never blocks the others in the same request.
 
-Every one of them requires a session — send the bearer token you got from `/auth/login` or `/auth/register` in an `Authorization: Bearer <token>` header. See [Authentication](/guides/authentication/) for how to get one.
+Every one of them requires a session — send the bearer token you got from `/auth/login` or `/auth/register` in an `Authorization: Bearer <token>` header. See [Authentication](../../guides/authentication/) for how to get one.
 
 ## The envelope
 
@@ -82,6 +82,6 @@ They are `GET` routes, so the window goes in the query string: `GET /audit-logs?
 
 ## When something goes wrong
 
-Every error, from every route, comes back the same way — see [Errors and responses](/guides/errors-and-responses/) for the full table of status/key pairs. The one rule worth keeping in mind while building a UI: **the `key` is what you branch on in code, the `message` is what you show a human, and neither ever changes shape** between resources or between routes.
+Every error, from every route, comes back the same way — see [Errors and responses](../../guides/errors-and-responses/) for the full table of status/key pairs. The one rule worth keeping in mind while building a UI: **the `key` is what you branch on in code, the `message` is what you show a human, and neither ever changes shape** between resources or between routes.
 
-If a response looks wrong and you can't tell why — a 403 you didn't expect, a filter that silently returns nothing — see [Debugging with the pipeline trace](/guides/debugging/), which is aimed at whoever owns the backend for exactly this conversation.
+If a response looks wrong and you can't tell why — a 403 you didn't expect, a filter that silently returns nothing — see [Debugging with the pipeline trace](../../guides/debugging/), which is aimed at whoever owns the backend for exactly this conversation.

@@ -2,6 +2,12 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import * as path from 'node:path';
 import * as ts from 'typescript';
 
+// @Query and @Mutation belong here for the same reason the REST verbs do: a
+// GraphQL resolver serves a request and hands back data, and both guards treat
+// it exactly like a controller route. Leaving resolvers out meant this check
+// claimed to cover every route in the repository while never opening a single
+// *.resolver.ts -- which is how the generator's own mutations went years
+// without the decorator this check exists to require.
 const ROUTE_DECORATORS = new Set([
   'Get',
   'Post',
@@ -9,7 +15,11 @@ const ROUTE_DECORATORS = new Set([
   'Put',
   'Delete',
   'All',
+  'Query',
+  'Mutation',
 ]);
+
+const ROUTE_FILE_SUFFIXES = ['.controller.ts', '.resolver.ts'];
 
 // Every route in the repository, not just the business ones: a kernel route, a
 // module route and a devtools route hand out data exactly like a resource route
@@ -39,7 +49,9 @@ function findControllerFiles(dir: string): string[] {
         : findControllerFiles(fullPath);
     }
 
-    return entry.name.endsWith('.controller.ts') ? [fullPath] : [];
+    return ROUTE_FILE_SUFFIXES.some((suffix) => entry.name.endsWith(suffix))
+      ? [fullPath]
+      : [];
   });
 }
 

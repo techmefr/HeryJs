@@ -11,6 +11,13 @@ on:
   push:
   workflow_dispatch:
 
+# Neither job writes to the repository, comments on a pull request or touches
+# Pages, so neither needs a token that could. docs.yml already scopes its own;
+# this one inherited whatever the repository default happened to be, which is
+# the permission nobody chose.
+permissions:
+  contents: read
+
 # A branch under active pushing keeps only its latest run. main keeps every one,
 # because each of its runs is the record for a commit that shipped.
 concurrency:

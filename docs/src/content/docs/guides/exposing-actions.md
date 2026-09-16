@@ -28,7 +28,7 @@ async run(
 ): Promise<PruneRunResult> { ... }
 ```
 
-`capability` is a `PolicyCheck`, the same function shape every other permission in the framework uses — see [Capabilities](/guides/capabilities). `environments` is optional and restricts the action to a subset of `'development' | 'test' | 'production'`; omit it and the action runs everywhere.
+`capability` is a `PolicyCheck`, the same function shape every other permission in the framework uses — see [Capabilities](../guides/capabilities). `environments` is optional and restricts the action to a subset of `'development' | 'test' | 'production'`; omit it and the action runs everywhere.
 
 A field's `kind` is one of `number`, `boolean`, `string` or `enum`, each carrying its own bounds (`min`/`max`/`step`, `maxLength`, `values`) and a `default`. The default matters beyond documentation: a caller who omits a param gets it, so a form only needs to render the fields it wants to override.
 
@@ -65,6 +65,6 @@ The CLI has no signed-in user to check a capability against, so `ExpositionRunne
 
 ## Two worked examples
 
-[Prune](/guides/prune/#exposed-to-the-mine-not-routed-by-hand) exposes `prune.status` and `prune.run`, gated by `canManagePrune`. Its `model` field is a closed `enum` built from `prunableModels()`, so the mine renders it as a menu rather than free text.
+[Prune](../guides/prune/#exposed-to-the-mine-not-routed-by-hand) exposes `prune.status` and `prune.run`, gated by `canManagePrune`. Its `model` field is a closed `enum` built from `prunableModels()`, so the mine renders it as a menu rather than free text.
 
 The agency seeder exposes `agency.seed`, gated by `canSeedAgency` and restricted to `development`/`test`. It declares exactly two params — which team to seed, how many users to add to it — and finds-or-creates the team before bulk-creating users as its members. It is deliberately not built on the older `Seeder` interface in `seeder.types.ts`: that interface is its own grammar, with its own route and its own bounds-checking, and exposition exists precisely so a second grammar doesn't need to exist next to it. Both examples prove the same thing from different angles: the mine's form, the generic route's validation, and (for the seeder) the CLI's `--param` flags all come from the one declaration on the method.
