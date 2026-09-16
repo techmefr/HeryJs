@@ -28,3 +28,9 @@ export function renderTemplate(
     html: interpolate(template.html, data),
   };
 }
+
+// What the preview route lists. Derived from the templates themselves, so a
+// template added without touching this still shows up.
+export function templateNames(): string[] {
+  return Object.keys(templates);
+}

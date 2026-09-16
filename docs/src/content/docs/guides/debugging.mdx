@@ -80,9 +80,9 @@ In the admin panel, this is the **Pipeline** page: one card per request, a row o
 ## What it deliberately does not do
 
 - **No production trace.** The tracing context is never opened when `NODE_ENV=production` — a `pushStep()` call outside that context is a plain no-op, so nothing is held in memory and nothing is computed on a production request. This tool exists for the environment where you're actually chasing the bug, not for prod observability.
-- **No history beyond 200 requests.** A ring buffer, in memory, per process — the same shape as the [request inspector](/guides/devtools/). Gone on restart, and each instance behind a load balancer only knows about its own requests.
+- **No history beyond 200 requests.** A ring buffer, in memory, per process — the same shape as the [request inspector](../guides/devtools/). Gone on restart, and each instance behind a load balancer only knows about its own requests.
 - **The route is dev-only, the same way as the rest of `devtools/`.** `SessionGuard` + `DevOnlyGuard`: it needs a session, and it 404s once `NODE_ENV=production`.
 
 ## When to reach for this instead of the inspector
 
-The [request inspector](/guides/devtools/) tells you a request happened, its status and how long it took — a flat access log. The pipeline trace tells you *why* a specific one ended the way it did: which layer decided, what it decided against, and the SQL underneath it. Reach for the inspector to see traffic; reach for the pipeline trace once you already have one request you need to explain.
+The [request inspector](../guides/devtools/) tells you a request happened, its status and how long it took — a flat access log. The pipeline trace tells you *why* a specific one ended the way it did: which layer decided, what it decided against, and the SQL underneath it. Reach for the inspector to see traffic; reach for the pipeline trace once you already have one request you need to explain.

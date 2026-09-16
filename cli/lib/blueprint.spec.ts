@@ -1,7 +1,7 @@
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
-import { loadBlueprint } from './blueprint';
+import { blueprintSchema, loadBlueprint } from './blueprint';
 
 function writeBlueprint(dir: string, name: string, yaml: string): void {
   writeFileSync(path.join(dir, `${name}.yaml`), yaml);
@@ -467,5 +467,63 @@ filters: [deletedAt]
     expect(() => loadBlueprint(path.join(dir, 'note.yaml'))).toThrow(
       /deletedAt/,
     );
+  });
+});
+
+describe('unknown blueprint keys', () => {
+  /**
+   * The failure this closes: zod drops an unrecognised key by default, so a
+   * typo parsed cleanly and fell back to the schema's defaults. The author saw
+   * a resource that ignored what they had declared, with nothing anywhere
+   * saying why -- and the coherence checks could not help, since they run on
+   * the already-stripped object where the typo no longer exists.
+   */
+  it('refuses a misspelled top-level key instead of dropping it', () => {
+    expect(() =>
+      blueprintSchema.parse({
+        name: 'BlogPost',
+        fields: [],
+        pagintaion: { default: 15 },
+      }),
+    ).toThrow();
+  });
+
+  it('refuses a misspelled key nested inside pagination', () => {
+    expect(() =>
+      blueprintSchema.parse({
+        name: 'BlogPost',
+        fields: [],
+        pagination: { limits: [10], defualt: 10 },
+      }),
+    ).toThrow();
+  });
+
+  it('refuses an unknown key on a field', () => {
+    expect(() =>
+      blueprintSchema.parse({
+        name: 'BlogPost',
+        fields: [{ name: 'title', type: 'string', nulable: true }],
+      }),
+    ).toThrow();
+  });
+
+  it('refuses an unknown permission rather than defaulting it to own', () => {
+    expect(() =>
+      blueprintSchema.parse({
+        name: 'BlogPost',
+        fields: [],
+        permissions: { veiw: 'all' },
+      }),
+    ).toThrow();
+  });
+
+  it('still accepts a blueprint that only uses keys it declares', () => {
+    expect(() =>
+      blueprintSchema.parse({
+        name: 'BlogPost',
+        fields: [{ name: 'title', type: 'string' }],
+        pagination: { limits: [10, 20], default: 10 },
+      }),
+    ).not.toThrow();
   });
 });

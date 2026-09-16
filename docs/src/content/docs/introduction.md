@@ -20,7 +20,7 @@ A HeryJs project is split into four layers, by **lifecycle** rather than by them
 - `modules/` — what arrives through `hery install` and can be removed again: mail, storage, WebSockets, streaming.
 - `devtools/` — the request inspector and test helpers, which never ship to production.
 
-An architecture linter (dependency-cruiser, plus a Jest convention test) enforces the split in CI: the kernel never reaches into a domain or an optional module, no module reaches into another, nothing but a spec reaches into `devtools/`, and every resource folder carries the files this convention expects. See [Project structure](/guides/project-structure/).
+An architecture linter (dependency-cruiser, plus a Jest convention test) enforces the split in CI: the kernel never reaches into a domain or an optional module, no module reaches into another, nothing but a spec reaches into `devtools/`, and every resource folder carries the files this convention expects. See [Project structure](./guides/project-structure/).
 
 ## What a generated resource proves
 

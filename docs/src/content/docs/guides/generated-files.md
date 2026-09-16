@@ -59,7 +59,7 @@ Each mutation also publishes on the resource's signal channel and syncs the sear
 
 ## `task.controller.ts`
 
-The HTTP surface: six routes, each behind `SessionGuard` and `CapabilitiesGuard`, each response passed through `task.view.ts` before it leaves the process. There is no `GET /tasks/:id` — reading one record is the search route filtered to an id, so there is one contract to learn instead of two, and [Details](/guides/endpoints/details/) explains why.
+The HTTP surface: six routes, each behind `SessionGuard` and `CapabilitiesGuard`, each response passed through `task.view.ts` before it leaves the process. There is no `GET /tasks/:id` — reading one record is the search route filtered to an id, so there is one contract to learn instead of two, and [Details](../guides/endpoints/details/) explains why.
 
 | Route                 | Capability at the guard                                                                     | Per-record check                                |
 | --------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------- |
@@ -98,7 +98,7 @@ taskFactory({ ownerId: existingUser.id }); // "recycle" — just pass the existi
 
 ## `task.spec.ts`
 
-An end-to-end HTTP test, generated once and meant to be extended by hand. Seventeen cases for the default permission presets: creation is scoped to the current tenant, the describe route reports the blueprint's fields and rules, a record read one way and listed the other agree on who may see it, same for the trash, a search resolves the capabilities it asked for, a non-owner gets a real 403 on update, soft-delete and restore round-trip while restoring a live record is refused, a different tenant never sees another tenant's records, a client-supplied tenant header cannot spoof the tenant, pagination reports its meta and rejects an undeclared page size, an include or an aggregate naming an undeclared relation is rejected, full-text search finds a record through the named default engine while an undeclared engine keyword is rejected, and a relation attaches, syncs and detaches through the update route. See [Testing conventions](/guides/testing/).
+An end-to-end HTTP test, generated once and meant to be extended by hand. Seventeen cases for the default permission presets: creation is scoped to the current tenant, the describe route reports the blueprint's fields and rules, a record read one way and listed the other agree on who may see it, same for the trash, a search resolves the capabilities it asked for, a non-owner gets a real 403 on update, soft-delete and restore round-trip while restoring a live record is refused, a different tenant never sees another tenant's records, a client-supplied tenant header cannot spoof the tenant, pagination reports its meta and rejects an undeclared page size, an include or an aggregate naming an undeclared relation is rejected, full-text search finds a record through the named default engine while an undeclared engine keyword is rejected, and a relation attaches, syncs and detaches through the update route. See [Testing conventions](../guides/testing/).
 
 ## Optional extras
 
@@ -117,4 +117,4 @@ Each requires its module to be installed, and each re-checks the resource's own 
 
 `prisma/schema.prisma` gains the model — `id`, `tenantId`, `ownerId`, your fields, timestamps and a nullable `deletedAt`, plus a `teamId` if any preset is `team`. Then two sets in the kernel gain the model's name: `TENANT_SCOPED_MODELS` in `prisma.client.ts` and `AUDITED_MODELS` in `audit-log.ts`. Those two patches are what make tenancy and the audit trail automatic for the new resource rather than something to remember — a set the generator does not maintain is a feature that silently applies to nothing.
 
-The row-level policy behind that first set is not left to be remembered either: the `pnpm hery migrate` you run next reads the schema and emits the `ENABLE ROW LEVEL SECURITY` migration for the new table before applying it. See [Multi-tenancy](/guides/tenancy/).
+The row-level policy behind that first set is not left to be remembered either: the `pnpm hery migrate` you run next reads the schema and emits the `ENABLE ROW LEVEL SECURITY` migration for the new table before applying it. See [Multi-tenancy](../guides/tenancy/).

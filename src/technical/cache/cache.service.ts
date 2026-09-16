@@ -2,6 +2,7 @@ import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import IORedis from 'ioredis';
 import { env } from '#technical/config/env';
 import { heryConfig } from '#technical/config/hery-config';
+import { InvalidCacheTtlException } from './invalid-cache-ttl.exception';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 
 const KEY_PREFIX = 'cache:';
@@ -33,6 +34,16 @@ export class CacheService implements OnModuleDestroy {
     ttlSeconds: number = heryConfig.cache?.defaultTtlSeconds ??
       DEFAULT_TTL_SECONDS,
   ): Promise<void> {
+    // Valkey refuses `SET ... EX 0` and anything negative outright, so a caller
+    // passing 0 -- a plausible "do not cache this" -- used to get an unhandled
+    // rejection out of the kernel's own cache primitive. Refusing here names
+    // the mistake at its source instead of surfacing a driver error three
+    // frames away, and a caller that means "do not cache" simply does not call
+    // this.
+    if (!Number.isInteger(ttlSeconds) || ttlSeconds <= 0) {
+      throw new InvalidCacheTtlException(ttlSeconds);
+    }
+
     await this.client.set(
       this.key(key),
       JSON.stringify(value),

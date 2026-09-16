@@ -6,7 +6,7 @@ import { camelCase, kebabCase } from './naming';
 
 export const permissionPresetSchema = z.enum(['own', 'team', 'all', 'none']);
 
-export const blueprintFieldSchema = z.object({
+export const blueprintFieldSchema = z.strictObject({
   name: z.string().regex(/^[a-z][a-zA-Z0-9]*$/),
   type: z.enum(['string', 'int', 'boolean', 'datetime', 'file']),
   optional: z.boolean().default(false),
@@ -24,7 +24,7 @@ const resourceNameSchema = z.string().regex(/^[A-Z][a-zA-Z0-9]*$/);
 // value it holds for *this* resource have to be declared, there is nothing
 // to introspect from the schema.
 export const blueprintRelationLinkSchema = z
-  .object({
+  .strictObject({
     relation: fieldNameSchema,
     resource: resourceNameSchema,
     type: z.enum(['hasMany', 'morphMany']),
@@ -58,7 +58,7 @@ export type BlueprintRelationLink = z.infer<typeof blueprintRelationLinkSchema>;
 // related row itself, only a row in the pivot table -- foreignKey/relatedKey
 // are that pivot's two columns, pointing at this resource and the referenced
 // one respectively.
-export const blueprintMutableRelationSchema = z.object({
+export const blueprintMutableRelationSchema = z.strictObject({
   relation: fieldNameSchema,
   resource: resourceNameSchema,
   pivotTable: resourceNameSchema,
@@ -70,7 +70,19 @@ export type BlueprintMutableRelation = z.infer<
   typeof blueprintMutableRelationSchema
 >;
 
-export const blueprintSchema = z.object({
+/**
+ * Strict, all the way down. Zod drops an unrecognised key by default, so
+ * `pagintaion:` or a misspelled `defualt:` inside it parsed cleanly, fell back
+ * to the schema's defaults, and generated a resource that looked like it
+ * should paginate and silently did not. None of the coherence checks below
+ * could catch it either: they run on the already-stripped object, where the
+ * typo no longer exists.
+ *
+ * A blueprint is small and hand-written. Refusing a key nobody meant to write
+ * costs an author one corrected line; accepting it costs them an afternoon
+ * wondering why the generated resource ignores what they declared.
+ */
+export const blueprintSchema = z.strictObject({
   name: z.string().regex(/^[A-Z][a-zA-Z0-9]*$/),
   // A resource the generator never routes: no controller, no service, no
   // capabilities of its own. Its only job is to be pointed at from another
@@ -103,7 +115,7 @@ export const blueprintSchema = z.object({
   softDeletes: z.boolean().optional(),
   fields: z.array(blueprintFieldSchema).default([]),
   permissions: z
-    .object({
+    .strictObject({
       view: permissionPresetSchema.default('own'),
       create: permissionPresetSchema.default('own'),
       update: permissionPresetSchema.default('own'),
@@ -117,7 +129,7 @@ export const blueprintSchema = z.object({
   // its own contract instead of quietly capping a result set nobody asked it
   // to cap.
   pagination: z
-    .object({
+    .strictObject({
       limits: z.array(z.number().int().positive()).default([10, 15, 20]),
       default: z.number().int().positive().default(15),
     })

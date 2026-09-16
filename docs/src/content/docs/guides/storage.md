@@ -21,7 +21,7 @@ export interface StorageDriver {
 }
 ```
 
-That contract lives in the kernel, at `src/technical/storage/storage-driver.ts`, not in the module. It has to: the [export](/guides/export/) module writes its generated files through it, and a module may not import another module. Going through the token instead makes storage an **optional runtime dependency and an invisible compile-time one** — a queued export asks the resolver for a storage driver, gets one if the project installed it, and degrades honestly if it did not.
+That contract lives in the kernel, at `src/technical/storage/storage-driver.ts`, not in the module. It has to: the [export](../guides/export/) module writes its generated files through it, and a module may not import another module. Going through the token instead makes storage an **optional runtime dependency and an invisible compile-time one** — a queued export asks the resolver for a storage driver, gets one if the project installed it, and degrades honestly if it did not.
 
 Callers go through `StorageService`, which adds the gates the raw driver has no request to apply.
 

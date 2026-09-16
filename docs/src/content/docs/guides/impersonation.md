@@ -30,7 +30,7 @@ Better Auth's own impersonation flow is cookie-based — it swaps the session co
 
 ## No role-management endpoint
 
-Only the `admin` role gets the built-in `impersonate` permission. As with [Teams](/guides/teams/), granting that role is deliberately not something the framework exposes over HTTP:
+Only the `admin` role gets the built-in `impersonate` permission. As with [Teams](../guides/teams/), granting that role is deliberately not something the framework exposes over HTTP:
 
 ```sql
 UPDATE "User" SET role = 'admin' WHERE email = '...';

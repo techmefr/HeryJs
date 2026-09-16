@@ -16,7 +16,7 @@ Every permission in a blueprint picks one of four presets:
 
 Resolution happens **in memory**, against a record already fetched for the request — never as a separate query per item. This is what keeps a list endpoint from turning into an N+1 permission check.
 
-The `team` preset resolves against a `teamId` column, which the generator adds for you as soon as any preset asks for it — a blueprint must _not_ declare `teamId` itself, since it is a reserved column the framework decides. Team memberships are resolved from the database on every request, so `team` is fully working; see [Teams](/guides/teams/) for how the perimeter is established.
+The `team` preset resolves against a `teamId` column, which the generator adds for you as soon as any preset asks for it — a blueprint must _not_ declare `teamId` itself, since it is a reserved column the framework decides. Team memberships are resolved from the database on every request, so `team` is fully working; see [Teams](../guides/teams/) for how the perimeter is established.
 
 ## Two levels: collection and record
 

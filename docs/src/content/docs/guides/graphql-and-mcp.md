@@ -67,7 +67,7 @@ MCP's own [authorization spec](https://modelcontextprotocol.io/specification/202
 
 1. That whole flow is explicitly **OPTIONAL** in the spec itself — skipping it is not a compliance gap, it is a choice the protocol hands the server.
 2. Becoming a real OAuth 2.1 resource server is an infrastructure project on its own, out of proportion with a kernel whose whole premise is to expose what it generates rather than take on a protocol's full surface — the same "the framework exposes, it does not reason" boundary applied to auth this time.
-3. The two cases the MCP OAuth flow exists to cover — a human behind an interactive client, a script or agent with no human present — are already covered through the same door as REST: a session for the first, an [API key](/guides/authentication/) for the second.
+3. The two cases the MCP OAuth flow exists to cover — a human behind an interactive client, a script or agent with no human present — are already covered through the same door as REST: a session for the first, an [API key](../guides/authentication/) for the second.
 
 This is a considered decision, not an oversight, and it is not permanent: the trigger for revisiting it is concrete — a real MCP client that refuses to connect at all without native OAuth discovery (Protected Resource Metadata and the rest), not a hypothetical future client that might want it.
 

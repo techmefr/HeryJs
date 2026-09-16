@@ -25,6 +25,15 @@ services:
 
   valkey:
     image: valkey/valkey:8-alpine
+    # Bounded on purpose. Every CacheService key carries a TTL, so growth is
+    # normally write-rate times TTL -- but nothing enforced a ceiling, and the
+    # default policy is noeviction: at the memory limit Valkey starts refusing
+    # writes rather than shedding keys, which turns a full cache into failing
+    # requests. allkeys-lru degrades instead, and the cache is the one store
+    # here whose contents are all reconstructible.
+    command: >-
+      valkey-server --maxmemory ${HERYJS_VALKEY_MAXMEMORY:-256mb}
+      --maxmemory-policy allkeys-lru
     restart: unless-stopped
     ports:
       - '6379'

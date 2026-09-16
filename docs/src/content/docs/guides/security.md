@@ -43,7 +43,7 @@ Capabilities are computed in memory on objects already loaded, with conditions r
 
 ## Rate limiting is on by default
 
-Every kernel and module route carries `@RateLimit(<bucket>)` or `@UnthrottledRoute('<why>')`, the same way every route carries a capability decision — a route with neither fails CI. Three buckets (`read`, `write`, `auth`) cap requests per tenant and identity, tight enough on `auth` to blunt credential stuffing without a project having to configure anything. See [Rate limiting](/guides/rate-limiting/).
+Every kernel and module route carries `@RateLimit(<bucket>)` or `@UnthrottledRoute('<why>')`, the same way every route carries a capability decision — a route with neither fails CI. Three buckets (`read`, `write`, `auth`) cap requests per tenant and identity, tight enough on `auth` to blunt credential stuffing without a project having to configure anything. See [Rate limiting](../guides/rate-limiting/).
 
 ## Sessions and API keys
 

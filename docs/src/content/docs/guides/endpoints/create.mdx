@@ -6,7 +6,7 @@ description: What to send to create a record, what comes back, and how a rejecte
 import EndpointPlayground from '../../../../components/EndpointPlayground.astro';
 import { createScenarios as scenarios, resourceCode } from '../../../../data/endpoint-examples.generated';
 
-`data` is always an array, even for a single record — the response shape never has to differ between creating one record and creating a hundred. Only the fields the blueprint declares go in each entry. `id`, `tenantId`, `ownerId` and the timestamps are never accepted from the client — they are the server's to decide, and sending them has no effect. See [Details](/guides/endpoints/details/) for exactly which fields are required, straight from the resource's own contract.
+`data` is always an array, even for a single record — the response shape never has to differ between creating one record and creating a hundred. Only the fields the blueprint declares go in each entry. `id`, `tenantId`, `ownerId` and the timestamps are never accepted from the client — they are the server's to decide, and sending them has no effect. See [Details](../../guides/endpoints/details/) for exactly which fields are required, straight from the resource's own contract.
 
 <EndpointPlayground scenarios={scenarios}>
   <Fragment slot="spec">
