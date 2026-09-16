@@ -56,6 +56,7 @@ export default defineConfig({
                 { label: 'Security model', slug: 'guides/security' },
                 { label: 'Cache', slug: 'guides/cache' },
                 { label: 'Rate limiting', slug: 'guides/rate-limiting' },
+                { label: 'Validation', slug: 'guides/validation' },
                 {
                   label: 'Errors and responses',
                   slug: 'guides/errors-and-responses',
@@ -67,6 +68,7 @@ export default defineConfig({
                 },
                 { label: 'The events bus', slug: 'guides/events' },
                 { label: 'Jobs', slug: 'guides/jobs' },
+                { label: 'Migrations', slug: 'guides/migrations' },
                 { label: 'Prune', slug: 'guides/prune' },
               ],
             },
