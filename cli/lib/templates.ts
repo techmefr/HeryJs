@@ -379,7 +379,7 @@ export class ${ctx.pascalName}RecordLoader
   ) {}
 
   async load(id: string) {
-    return this.prisma.${ctx.camelName}.findUnique({ where: { id } });
+    return this.prisma.${ctx.modelCamelName}.findUnique({ where: { id } });
   }
 }
 ${
@@ -395,7 +395,7 @@ export class ${ctx.pascalName}VisibleRecordLoader
   ) {}
 
   async load(id: string) {
-    const record = await this.prisma.${ctx.camelName}.findUnique({ where: { id } });
+    const record = await this.prisma.${ctx.modelCamelName}.findUnique({ where: { id } });
     return record && !record.deletedAt ? record : null;
   }
 }
@@ -417,7 +417,7 @@ export function serviceFile(ctx: ResourceContext): string {
   const childIncludes = ownRouteIncludes(ctx);
 
   return `import { Inject, Injectable, Logger } from '@nestjs/common';
-import type { Prisma, ${ctx.pascalName} } from '@prisma/client';
+import type { Prisma, ${ctx.modelPascalName} } from '@prisma/client';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import { CapabilitySubject } from '#technical/capabilities/capabilities.types';
@@ -484,7 +484,7 @@ export class ${ctx.pascalName}Service {
   // not just one -- search[engine] lets a later request read through any of
   // them, so a write has to reach all of them, and one engine being down
   // must not stop the others from getting the update.
-  private async syncSearchIndex(record: ${ctx.pascalName}) {${
+  private async syncSearchIndex(record: ${ctx.modelPascalName}) {${
     ctx.softDeletes
       ? `
     if (record.deletedAt) {
@@ -577,7 +577,7 @@ ${
     const limit = options.limit ?? undefined;
 
     const [records, total] = await Promise.all([
-      this.prisma.${ctx.camelName}.findMany({
+      this.prisma.${ctx.modelCamelName}.findMany({
         where,
         orderBy:
           options.sorts && options.sorts.length > 0
@@ -585,9 +585,9 @@ ${
             : { createdAt: 'desc' },
         skip: limit ? (page - 1) * limit : undefined,
         take: limit,
-        include: options.include as Prisma.${ctx.pascalName}Include | undefined,
+        include: options.include as Prisma.${ctx.modelPascalName}Include | undefined,
       }),
-      this.prisma.${ctx.camelName}.count({ where }),
+      this.prisma.${ctx.modelCamelName}.count({ where }),
     ]);
 
     await resolveRelationInstructions(
@@ -646,20 +646,20 @@ ${
 
 `
     : ''
-}    const record = await this.prisma.${ctx.camelName}.create({
+}    const record = await this.prisma.${ctx.modelCamelName}.create({
       // tenantId is injected by the tenant-scoping Prisma extension, invisible to callers by design.
       data: {
         ...data,
         ownerId: subject.id,${ownedByTeam(ctx) ? `\n        // The team comes from the session, never from the request body, so a\n        // caller cannot file a record into a team it does not belong to.\n        teamId: subject.currentTeamId,` : ''}
-      } as unknown as Prisma.${ctx.pascalName}CreateInput,
+      } as unknown as Prisma.${ctx.modelPascalName}CreateInput,
     });
     this.notify();
     await this.syncSearchIndex(record);
     return record;
   }
 
-  async update(record: ${ctx.pascalName}, data: Update${ctx.pascalName}Input) {
-    const updated = await this.prisma.${ctx.camelName}.update({ where: { id: record.id }, data });
+  async update(record: ${ctx.modelPascalName}, data: Update${ctx.pascalName}Input) {
+    const updated = await this.prisma.${ctx.modelCamelName}.update({ where: { id: record.id }, data });
     this.notify();
     await this.syncSearchIndex(updated);
     return updated;
@@ -667,7 +667,7 @@ ${
 ${ctx.relations
   .map(
     (relation) => `
-  async sync${pascalRelationName(relation)}(record: ${ctx.pascalName}, input: RelationMutationInput) {
+  async sync${pascalRelationName(relation)}(record: ${ctx.modelPascalName}, input: RelationMutationInput) {
     return applyRelationMutation(
       this.prisma.${relation.pivotDelegate} as unknown as PivotDelegate,
       this.prisma.${relation.childDelegate} as unknown as RelatedDelegate,
@@ -697,8 +697,8 @@ ${
    * deletedAt at all and is therefore absent from prunableModels(), which is
    * correct -- its delete already freed the row.
    */
-  async softDelete(record: ${ctx.pascalName}) {
-    const updated = await this.prisma.${ctx.camelName}.update({
+  async softDelete(record: ${ctx.modelPascalName}) {
+    const updated = await this.prisma.${ctx.modelCamelName}.update({
       where: { id: record.id },
       data: { deletedAt: new Date() },
     });
@@ -707,8 +707,8 @@ ${
     return updated;
   }
 
-  async restore(record: ${ctx.pascalName}, patch?: Update${ctx.pascalName}Input) {
-    const updated = await this.prisma.${ctx.camelName}.update({
+  async restore(record: ${ctx.modelPascalName}, patch?: Update${ctx.pascalName}Input) {
+    const updated = await this.prisma.${ctx.modelCamelName}.update({
       where: { id: record.id },
       data: { ...patch, deletedAt: null },
     });
@@ -725,8 +725,8 @@ ${
   // and is reached only once the caller already holds the separate hard-delete
   // capability. Runs on the same tenant-scoped client as every other write, so
   // the audit extension records it exactly like any other audited delete.
-  async hardDelete(record: ${ctx.pascalName}) {
-    await this.prisma.${ctx.camelName}.delete({ where: { id: record.id } });
+  async hardDelete(record: ${ctx.modelPascalName}) {
+    await this.prisma.${ctx.modelCamelName}.delete({ where: { id: record.id } });
     this.notify();
     await this.removeFromSearchIndex(record.id, record.tenantId);
   }
@@ -742,7 +742,7 @@ ${
   // still applies, it is simply stated rather than injected. A record from
   // another tenant was loaded through the scoped client and cannot reach here,
   // and if one ever did the delete would not match a row.
-  async purge(record: ${ctx.pascalName}) {
+  async purge(record: ${ctx.modelPascalName}) {
     await writeAuditLog(authPrismaClient, {
       tenantId: record.tenantId,
       model: '${ctx.pascalName}',
@@ -998,7 +998,7 @@ export function controllerFile(ctx: ResourceContext): string {
     : `${ctx.screamingSnakeName}_RECORD_LOADER`;
 
   return `import { Body, Controller, Get, HttpCode, Inject, Post, Req, UseGuards } from '@nestjs/common';
-import type { ${ctx.pascalName} } from '@prisma/client';
+import type { ${ctx.modelPascalName} } from '@prisma/client';
 import { z } from 'zod';
 import { SessionGuard } from '#technical/auth/session.guard';
 import type { RequestWithUser } from '#technical/auth/session.guard';
@@ -1089,6 +1089,9 @@ ${paginationContractLines(ctx.pagination)}} as const satisfies ListQueryContract
 // contract, so their JSON Schema is the rules a frontend needs -- reflected
 // straight off the DTO rather than duplicated by hand.
 const ${ctx.screamingSnakeName}_DESCRIBE = {
+  // Published so a client can tell which contract it is holding without
+  // inferring it from the path it happened to call.
+  version: ${ctx.version},
   fields: [
 ${ctx.fields.map((field) => `    { name: '${field.name}', type: '${field.type}', optional: ${field.optional} },`).join('\n')}
   ],
@@ -1104,7 +1107,7 @@ ${ctx.fields.map((field) => `    { name: '${field.name}', type: '${field.type}',
 };
 ${
   childIncludes.length > 0
-    ? `\ntype RequestWith${ctx.pascalName} = RequestWithUser & { record: ${ctx.pascalName} };
+    ? `\ntype RequestWith${ctx.pascalName} = RequestWithUser & { record: ${ctx.modelPascalName} };
 `
     : ''
 }${childIncludes
@@ -1117,7 +1120,7 @@ const ${ctx.screamingSnakeName}_${screamingSnakeCase(include.relation)}_CONTRACT
 `,
     )
     .join('')}
-@Controller('${ctx.pluralKebabName}')
+@Controller('${ctx.routePath}')
 @UseGuards(SessionGuard, CapabilitiesGuard)
 export class ${ctx.pascalName}Controller {
   constructor(
@@ -1136,7 +1139,7 @@ export class ${ctx.pascalName}Controller {
     check: (subject: ReturnType<typeof subjectOf>, record: unknown) => { allowed: boolean },
   ) {
     const entries: Array<
-      | { index: number; id: string; ok: true; record: ${ctx.pascalName} }
+      | { index: number; id: string; ok: true; record: ${ctx.modelPascalName} }
       | { index: number; id: string; ok: false; error: ResolvedError }
     > = [];
 
@@ -1888,7 +1891,7 @@ ${
 
 export function streamControllerFile(ctx: ResourceContext): string {
   return `import { Controller, Post, Req, UseGuards } from '@nestjs/common';
-import type { ${ctx.pascalName} } from '@prisma/client';
+import type { ${ctx.modelPascalName} } from '@prisma/client';
 import type { RequestWithUser } from '#technical/auth/session.guard';
 import { SessionGuard } from '#technical/auth/session.guard';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
@@ -1904,13 +1907,13 @@ import {
   ${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER,
 } from './${ctx.kebabName}-record.loader';
 
-type RequestWith${ctx.pascalName} = RequestWithUser & { record: ${ctx.pascalName} };
+type RequestWith${ctx.pascalName} = RequestWithUser & { record: ${ctx.modelPascalName} };
 
 function roomFor(id: string): string {
   return '${ctx.kebabName}:' + id;
 }
 
-@Controller('${ctx.pluralKebabName}/:id/stream')
+@Controller('${ctx.routePath}/:id/stream')
 @UseGuards(SessionGuard, CapabilitiesGuard)
 export class ${ctx.pascalName}StreamController {
   constructor(private readonly stream: StreamService) {}
@@ -2333,7 +2336,7 @@ function hardDeleteOnlySpec(ctx: ResourceContext, createBody: string): string {
       .expect(201);
 
     expect(
-      await prisma.${ctx.camelName}.findUnique({ where: { id: recordId } }),
+      await prisma.${ctx.modelCamelName}.findUnique({ where: { id: recordId } }),
     ).toBeNull();
 
     await request(app.getHttpServer())
@@ -2828,10 +2831,10 @@ export type ${ctx.pascalName}View = z.infer<typeof ${ctx.camelName}ViewSchema>;
 
   if (hiddenFields.length === 0) {
     return `import { z } from 'zod';
-import type { ${ctx.pascalName} } from '@prisma/client';
+import type { ${ctx.modelPascalName} } from '@prisma/client';
 
 ${schema}
-export function to${ctx.pascalName}View(record: ${ctx.pascalName}): ${ctx.pascalName}View {
+export function to${ctx.pascalName}View(record: ${ctx.modelPascalName}): ${ctx.pascalName}View {
   return ${ctx.camelName}ViewSchema.parse(record);
 }
 `;
@@ -2840,10 +2843,10 @@ export function to${ctx.pascalName}View(record: ${ctx.pascalName}): ${ctx.pascal
   const hiddenNames = hiddenFields.map((field) => field.name).join(', ');
 
   return `import { z } from 'zod';
-import type { ${ctx.pascalName} } from '@prisma/client';
+import type { ${ctx.modelPascalName} } from '@prisma/client';
 
 ${schema}
-export function to${ctx.pascalName}View(record: ${ctx.pascalName}): ${ctx.pascalName}View {
+export function to${ctx.pascalName}View(record: ${ctx.modelPascalName}): ${ctx.pascalName}View {
   const { ${hiddenNames}, ...view } = record;
   return ${ctx.camelName}ViewSchema.parse(view);
 }
