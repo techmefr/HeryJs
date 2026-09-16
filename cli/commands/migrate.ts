@@ -8,6 +8,22 @@ import {
   writeRlsMigration,
 } from '../lib/rls';
 
+/**
+ * `prisma migrate dev` does not always regenerate the client -- applying an
+ * existing migration leaves the previous one in place -- while still reporting
+ * that the database is in sync with the schema. The two statements together
+ * are what cost an afternoon: better-auth refused every registration against a
+ * table the database already had, because the client did not know about it.
+ */
+function runPrismaGenerate(): number {
+  const result = spawnSync('npx', ['prisma', 'generate'], {
+    stdio: 'inherit',
+    shell: process.platform === 'win32',
+  });
+
+  return result.status ?? 1;
+}
+
 function runPrismaMigrate(name?: string): number {
   const migrateArgs = ['prisma', 'migrate', 'dev'];
 
@@ -47,6 +63,7 @@ export function registerMigrateCommand(program: Command): void {
       const pending = pendingRlsModels(root);
 
       if (pending.length === 0) {
+        process.exitCode = runPrismaGenerate();
         return;
       }
 
@@ -64,6 +81,8 @@ export function registerMigrateCommand(program: Command): void {
         ),
       );
 
-      process.exitCode = runPrismaMigrate();
+      const applied = runPrismaMigrate();
+
+      process.exitCode = applied === 0 ? runPrismaGenerate() : applied;
     });
 }

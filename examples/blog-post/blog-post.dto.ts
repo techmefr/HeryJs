@@ -1,12 +1,55 @@
 import { z } from 'zod';
 import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
 
-export const createBlogPostSchema = z.object({
+const blogPostFields = z.object({
   title: z.string().min(1).max(255),
 });
+
+/**
+ * Where a rule that spans more than one field goes: "required only when status
+ * is published", "endsAt must come after startsAt", "exactly one of these two".
+ * A single field's own shape stays on the field above -- this is for the ones
+ * no single field can express.
+ *
+ * It is empty because the blueprint cannot know them, and it is yours to fill:
+ * this file is generated once and owned by you afterwards. Rules live here
+ * rather than in the service so that a rejection is a 400 shaped like every
+ * other validation error, naming the field it belongs to, instead of an
+ * exception thrown halfway through a write.
+ *
+ * Add an issue per broken rule, with the path pointing at the field a caller
+ * would have to fix:
+ *
+ *   if (input.status === 'published' && !input.publishedAt) {
+ *     ctx.addIssue({
+ *       code: 'custom',
+ *       path: ['publishedAt'],
+ *       message: 'is required when status is published',
+ *     });
+ *   }
+ *
+ * Applied to create and update alike. On update every field is optional, so a
+ * rule reading two fields has to tolerate either being absent -- a partial
+ * update that touches neither is not the request that breaks the rule.
+ */
+function checkBlogPost(
+  input: Partial<z.infer<typeof blogPostFields>>,
+  ctx: z.RefinementCtx,
+): void {
+  void input;
+  void ctx;
+}
+
+export const createBlogPostSchema = blogPostFields.superRefine(checkBlogPost);
 export type CreateBlogPostInput = z.infer<typeof createBlogPostSchema>;
 
-export const updateBlogPostSchema = createBlogPostSchema.partial();
+// The unrefined partial is kept because a refined schema can no longer be
+// extended, and the update request adds an id and a relations block to it.
+// Every path that extends it re-applies the same check afterwards.
+const blogPostUpdateFields = blogPostFields.partial();
+
+export const updateBlogPostSchema =
+  blogPostUpdateFields.superRefine(checkBlogPost);
 export type UpdateBlogPostInput = z.infer<typeof updateBlogPostSchema>;
 
 // attach adds, detach removes, sync replaces the whole set in one call --
@@ -44,10 +87,12 @@ export type CreateBlogPostRequestBody = z.infer<
 export const updateBlogPostRequestSchema = z.object({
   data: z
     .array(
-      updateBlogPostSchema.extend({
-        id: z.string(),
-        relations: updateBlogPostRelationsSchema.optional(),
-      }),
+      blogPostUpdateFields
+        .extend({
+          id: z.string(),
+          relations: updateBlogPostRelationsSchema.optional(),
+        })
+        .superRefine(checkBlogPost),
     )
     .max(MAX_BATCH_ENTRIES),
 });

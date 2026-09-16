@@ -101,12 +101,54 @@ export function dtoFile(ctx: ResourceContext): string {
   return `import { z } from 'zod';
 import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
 
-export const create${ctx.pascalName}Schema = z.object({
+const ${ctx.camelName}Fields = z.object({
 ${fieldLines(ctx, '  ')}
 });
+
+/**
+ * Where a rule that spans more than one field goes: "required only when status
+ * is published", "endsAt must come after startsAt", "exactly one of these two".
+ * A single field's own shape stays on the field above -- this is for the ones
+ * no single field can express.
+ *
+ * It is empty because the blueprint cannot know them, and it is yours to fill:
+ * this file is generated once and owned by you afterwards. Rules live here
+ * rather than in the service so that a rejection is a 400 shaped like every
+ * other validation error, naming the field it belongs to, instead of an
+ * exception thrown halfway through a write.
+ *
+ * Add an issue per broken rule, with the path pointing at the field a caller
+ * would have to fix:
+ *
+ *   if (input.status === 'published' && !input.publishedAt) {
+ *     ctx.addIssue({
+ *       code: 'custom',
+ *       path: ['publishedAt'],
+ *       message: 'is required when status is published',
+ *     });
+ *   }
+ *
+ * Applied to create and update alike. On update every field is optional, so a
+ * rule reading two fields has to tolerate either being absent -- a partial
+ * update that touches neither is not the request that breaks the rule.
+ */
+function check${ctx.pascalName}(
+  input: Partial<z.infer<typeof ${ctx.camelName}Fields>>,
+  ctx: z.RefinementCtx,
+): void {
+  void input;
+  void ctx;
+}
+
+export const create${ctx.pascalName}Schema = ${ctx.camelName}Fields.superRefine(check${ctx.pascalName});
 export type Create${ctx.pascalName}Input = z.infer<typeof create${ctx.pascalName}Schema>;
 
-export const update${ctx.pascalName}Schema = create${ctx.pascalName}Schema.partial();
+// The unrefined partial is kept because a refined schema can no longer be
+// extended, and the update request adds an id and a relations block to it.
+// Every path that extends it re-applies the same check afterwards.
+const ${ctx.camelName}UpdateFields = ${ctx.camelName}Fields.partial();
+
+export const update${ctx.pascalName}Schema = ${ctx.camelName}UpdateFields.superRefine(check${ctx.pascalName});
 export type Update${ctx.pascalName}Input = z.infer<typeof update${ctx.pascalName}Schema>;
 ${relationSchemaBlock(ctx)}
 // Every mutating verb separates the target (what it acts on) from the
@@ -121,9 +163,9 @@ export type Create${ctx.pascalName}RequestBody = z.infer<
 
 export const update${ctx.pascalName}RequestSchema = z.object({
   data: z.array(
-    update${ctx.pascalName}Schema.extend({
+    ${ctx.camelName}UpdateFields.extend({
       id: z.string(),${hasRelations ? `\n      relations: update${ctx.pascalName}RelationsSchema.optional(),` : ''}
-    }),
+    }).superRefine(check${ctx.pascalName}),
   ).max(MAX_BATCH_ENTRIES),
 });
 export type Update${ctx.pascalName}RequestBody = z.infer<
