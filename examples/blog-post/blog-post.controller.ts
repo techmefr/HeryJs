@@ -129,6 +129,9 @@ const BLOG_POST_CONTRACT = {
 // contract, so their JSON Schema is the rules a frontend needs -- reflected
 // straight off the DTO rather than duplicated by hand.
 const BLOG_POST_DESCRIBE = {
+  // Published so a client can tell which contract it is holding without
+  // inferring it from the path it happened to call.
+  version: 1,
   fields: [{ name: 'title', type: 'string', optional: false }],
   ...BLOG_POST_CONTRACT,
   // Stated rather than implied by the absence of limits: a client reading this
