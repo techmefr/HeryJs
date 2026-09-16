@@ -3,7 +3,7 @@ title: Import
 description: Turn an uploaded file back into records, with a per-row report of what was rejected and why.
 ---
 
-Import is [export](/guides/export/) run backwards, and deliberately the same four pieces: a contract in the kernel, a registry in the module, a facade you inject, and a zero-config CSV driver. Selection is per call for the same reason — **the format is a property of the file the user just uploaded**, not of the deployment.
+Import is [export](../guides/export/) run backwards, and deliberately the same four pieces: a contract in the kernel, a registry in the module, a facade you inject, and a zero-config CSV driver. Selection is per call for the same reason — **the format is a property of the file the user just uploaded**, not of the deployment.
 
 ```bash
 pnpm hery install import
@@ -95,7 +95,7 @@ await this.imports
   .queue(file.buffer, new TaskListImport(), user.id);
 ```
 
-Parsing happens in the worker, because parsing is the expensive half — a hundred-thousand-row spreadsheet is what blocks a request, not the upload that delivered it. Same split export makes, from the other end, and the same trade-off: **the file travels through Redis as base64**. An upload large enough for that to hurt wants to be written to [storage](/guides/storage/) first and the job given its key.
+Parsing happens in the worker, because parsing is the expensive half — a hundred-thousand-row spreadsheet is what blocks a request, not the upload that delivered it. Same split export makes, from the other end, and the same trade-off: **the file travels through Redis as base64**. An upload large enough for that to hurt wants to be written to [storage](../guides/storage/) first and the job given its key.
 
 Export's queued path can rebuild everything it needs from plain data, because rendering lives on the driver. Import's cannot: `consume` is your application code, and no queue carries a closure. So the job carries the importable's `name`, and the worker looks the instance up through the same global symbol registry the drivers use. That means **you must bind the importable yourself**, in the module that dispatches it:
 
@@ -120,7 +120,7 @@ When the worker finishes it sends an `import.done` notification carrying the row
 
 ## What import deliberately does not do
 
-- **No HTTP route, and no upload handling.** Import takes a `Buffer`. Getting one out of a multipart request — and deciding who may — is yours, and [storage](/guides/storage/)'s upload route is a reasonable place to look for the gates.
+- **No HTTP route, and no upload handling.** Import takes a `Buffer`. Getting one out of a multipart request — and deciding who may — is yours, and [storage](../guides/storage/)'s upload route is a reasonable place to look for the gates.
 - **No transaction around `consume`.** Whether a partially-accepted file rolls back is a domain decision, and the contract does not take it for you.
 - **No type coercion.** A parser reports what the cell held, not what your model wants it to be; widening a column into a domain type is the importable's job, where the domain is actually known.
 - **No dry-run mode, no idempotency key, no duplicate detection.** `consume` sees the rows; recognising one it already imported is up to it.

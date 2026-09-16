@@ -94,4 +94,34 @@ pnpm test:cov          # with coverage
 
 Specs need a reachable Postgres, since nothing is mocked. `pnpm hery up` checks that before you find out from a failure.
 
+## Isolating a test you wrote yourself
+
+The generated specs accumulate records on purpose, and that is fine for them:
+they assert against ids they created, never against a total.
+
+A test you write by hand often wants the opposite — count the rows, assert an
+empty list, check that exactly one notification went out. The idiom for that
+here is a tenant of its own rather than a transaction rolled back:
+
+```ts
+const tenantId = `test-${randomUUID()}`;
+
+await TenantContextStorage.run({ tenantId }, async () => {
+  // Every scoped query inside this block sees only what this block wrote.
+});
+```
+
+A fresh tenant id gives real isolation at the boundary the framework already
+enforces on every query, with no cleanup and no ordering between tests.
+
+**A transaction rolled back after each test does not work here**, which is why
+it is not the advice: a request goes over real HTTP into the running
+application, so the transaction a test opened is not the one the handler uses.
+That is the same choice the generated specs make, seen from the other side.
+
+Where a test genuinely needs the rows gone afterwards — a unique constraint, a
+fixture too large to leave behind — delete them by the tenant id in an
+`afterAll`, through the raw client. It is the one place bypassing the scoped
+client is right: cleaning up is not a tenant-scoped operation.
+
 Note there is no per-test database reset. Records accumulate across runs, which is why every assertion is written against ids and users the test itself created rather than against a total count.

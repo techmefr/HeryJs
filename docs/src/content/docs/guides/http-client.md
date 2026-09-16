@@ -112,4 +112,4 @@ Every declared driver is resolved at boot, not just the active one, so a project
 - **No authentication handling.** No token refresh, no OAuth dance, no credential store. Headers are yours to set per call.
 - **No response validation.** `body` is `unknown` and stays that way. Parse it with the same zod schemas you would use on an inbound payload.
 - **No circuit breaker, no rate limiting, no caching.** Retry and timeout are the whole policy.
-- **No per-call driver selection.** Unlike [export](/guides/export/), there is no `as()`. A call site choosing to bypass the fake would be a call site that reaches a real vendor from CI.
+- **No per-call driver selection.** Unlike [export](../guides/export/), there is no `as()`. A call site choosing to bypass the fake would be a call site that reaches a real vendor from CI.

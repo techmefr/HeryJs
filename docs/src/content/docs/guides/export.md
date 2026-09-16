@@ -102,7 +102,7 @@ await this.exports.as('xlsx').queue(new TaskListExport(tasks), user.id);
 
 Rows are materialised in the request and rendering happens in the worker, because **rendering is the expensive half** — a spreadsheet or a PDF of ten thousand rows is what blocks a request, not the query that found them. It also keeps the job payload to plain data, which is the only thing a queue can carry.
 
-The trade-off is real and worth naming: those rows travel through Redis. An export large enough for that to hurt wants a job that re-runs the query itself, which means a named exportable rather than an instance — the shape [import](/guides/import/) uses for the same reason.
+The trade-off is real and worth naming: those rows travel through Redis. An export large enough for that to hurt wants a job that re-runs the query itself, which means a named exportable rather than an instance — the shape [import](../guides/import/) uses for the same reason.
 
 Exports have their own queue, `heryjs-exports`, dispatched with `JobsService.dispatchTo(EXPORT_QUEUE, …)`. One queue per processor family is not tidiness: **a job on a queue whose workers do not recognise its name is not retried or dead-lettered — the worker returns and BullMQ marks it completed**, so a shared queue means one processor family silently swallowing another's jobs.
 
@@ -117,11 +117,11 @@ Generated task-list-export.xlsx but no storage driver is installed to keep it.
 Run "pnpm hery install storage" to have exports persisted.
 ```
 
-That is deliberate. The caller still learns the export finished; an app that wants the file installs [storage](/guides/storage/). Failing the job instead would make an optional module a hard dependency of an unrelated one.
+That is deliberate. The caller still learns the export finished; an app that wants the file installs [storage](../guides/storage/). Failing the job instead would make an optional module a hard dependency of an unrelated one.
 
 ## What export deliberately does not do
 
 - **No HTTP route.** There is no `GET /export/:something`. What you expose, to whom, and behind which capability is a product decision, and `ExportService` is what you build it out of.
 - **No streaming.** `generate()` returns a `Buffer`. Everything is in memory, on both the request path and the worker path.
 - **No styling, no formulas, no column widths.** `Exportable` names columns and rows; anything a driver does beyond laying those out is that driver's business, and the contract has no place to express it.
-- **No scheduling, no retention.** A queued export is written once and never cleaned up. Point [prune](/guides/prune/) at it or remove the objects yourself.
+- **No scheduling, no retention.** A queued export is written once and never cleaned up. Point [prune](../guides/prune/) at it or remove the objects yourself.

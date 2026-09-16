@@ -34,7 +34,7 @@ This is the one casing convention in the project, and it is deliberately the onl
 
 Each field has a `type` (`string`, `int`, `boolean`, `datetime`, `file`), whether it's `optional`, and whether it's `hidden` — a hidden field is stripped from every API response by the generated `<name>.view.ts`, no matter which endpoint returns the record.
 
-`file` is a plain string column underneath — the storage key `POST /storage/upload` already returned, not the bytes themselves. See [Storage](/guides/storage/) for the upload flow it pairs with.
+`file` is a plain string column underneath — the storage key `POST /storage/upload` already returned, not the bytes themselves. See [Storage](../guides/storage/) for the upload flow it pairs with.
 
 ### Reserved fields
 
@@ -62,7 +62,7 @@ With soft deletes on — the default — the generated resource has:
 - **`withTrashed` / `onlyTrashed`** on the search body — the explicit way back in, gated by `canListTrashed<Name>` (the `delete` preset, not the read one).
 - **`{"mode": "hard"}`** on the delete body — the force-delete, gated by `canHardDelete<Name>` _in addition to_ the delete preset. Admin only.
 - **`POST /<resource>/restore`** — a route, not just a service method, because a bin nobody can reach over HTTP is storage nobody audits. It takes `ids` and an optional `patch`, and answers `409` for a record that was never deleted.
-- **prune.** Nothing in the resource ever removes a flagged row; `deletedAt` + `tenantId` is exactly what makes a model prunable, so the retention sweep is what eventually hard-deletes it. See [Prune](/guides/prune/).
+- **prune.** Nothing in the resource ever removes a flagged row; `deletedAt` + `tenantId` is exactly what makes a model prunable, so the retention sweep is what eventually hard-deletes it. See [Prune](../guides/prune/).
 
 With `softDeletes: false`, there is no `deletedAt` column, no restore route, no `mode` on delete, no bin (`withTrashed`/`onlyTrashed` are refused with `query.invalid` rather than silently answering with live rows), and nothing for prune to sweep — DELETE removes the row. Declaring the key on a `routed: false` resource, or naming `deletedAt` in `sorts`/`filters` while turning it off, is refused at load time.
 
@@ -72,7 +72,7 @@ One preset per action, each resolved through the same capabilities engine descri
 
 `view` is the one worth pausing on: it drives the detail route _and_ the `where` clause of the collection query, so both answer the same question from a single declaration. There is deliberately no separate `list` preset — two presets could diverge, and a record hidden from one route while handed out by the other is the exact bug this shape exists to make unwriteable. `view: all` with `update: own` gives the common case: everyone in the tenant reads, only the owner edits.
 
-Choosing `team` anywhere changes the generated resource structurally: the Prisma model gains a `teamId` column and a relation, the create path stamps that column from the session and refuses with a 409 when the caller has no current team, and the view exposes it. See [Teams](/guides/teams/).
+Choosing `team` anywhere changes the generated resource structurally: the Prisma model gains a `teamId` column and a relation, the create path stamps that column from the session and refuses with a 409 when the caller has no current team, and the view exposes it. See [Teams](../guides/teams/).
 
 ## Pagination, sorts and filters — the search contract
 
@@ -97,7 +97,7 @@ POST /blog-posts/search
 
 Three more are understood by every collection route, and none of them appears in the blueprint because none of them names a field:
 
-- `search.q` — free-text search across the resource's string fields. See [Full-text search](/guides/search/).
+- `search.q` — free-text search across the resource's string fields. See [Full-text search](../guides/search/).
 - `withTrashed` — include soft-deleted rows alongside live ones.
 - `onlyTrashed` — the bin, and nothing else.
 
@@ -209,7 +209,7 @@ relations:
     relatedKey: tagId
 ```
 
-Each entry generates an `attach`/`detach`/`sync` block on the update route, gated by its own pair of capabilities (`canAttachTagsToBlogPost`, `canDetachTagsFromBlogPost`) — see [Update](/guides/endpoints/update/).
+Each entry generates an `attach`/`detach`/`sync` block on the update route, gated by its own pair of capabilities (`canAttachTagsToBlogPost`, `canDetachTagsFromBlogPost`) — see [Update](../guides/endpoints/update/).
 
 ## Why YAML, not decorators
 

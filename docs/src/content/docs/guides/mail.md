@@ -133,5 +133,5 @@ Both messages are ordinary mailables (`ResetPasswordMailable`, `VerifyEmailMaila
 
 - **No SMTP driver ships.** Choosing between SMTP and a vendor API has cost, deliverability and compliance consequences, and the framework has no opinion worth imposing. The convention is what is shipped; writing an `SmtpMailDriver` against `MailDriver` is a contract and a token away.
 - **`MailMessage` is `to`, `subject`, `html` and nothing else.** No cc, no bcc, no attachments, no plain-text alternative. Every one of those is a real feature, and none of them is in the contract today — adding one means widening the contract for every driver at once, which is the deliberate friction.
-- **No per-call driver selection.** Unlike [export](/guides/export/), mail has no `as()`. Nothing in a resource should get to decide that _this_ particular message goes over a different transport.
+- **No per-call driver selection.** Unlike [export](../guides/export/), mail has no `as()`. Nothing in a resource should get to decide that _this_ particular message goes over a different transport.
 - **No retry policy, no bounce handling, no suppression list.** The `MailLog` row records what happened; acting on it is yours.

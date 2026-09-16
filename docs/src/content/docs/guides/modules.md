@@ -46,7 +46,7 @@ Running `pnpm hery install` with no arguments prints `nothing to install` and ex
 
 Eight of them are modules of their own under `src/modules/`: `live`, `stream`, `mail`, `storage`, `export`, `import`, `http-client`, `webhooks`. Three are **drivers** rather than modules, and land inside the module they extend — `mail-resend` into `src/modules/mail`, `export-xlsx` and `export-pdf` into `src/modules/export` — because a module may not import another module, so a driver living in a folder of its own could never reach the contract it implements. The search drivers install into the existing `technical/search/` folder for the same reason: they implement a contract the kernel already owns. `graphql` and `mcp` land in `technical/` too, and `impersonation` extends kernel files in place.
 
-That split is one convention, not a per-module accident. [Modules and drivers](/guides/modules-and-drivers/) is the whole shape, and every module above follows it.
+That split is one convention, not a per-module accident. [Modules and drivers](../guides/modules-and-drivers/) is the whole shape, and every module above follows it.
 
 `hery module:monitoring` looks like a module but is a separate command: it scaffolds Prometheus, Grafana and Loki as a local compose stack. It is not in the registry, so it does not appear in `module:list` and `--all` does not cover it.
 
@@ -127,7 +127,7 @@ The name has to be kebab-case, and it is refused if a directory or an installabl
 
 Three things in there are the constraints rather than the convenience. `meta.compatibility` is written from the kernel you scaffolded against, so it is never the field nobody filled in. **The spec is under `src/runtime`**, which means `copyRuntime` copies it into the project alongside the code, and the installing project's own suite runs it — a module with no spec is a module whose installer has nothing to run. And the `tsconfig.json` includes `test` before that directory exists, because the day you add integration tests is the day your typed lint rules would otherwise report every file in it as outside the project.
 
-Moving that directory into its own repository is all it takes to make it a community module — see [Publishing a module](/guides/publishing-a-module/) for what the package has to declare, and `examples/hery-module-maintenance` for a complete one.
+Moving that directory into its own repository is all it takes to make it a community module — see [Publishing a module](../guides/publishing-a-module/) for what the package has to declare, and `examples/hery-module-maintenance` for a complete one.
 
 That spec runs where it is written, without being installed first: `pnpm run test:module-specs` runs every `src/runtime/**/*.spec.ts` under `packages/`, against the kernel's own sources. Installing the module then runs the copy too, under the project's own suite.
 
@@ -304,7 +304,7 @@ Every variable below has a working development default, and none of them are wri
 | `webhooks`                                                                                                        | `WEBHOOK_SIGNATURE_TOLERANCE_SECONDS`                                                                               |
 | `graphql`, `mcp`, `live`, `mail`, `export`, `export-xlsx`, `export-pdf`, `import`, `http-client`, `impersonation` | none                                                                                                                |
 
-Which driver a module runs is **not** in that table, because it is not environment at all — it is `hery.config.ts`, typed and committed. The env vars a module-and-drivers slice reads are only the secrets the chosen driver needs, plus the one name-selecting variable a `default` may read (`MAIL_DRIVER`, `HTTP_CLIENT_DRIVER`). Those two axes are separate on purpose, and mixing them is the most common way to get the convention wrong — see [Modules and drivers](/guides/modules-and-drivers/).
+Which driver a module runs is **not** in that table, because it is not environment at all — it is `hery.config.ts`, typed and committed. The env vars a module-and-drivers slice reads are only the secrets the chosen driver needs, plus the one name-selecting variable a `default` may read (`MAIL_DRIVER`, `HTTP_CLIENT_DRIVER`). Those two axes are separate on purpose, and mixing them is the most common way to get the convention wrong — see [Modules and drivers](../guides/modules-and-drivers/).
 
 The development defaults are development defaults in the literal sense — the LiveKit dev keys are `devkey`/`secret` and the MinIO credentials are `heryjs`/`heryjs-dev-secret`. You do not have to remember to replace them: under `NODE_ENV=production` every one of those defaults is refused at boot, naming the variable that is still set to it, because a credential printed in a public repository is not a credential and a URL pointing at localhost is not a service. The S3 credentials are checked when the S3 provider is constructed rather than when the module is imported, so a production app on the local driver is never refused a boot over credentials it does not use.
 
