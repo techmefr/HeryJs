@@ -43,6 +43,9 @@ export const TENANT_FREE_MODELS = new Set<string>([
   'Session',
   'Account',
   'ApiKey',
+  // Second-factor secrets and backup codes, hanging off a User like the rows
+  // above and written only by better-auth's own adapter.
+  'TwoFactor',
   // Email-verification and password-reset tokens, looked up by their own value
   // before any session exists, so there is no tenant to scope the lookup by.
   'Verification',

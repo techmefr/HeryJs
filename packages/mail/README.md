@@ -1,6 +1,6 @@
 # @heryjs/mail
 
-Add outgoing mail: a MailLog resource, string templates, and a BullMQ job that actually sends. Ships with a console-logging provider by default -- swap MAIL_PROVIDER for a real one.
+Add outgoing mail: a MailLog resource, string templates, and a BullMQ job that actually sends. Ships with a log driver by default -- install a driver package and set MAIL_DRIVER to send for real.
 
 An [official HeryJs module](https://techmefr.github.io/HeryJs/guides/modules/). It is
 already installable from any HeryJs project, so there is nothing to add to your

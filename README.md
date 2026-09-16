@@ -10,7 +10,7 @@ HeryJs is a framework built on top of [NestJS](https://nestjs.com) — the way N
 
 ## The problem
 
-NestJS gives you an excellent foundation, but it stops at the plumbing. Auth, permissions, multi-tenancy, background jobs, real-time updates, audit trails — you assemble all of it yourself, project after project. Nest's first-party packages are great *adapters*, not *solutions*: they get you connected, then leave the rest to you.
+NestJS gives you an excellent foundation, but it stops at the plumbing. Auth, permissions, multi-tenancy, background jobs, real-time updates, audit trails — you assemble all of it yourself, project after project. Nest's first-party packages are great _adapters_, not _solutions_: they get you connected, then leave the rest to you.
 
 Meanwhile, permission logic tends to drift. The backend enforces one set of rules, the frontend renders another, and the two slowly fall out of sync until someone finds a button that should have been disabled, or a request that should have been rejected.
 
@@ -40,7 +40,7 @@ pnpm hery migrate --name init
 pnpm start:dev
 ```
 
-`heryjs new` scaffolds a fresh, standalone project: the kernel, the CLI, the eleven modules, none of HeryJs's own demo or docs. The CLI travels into the project it creates, so every command after this one is `pnpm hery` from inside it — there is nothing global to install and nothing to keep in step with a release.
+`heryjs new` scaffolds a fresh, standalone project: the kernel, the CLI, the seventeen modules, none of HeryJs's own demo or docs. The CLI travels into the project it creates, so every command after this one is `pnpm hery` from inside it — there is nothing global to install and nothing to keep in step with a release.
 
 `hery up --start` brings the compose services up and writes the ports Docker actually assigned back into `.env`; they are not fixed, so several projects can run side by side.
 
@@ -53,7 +53,7 @@ pnpm hery generate blueprints/blog-post.yaml
 
 ### From a clone
 
-Only to work on the framework itself. A clone is this repository — the demo resource, the docs site and the eleven module workspaces — not a starting point for an application:
+Only to work on the framework itself. A clone is this repository — the demo resource, the docs site and the seventeen module workspaces — not a starting point for an application:
 
 ```bash
 git clone https://github.com/techmefr/HeryJs.git
@@ -104,17 +104,23 @@ pnpm hery module:list
 pnpm hery install <module>
 ```
 
-Search (Prisma, Elasticsearch, Meilisearch), GraphQL, MCP (read and write), real-time (`live`, WebSocket), streaming (LiveKit), mail, file storage, admin impersonation, inbound webhooks with HMAC signature verification, and an admin dashboard (`admin-astro`) that every module contributes a section to automatically, with no registry to maintain.
+Search (Prisma, Elasticsearch, Meilisearch), GraphQL, MCP (read and write), real-time (`live`, WebSocket), streaming (LiveKit), mail, file storage, exports (CSV built in, XLSX and PDF as driver packages), imports, an outbound HTTP client with a fake driver for tests, admin impersonation, inbound webhooks with HMAC signature verification, and an admin dashboard (`admin-astro`) that every module contributes a section to automatically, with no registry to maintain.
 
-All eleven are published as `@heryjs/<name>` and versioned with the kernel, so a module can be added to a project that wasn't scaffolded with it, and a module you write yourself declares exactly what those do — the two channels are the same contract. See [Publishing a module](https://techmefr.github.io/HeryJs/guides/publishing-a-module/).
+Every one of them follows a single convention: a module exposes one capability, a driver is one way of performing it, and swapping mail transports or export formats is a line in `hery.config.ts` rather than a source edit. See [Modules and drivers](https://techmefr.github.io/HeryJs/guides/modules-and-drivers/).
+
+All seventeen are published as `@heryjs/<name>` and versioned with the kernel, so a module can be added to a project that wasn't scaffolded with it, and a module you write yourself declares exactly what those do — the two channels are the same contract. See [Publishing a module](https://techmefr.github.io/HeryJs/guides/publishing-a-module/).
 
 ## What it deliberately does not do
 
-HeryJs covers a common backend core. It does not try to be a solution for everything. Billing, i18n — for those, you write ordinary NestJS code in a clean, conventional project. HeryJs never gets in the way, but it doesn't pretend to replace judgment either.
+HeryJs covers a common backend core. It does not try to be a solution for everything. Billing, PDF-perfect document generation, workflow engines — for those, you write ordinary NestJS code in a clean, conventional project.
+
+It is also worth being precise about where the modules stop. Mail ships a driver that logs and a driver that posts to Resend; **no SMTP driver ships**, because choosing a transport has deliverability and compliance consequences the framework has no opinion on. Storage ships a local-disk driver; the S3 driver is in the tree but is not yet bound to a driver token, so declaring it needs one line of wiring you write. Export ships CSV; XLSX and PDF are separate packages carrying `exceljs` and `pdfkit`, and neither is installed in this repository, so both are typechecked rather than proven. The HTTP client's real driver is `ofetch`, which is likewise declared and not installed here.
+
+HeryJs never gets in the way, but it doesn't pretend to replace judgment either.
 
 ## Status
 
-The vertical slice, the widening of features, and a hardening pass (opt-in row-level security, an adversarial security review, a more robust generator) are done. Since then: teams as a first-class permission scope, a module system with a growing catalog (search drivers, GraphQL, MCP, live, stream, mail, storage, impersonation), an admin dashboard every module plugs into automatically, a layered architecture enforced by an actual linter, and `hery new` — a real starting point for a project that isn't this repository. A pre-publication external audit has since closed out a round of fixes: tenant-safe search indexing, actor tracking on the audit trail, `hery.config.ts` as a real closed-config point, keyword-selected search engines, a bounded impersonation session with its own admin-on-admin test, and API keys for non-interactive callers. See the [commit history](https://github.com/techmefr/HeryJs/commits/main) for the detail.
+The vertical slice, the widening of features, and a hardening pass (opt-in row-level security, an adversarial security review, a more robust generator) are done. Since then: teams as a first-class permission scope, a module system with a growing catalog (search drivers, GraphQL, MCP, live, stream, mail, storage, export, import, HTTP client, impersonation), a single module-and-drivers convention every one of them follows, and a kernel events bus, an admin dashboard every module plugs into automatically, a layered architecture enforced by an actual linter, and `hery new` — a real starting point for a project that isn't this repository. A pre-publication external audit has since closed out a round of fixes: tenant-safe search indexing, actor tracking on the audit trail, `hery.config.ts` as a real closed-config point, keyword-selected search engines, a bounded impersonation session with its own admin-on-admin test, and API keys for non-interactive callers. See the [commit history](https://github.com/techmefr/HeryJs/commits/main) for the detail.
 
 ## Security
 

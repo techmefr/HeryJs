@@ -183,6 +183,87 @@ describe('BlogPost resource', () => {
     });
   });
 
+  it('hides a soft-deleted record from every default read, and only from those', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/blog-posts/create')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ data: [{ title: 'title-value' }] })
+      .expect(201);
+
+    const recordId = (
+      created.body as { data: { status: string; data: { id: string } }[] }
+    ).data[0]!.data.id;
+
+    await request(app.getHttpServer())
+      .post('/blog-posts/delete')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ ids: [recordId] })
+      .expect(201);
+
+    const ids = async (body: Record<string, unknown>) => {
+      const response = await request(app.getHttpServer())
+        .post('/blog-posts/search')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send(body)
+        .expect(200);
+
+      return (response.body as { data: { id: string }[] }).data.map(
+        (record) => record.id,
+      );
+    };
+
+    expect(await ids({})).not.toContain(recordId);
+    expect(
+      await ids({
+        filters: [{ field: 'id', value: recordId }],
+        includes: [{ relation: 'notes' }],
+      }),
+    ).not.toContain(recordId);
+    expect(
+      await ids({
+        filters: [{ field: 'id', value: recordId }],
+        aggregates: [{ relation: 'notes', type: 'count' }],
+      }),
+    ).not.toContain(recordId);
+
+    const counted = await request(app.getHttpServer())
+      .post('/blog-posts/search')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ filters: [{ field: 'id', value: recordId }] })
+      .expect(200);
+
+    expect((counted.body as { meta: { total: number } }).meta.total).toBe(0);
+
+    await request(app.getHttpServer())
+      .post(`/blog-posts/${recordId}/notes/search`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({})
+      .expect(404);
+
+    expect(
+      await ids({
+        withTrashed: true,
+        filters: [{ field: 'id', value: recordId }],
+      }),
+    ).toContain(recordId);
+    expect(
+      await ids({
+        onlyTrashed: true,
+        filters: [{ field: 'id', value: recordId }],
+      }),
+    ).toContain(recordId);
+
+    await request(app.getHttpServer())
+      .post('/blog-posts/restore')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ ids: [recordId] })
+      .expect(201);
+
+    expect(
+      await ids({ filters: [{ field: 'id', value: recordId }] }),
+    ).toContain(recordId);
+  });
+
   it('soft-deletes then restores a record', async () => {
     const created = await request(app.getHttpServer())
       .post('/blog-posts/create')

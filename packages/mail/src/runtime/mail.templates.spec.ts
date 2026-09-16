@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { ConsoleMailProvider } from './console-mail.provider';
+import { LogMailDriver } from './log-mail.driver';
 import { renderTemplate } from './mail.templates';
 
 describe('mail templates', () => {
@@ -36,19 +36,19 @@ describe('mail templates', () => {
   });
 });
 
-// The default provider is what a freshly generated app mails with, so what it
+// The default driver is what a freshly generated app mails with, so what it
 // writes to the log is the whole of its observable behaviour.
-describe('console mail provider', () => {
+describe('log mail driver', () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
   it('logs the message instead of sending it', async () => {
     const log = jest.spyOn(Logger.prototype, 'log').mockImplementation();
-    const provider = new ConsoleMailProvider();
+    const driver = new LogMailDriver();
 
     await expect(
-      provider.send({
+      driver.send({
         to: 'someone@example.com',
         subject: 'Welcome to HeryJs',
         html: '<p>Hi</p>',

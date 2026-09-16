@@ -66,7 +66,10 @@ import {
   BlogPostPolicy,
 } from './blog-post.policy';
 import { BLOG_POST_SIGNAL_CHANNEL, BlogPostService } from './blog-post.service';
-import { BLOG_POST_RECORD_LOADER } from './blog-post-record.loader';
+import {
+  BLOG_POST_RECORD_LOADER,
+  BLOG_POST_VISIBLE_RECORD_LOADER,
+} from './blog-post-record.loader';
 import type { BlogPostRecordLoader } from './blog-post-record.loader';
 import { toBlogPostView } from './blog-post.view';
 
@@ -312,7 +315,7 @@ export class BlogPostController {
   @Post(':id/notes/search')
   @HttpCode(200)
   @Capability(canViewBlogPost)
-  @LoadRecordWith(BLOG_POST_RECORD_LOADER, 'blog-post')
+  @LoadRecordWith(BLOG_POST_VISIBLE_RECORD_LOADER, 'blog-post')
   async searchNotes(
     @Req() req: RequestWithBlogPost,
     @Body(new ZodValidationPipe(searchRequestSchema)) body: SearchRequestBody,
@@ -503,6 +506,10 @@ export class BlogPostController {
     return ok(results);
   }
 
+  // A route rather than a service method alone: restore is the only way back
+  // from the delete route, and a bin nobody can reach over HTTP is a bin that
+  // silently becomes a leak of storage nobody audits. It is gated by the
+  // delete preset, not the update one -- see canRestoreBlogPost.
   @Post('restore')
   @Capability(canRestoreAnyBlogPost)
   async restore(

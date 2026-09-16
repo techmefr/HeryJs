@@ -112,6 +112,9 @@ export class BlogPostService {
     subject: CapabilitySubject,
     options: BlogPostSearchOptions = {},
   ) {
+    // Excluding trashed rows is the default branch, not an opt-in one: a
+    // caller that says nothing gets live rows only, so a forgotten flag hides
+    // a deleted record rather than resurfacing it.
     const trashedWhere = options.onlyTrashed
       ? { deletedAt: { not: null } }
       : options.withTrashed
@@ -235,6 +238,20 @@ export class BlogPostService {
     );
   }
 
+  /**
+   * Stamps deletedAt rather than removing the row, and nothing in this service
+   * ever removes it afterwards: prune is what eventually frees the storage.
+   * src/technical/prune/prunable-models.ts picks this model up automatically
+   * off Prisma's DMMF -- the condition is exactly "has deletedAt and
+   * tenantId", which is what the generated model carries -- and
+   * PruneService.pruneModel hard-deletes every row whose deletedAt is older
+   * than the model's configured retention, writing one audit entry per tenant
+   * as it goes. So the two halves compose without either knowing about the
+   * other: this one decides a record is gone, prune decides when gone becomes
+   * unrecoverable. A resource generated with softDeletes: false has no
+   * deletedAt at all and is therefore absent from prunableModels(), which is
+   * correct -- its delete already freed the row.
+   */
   async softDelete(record: BlogPost) {
     const updated = await this.prisma.blogPost.update({
       where: { id: record.id },
