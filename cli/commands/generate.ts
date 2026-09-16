@@ -144,18 +144,35 @@ export function registerGenerateCommand(program: Command): void {
           'audit-log.ts',
         );
 
-        const schemaPatched = patchPrismaSchema(schemaPath, ctx);
-        patchModelSet(prismaClientPath, 'TENANT_SCOPED_MODELS', ctx.pascalName);
-        patchModelSet(auditLogPath, 'AUDITED_MODELS', ctx.pascalName);
-        console.log(
-          schemaPatched
-            ? pc.green(`✔ patched ${schemaPath}`)
-            : pc.dim(
-                `model ${ctx.pascalName} already in ${schemaPath}, schema left untouched`,
-              ),
-        );
-        console.log(pc.green(`✔ patched ${prismaClientPath}`));
-        console.log(pc.green(`✔ patched ${auditLogPath}`));
+        // A resource declaring another resource's model -- a second version of
+        // a contract over the same table -- owns none of the schema. Emitting
+        // the model again would duplicate a table that already exists, and
+        // re-listing it in the two model sets would say twice what is already
+        // true once.
+        if (ctx.ownsModel) {
+          const schemaPatched = patchPrismaSchema(schemaPath, ctx);
+          patchModelSet(
+            prismaClientPath,
+            'TENANT_SCOPED_MODELS',
+            ctx.pascalName,
+          );
+          patchModelSet(auditLogPath, 'AUDITED_MODELS', ctx.pascalName);
+          console.log(
+            schemaPatched
+              ? pc.green(`✔ patched ${schemaPath}`)
+              : pc.dim(
+                  `model ${ctx.pascalName} already in ${schemaPath}, schema left untouched`,
+                ),
+          );
+          console.log(pc.green(`✔ patched ${prismaClientPath}`));
+          console.log(pc.green(`✔ patched ${auditLogPath}`));
+        } else {
+          console.log(
+            pc.dim(
+              `serves the existing ${ctx.modelPascalName} model, so the schema is left untouched`,
+            ),
+          );
+        }
 
         console.log('');
         console.log(pc.bold(`Generated ${ctx.pascalName} in ${targetDir}`));

@@ -57,6 +57,7 @@ export default defineConfig({
                 { label: 'Cache', slug: 'guides/cache' },
                 { label: 'Rate limiting', slug: 'guides/rate-limiting' },
                 { label: 'Validation', slug: 'guides/validation' },
+                { label: 'API versioning', slug: 'guides/versioning' },
                 {
                   label: 'Errors and responses',
                   slug: 'guides/errors-and-responses',

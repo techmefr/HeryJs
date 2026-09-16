@@ -78,6 +78,22 @@ export const blueprintSchema = z.object({
   // the relation once instead of being retyped by hand on every parent that
   // includes it.
   routed: z.boolean().default(true),
+  /**
+   * Which major version of this resource's contract these routes serve. 1 --
+   * the default -- keeps the unprefixed path every existing project already
+   * publishes; anything higher mounts under /v<n>/.
+   */
+  version: z.number().int().positive().default(1),
+  /**
+   * The Prisma model these routes read and write, when it is not this
+   * resource's own name. A second version of a contract is a second resource
+   * over the *same* table: without this it would declare a model of its own
+   * and the generator would emit a duplicate of a table that already exists.
+   */
+  model: z
+    .string()
+    .regex(/^[A-Z][a-zA-Z0-9]*$/)
+    .optional(),
   // Opt-out, not opt-in, and left optional rather than defaulted so an author
   // who never wrote the key can be told apart from one who wrote `true`: a
   // resource that says nothing gets soft deletes, and declaring the key at all
