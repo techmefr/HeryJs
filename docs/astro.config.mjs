@@ -68,6 +68,7 @@ export default defineConfig({
                 },
                 { label: 'The events bus', slug: 'guides/events' },
                 { label: 'Jobs', slug: 'guides/jobs' },
+                { label: 'Migrations', slug: 'guides/migrations' },
                 { label: 'Prune', slug: 'guides/prune' },
               ],
             },
