@@ -2,6 +2,28 @@ export interface HeryConfigSearchEngine {
   driver: string;
 }
 
+/**
+ * The shape every module-and-driver slice takes, so that mail, export and any
+ * later module are declared the same way rather than each inventing its own
+ * key names. `default` names one of the entries in `drivers`; it is the only
+ * driver a single-driver module ever uses, and the fallback for a per-call
+ * module when the call does not name one.
+ *
+ * `default` is the one place an environment variable may be read straight
+ * inside hery.config.ts: it selects a driver name, it does not carry a
+ * secret, and that is what lets MAIL_DRIVER swing an app from log to SMTP
+ * with no code diff. Credentials belong to the driver, through
+ * parseModuleEnv.
+ */
+export interface HeryConfigDriver {
+  driver: string;
+}
+
+export interface HeryConfigDrivers {
+  default: string;
+  drivers: Record<string, HeryConfigDriver>;
+}
+
 export interface HeryConfigPruneRule {
   retentionDays: number;
   lock?: boolean;
@@ -45,4 +67,9 @@ export interface HeryConfig {
   cache?: HeryConfigCache;
   rateLimit?: HeryConfigRateLimit;
   i18n?: HeryConfigI18n;
+  mail?: HeryConfigDrivers;
+  export?: HeryConfigDrivers;
+  import?: HeryConfigDrivers;
+  storage?: HeryConfigDrivers;
+  httpClient?: HeryConfigDrivers;
 }

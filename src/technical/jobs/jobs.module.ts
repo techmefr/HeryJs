@@ -2,7 +2,13 @@ import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
 import IORedis from 'ioredis';
 import { env } from '#technical/config/env';
-import { DEFAULT_QUEUE, WEBHOOK_QUEUE } from './jobs.constants';
+import {
+  DEFAULT_QUEUE,
+  EVENTS_QUEUE,
+  EXPORT_QUEUE,
+  IMPORT_QUEUE,
+  WEBHOOK_QUEUE,
+} from './jobs.constants';
 import { JobsService } from './jobs.service';
 
 @Module({
@@ -21,6 +27,13 @@ import { JobsService } from './jobs.service';
     // whose job.name matches, so a MailProcessor worker can silently
     // complete a webhook job (and vice versa) without ever running it.
     BullModule.registerQueue({ name: WEBHOOK_QUEUE }),
+    // Same reason, one queue per processor family. Exports, imports and the
+    // event bus each got their own the moment a second processor existed:
+    // three workers sharing DEFAULT_QUEUE would each guard on job.name and
+    // silently complete the other two families' jobs.
+    BullModule.registerQueue({ name: EXPORT_QUEUE }),
+    BullModule.registerQueue({ name: IMPORT_QUEUE }),
+    BullModule.registerQueue({ name: EVENTS_QUEUE }),
   ],
   providers: [JobsService],
   exports: [BullModule, JobsService],

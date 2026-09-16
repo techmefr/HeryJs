@@ -14,6 +14,7 @@ export interface ResourceContext {
   screamingSnakeName: string;
   pluralCamelName: string;
   pluralKebabName: string;
+  softDeletes: Blueprint['softDeletes'];
   fields: Blueprint['fields'];
   permissions: Blueprint['permissions'];
   pagination: Blueprint['pagination'];
@@ -35,6 +36,7 @@ export function buildResourceContext(blueprint: Blueprint): ResourceContext {
     screamingSnakeName: screamingSnakeCase(pascalName),
     pluralCamelName: pluralize(camelName),
     pluralKebabName: pluralize(kebabCase(pascalName)),
+    softDeletes: blueprint.softDeletes,
     fields: blueprint.fields,
     permissions: blueprint.permissions,
     pagination: blueprint.pagination,

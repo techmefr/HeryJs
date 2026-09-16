@@ -34,7 +34,7 @@ This is the one casing convention in the project, and it is deliberately the onl
 
 Each field has a `type` (`string`, `int`, `boolean`, `datetime`, `file`), whether it's `optional`, and whether it's `hidden` — a hidden field is stripped from every API response by the generated `<name>.view.ts`, no matter which endpoint returns the record.
 
-`file` is a plain string column underneath — the storage key `POST /storage/upload` already returned, not the bytes themselves. See [Mail and storage](/guides/mail-and-storage/) for the upload flow it pairs with.
+`file` is a plain string column underneath — the storage key `POST /storage/upload` already returned, not the bytes themselves. See [Storage](/guides/storage/) for the upload flow it pairs with.
 
 ### Reserved fields
 
@@ -47,6 +47,24 @@ id  tenantId  ownerId  teamId  createdAt  updatedAt  deletedAt
 The reason is narrow and worth stating: declaring one of these would put a **client-writable field on top of a column the framework decides**. A blueprint with an `ownerId` field would generate a DTO accepting it, which is how a caller ends up choosing its own owner — or its own team, or its own tenant. Refusing at load time is cheaper than discovering it in review.
 
 `teamId` in particular is added _for_ you, automatically, as soon as any permission preset is `team`.
+
+## Soft deletes
+
+On by default. Every routed resource gets a nullable `deletedAt`, a `@@index([tenantId, deletedAt])` so the "not deleted" filter stays cheap, and a delete route that flags the row instead of removing it. One key turns it off:
+
+```yaml
+softDeletes: false
+```
+
+With soft deletes on — the default — the generated resource has:
+
+- **every default read filtered.** The search route, its totals, its includes and aggregates, and the single-record loader the detail-style routes and the parent-scoped child route load through all exclude trashed rows. A soft-deleted record is not reachable through a relation either: soft-deleting a parent makes `POST /<parent>/:id/<relation>/search` a 404, so its children do not outlive it.
+- **`withTrashed` / `onlyTrashed`** on the search body — the explicit way back in, gated by `canListTrashed<Name>` (the `delete` preset, not the read one).
+- **`{"mode": "hard"}`** on the delete body — the force-delete, gated by `canHardDelete<Name>` _in addition to_ the delete preset. Admin only.
+- **`POST /<resource>/restore`** — a route, not just a service method, because a bin nobody can reach over HTTP is storage nobody audits. It takes `ids` and an optional `patch`, and answers `409` for a record that was never deleted.
+- **prune.** Nothing in the resource ever removes a flagged row; `deletedAt` + `tenantId` is exactly what makes a model prunable, so the retention sweep is what eventually hard-deletes it. See [Prune](/guides/prune/).
+
+With `softDeletes: false`, there is no `deletedAt` column, no restore route, no `mode` on delete, no bin (`withTrashed`/`onlyTrashed` are refused with `query.invalid` rather than silently answering with live rows), and nothing for prune to sweep — DELETE removes the row. Declaring the key on a `routed: false` resource, or naming `deletedAt` in `sorts`/`filters` while turning it off, is refused at load time.
 
 ## Permissions
 
@@ -137,7 +155,9 @@ includes:
 A search request can then ask for `notes` and, inside it, `replies`, in one call:
 
 ```json
-{ "includes": [{ "relation": "notes", "includes": [{ "relation": "replies" }] }] }
+{
+  "includes": [{ "relation": "notes", "includes": [{ "relation": "replies" }] }]
+}
 ```
 
 Two levels total — a relation of a relation — is the fixed bound, the same fixed-constant idiom `MAX_FILTER_DEPTH` already uses rather than a per-blueprint depth to configure. Only `hasMany` nests: `morphMany` has no Prisma relation to attach a nested `include` to, so it stays reachable at the top level only. A nested include's rows are never renamed by an alias — they come back nested under their real relation name, exactly where Prisma put them.
@@ -164,7 +184,14 @@ POST /blog-posts/cly8x7g9k0000abc123def456/notes/search
 
 ```json
 {
-  "data": [{ "id": "n1", "body": "first note", "rating": 4, "createdAt": "2026-01-01T00:00:00.000Z" }],
+  "data": [
+    {
+      "id": "n1",
+      "body": "first note",
+      "rating": 4,
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
   "meta": { "page": 1, "limit": 5, "total": 1, "last_page": 1 }
 }
 ```

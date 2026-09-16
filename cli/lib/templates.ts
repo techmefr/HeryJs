@@ -130,7 +130,9 @@ export type Update${ctx.pascalName}RequestBody = z.infer<
   typeof update${ctx.pascalName}RequestSchema
 >;
 
-export const DELETE_MODES = ['soft', 'hard'] as const;
+${
+  ctx.softDeletes
+    ? `export const DELETE_MODES = ['soft', 'hard'] as const;
 export type Delete${ctx.pascalName}Mode = (typeof DELETE_MODES)[number];
 
 export const delete${ctx.pascalName}RequestSchema = z.object({
@@ -151,7 +153,19 @@ export const restore${ctx.pascalName}RequestSchema = z.object({
 export type Restore${ctx.pascalName}RequestBody = z.infer<
   typeof restore${ctx.pascalName}RequestSchema
 >;
-`;
+`
+    : `// No mode and no restore: this resource declared softDeletes: false, so its
+// delete route removes the row. Accepting a "soft" mode here would advertise a
+// bin that no column exists to hold, and a restore route would answer for rows
+// that are already gone.
+export const delete${ctx.pascalName}RequestSchema = z.object({
+  ids: z.array(z.string()).max(MAX_BATCH_ENTRIES),
+});
+export type Delete${ctx.pascalName}RequestBody = z.infer<
+  typeof delete${ctx.pascalName}RequestSchema
+>;
+`
+}`;
 }
 
 function relationPolicyBlock(ctx: ResourceContext): string {
@@ -219,7 +233,9 @@ export const canDelete${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike
 export const canDeleteAny${ctx.pascalName}: PolicyCheck = (subject) =>
   resolveCollectionCapability(${ctx.screamingSnakeName}_PRESETS.delete, subject);
 
-// Restore is the inverse of delete, not a kind of update -- whoever can
+${
+  ctx.softDeletes
+    ? `// Restore is the inverse of delete, not a kind of update -- whoever can
 // delete a record decides whether it comes back, the same way
 // canListTrashed${ctx.pascalName} already derives from the delete preset rather than
 // the view preset. Its own capability rather than reusing canDelete${ctx.pascalName}
@@ -239,7 +255,9 @@ export const canRestoreAny${ctx.pascalName}: PolicyCheck = (subject) =>
 export const canHardDelete${ctx.pascalName}: PolicyCheck = (subject) =>
   subject.role === 'admin' ? { allowed: true, scope: 'all' } : { allowed: false };
 
-// Purge has no route today -- only the future admin decorator system reaches
+`
+    : ''
+}// Purge has no route today -- only the future admin decorator system reaches
 // it -- but it is still gated by its own capability rather than reusing
 // canHardDelete${ctx.pascalName}, because a route may one day expose it under rules
 // stricter than "any admin" (e.g. a second admin's approval).
@@ -256,12 +274,16 @@ export const canView${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike> 
 export const canViewAny${ctx.pascalName}: PolicyCheck = (subject) =>
   resolveCollectionCapability(${ctx.screamingSnakeName}_PRESETS.view, subject);
 
-// Listing the bin is a moderation move, so it follows the delete preset rather
+${
+  ctx.softDeletes
+    ? `// Listing the bin is a moderation move, so it follows the delete preset rather
 // than the read one.
 export const canListTrashed${ctx.pascalName}: PolicyCheck = (subject) =>
   resolveCollectionCapability(${ctx.screamingSnakeName}_PRESETS.delete, subject);
 
-@Injectable()
+`
+    : ''
+}@Injectable()
 export class ${ctx.pascalName}Policy {
   constructor(private readonly capabilities: CapabilitiesService) {}
 
@@ -300,9 +322,13 @@ export const ${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER = Symbol(
   '${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER',
 );
 
-// Update/delete/restore all need to find a record regardless of its
+${
+  ctx.softDeletes
+    ? `// Update/delete/restore all need to find a record regardless of its
 // soft-delete state (restore specifically targets trashed rows).
-@Injectable()
+`
+    : ''
+}@Injectable()
 export class ${ctx.pascalName}RecordLoader
   implements RecordLoader<${ctx.pascalName}RecordLike>
 {
@@ -314,7 +340,9 @@ export class ${ctx.pascalName}RecordLoader
     return this.prisma.${ctx.camelName}.findUnique({ where: { id } });
   }
 }
-
+${
+  ctx.softDeletes
+    ? `
 // Plain reads must not resurface a soft-deleted record as if it still existed.
 @Injectable()
 export class ${ctx.pascalName}VisibleRecordLoader
@@ -329,7 +357,15 @@ export class ${ctx.pascalName}VisibleRecordLoader
     return record && !record.deletedAt ? record : null;
   }
 }
-`;
+`
+    : `
+// Without soft deletes there is no trashed state to hide, so "visible" and
+// "any" are the same lookup. The symbol still exists, and still resolves to a
+// loader, so an optional gateway or resolver that asks for the visible one
+// keeps working instead of failing to inject.
+export { ${ctx.pascalName}RecordLoader as ${ctx.pascalName}VisibleRecordLoader };
+`
+}`;
 }
 
 export function serviceFile(ctx: ResourceContext): string {
@@ -362,9 +398,13 @@ import { ${ctx.screamingSnakeName}_PRESETS } from './${ctx.kebabName}.presets';
 const SEARCHABLE_FIELDS = [${searchableFields.map((name) => `'${name}'`).join(', ')}] as const;
 const SEARCH_COLLECTION = '${ctx.kebabName}';
 
-export interface ${ctx.pascalName}SearchOptions {
+export interface ${ctx.pascalName}SearchOptions {${
+    ctx.softDeletes
+      ? `
   withTrashed?: boolean;
-  onlyTrashed?: boolean;
+  onlyTrashed?: boolean;`
+      : ''
+  }
   sorts?: { field: string; direction: 'asc' | 'desc' }[];
   where?: Record<string, unknown>;
   include?: Record<string, unknown>;
@@ -402,12 +442,16 @@ export class ${ctx.pascalName}Service {
   // not just one -- search[engine] lets a later request read through any of
   // them, so a write has to reach all of them, and one engine being down
   // must not stop the others from getting the update.
-  private async syncSearchIndex(record: ${ctx.pascalName}) {
+  private async syncSearchIndex(record: ${ctx.pascalName}) {${
+    ctx.softDeletes
+      ? `
     if (record.deletedAt) {
       await this.removeFromSearchIndex(record.id, record.tenantId);
       return;
     }
-
+`
+      : ''
+  }
     for (const driver of this.searchEngines.externalDrivers) {
       try {
         const document = Object.fromEntries(
@@ -427,8 +471,7 @@ export class ${ctx.pascalName}Service {
     }
   }
 
-  // Shared by soft delete (via syncSearchIndex above) and hard delete: a
-  // hard-deleted row has no updated record to read deletedAt off, only the
+  // ${ctx.softDeletes ? 'Shared by soft delete (via syncSearchIndex above) and hard delete: a\n  // hard-deleted' : 'A deleted'} row has no updated record to read deletedAt off, only the
   // id and tenant it used to have.
   private async removeFromSearchIndex(id: string, tenantId: string) {
     for (const driver of this.searchEngines.externalDrivers) {
@@ -446,13 +489,20 @@ export class ${ctx.pascalName}Service {
     subject: CapabilitySubject,
     options: ${ctx.pascalName}SearchOptions = {},
   ) {
+${
+  ctx.softDeletes
+    ? `    // Excluding trashed rows is the default branch, not an opt-in one: a
+    // caller that says nothing gets live rows only, so a forgotten flag hides
+    // a deleted record rather than resurfacing it.
     const trashedWhere = options.onlyTrashed
       ? { deletedAt: { not: null } }
       : options.withTrashed
         ? {}
         : { deletedAt: null };
 
-    // The matches carry whether the engine had to cut them, which travels back
+`
+    : ''
+}    // The matches carry whether the engine had to cut them, which travels back
     // to the caller as a message. A page of 15 out of a capped 1000 out of
     // 40000 real matches is a different answer than a page of 15 out of 1000,
     // and the caller cannot tell them apart unless it is told.
@@ -473,8 +523,7 @@ export class ${ctx.pascalName}Service {
     // never widen it back, whatever the caller passes in the query string.
     const where = {
       AND: [
-        scopeWhereFor(${ctx.screamingSnakeName}_PRESETS.view, subject),
-        trashedWhere,
+        scopeWhereFor(${ctx.screamingSnakeName}_PRESETS.view, subject),${ctx.softDeletes ? '\n        trashedWhere,' : ''}
         ...(options.where ? [options.where] : []),
         ...(searchWhere ? [searchWhere] : []),
       ],
@@ -588,6 +637,22 @@ ${ctx.relations
 `,
   )
   .join('')}
+${
+  ctx.softDeletes
+    ? `  /**
+   * Stamps deletedAt rather than removing the row, and nothing in this service
+   * ever removes it afterwards: prune is what eventually frees the storage.
+   * src/technical/prune/prunable-models.ts picks this model up automatically
+   * off Prisma's DMMF -- the condition is exactly "has deletedAt and
+   * tenantId", which is what the generated model carries -- and
+   * PruneService.pruneModel hard-deletes every row whose deletedAt is older
+   * than the model's configured retention, writing one audit entry per tenant
+   * as it goes. So the two halves compose without either knowing about the
+   * other: this one decides a record is gone, prune decides when gone becomes
+   * unrecoverable. A resource generated with softDeletes: false has no
+   * deletedAt at all and is therefore absent from prunableModels(), which is
+   * correct -- its delete already freed the row.
+   */
   async softDelete(record: ${ctx.pascalName}) {
     const updated = await this.prisma.${ctx.camelName}.update({
       where: { id: record.id },
@@ -608,7 +673,11 @@ ${ctx.relations
     return updated;
   }
 
-  // Distinct from softDelete: this removes the row rather than flagging it,
+  // Distinct from softDelete: this removes the row rather than flagging it,`
+    : `  // The only delete this resource has: it declared softDeletes: false, so
+  // there is no deletedAt to stamp and no prune sweep to come later -- the row
+  // is gone as soon as the route answers, and nothing restores it.`
+}
   // and is reached only once the caller already holds the separate hard-delete
   // capability. Runs on the same tenant-scoped client as every other write, so
   // the audit extension records it exactly like any other audited delete.
@@ -873,9 +942,16 @@ export function controllerFile(ctx: ResourceContext): string {
     ...ctx.fields.filter((field) => !field.hidden).map((field) => field.name),
     'createdAt',
     'updatedAt',
-    'deletedAt',
+    ...(ctx.softDeletes ? ['deletedAt'] : []),
   ];
   const childIncludes = ownRouteIncludes(ctx);
+  // The child route loads its parent through the loader that refuses a trashed
+  // row: without it, soft-deleting a parent would leave its children listable
+  // through POST /<parent>/:id/<relation>/search, which is the record coming
+  // back through a relation the delete was supposed to take it out of.
+  const childRouteLoader = ctx.softDeletes
+    ? `${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER`
+    : `${ctx.screamingSnakeName}_RECORD_LOADER`;
 
   return `import { Body, Controller, Get, HttpCode, Inject, Post, Req, UseGuards } from '@nestjs/common';
 import type { ${ctx.pascalName} } from '@prisma/client';
@@ -889,8 +965,7 @@ import {
 } from '#technical/capabilities/capability.decorator';
 import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
 import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
-import { AlreadyRestoredException } from '#technical/errors/already-restored.exception';
-import { resolveDomainError } from '#technical/errors/domain-exception.filter';
+${ctx.softDeletes ? `import { AlreadyRestoredException } from '#technical/errors/already-restored.exception';\n` : `import { SoftDeletesNotOfferedException } from '#technical/errors/invalid-query.exception';\n`}import { resolveDomainError } from '#technical/errors/domain-exception.filter';
 import type { ResolvedError } from '#technical/errors/domain-exception.filter';
 import { ok } from '#technical/http/envelope';
 import {
@@ -906,15 +981,13 @@ import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import {
   create${ctx.pascalName}RequestSchema,
   create${ctx.pascalName}Schema,
-  delete${ctx.pascalName}RequestSchema,
-  restore${ctx.pascalName}RequestSchema,
+  delete${ctx.pascalName}RequestSchema,${ctx.softDeletes ? `\n  restore${ctx.pascalName}RequestSchema,` : ''}
   update${ctx.pascalName}RequestSchema,
   update${ctx.pascalName}Schema,
 } from './${ctx.kebabName}.dto';
 import type {
   Create${ctx.pascalName}RequestBody,
-  Delete${ctx.pascalName}RequestBody,
-  Restore${ctx.pascalName}RequestBody,
+  Delete${ctx.pascalName}RequestBody,${ctx.softDeletes ? `\n  Restore${ctx.pascalName}RequestBody,` : ''}
   Update${ctx.pascalName}RequestBody,
 } from './${ctx.kebabName}.dto';
 import {${ctx.relations
@@ -931,11 +1004,15 @@ import {${ctx.relations
         `\n  canDetach${pascalRelationName(relation)}From${ctx.pascalName},`,
     )
     .join('')}
-  canHardDelete${ctx.pascalName},
+${
+  ctx.softDeletes
+    ? `  canHardDelete${ctx.pascalName},
   canListTrashed${ctx.pascalName},
   canRestore${ctx.pascalName},
   canRestoreAny${ctx.pascalName},
-  canUpdate${ctx.pascalName},
+`
+    : ''
+}  canUpdate${ctx.pascalName},
   canUpdateAny${ctx.pascalName},${childIncludes.length > 0 ? `\n  canView${ctx.pascalName},` : ''}
   canViewAny${ctx.pascalName},
   ${ctx.pascalName}Policy,
@@ -944,7 +1021,9 @@ import {
   ${ctx.screamingSnakeName}_SIGNAL_CHANNEL,
   ${ctx.pascalName}Service,
 } from './${ctx.kebabName}.service';
-import { ${ctx.screamingSnakeName}_RECORD_LOADER } from './${ctx.kebabName}-record.loader';
+import {
+  ${ctx.screamingSnakeName}_RECORD_LOADER,${childIncludes.length > 0 && ctx.softDeletes ? `\n  ${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER,` : ''}
+} from './${ctx.kebabName}-record.loader';
 import type { ${ctx.pascalName}RecordLoader } from './${ctx.kebabName}-record.loader';
 import { to${ctx.pascalName}View } from './${ctx.kebabName}.view';
 
@@ -1004,7 +1083,7 @@ export class ${ctx.pascalName}Controller {
     private readonly loader: ${ctx.pascalName}RecordLoader,
   ) {}
 
-  // Reused by update/delete/restore: each id is loaded and checked on its
+  // Reused by update/delete${ctx.softDeletes ? '/restore' : ''}: each id is loaded and checked on its
   // own, and a missing record or a denied one becomes that id's entry in the
   // batch result rather than aborting every other id in the same request.
   private async loadAndAuthorize(
@@ -1058,14 +1137,26 @@ export class ${ctx.pascalName}Controller {
     const query = parseSearchRequest(body, ${ctx.screamingSnakeName}_CONTRACT);
     const subject = subjectOf(req.user);
 
-    if (query.withTrashed || query.onlyTrashed) {
+${
+  ctx.softDeletes
+    ? `    if (query.withTrashed || query.onlyTrashed) {
       const trashedDecision = canListTrashed${ctx.pascalName}(subject);
 
       if (!trashedDecision.allowed) {
         throw new CapabilityForbiddenException(trashedDecision);
       }
     }
-
+`
+    : `    // The framework parses withTrashed/onlyTrashed for every resource, but this
+    // one declared softDeletes: false and has no bin. Ignoring the flag would
+    // hand back live rows while the caller believes it is reading the trash.
+    if (query.withTrashed || query.onlyTrashed) {
+      throw new SoftDeletesNotOfferedException(
+        query.onlyTrashed ? 'onlyTrashed' : 'withTrashed',
+      );
+    }
+`
+}
     const { records, total, matches } = await this.${ctx.camelName}s.search(subject, query);
     const capabilities = body.capabilities ?? [];
     const select = query.select;
@@ -1139,7 +1230,7 @@ ${childIncludes
   @Post(':id/${include.relation}/search')
   @HttpCode(200)
   @Capability(canView${ctx.pascalName})
-  @LoadRecordWith(${ctx.screamingSnakeName}_RECORD_LOADER, '${ctx.kebabName}')
+  @LoadRecordWith(${childRouteLoader}, '${ctx.kebabName}')
   async search${pascalRelation}(
     @Req() req: RequestWith${ctx.pascalName},
     @Body(new ZodValidationPipe(searchRequestSchema)) body: SearchRequestBody,
@@ -1269,7 +1360,9 @@ ${ctx.relations
       (s, record) => canDelete${ctx.pascalName}(s, record as never),
     );
 
-    if (body.mode === 'hard') {
+${
+  ctx.softDeletes
+    ? `    if (body.mode === 'hard') {
       const hardDecision = canHardDelete${ctx.pascalName}(subject);
 
       if (!hardDecision.allowed) {
@@ -1277,7 +1370,9 @@ ${ctx.relations
       }
     }
 
-    const results = [];
+`
+    : ''
+}    const results = [];
 
     for (const [index, entry] of loaded.entries()) {
       if (!entry.ok) {
@@ -1286,13 +1381,18 @@ ${ctx.relations
       }
 
       try {
-        if (body.mode === 'hard') {
+${
+  ctx.softDeletes
+    ? `        if (body.mode === 'hard') {
           await this.${ctx.camelName}s.hardDelete(entry.record);
           results.push({ index, id: entry.id, status: 'ok' as const, data: null });
         } else {
           const removed = await this.${ctx.camelName}s.softDelete(entry.record);
           results.push({ index, id: entry.id, status: 'ok' as const, data: to${ctx.pascalName}View(removed) });
-        }
+        }`
+    : `        await this.${ctx.camelName}s.hardDelete(entry.record);
+        results.push({ index, id: entry.id, status: 'ok' as const, data: null });`
+}
       } catch (error) {
         results.push({ index, id: entry.id, status: 'error' as const, error: resolveDomainError(error) });
       }
@@ -1300,7 +1400,13 @@ ${ctx.relations
 
     return ok(results);
   }
-
+${
+  ctx.softDeletes
+    ? `
+  // A route rather than a service method alone: restore is the only way back
+  // from the delete route, and a bin nobody can reach over HTTP is a bin that
+  // silently becomes a leak of storage nobody audits. It is gated by the
+  // delete preset, not the update one -- see canRestore${ctx.pascalName}.
   @Post('restore')
   @Capability(canRestoreAny${ctx.pascalName})
   async restore(
@@ -1337,7 +1443,9 @@ ${ctx.relations
 
     return ok(results);
   }
-}
+`
+    : ''
+}}
 `;
 }
 
@@ -1568,7 +1676,15 @@ export class ${ctx.pascalName}Resolver {
       throw new CapabilityForbiddenException();
     }
 
-    return to${ctx.pascalName}View(await this.${ctx.camelName}s.softDelete(record));
+${
+  ctx.softDeletes
+    ? `    return to${ctx.pascalName}View(await this.${ctx.camelName}s.softDelete(record));`
+    : `    // The row is gone once hardDelete returns, so the view is built from the
+    // record as it was read a moment ago -- there is nothing left to re-read.
+    const view = to${ctx.pascalName}View(record);
+    await this.${ctx.camelName}s.hardDelete(record);
+    return view;`
+}
   }
 }
 `;
@@ -1697,7 +1813,7 @@ export class ${ctx.pascalName}McpToolRegistrar implements McpToolRegistrar {
     server.registerTool(
       'remove_${ctx.kebabName}',
       {
-        description: 'Soft-delete a ${ctx.kebabName} by id',
+        description: '${ctx.softDeletes ? 'Soft-delete' : 'Permanently delete'} a ${ctx.kebabName} by id',
         inputSchema: { id: z.string() },
       },
       async ({ id }) => {
@@ -1711,8 +1827,14 @@ export class ${ctx.pascalName}McpToolRegistrar implements McpToolRegistrar {
           return deniedResult();
         }
 
-        const removed = await this.${ctx.camelName}s.softDelete(record);
-        return textResult(to${ctx.pascalName}View(removed));
+${
+  ctx.softDeletes
+    ? `        const removed = await this.${ctx.camelName}s.softDelete(record);
+        return textResult(to${ctx.pascalName}View(removed));`
+    : `        const view = to${ctx.pascalName}View(record);
+        await this.${ctx.camelName}s.hardDelete(record);
+        return textResult(view);`
+}
       },
     );
   }
@@ -1962,6 +2084,12 @@ function scopeParityTest(ctx: ResourceContext, createBody: string): string {
 // not the view preset, so this branches on ctx.permissions.delete rather than
 // mirroring scopeParityTest's condition.
 function trashParityTest(ctx: ResourceContext, createBody: string): string {
+  // Nothing to assert on a resource with no bin: canListTrashed is not
+  // generated at all when softDeletes is off.
+  if (!ctx.softDeletes) {
+    return '';
+  }
+
   if (ctx.permissions.delete === 'own' || ctx.permissions.delete === 'team') {
     return `  it('keeps a trashed record out of the bin of anyone who cannot open it', async () => {
     const created = await request(app.getHttpServer())
@@ -2029,6 +2157,154 @@ function trashParityTest(ctx: ResourceContext, createBody: string): string {
       .send({ onlyTrashed: true })
       .expect(403);
   });`;
+}
+
+/**
+ * The regression this exists for: a soft-deleted record that comes back
+ * somewhere the default filter was not applied. Every read surface the
+ * resource has is asserted on the same trashed record -- the plain list, the
+ * declared includes and aggregates, and the parent-scoped child route -- then
+ * the explicit withTrashed surface is asserted to still find it, so "absent"
+ * is proven to mean hidden rather than gone.
+ */
+function softDeleteVisibilitySpec(
+  ctx: ResourceContext,
+  createBody: string,
+): string {
+  const includeBody =
+    ctx.includes.length > 0
+      ? `, includes: [{ relation: '${ctx.includes[0]!.relation}' }]`
+      : '';
+  const aggregateBody =
+    ctx.aggregates.length > 0
+      ? `, aggregates: [{ relation: '${ctx.aggregates[0]!.relation}', type: 'count' }]`
+      : '';
+  const childRoute = ownRouteIncludes(ctx)[0];
+
+  return `  it('hides a soft-deleted record from every default read, and only from those', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/create')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ data: [${createBody}] })
+      .expect(201);
+
+    const recordId = (
+      created.body as { data: { status: string; data: { id: string } }[] }
+    ).data[0]!.data.id;
+
+    await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/delete')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ ids: [recordId] })
+      .expect(201);
+
+    const ids = async (body: Record<string, unknown>) => {
+      const response = await request(app.getHttpServer())
+        .post('/${ctx.pluralKebabName}/search')
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .send(body)
+        .expect(200);
+
+      return (response.body as { data: { id: string }[] }).data.map(
+        (record) => record.id,
+      );
+    };
+
+    expect(await ids({})).not.toContain(recordId);
+    expect(
+      await ids({
+        filters: [{ field: 'id', value: recordId }]${includeBody},
+      }),
+    ).not.toContain(recordId);
+    expect(
+      await ids({
+        filters: [{ field: 'id', value: recordId }]${aggregateBody},
+      }),
+    ).not.toContain(recordId);
+
+    const counted = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/search')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ filters: [{ field: 'id', value: recordId }] })
+      .expect(200);
+
+    expect((counted.body as { meta: { total: number } }).meta.total).toBe(0);
+${
+  childRoute
+    ? `
+    await request(app.getHttpServer())
+      .post(\`/${ctx.pluralKebabName}/\${recordId}/${childRoute.relation}/search\`)
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({})
+      .expect(404);
+`
+    : ''
+}
+    expect(
+      await ids({
+        withTrashed: true,
+        filters: [{ field: 'id', value: recordId }],
+      }),
+    ).toContain(recordId);
+    expect(
+      await ids({
+        onlyTrashed: true,
+        filters: [{ field: 'id', value: recordId }],
+      }),
+    ).toContain(recordId);
+
+    await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/restore')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ ids: [recordId] })
+      .expect(201);
+
+    expect(
+      await ids({ filters: [{ field: 'id', value: recordId }] }),
+    ).toContain(recordId);
+  });
+`;
+}
+
+/**
+ * The opted-out counterpart: the row is really gone, and the trashed
+ * parameters are refused rather than quietly answering with live rows.
+ */
+function hardDeleteOnlySpec(ctx: ResourceContext, createBody: string): string {
+  return `  it('removes the row outright and offers no bin to look in', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/create')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ data: [${createBody}] })
+      .expect(201);
+
+    const recordId = (
+      created.body as { data: { status: string; data: { id: string } }[] }
+    ).data[0]!.data.id;
+
+    await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/delete')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ ids: [recordId] })
+      .expect(201);
+
+    expect(
+      await prisma.${ctx.camelName}.findUnique({ where: { id: recordId } }),
+    ).toBeNull();
+
+    await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/search')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ withTrashed: true })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/restore')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ ids: [recordId] })
+      .expect(404);
+  });
+`;
 }
 
 function relationSpecBlock(ctx: ResourceContext, createBody: string): string {
@@ -2232,9 +2508,7 @@ ${
   });
 
 ${scopeParityTest(ctx, createBody)}
-
-${trashParityTest(ctx, createBody)}
-
+${ctx.softDeletes ? `\n${trashParityTest(ctx, createBody)}\n` : ''}
 ${
   canCreateAny && canUpdateAny
     ? `  it('lists records with the capabilities named in the request body', async () => {
@@ -2296,8 +2570,13 @@ ${
 `
       : ''
   }${
-    canCreateAny && canUpdateAny && canDeleteAny
-      ? `  it('soft-deletes then restores a record', async () => {
+    !(canCreateAny && canDeleteAny)
+      ? ''
+      : !ctx.softDeletes
+        ? `${hardDeleteOnlySpec(ctx, createBody)}
+`
+        : `${softDeleteVisibilitySpec(ctx, createBody)}
+  it('soft-deletes then restores a record', async () => {
     const created = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}/create')
       .set('Authorization', \`Bearer \${ownerToken}\`)
@@ -2367,7 +2646,6 @@ ${
   });
 
 `
-      : ''
   }  it('never lets a different tenant see this tenant records', async () => {
     const outsider = await registerAndLogin(app);
     await prisma.user.update({
@@ -2499,8 +2777,7 @@ export function viewFile(ctx: ResourceContext): string {
   ownerId: z.string(),${ownedByTeam(ctx) ? `\n  teamId: z.string(),` : ''}
 ${visibleFieldLines}
   createdAt: z.coerce.date(),
-  updatedAt: z.coerce.date(),
-  deletedAt: z.coerce.date().nullable(),
+  updatedAt: z.coerce.date(),${ctx.softDeletes ? `\n  deletedAt: z.coerce.date().nullable(),` : ''}
 });
 export type ${ctx.pascalName}View = z.infer<typeof ${ctx.camelName}ViewSchema>;
 `;
@@ -2546,8 +2823,7 @@ export function factoryFile(ctx: ResourceContext): string {
 export interface ${ctx.pascalName}FactoryOverrides {
   ownerId: string;${ownedByTeam(ctx) ? '\n  teamId: string;' : ''}
   tenantId?: string;
-${overrideLines}
-  trashed?: boolean;
+${overrideLines}${ctx.softDeletes ? '\n  trashed?: boolean;' : ''}
 }
 
 export interface ${ctx.pascalName}FactoryOptions {
@@ -2558,8 +2834,7 @@ function build${ctx.pascalName}(overrides: ${ctx.pascalName}FactoryOverrides) {
   return {
 ${buildLines}
     ownerId: overrides.ownerId,${ownedByTeam(ctx) ? '\n    teamId: overrides.teamId,' : ''}
-    ...(overrides.tenantId ? { tenantId: overrides.tenantId } : {}),
-    deletedAt: overrides.trashed ? new Date() : null,
+    ...(overrides.tenantId ? { tenantId: overrides.tenantId } : {}),${ctx.softDeletes ? `\n    deletedAt: overrides.trashed ? new Date() : null,` : ''}
   };
 }
 
@@ -2595,12 +2870,18 @@ model ${ctx.pascalName} {
   ownerId   String${ownedByTeam(ctx) ? `\n  teamId    String` : ''}
 ${customFieldLines}
   createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  updatedAt DateTime  @updatedAt${ctx.softDeletes ? `\n  deletedAt DateTime?` : ''}
 
   owner User @relation(fields: [ownerId], references: [id])${ownedByTeam(ctx) ? `\n  team  Team @relation(fields: [teamId], references: [id])` : ''}
 
-  @@index([tenantId])
+  @@index([tenantId])${
+    ctx.softDeletes
+      ? `
+  // Every default read filters on these two together, so the composite keeps
+  // the "not deleted" clause from scanning the whole tenant.
+  @@index([tenantId, deletedAt])`
+      : ''
+  }
 }
 `;
 }

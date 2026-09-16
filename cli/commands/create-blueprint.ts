@@ -222,6 +222,13 @@ fields:
   #   optional: true
   #   hidden: true
 
+# On unless you say otherwise. Left in: DELETE flags the row (deletedAt), the
+# record leaves every listing, and "withTrashed"/"onlyTrashed"/the restore route
+# reach it again until prune hard-deletes it on its retention schedule. Set it
+# to false and DELETE removes the row for good: no deletedAt column, no restore
+# route, no bin, and nothing for prune to sweep.
+softDeletes: true
+
 permissions:
   # preset: own (creator/owner only) | team (same team) | all (any authenticated user) | none (nobody)
   # view drives the detail route and the collection filter from the same preset,

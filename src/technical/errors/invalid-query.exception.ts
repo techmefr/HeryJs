@@ -38,6 +38,29 @@ export class InvalidQueryValueException extends DomainException {
 }
 
 /**
+ * The soft-delete twin of PaginationNotOfferedException, and it exists because
+ * the generic message is actively unhelpful here: a resource that declares
+ * `softDeletes: false` rejecting `withTrashed` used to answer "Invalid value
+ * for withTrashed. Allowed: false.", which reads as a type complaint about a
+ * boolean rather than as "this resource has no bin at all".
+ *
+ * Ignoring the flag instead would be worse than any message: the caller asked
+ * to see deleted rows and would get live ones back, with nothing saying the
+ * request was not honoured.
+ */
+export class SoftDeletesNotOfferedException extends DomainException {
+  constructor(param: string) {
+    super(
+      HttpStatus.BAD_REQUEST,
+      'query.invalid',
+      `"${param}" is not accepted: this resource declares "softDeletes: false", so a delete removes the record outright and there is no trash to read.`,
+      { param, allowed: [] },
+      'query.invalid.soft-deletes',
+    );
+  }
+}
+
+/**
  * Ignoring `page`/`limit` on a resource that does not paginate would leave the
  * caller believing they read page 2 of something that only ever had one page.
  * The same `query.invalid` code as any other rejected parameter, so a client

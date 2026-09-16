@@ -78,6 +78,13 @@ export const blueprintSchema = z.object({
   // the relation once instead of being retyped by hand on every parent that
   // includes it.
   routed: z.boolean().default(true),
+  // Opt-out, not opt-in, and left optional rather than defaulted so an author
+  // who never wrote the key can be told apart from one who wrote `true`: a
+  // resource that says nothing gets soft deletes, and declaring the key at all
+  // on an unrouted resource is refused below rather than silently ignored.
+  // Turning it off makes DELETE remove the row, which is why it has to be
+  // written down on purpose.
+  softDeletes: z.boolean().optional(),
   fields: z.array(blueprintFieldSchema).default([]),
   permissions: z
     .object({
@@ -153,8 +160,12 @@ export type BlueprintField = z.infer<typeof blueprintFieldSchema>;
 
 export interface Blueprint extends Omit<
   RawBlueprint,
-  'includes' | 'aggregates' | 'relations'
+  'includes' | 'aggregates' | 'relations' | 'softDeletes'
 > {
+  // Resolved, never optional past this point: every template branches on it,
+  // and an `undefined` reaching one of them would generate a resource whose
+  // delete is destructive because a key was absent.
+  softDeletes: boolean;
   includes: ResolvedInclude[];
   aggregates: ResolvedAggregate[];
   relations: ResolvedMutableRelation[];
@@ -229,6 +240,48 @@ function assertSortsAndFiltersAreKnownFields(
       if (!fieldNames.has(entry) && !knownTargets.has(entry)) {
         report(`${kind} "${entry}" names no declared field`);
       }
+    }
+  }
+}
+
+/**
+ * Soft deletes are on unless a routed blueprint says otherwise, so `undefined`
+ * and `true` mean the same thing everywhere past `loadBlueprint`.
+ */
+function softDeletesEnabled(blueprint: RawBlueprint): boolean {
+  return blueprint.softDeletes ?? true;
+}
+
+/**
+ * Two ways to write the key that would not mean what the author expects. An
+ * unrouted resource has no generated columns at all -- no controller, no
+ * delete route, no `deletedAt` -- so `softDeletes` there reads as a decision
+ * that was in fact never applied. And a sort or filter naming `deletedAt` on a
+ * resource that opted out names a column the generated Prisma model does not
+ * have, which is a 500 on the search route rather than an empty result.
+ */
+function assertSoftDeletesIsCoherent(
+  blueprint: RawBlueprint,
+  report: (message: string) => void,
+): void {
+  if (blueprint.softDeletes !== undefined && !blueprint.routed) {
+    report(
+      'softDeletes only applies to a routed resource: an unrouted one has no delete route and no deletedAt column to turn off',
+    );
+  }
+
+  if (softDeletesEnabled(blueprint)) {
+    return;
+  }
+
+  for (const [kind, entries] of [
+    ['sort', blueprint.sorts],
+    ['filter', blueprint.filters],
+  ] as const) {
+    if (entries.includes('deletedAt')) {
+      report(
+        `${kind} "deletedAt" needs softDeletes, which this blueprint turns off`,
+      );
     }
   }
 }
@@ -415,6 +468,7 @@ export function loadBlueprint(filePath: string): Blueprint {
   assertSortsAndFiltersAreKnownFields(blueprint, (message) =>
     problems.push(message),
   );
+  assertSoftDeletesIsCoherent(blueprint, (message) => problems.push(message));
   assertRelationsAreUnique(blueprint, (message) => problems.push(message));
   assertOwnRouteOnlyOnIncludes(blueprint, (message) => problems.push(message));
 
@@ -435,5 +489,11 @@ export function loadBlueprint(filePath: string): Blueprint {
     );
   }
 
-  return { ...blueprint, includes, aggregates, relations };
+  return {
+    ...blueprint,
+    softDeletes: softDeletesEnabled(blueprint),
+    includes,
+    aggregates,
+    relations,
+  };
 }

@@ -55,11 +55,20 @@ export default {
       BETTER_AUTH_INSTANCE_FILE,
       [
         [
-          "  const { bearer } = await import('better-auth/plugins');",
-          "  const { admin, bearer } = await import('better-auth/plugins');",
+          "  const { bearer, twoFactor } = await import('better-auth/plugins');",
+          "  const { admin, bearer, twoFactor } = await import('better-auth/plugins');",
         ],
         [
-          '    plugins: [bearer()],',
+          [
+            '    plugins: [',
+            '      bearer(),',
+            '      // TOTP only: no SMS or email second factor, because both would make the',
+            '      // strength of 2FA depend on a transport auth does not control.',
+            '      twoFactor({',
+            '        issuer: authEnv.AUTH_TWO_FACTOR_ISSUER,',
+            '      }),',
+            '    ],',
+          ].join('\n'),
           [
             '    plugins: [',
             '      bearer(),',
@@ -69,6 +78,11 @@ export default {
             '      // database, not a convention HeryJs ships).',
             '      admin({',
             '        impersonationSessionDuration: env.IMPERSONATION_SESSION_SECONDS,',
+            '      }),',
+            '      // TOTP only: no SMS or email second factor, because both would make the',
+            '      // strength of 2FA depend on a transport auth does not control.',
+            '      twoFactor({',
+            '        issuer: authEnv.AUTH_TWO_FACTOR_ISSUER,',
             '      }),',
             '    ],',
           ].join('\n'),
