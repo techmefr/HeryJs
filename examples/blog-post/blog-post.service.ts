@@ -17,7 +17,10 @@ import type {
   ParsedListQuery,
 } from '#technical/http/list-query';
 import { applyRelationMutation } from '#technical/http/relation-mutations';
-import type { PivotDelegate } from '#technical/http/relation-mutations';
+import type {
+  PivotDelegate,
+  RelatedDelegate,
+} from '#technical/http/relation-mutations';
 import {
   CreateBlogPostInput,
   RelationMutationInput,
@@ -231,6 +234,8 @@ export class BlogPostService {
   async syncTags(record: BlogPost, input: RelationMutationInput) {
     return applyRelationMutation(
       this.prisma.blogPostTag as unknown as PivotDelegate,
+      this.prisma.tag as unknown as RelatedDelegate,
+      'tags',
       'blogPostId',
       'tagId',
       record.id,

@@ -11,6 +11,7 @@ import { Capability } from '#technical/capabilities/capability.decorator';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
 import { ok } from '#technical/http/envelope';
+import { storageEnv } from './storage.env';
 import { canUploadFiles } from './storage-upload.policy';
 import { StorageUploadRejectedException } from './storage-upload-rejected.exception';
 import { StorageService } from './storage.service';
@@ -29,7 +30,22 @@ export class StorageUploadController {
   @Post('upload')
   @UseGuards(SessionGuard, CapabilitiesGuard)
   @Capability(canUploadFiles)
-  @UseInterceptors(FileInterceptor('file'))
+  /**
+   * The limit belongs to multer, not only to StorageService. multer buffers
+   * the whole multipart body in memory first, so a cap applied afterwards
+   * rejects a several-gigabyte upload only once it has already been held in
+   * full -- a handful of concurrent requests is then enough to exhaust the
+   * process, while the advertised limit looks enforced.
+   *
+   * One byte over is enough to stop reading: the service still re-checks the
+   * size it received, because a direct .upload() call never passes through
+   * this interceptor at all.
+   */
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: storageEnv.STORAGE_MAX_UPLOAD_BYTES, files: 1 },
+    }),
+  )
   async upload(@UploadedFile() file: MulterFile | undefined) {
     if (!file) {
       throw new StorageUploadRejectedException(

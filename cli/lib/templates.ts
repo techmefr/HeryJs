@@ -388,7 +388,7 @@ import { writeAuditLog } from '#technical/audit/audit-log';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { resolveRelationInstructions } from '#technical/http/relation-resolver';
 import type { PrismaRelationClient } from '#technical/http/relation-resolver';
-import type { RelationInstruction${childIncludes.length > 0 ? ', ParsedListQuery' : ''} } from '#technical/http/list-query';${ctx.relations.length > 0 ? `\nimport { applyRelationMutation } from '#technical/http/relation-mutations';\nimport type { PivotDelegate } from '#technical/http/relation-mutations';` : ''}
+import type { RelationInstruction${childIncludes.length > 0 ? ', ParsedListQuery' : ''} } from '#technical/http/list-query';${ctx.relations.length > 0 ? `\nimport { applyRelationMutation } from '#technical/http/relation-mutations';\nimport type { PivotDelegate, RelatedDelegate } from '#technical/http/relation-mutations';` : ''}
 import {
   Create${ctx.pascalName}Input,${ctx.relations.length > 0 ? `\n  RelationMutationInput,` : ''}
   Update${ctx.pascalName}Input,
@@ -628,6 +628,8 @@ ${ctx.relations
   async sync${pascalRelationName(relation)}(record: ${ctx.pascalName}, input: RelationMutationInput) {
     return applyRelationMutation(
       this.prisma.${relation.pivotDelegate} as unknown as PivotDelegate,
+      this.prisma.${relation.childDelegate} as unknown as RelatedDelegate,
+      '${relation.relation}',
       '${relation.foreignKey}',
       '${relation.relatedKey}',
       record.id,
