@@ -156,6 +156,40 @@ async receive(@Req() req: RequestWithWebhookEndpoint) { … }
 
 Everything else carries a capability, including the routes that are not resources: `/health` and `/metrics` report the database and the queue by name and quote their failures verbatim, so they are caller-authenticated like any other route. A container or cluster probe and a Prometheus scrape have no session, so they authenticate with an API key — the credential this framework already ships for non-interactive callers — in the usual `Authorization: Bearer` header.
 
+## A capability that is not about a resource
+
+Opening the metrics page, running a prune, seeding an agency, reading the audit
+log: each answers "may this caller do this at all", never "on whose rows". They
+receive no record, and their scope is a property of the capability rather than
+of the row.
+
+They are written with `ability`, not by hand:
+
+```ts
+export const canManagePrune: PolicyCheck = adminAbility;
+
+export const canManageTeamMembers: PolicyCheck = ability(
+  (subject) => subject.teamIds.length > 0,
+  'team',
+);
+```
+
+This is the same `PolicyCheck` a generated resource policy uses — naming the
+shape, not adding a second authorization system. It exists because eleven of
+these had been written by hand across the kernel and its modules, **nine of
+them the identical admin-or-nothing ternary**. That is the repetition that
+drifts: one copy eventually grows an extra condition, and nothing says whether
+that was deliberate or a mistake.
+
+`adminAbility` covers the common case, and reads as one decision — "trusted
+with something tenant scoping cannot contain" — everywhere it is made.
+`everyone(scope)` covers a perimeter every signed-in caller is inside of, where
+what remains is whose rows rather than whether.
+
+A refusal carries no scope. A decision that is both denied and scoped invites a
+caller to read the scope and act on it, which is how a "no" quietly becomes a
+narrower "yes".
+
 ## Enforced in CI
 
 Generated code belongs to you, which means the generator's guarantees stop the moment you edit it. Three scripts hold the line instead:
