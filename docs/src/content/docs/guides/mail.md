@@ -12,6 +12,63 @@ pnpm hery migrate --name add_mail_log
 
 The install appends a `MailLog` model to `prisma/schema.prisma`, so it leaves you one migration behind. `hery install` never runs Prisma itself.
 
+## One mail type, one file
+
+`pnpm hery make:mail WelcomeMail` writes a class into
+`src/functional/<domain>/`, and that class **is** the template: its subject and
+its body live together, typed against whatever it needs to render.
+
+```ts
+export class WelcomeMail implements Mailable {
+  constructor(readonly to: string) {}
+
+  build(): MailMessage {
+    return {
+      to: this.to,
+      subject: 'Welcome',
+      html: mailLayout('<p>Glad you are here.</p>', { title: 'Welcome' }),
+    };
+  }
+}
+```
+
+The alternative -- a shared record keyed by a string, which is what
+`mail.templates.ts` still holds for the older `queue(to, template, data)` path
+-- puts every mail in one file and gives none of them a type. Adding the second
+one is where that stops scaling.
+
+`mailLayout` is the shell they share: one tested document, inline styles, a
+single column. Every mail client strips a stylesheet, and half of them mangle
+anything wider than one column on a phone, so the layout is deliberately one
+function taking a body rather than a partials system whose output nobody checks
+in Outlook.
+
+Its `optOut` is absent by default and legally required in several countries for
+anything that is not transactional. Only the caller knows which kind it is
+sending, which is why it is a parameter rather than a constant.
+
+## Previewing what you are about to send
+
+The log driver reports the recipient and the subject. The body -- the part you
+are actually writing -- was the one thing nothing showed, so authoring a mail
+meant reading the HTML and imagining it.
+
+```
+GET /mail/preview            # the templates this app knows
+GET /mail/preview/welcome?name=Ada&app=HeryJs
+```
+
+The second renders in the browser, subject included: a preview that hides the
+subject lets a broken one ship unnoticed.
+
+Both are behind `DevOnlyGuard`. They render arbitrary templates with
+caller-supplied values, which is a preview in development and an open rendering
+endpoint anywhere else.
+
+This covers the `mail.templates.ts` record. A `Mailable` takes constructor
+arguments the route cannot invent, so previewing one means instantiating it --
+in a spec, or in the console.
+
 ## A mailable says what to send, never who sends it
 
 ```bash

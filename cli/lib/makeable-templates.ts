@@ -8,7 +8,16 @@ export interface MakeableContext {
 
 export function mailableFile(ctx: MakeableContext): string {
   return `import type { Mailable, MailMessage } from '#technical/mail/mail-driver';
+import { mailLayout } from '#modules/mail/mail.layout';
 
+/**
+ * One mail type, one file. The class is the template: its subject and its body
+ * live together, typed against whatever it needs to render, instead of in a
+ * shared record keyed by a string.
+ *
+ * mailLayout wraps the body in the shell every mail shares, so this file holds
+ * what this mail says and nothing about the HTML around it.
+ */
 export class ${ctx.pascalName} implements Mailable {
   constructor(readonly to: string) {}
 
@@ -16,7 +25,9 @@ export class ${ctx.pascalName} implements Mailable {
     return {
       to: this.to,
       subject: '${ctx.pascalName}',
-      html: '<p>Write what ${ctx.pascalName} says here.</p>',
+      html: mailLayout('<p>Write what ${ctx.pascalName} says here.</p>', {
+        title: '${ctx.pascalName}',
+      }),
     };
   }
 }
