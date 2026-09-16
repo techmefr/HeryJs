@@ -1799,9 +1799,13 @@ export class ${ctx.pascalName}McpToolRegistrar implements McpToolRegistrar {
         inputSchema: {
           search: z.string().optional(),
           sortBy: z.enum([${ctx.sorts.map((sort) => `'${sort}'`).join(', ')}]).optional(),
-          sortDirection: z.enum(['asc', 'desc']).optional(),${ctx.pagination ? `
+          sortDirection: z.enum(['asc', 'desc']).optional(),${
+            ctx.pagination
+              ? `
           page: z.number().int().positive().optional(),
-          limit: z.enum([${ctx.pagination.limits.map((limit) => `'${limit}'`).join(', ')}]).optional(),` : ''}${ctx.softDeletes ? '\n          withTrashed: z.boolean().optional(),' : ''}
+          limit: z.enum([${ctx.pagination.limits.map((limit) => `'${limit}'`).join(', ')}]).optional(),`
+              : ''
+          }${ctx.softDeletes ? '\n          withTrashed: z.boolean().optional(),' : ''}
         },
       },
       async (input) => {
@@ -1821,9 +1825,13 @@ export class ${ctx.pascalName}McpToolRegistrar implements McpToolRegistrar {
                   },
                 ],
               }
-            : {}),${ctx.pagination ? `
+            : {}),${
+              ctx.pagination
+                ? `
           page: input.page ?? 1,
-          limit: input.limit ? Number(input.limit) : ${ctx.pagination.default},` : ''}${ctx.softDeletes ? '\n          withTrashed: input.withTrashed ?? false,' : ''}
+          limit: input.limit ? Number(input.limit) : ${ctx.pagination.default},`
+                : ''
+            }${ctx.softDeletes ? '\n          withTrashed: input.withTrashed ?? false,' : ''}
         });
         return textResult(records.map(to${ctx.pascalName}View));
       },

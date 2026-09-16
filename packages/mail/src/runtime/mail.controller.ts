@@ -12,6 +12,7 @@ import { CapabilitiesGuard } from '#kernel/capabilities/capabilities.guard';
 import { Capability } from '#kernel/capabilities/capability.decorator';
 import { DevOnlyGuard } from '#kernel/dev-only/dev-only.guard';
 import { okPage, parsePageQuery } from '#kernel/http/page-query';
+import { UnpaginatedRoute } from '#kernel/http/unpaginated-route.decorator';
 import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
 import { canReadMailLog } from './mail.policy';
 import { MailService } from './mail.service';
@@ -35,6 +36,9 @@ export class MailController {
   }
 
   @RateLimit('read')
+  @UnpaginatedRoute(
+    'the templates are a fixed list in source, not rows: there is nothing to page through and nothing that grows',
+  )
   @Get('preview')
   @UseGuards(DevOnlyGuard)
   @Capability(canReadMailLog)
