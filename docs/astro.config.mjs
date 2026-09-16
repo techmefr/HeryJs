@@ -56,6 +56,7 @@ export default defineConfig({
                 { label: 'Security model', slug: 'guides/security' },
                 { label: 'Cache', slug: 'guides/cache' },
                 { label: 'Rate limiting', slug: 'guides/rate-limiting' },
+                { label: 'Validation', slug: 'guides/validation' },
                 {
                   label: 'Errors and responses',
                   slug: 'guides/errors-and-responses',
