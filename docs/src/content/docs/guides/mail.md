@@ -163,7 +163,11 @@ The driver is one `POST` over `fetch`, with no SDK dependency — a package that
 await this.mail.queue(user.email, 'welcome', { name: user.name, app: 'Acme' });
 ```
 
-Templates are a `Record` in `mail.templates.ts` and interpolation is `{{key}}` substitution. No engine, no template files to locate at runtime, one shipped example (`welcome`) to copy. An unknown template name throws rather than sending a blank message, and a missing key becomes an empty string rather than an error. **Values are not HTML-escaped** — pass user-supplied content through your own escaping before it reaches `data`.
+Templates are a `Record` in `mail.templates.ts` and interpolation is `{{key}}` substitution. No engine, no template files to locate at runtime, one shipped example (`welcome`) to copy. An unknown template name throws rather than sending a blank message, and a missing key becomes an empty string rather than an error.
+
+**Values are escaped into the body.** They were not, and the values a template carries are exactly the ones that come from a request — a display name, a company, an order reference — so anything a user typed reached the recipient's mail client as markup. Escaping happens in `renderTemplate` rather than at the call site: a call site that forgets is indistinguishable from one that had nothing to escape.
+
+The **subject is not escaped**, because it is plain text in every mail client and escaping it would show a reader `&amp;` where they wrote `&`. A template that genuinely needs to inject markup has no opt-in today; add one deliberately if that day comes, rather than reverting this.
 
 Prefer `make:mail` for anything a person will read. A mailable is a typed class your compiler checks; a template name is a string nothing checks.
 
