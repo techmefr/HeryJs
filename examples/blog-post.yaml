@@ -25,9 +25,6 @@ includes:
   - relation: comments
     resource: Comment
     type: morphMany
-    foreignKey: commentableId
-    discriminator: commentableType
-    discriminatorValue: BlogPost
 
 aggregates:
   - relation: notes
@@ -37,9 +34,6 @@ aggregates:
   - relation: comments
     resource: Comment
     type: morphMany
-    foreignKey: commentableId
-    discriminator: commentableType
-    discriminatorValue: BlogPost
 
 relations:
   - relation: tags

@@ -527,3 +527,93 @@ describe('unknown blueprint keys', () => {
     ).not.toThrow();
   });
 });
+
+describe('a polymorphic child declaring its morph once', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(tmpdir(), 'hery-morph-'));
+  });
+
+  function writeChild(extra = 'morph: commentable'): void {
+    writeBlueprint(
+      dir,
+      'comment',
+      `name: Comment\nrouted: false\n${extra}\nfields:\n  - name: body\n    type: string\n  - name: createdAt\n    type: datetime\n`,
+    );
+  }
+
+  function writeParent(link: string): string {
+    writeBlueprint(
+      dir,
+      'blog-post',
+      `name: BlogPost\nfields:\n  - name: title\n    type: string\nincludes:\n${link}`,
+    );
+    return path.join(dir, 'blog-post.yaml');
+  }
+
+  /**
+   * The repetition this removes: every parent used to spell out foreignKey,
+   * discriminator and discriminatorValue, and the last one is always the
+   * parent's own name -- so a copy-paste keeping the previous parent's value
+   * is both silent and wrong.
+   */
+  it('gives every parent the columns and its own discriminator value', () => {
+    writeChild();
+    const file = writeParent(
+      '  - relation: comments\n    resource: Comment\n    type: morphMany\n',
+    );
+
+    const [include] = loadBlueprint(file).includes;
+
+    expect(include?.foreignKey).toBe('commentableId');
+    expect(include?.discriminator).toBe('commentableType');
+    expect(include?.discriminatorValue).toBe('BlogPost');
+  });
+
+  // Two sources for one fact is how the fact ends up disagreeing with itself.
+  it('refuses a parent that repeats what the child already declares', () => {
+    writeChild();
+    const file = writeParent(
+      '  - relation: comments\n    resource: Comment\n    type: morphMany\n    foreignKey: commentableId\n',
+    );
+
+    expect(() => loadBlueprint(file)).toThrow(/repeats what "Comment"/);
+  });
+
+  it('still accepts a child that declares no morph, spelled out by hand', () => {
+    writeChild('');
+    const file = writeParent(
+      '  - relation: comments\n    resource: Comment\n    type: morphMany\n    foreignKey: commentableId\n    discriminator: commentableType\n    discriminatorValue: BlogPost\n',
+    );
+
+    const [include] = loadBlueprint(file).includes;
+
+    expect(include?.discriminatorValue).toBe('BlogPost');
+  });
+
+  it('refuses a morphMany that names neither a morph nor the columns', () => {
+    writeChild('');
+    const file = writeParent(
+      '  - relation: comments\n    resource: Comment\n    type: morphMany\n',
+    );
+
+    expect(() => loadBlueprint(file)).toThrow(/declares "morph: <name>"/);
+  });
+
+  it('applies the same derivation to an aggregate', () => {
+    writeChild();
+    writeBlueprint(
+      dir,
+      'blog-post',
+      'name: BlogPost\nfields:\n  - name: title\n    type: string\naggregates:\n  - relation: comments\n    resource: Comment\n    type: morphMany\n',
+    );
+
+    const [aggregate] = loadBlueprint(
+      path.join(dir, 'blog-post.yaml'),
+    ).aggregates;
+
+    expect(aggregate?.foreignKey).toBe('commentableId');
+    expect(aggregate?.discriminatorValue).toBe('BlogPost');
+  });
+});

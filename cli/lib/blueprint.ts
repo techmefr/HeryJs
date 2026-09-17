@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import * as yaml from 'js-yaml';
 import { z } from 'zod';
-import { camelCase, kebabCase } from './naming';
+import { camelCase, kebabCase, pascalCase } from './naming';
 
 export const permissionPresetSchema = z.enum(['own', 'team', 'all', 'none']);
 
@@ -28,7 +28,10 @@ export const blueprintRelationLinkSchema = z
     relation: fieldNameSchema,
     resource: resourceNameSchema,
     type: z.enum(['hasMany', 'morphMany']),
-    foreignKey: fieldNameSchema,
+    // Optional on a morphMany whose target declares `morph`: the child names
+    // the pair once and every parent inherits it. Still required on a hasMany,
+    // which has a real Prisma relation and no child-side declaration.
+    foreignKey: fieldNameSchema.optional(),
     discriminator: fieldNameSchema.optional(),
     discriminatorValue: z.string().optional(),
     // Opts an include into its own collection route, scoped to the parent --
@@ -38,13 +41,9 @@ export const blueprintRelationLinkSchema = z
     ownRoute: z.boolean().default(false),
   })
   .refine(
-    (link) =>
-      link.type === 'hasMany' ||
-      (link.discriminator !== undefined &&
-        link.discriminatorValue !== undefined),
+    (link) => link.type === 'morphMany' || link.foreignKey !== undefined,
     {
-      message:
-        'a morphMany link needs both discriminator and discriminatorValue',
+      message: 'a hasMany link needs a foreignKey',
     },
   )
   .refine((link) => !link.ownRoute || link.type === 'hasMany', {
@@ -90,6 +89,18 @@ export const blueprintSchema = z.strictObject({
   // the relation once instead of being retyped by hand on every parent that
   // includes it.
   routed: z.boolean().default(true),
+  /**
+   * Declared by the child of a polymorphic relation, once, and inherited by
+   * every parent that points at it: `morph: commentable` means the columns are
+   * `commentableId` and `commentableType`, and each parent's discriminator
+   * value is its own name.
+   *
+   * It exists because the alternative is four lines of bookkeeping repeated in
+   * every parent, and the repeated `discriminatorValue` is the one that goes
+   * wrong -- it is always the parent's own name, so a copy-paste that keeps the
+   * previous parent's value is both silent and wrong.
+   */
+  morph: fieldNameSchema.optional(),
   /**
    * Which major version of this resource's contract these routes serve. 1 --
    * the default -- keeps the unprefixed path every existing project already
@@ -149,6 +160,10 @@ type RawBlueprint = z.infer<typeof blueprintSchema>;
 // nested filters/sorts/selects request is validated against, derived from
 // the referenced resource's own blueprint rather than retyped here.
 export interface ResolvedInclude extends BlueprintRelationLink {
+  // Required here even though the link may omit it: resolution derives it from
+  // the child's own `morph` declaration, so everything downstream can rely on
+  // it being present.
+  foreignKey: string;
   filters: readonly string[];
   sorts: readonly string[];
   selects: readonly string[];
@@ -167,6 +182,7 @@ export interface ResolvedInclude extends BlueprintRelationLink {
 // Aggregates validate a `field` (for avg/sum/min/max) against the referenced
 // resource's own numeric fields, and a `filters` allow-list like includes do.
 export interface ResolvedAggregate extends BlueprintRelationLink {
+  foreignKey: string;
   filters: readonly string[];
   fields: readonly string[];
 }
@@ -409,6 +425,61 @@ function loadReferencedBlueprint(
   return referenced;
 }
 
+/**
+ * Fills in what a morphMany link may now leave out. The child declares
+ * `morph: commentable` once; the columns are its two halves, and the
+ * discriminator value is the parent's own name -- which is what it always was,
+ * repeated by hand in every parent until now.
+ *
+ * Declaring it in both places is refused rather than merged: two sources for
+ * one fact is exactly how the fact ends up disagreeing with itself.
+ */
+function resolveMorph(
+  link: BlueprintRelationLink,
+  parentName: string,
+  referenced: Blueprint,
+  problems: string[],
+): { foreignKey: string; discriminator?: string; discriminatorValue?: string } {
+  if (link.type !== 'morphMany') {
+    return { foreignKey: link.foreignKey as string };
+  }
+
+  const declaredHere =
+    link.foreignKey !== undefined ||
+    link.discriminator !== undefined ||
+    link.discriminatorValue !== undefined;
+
+  if (referenced.morph) {
+    if (declaredHere) {
+      problems.push(
+        `relation "${link.relation}" repeats what "${referenced.name}" already declares with "morph: ${referenced.morph}" -- remove foreignKey/discriminator/discriminatorValue here, or the morph there`,
+      );
+    }
+
+    return {
+      foreignKey: `${referenced.morph}Id`,
+      discriminator: `${referenced.morph}Type`,
+      discriminatorValue: pascalCase(parentName),
+    };
+  }
+
+  if (
+    link.foreignKey === undefined ||
+    link.discriminator === undefined ||
+    link.discriminatorValue === undefined
+  ) {
+    problems.push(
+      `relation "${link.relation}" is a morphMany, so either "${referenced.name}" declares "morph: <name>" or this link spells out foreignKey, discriminator and discriminatorValue`,
+    );
+  }
+
+  return {
+    foreignKey: link.foreignKey ?? '',
+    discriminator: link.discriminator,
+    discriminatorValue: link.discriminatorValue,
+  };
+}
+
 function resolveRelationLinks(
   blueprint: RawBlueprint,
   dir: string,
@@ -432,6 +503,7 @@ function resolveRelationLinks(
 
     includes.push({
       ...link,
+      ...resolveMorph(link, blueprint.name, referenced, problems),
       filters: referenced.filters,
       sorts: referenced.sorts,
       selects: [
@@ -453,6 +525,7 @@ function resolveRelationLinks(
 
     aggregates.push({
       ...link,
+      ...resolveMorph(link, blueprint.name, referenced, problems),
       filters: referenced.filters,
       fields: referenced.fields
         .filter((field) => field.type === 'int' && !field.hidden)
