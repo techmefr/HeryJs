@@ -60,3 +60,53 @@ describe('log mail driver', () => {
     );
   });
 });
+
+describe('escaping', () => {
+  /**
+   * The values a template carries are exactly the ones that come from a
+   * request -- a display name, a company, an order reference -- so anything a
+   * user typed used to reach the recipient's mail client as markup.
+   */
+  it('escapes markup a user typed', () => {
+    const { html } = renderTemplate('welcome', {
+      name: '<script>alert(1)</script>',
+      app: 'HeryJs',
+    });
+
+    expect(html).not.toContain('<script>');
+    expect(html).toContain('&lt;script&gt;');
+  });
+
+  it('escapes the characters that break out of an attribute', () => {
+    const { html } = renderTemplate('welcome', {
+      name: `" onmouseover='x'`,
+      app: 'HeryJs',
+    });
+
+    expect(html).toContain('&quot;');
+    expect(html).toContain('&#39;');
+    expect(html).not.toContain("onmouseover='x'");
+  });
+
+  // Escaped first, so a value containing &lt; does not become &amp;lt;.
+  it('escapes an ampersand once, not twice', () => {
+    const { html } = renderTemplate('welcome', { name: 'A & B', app: 'X' });
+
+    expect(html).toContain('A &amp; B');
+    expect(html).not.toContain('&amp;amp;');
+  });
+
+  // Plain text in every mail client, so escaping it would show a reader
+  // `&amp;` where they wrote `&`.
+  it('leaves the subject unescaped, because it is not markup', () => {
+    const { subject } = renderTemplate('welcome', { name: 'x', app: 'A & B' });
+
+    expect(subject).toBe('Welcome to A & B');
+  });
+
+  it('keeps the template author markup intact', () => {
+    const { html } = renderTemplate('welcome', { name: 'Ada', app: 'HeryJs' });
+
+    expect(html).toBe('<p>Hi Ada, welcome to HeryJs.</p>');
+  });
+});
