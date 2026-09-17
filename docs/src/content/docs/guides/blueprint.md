@@ -118,9 +118,6 @@ includes:
   - relation: comments
     resource: Comment
     type: morphMany
-    foreignKey: commentableId
-    discriminator: commentableType
-    discriminatorValue: BlogPost
 aggregates:
   - relation: notes
     resource: BlogPostNote
@@ -128,7 +125,24 @@ aggregates:
     foreignKey: blogPostId
 ```
 
-`hasMany` is a real Prisma relation, so `foreignKey` is the column the related model points back with. `morphMany` has no Prisma-level relation at all — Prisma does not model polymorphic associations — so the related model's own discriminator column and the value it holds for _this_ resource have to be declared; there is nothing to introspect. Both require `discriminator` and `discriminatorValue`, and a blueprint that omits either on a `morphMany` is rejected.
+`hasMany` is a real Prisma relation, so `foreignKey` is the column the related model points back with.
+
+`morphMany` has no Prisma-level relation at all — Prisma does not model polymorphic associations — so the columns have to be declared somewhere. **The child declares them once:**
+
+```yaml
+# comment.yaml
+name: Comment
+routed: false
+morph: commentable
+```
+
+`morph: commentable` means the columns are `commentableId` and `commentableType`, and every parent pointing at this resource gets its own name as the discriminator value. A parent then only names the relation.
+
+That last part is why this exists. The discriminator value is _always_ the parent's own name, and it used to be written by hand in every parent — so a copy-paste that kept the previous parent's value was both silent and wrong: the include returned nothing, or worse, someone else's rows.
+
+Declaring it in both places is **refused**, not merged. Two sources for one fact is exactly how the fact ends up disagreeing with itself.
+
+A child you do not own — a table whose columns are named something else entirely — still works the old way: spell out `foreignKey`, `discriminator` and `discriminatorValue` on the link, and declare no `morph` on the child. A `morphMany` that names neither is rejected.
 
 The referenced resource's own blueprint is what supplies the nested contract: the `filters`, `sorts` and `selects` a request may name _inside_ an include come from there rather than being retyped on every parent that includes it. That is what `routed: false` is for — a resource generated with no controller, no service and no capabilities of its own, existing only to describe the shape of a relation once.
 
