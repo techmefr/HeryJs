@@ -24,6 +24,7 @@ const TENANT_SCOPED_MODELS = new Set<string>([
   'Tag',
   'Comment',
   'AppNotification',
+  'SmsConsent',
 ]);
 
 /**
