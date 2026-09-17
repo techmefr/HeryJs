@@ -1,6 +1,11 @@
 name: Comment
 routed: false
 
+# Declared once here: the columns are commentableId and commentableType, and
+# every parent that points at this resource inherits them, with its own name as
+# the discriminator value.
+morph: commentable
+
 fields:
   - name: body
     type: string
