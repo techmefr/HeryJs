@@ -541,6 +541,21 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  packages/push:
+    devDependencies:
+      '@nestjs/common':
+        specifier: ^12.0.1
+        version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      heryjs:
+        specifier: workspace:*
+        version: link:../..
+      picocolors:
+        specifier: ^1.1.1
+        version: 1.1.1
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
   packages/search-elasticsearch:
     devDependencies:
       '@elastic/elasticsearch':
