@@ -72,4 +72,5 @@ export interface HeryConfig {
   import?: HeryConfigDrivers;
   storage?: HeryConfigDrivers;
   httpClient?: HeryConfigDrivers;
+  featureFlags?: HeryConfigDrivers;
 }
