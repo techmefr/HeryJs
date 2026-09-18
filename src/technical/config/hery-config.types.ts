@@ -24,6 +24,15 @@ export interface HeryConfigDrivers {
   drivers: Record<string, HeryConfigDriver>;
 }
 
+/**
+ * The mapping this framework can supply without taking a product decision it
+ * has no business taking: a plan name to the numeric limit it grants a named
+ * feature. What a plan is called, what it costs and what proration on a swap
+ * does are not framework questions -- see the research behind #34 -- but "the
+ * pro plan allows 50 projects" is a fact a project can simply declare.
+ */
+export type HeryConfigBillingQuotas = Record<string, Record<string, number>>;
+
 export interface HeryConfigPruneRule {
   retentionDays: number;
   lock?: boolean;
@@ -72,4 +81,16 @@ export interface HeryConfig {
   import?: HeryConfigDrivers;
   storage?: HeryConfigDrivers;
   httpClient?: HeryConfigDrivers;
+  sms?: HeryConfigDrivers;
+  push?: HeryConfigDrivers;
+  billing?: HeryConfigDrivers;
+  billingQuotas?: HeryConfigBillingQuotas;
+  /**
+   * A plan name granted to a tenant with no subscription at all, for the
+   * common freemium shape. Absent by default: a tenant with no matching
+   * subscription is refused, not silently unlimited, because failing open on
+   * a missing subscription is the reading that gives away the product for
+   * free to anyone the mirror has not heard from yet.
+   */
+  billingFreePlan?: string;
 }

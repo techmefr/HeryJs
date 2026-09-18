@@ -1,9 +1,6 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { HERY_CONFIG } from '#technical/config/hery-config';
-import type {
-  HeryConfig,
-  HeryConfigDrivers,
-} from '#technical/config/hery-config.types';
+import type { HeryConfig } from '#technical/config/hery-config.types';
 import {
   DriverResolver,
   missingDriverMessage,
@@ -13,11 +10,6 @@ import type { PushDriver } from '#technical/push/push-driver';
 import { LogPushDriver } from './log-push.driver';
 
 const BUILTIN_DRIVER = 'log';
-
-// `push` is still pending on HeryConfig, which this module does not own.
-function pushSlice(config: HeryConfig): HeryConfigDrivers | undefined {
-  return (config as { push?: HeryConfigDrivers }).push;
-}
 
 @Injectable()
 export class PushDriverRegistry implements OnModuleInit {
@@ -30,7 +22,7 @@ export class PushDriverRegistry implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    const declared = pushSlice(this.config)?.drivers ?? {
+    const declared = this.config.push?.drivers ?? {
       [BUILTIN_DRIVER]: { driver: BUILTIN_DRIVER },
     };
 
@@ -51,7 +43,7 @@ export class PushDriverRegistry implements OnModuleInit {
       this.drivers.set(keyword, driver);
     }
 
-    const active = pushSlice(this.config)?.default ?? BUILTIN_DRIVER;
+    const active = this.config.push?.default ?? BUILTIN_DRIVER;
 
     if (!this.drivers.has(active)) {
       throw new Error(
@@ -61,7 +53,7 @@ export class PushDriverRegistry implements OnModuleInit {
   }
 
   get active(): PushDriver {
-    const keyword = pushSlice(this.config)?.default ?? BUILTIN_DRIVER;
+    const keyword = this.config.push?.default ?? BUILTIN_DRIVER;
     const driver = this.drivers.get(keyword);
 
     if (!driver) {

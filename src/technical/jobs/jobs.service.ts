@@ -4,6 +4,7 @@ import type { Queue } from 'bullmq';
 import { jobOptions } from './job-policy';
 import type { JobPolicy } from './job-policy';
 import {
+  BILLING_QUEUE,
   DEFAULT_QUEUE,
   EVENTS_QUEUE,
   EXPORT_QUEUE,
@@ -19,12 +20,14 @@ export class JobsService {
     @InjectQueue(EXPORT_QUEUE) exports: Queue,
     @InjectQueue(IMPORT_QUEUE) imports: Queue,
     @InjectQueue(EVENTS_QUEUE) events: Queue,
+    @InjectQueue(BILLING_QUEUE) billing: Queue,
   ) {
     this.queues = {
       [DEFAULT_QUEUE]: queue,
       [EXPORT_QUEUE]: exports,
       [IMPORT_QUEUE]: imports,
       [EVENTS_QUEUE]: events,
+      [BILLING_QUEUE]: billing,
     };
   }
 

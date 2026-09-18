@@ -341,3 +341,24 @@ model PushToken {
   @@index([tenantId, userId])
   @@index([lastSeenAt])
 }
+
+// The local truth about what a tenant is subscribed to, refreshed from the
+// provider's own webhook rather than queried from it on every request. Keyed
+// on (provider, providerSubscriptionId) rather than on tenantId alone: a
+// tenant may hold more than one subscription, one per product sold
+// separately, and a single row per tenant would make a second subscription
+// overwrite the first.
+model BillingSubscription {
+  id                     String   @id @default(cuid())
+  tenantId               String
+  provider               String
+  providerSubscriptionId String
+  plan                   String
+  status                 String
+  currentPeriodEnd       DateTime
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@unique([provider, providerSubscriptionId])
+  @@index([tenantId])
+}
