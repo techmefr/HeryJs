@@ -53,7 +53,15 @@ export class LockHandle {
     // stops renewing, and the TTL is what frees the lock in that case.
     this.heartbeat = setInterval(
       () => {
-        void this.client.eval(RENEW_SCRIPT, 1, this.key, this.token, ttlMs);
+        // Fire-and-forget: a renewal that loses its connection (the process
+        // is quitting, the client already called .quit()) is not a failure
+        // this handle needs to surface -- the TTL is exactly what's meant to
+        // free the lock when nothing is renewing it anymore. Left uncaught,
+        // that rejection becomes unhandled and can crash a later, unrelated
+        // test file sharing this worker process.
+        this.client
+          .eval(RENEW_SCRIPT, 1, this.key, this.token, ttlMs)
+          .catch(() => undefined);
       },
       Math.floor(ttlMs / 3),
     );
