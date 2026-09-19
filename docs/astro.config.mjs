@@ -102,6 +102,7 @@ export default defineConfig({
                 { label: 'Full-text search', slug: 'guides/search' },
                 { label: 'Realtime', slug: 'guides/realtime' },
                 { label: 'Mail', slug: 'guides/mail' },
+                { label: 'Notifier', slug: 'guides/notifier' },
                 { label: 'Storage', slug: 'guides/storage' },
                 { label: 'Export', slug: 'guides/export' },
                 { label: 'Import', slug: 'guides/import' },
