@@ -2,7 +2,8 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "paths": {
-      "#kernel/*": ["../src/technical/*"]
+      "#kernel/*": ["../src/technical/*"],
+      "#modules/*": ["../src/modules/*"]
     }
   },
   "include": ["../packages/*/src", "../packages/*/test"],

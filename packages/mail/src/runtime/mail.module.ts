@@ -5,6 +5,7 @@ import { HeryConfigModule } from '#kernel/config/hery-config.module';
 import { DriversModule } from '#kernel/drivers/drivers.module';
 import { JobsModule } from '#kernel/jobs/jobs.module';
 import { PrismaModule } from '#kernel/prisma/prisma.module';
+import { NOTIFIER_MAIL_CHANNEL } from '#kernel/notifier/notifier-mail-channel';
 import { AUTH_MAILER_PROVIDER, AuthMailAdapter } from './auth-mail.adapter';
 import { LogMailDriver } from './log-mail.driver';
 import { MailController } from './mail.controller';
@@ -31,7 +32,11 @@ import { MailService } from './mail.service';
     LogMailDriver,
     AuthMailAdapter,
     AUTH_MAILER_PROVIDER,
+    // Lets the notifier module reach mail without importing it -- see
+    // `#kernel/notifier/notifier-mail-channel` for why this is a token rather
+    // than an export.
+    { provide: NOTIFIER_MAIL_CHANNEL, useExisting: MailService },
   ],
-  exports: [MailService, AUTH_MAILER],
+  exports: [MailService, AUTH_MAILER, NOTIFIER_MAIL_CHANNEL],
 })
 export class MailModule {}

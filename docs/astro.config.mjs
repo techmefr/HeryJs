@@ -106,6 +106,7 @@ export default defineConfig({
                   slug: 'guides/peer',
                 },
                 { label: 'Mail', slug: 'guides/mail' },
+                { label: 'Notifier', slug: 'guides/notifier' },
                 { label: 'Storage', slug: 'guides/storage' },
                 { label: 'Export', slug: 'guides/export' },
                 { label: 'Import', slug: 'guides/import' },

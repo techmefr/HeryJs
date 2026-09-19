@@ -46,9 +46,11 @@ describe('what a module has to publish', () => {
   // added export, import and http-client, plus the driver packages that land
   // inside the module they extend (mail-resend, export-xlsx, export-pdf,
   // billing-stripe landing inside billing), plus sms, push and billing, plus
-  // peer: WebRTC signalling and TURN credentials over the live gateway.
+  // peer (WebRTC signalling and TURN credentials over the live gateway) and
+  // notifier (the facade that composes mail, sms and push rather than adding
+  // a fourth driver registry).
   it('found the modules to check', () => {
-    expect(MODULES).toHaveLength(22);
+    expect(MODULES).toHaveLength(23);
   });
 
   it.each(MODULES.map((module) => [module.name, module] as const))(

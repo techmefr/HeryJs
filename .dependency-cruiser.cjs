@@ -41,10 +41,10 @@ module.exports = {
     {
       name: 'no-cross-module-imports',
       comment:
-        'A module must not import another module directly, or uninstalling one would break the other. Shared logic belongs in technical/.',
+        'A module must not import another module directly, or uninstalling one would break the other. Shared logic belongs in technical/. notifier is the one declared exception: it is a facade that composes mail, sms and push rather than an independent, driver-swappable module, and its own install() says so in its nextSteps -- so importing the three it names is a stated dependency, not an accidental one.',
       severity: 'error',
       from: {
-        path: '^src/modules/([^/]+)/',
+        path: '^src/modules/(?!notifier/)([^/]+)/',
       },
       to: {
         path: '^src/modules/([^/]+)/',
