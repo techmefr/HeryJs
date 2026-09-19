@@ -128,11 +128,7 @@ export class SseStreamService implements OnModuleDestroy {
     lastEventId: string,
   ): Promise<SseEntry[]> {
     const key = streamKey(tenantId, channel);
-    const entries = await this.publisher.xrange(
-      key,
-      `(${lastEventId}`,
-      '+',
-    );
+    const entries = await this.publisher.xrange(key, `(${lastEventId}`, '+');
 
     return entries.map(([id, fields]) => toEntry(id, fields));
   }
@@ -161,13 +157,7 @@ export class SseStreamService implements OnModuleDestroy {
         let result: [string, [string, string[]][]][] | null;
 
         try {
-          result = await client.xread(
-            'BLOCK',
-            25000,
-            'STREAMS',
-            key,
-            cursor,
-          );
+          result = await client.xread('BLOCK', 25000, 'STREAMS', key, cursor);
         } catch {
           // The connection was quit from stop() mid-block; xread rejects and
           // the loop exits rather than retrying against a dead client.
@@ -190,7 +180,7 @@ export class SseStreamService implements OnModuleDestroy {
     void loop();
 
     return {
-      stop: async () => {
+      stop: () => {
         stopped = true;
         this.subscribers.delete(client);
         // disconnect(), not quit(): the connection is parked inside a
@@ -200,6 +190,7 @@ export class SseStreamService implements OnModuleDestroy {
         // immediately, which the read loop above already treats as its exit
         // signal.
         client.disconnect();
+        return Promise.resolve();
       },
     };
   }
