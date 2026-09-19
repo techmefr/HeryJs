@@ -14,7 +14,7 @@ import { mergeOutcome, partitionRows } from './import-rows.validator';
  */
 export interface BoundImport {
   read(body: Buffer, importable: Importable): Promise<ImportOutcome>;
-  queue(body: Buffer, importable: Importable, userId: string): Promise<void>;
+  queue(key: string, importable: Importable, userId: string): Promise<void>;
 }
 
 @Injectable()
@@ -46,18 +46,18 @@ export class ImportService {
        * upload that delivered it. That is the same split export makes, from the
        * other end.
        *
-       * The trade-off is the same too, and just as real: the file travels
-       * through Redis as base64. An upload large enough for that to hurt wants
-       * to be written to storage first and the job given its key.
+       * The job carries a storage key rather than the file body: the caller
+       * writes the upload to storage first, and the worker reads it back
+       * through the storage contract when the job runs.
        */
-      queue: async (body, importable, userId) => {
+      queue: async (key, importable, userId) => {
         await this.jobs.dispatchTo(
           IMPORT_QUEUE,
           IMPORT_CONSUME_JOB,
           {
             format: format ?? this.registry.defaultKeyword,
             importable: importable.name,
-            body: body.toString('base64'),
+            key,
             userId,
           },
           IMPORT_CONSUME_POLICY,
