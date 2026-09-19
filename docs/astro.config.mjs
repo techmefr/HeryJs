@@ -55,6 +55,7 @@ export default defineConfig({
                 { label: 'Multi-tenancy', slug: 'guides/tenancy' },
                 { label: 'Security model', slug: 'guides/security' },
                 { label: 'Cache', slug: 'guides/cache' },
+                { label: 'Feature flags', slug: 'guides/feature-flags' },
                 { label: 'Rate limiting', slug: 'guides/rate-limiting' },
                 { label: 'Validation', slug: 'guides/validation' },
                 { label: 'API versioning', slug: 'guides/versioning' },
@@ -68,6 +69,7 @@ export default defineConfig({
                   slug: 'guides/exposing-actions',
                 },
                 { label: 'The events bus', slug: 'guides/events' },
+                { label: 'Distributed lock', slug: 'guides/lock' },
                 { label: 'Jobs', slug: 'guides/jobs' },
                 { label: 'Migrations', slug: 'guides/migrations' },
                 { label: 'Prune', slug: 'guides/prune' },
@@ -108,6 +110,7 @@ export default defineConfig({
                 { label: 'Impersonation', slug: 'guides/impersonation' },
                 { label: 'Webhooks', slug: 'guides/webhooks' },
                 { label: 'GraphQL and MCP', slug: 'guides/graphql-and-mcp' },
+                { label: 'Billing', slug: 'guides/billing' },
               ],
             },
             {
