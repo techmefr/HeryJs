@@ -99,6 +99,7 @@ export default defineConfig({
                 },
                 { label: 'Full-text search', slug: 'guides/search' },
                 { label: 'Realtime', slug: 'guides/realtime' },
+                { label: 'Server-Sent Events', slug: 'guides/sse' },
                 { label: 'Mail', slug: 'guides/mail' },
                 { label: 'Storage', slug: 'guides/storage' },
                 { label: 'Export', slug: 'guides/export' },
