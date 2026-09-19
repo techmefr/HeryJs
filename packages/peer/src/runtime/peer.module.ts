@@ -1,15 +1,15 @@
 import { Module } from '@nestjs/common';
-import { LiveModule } from '#modules/live/live.module';
+import { AuthModule } from '#kernel/auth/auth.module';
 import { PeerGateway } from './peer.gateway';
 import { PeerRoomPresenceService } from './peer-room-presence.service';
 import { PeerTurnCredentialsService } from './peer-turn-credentials.service';
 
-// Imports LiveModule rather than redeclaring its own AuthModule wiring: the
-// whole point of signalling over the live gateway is one auth path, and
-// LiveAuthGuard is where that path lives. A second copy of it would be the
-// second auth path the issue this module closes explicitly warns against.
+// Imports AuthModule directly rather than LiveModule: SocketAuthGuard now
+// lives in the kernel (#kernel/websocket), so peer reaches the same auth
+// path `live` uses without reaching into `live` itself. One auth path
+// shared through the kernel, not a second module import between siblings.
 @Module({
-  imports: [LiveModule],
+  imports: [AuthModule],
   providers: [PeerGateway, PeerRoomPresenceService, PeerTurnCredentialsService],
   exports: [PeerTurnCredentialsService],
 })

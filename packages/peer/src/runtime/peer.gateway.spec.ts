@@ -1,5 +1,5 @@
 import type { AuthenticatedUser, AuthProvider } from '#kernel/auth/auth.types';
-import type { LiveSocket } from '#modules/live/live-auth.guard';
+import type { AuthenticatedSocket } from '#kernel/websocket/socket-auth.guard';
 import { PeerGateway } from './peer.gateway';
 import { PeerRoomPresenceService } from './peer-room-presence.service';
 import { PeerTurnCredentialsService } from './peer-turn-credentials.service';
@@ -23,7 +23,7 @@ function socketFor(id: string, user: AuthenticatedUser) {
     join: jest.fn().mockResolvedValue(undefined),
     leave: jest.fn().mockResolvedValue(undefined),
     to: jest.fn().mockReturnValue({ emit: jest.fn() }),
-  } as unknown as LiveSocket & {
+  } as unknown as AuthenticatedSocket & {
     join: jest.Mock;
     leave: jest.Mock;
     to: jest.Mock;

@@ -13,11 +13,11 @@ import { AUTH_PROVIDER } from '#kernel/auth/auth.types';
 import type { AuthProvider } from '#kernel/auth/auth.types';
 import { subjectOf } from '#kernel/capabilities/subject';
 import {
-  authenticateLiveSocket,
-  LiveAuthGuard,
-} from '#modules/live/live-auth.guard';
-import type { LiveSocket } from '#modules/live/live-auth.guard';
-import { withTenant } from '#modules/live/with-tenant';
+  authenticateSocket,
+  SocketAuthGuard,
+} from '#kernel/websocket/socket-auth.guard';
+import type { AuthenticatedSocket } from '#kernel/websocket/socket-auth.guard';
+import { withTenant } from '#kernel/websocket/with-tenant';
 import { PeerRoomPresenceService } from './peer-room-presence.service';
 import { PeerTurnCredentialsService } from './peer-turn-credentials.service';
 import { canJoinPeerRoom, canViewPeerRoomParticipants } from './peer.policy';
@@ -38,11 +38,11 @@ interface SignalBody {
 // recording, no server-side decoding, on purpose (see the peer guide).
 //
 // It rides the same "/peer" Socket.IO namespace and the live module's own
-// LiveAuthGuard/withTenant rather than opening a second gateway or a second
+// SocketAuthGuard/withTenant rather than opening a second gateway or a second
 // auth path: a second WebSocket server is exactly how a tenant boundary gets
 // lost, per the issue this module closes.
 @WebSocketGateway({ namespace: '/peer' })
-@UseGuards(LiveAuthGuard)
+@UseGuards(SocketAuthGuard)
 export class PeerGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   private readonly server!: Server;
@@ -53,8 +53,8 @@ export class PeerGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @Inject(AUTH_PROVIDER) private readonly authProvider: AuthProvider,
   ) {}
 
-  async handleConnection(client: LiveSocket) {
-    const authenticated = await authenticateLiveSocket(
+  async handleConnection(client: AuthenticatedSocket) {
+    const authenticated = await authenticateSocket(
       client,
       this.authProvider,
     );
@@ -69,7 +69,7 @@ export class PeerGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // so every room the presence service still has this socket in is closed
   // out here and the remaining participants are told the peer is gone --
   // otherwise they would wait forever for a "leave" that never arrives.
-  handleDisconnect(client: LiveSocket) {
+  handleDisconnect(client: AuthenticatedSocket) {
     const left = this.presence.disconnect(client.id);
 
     for (const { room, participant } of left) {
@@ -82,7 +82,7 @@ export class PeerGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('join-room')
   joinRoom(
-    @ConnectedSocket() client: LiveSocket,
+    @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() body: JoinRoomBody,
   ) {
     return withTenant(client, async () => {
@@ -109,7 +109,7 @@ export class PeerGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('leave-room')
   leaveRoom(
-    @ConnectedSocket() client: LiveSocket,
+    @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() body: JoinRoomBody,
   ) {
     const participant = this.presence.leave(body.room, client.id);
@@ -126,7 +126,7 @@ export class PeerGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('participants')
   participants(
-    @ConnectedSocket() client: LiveSocket,
+    @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() body: JoinRoomBody,
   ) {
     const subject = subjectOf(client.data.user);
@@ -143,7 +143,7 @@ export class PeerGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // moves it between the two clients that go on to negotiate directly.
   @SubscribeMessage('offer')
   offer(
-    @ConnectedSocket() client: LiveSocket,
+    @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() body: SignalBody,
   ) {
     return this.relay('offer', client, body);
@@ -151,7 +151,7 @@ export class PeerGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('answer')
   answer(
-    @ConnectedSocket() client: LiveSocket,
+    @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() body: SignalBody,
   ) {
     return this.relay('answer', client, body);
@@ -159,7 +159,7 @@ export class PeerGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('ice-candidate')
   iceCandidate(
-    @ConnectedSocket() client: LiveSocket,
+    @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() body: SignalBody,
   ) {
     return this.relay('ice-candidate', client, body);
@@ -169,13 +169,13 @@ export class PeerGateway implements OnGatewayConnection, OnGatewayDisconnect {
   // holds one longer than the call it asked for -- see PeerTurnCredentialsService
   // for the coturn use-auth-secret HMAC that makes them unforgeable.
   @SubscribeMessage('turn-credentials')
-  turnCredentials(@ConnectedSocket() client: LiveSocket) {
+  turnCredentials(@ConnectedSocket() client: AuthenticatedSocket) {
     return this.turnCredentialsService.mint(client.data.user.id);
   }
 
   private relay(
     event: 'offer' | 'answer' | 'ice-candidate',
-    client: LiveSocket,
+    client: AuthenticatedSocket,
     body: SignalBody,
   ) {
     const inRoom = this.presence
