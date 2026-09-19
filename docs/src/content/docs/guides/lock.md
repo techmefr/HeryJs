@@ -1,6 +1,6 @@
 ---
 title: Distributed lock
-description: "Only one of these may run at a time," across every instance a project runs, not only inside one.
+description: "\"Only one of these may run at a time,\" across every instance a project runs, not only inside one."
 ---
 
 `@Cron` fires on every instance. Two pods means every scheduled task runs
