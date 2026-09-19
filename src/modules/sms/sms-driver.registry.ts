@@ -1,9 +1,6 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { HERY_CONFIG } from '#technical/config/hery-config';
-import type {
-  HeryConfig,
-  HeryConfigDrivers,
-} from '#technical/config/hery-config.types';
+import type { HeryConfig } from '#technical/config/hery-config.types';
 import {
   DriverResolver,
   missingDriverMessage,
@@ -13,11 +10,6 @@ import type { SmsDriver } from '#technical/sms/sms-driver';
 import { LogSmsDriver } from './log-sms.driver';
 
 const BUILTIN_DRIVER = 'log';
-
-// `sms` is still pending on HeryConfig, which this module does not own.
-function smsSlice(config: HeryConfig): HeryConfigDrivers | undefined {
-  return (config as { sms?: HeryConfigDrivers }).sms;
-}
 
 /**
  * Single active driver, like mail: a caller says "send this", never "send this
@@ -36,7 +28,7 @@ export class SmsDriverRegistry implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    const declared = smsSlice(this.config)?.drivers ?? {
+    const declared = this.config.sms?.drivers ?? {
       [BUILTIN_DRIVER]: { driver: BUILTIN_DRIVER },
     };
 
@@ -57,7 +49,7 @@ export class SmsDriverRegistry implements OnModuleInit {
       this.drivers.set(keyword, driver);
     }
 
-    const active = smsSlice(this.config)?.default ?? BUILTIN_DRIVER;
+    const active = this.config.sms?.default ?? BUILTIN_DRIVER;
 
     if (!this.drivers.has(active)) {
       throw new Error(
@@ -67,7 +59,7 @@ export class SmsDriverRegistry implements OnModuleInit {
   }
 
   get active(): SmsDriver {
-    const keyword = smsSlice(this.config)?.default ?? BUILTIN_DRIVER;
+    const keyword = this.config.sms?.default ?? BUILTIN_DRIVER;
     const driver = this.drivers.get(keyword);
 
     if (!driver) {

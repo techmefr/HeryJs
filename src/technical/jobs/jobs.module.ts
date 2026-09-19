@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import IORedis from 'ioredis';
 import { env } from '#technical/config/env';
 import {
+  BILLING_QUEUE,
   DEFAULT_QUEUE,
   EVENTS_QUEUE,
   EXPORT_QUEUE,
@@ -34,6 +35,7 @@ import { JobsService } from './jobs.service';
     BullModule.registerQueue({ name: EXPORT_QUEUE }),
     BullModule.registerQueue({ name: IMPORT_QUEUE }),
     BullModule.registerQueue({ name: EVENTS_QUEUE }),
+    BullModule.registerQueue({ name: BILLING_QUEUE }),
   ],
   providers: [JobsService],
   exports: [BullModule, JobsService],
