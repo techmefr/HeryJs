@@ -55,6 +55,7 @@ export default defineConfig({
                 { label: 'Multi-tenancy', slug: 'guides/tenancy' },
                 { label: 'Security model', slug: 'guides/security' },
                 { label: 'Cache', slug: 'guides/cache' },
+                { label: 'Feature flags', slug: 'guides/feature-flags' },
                 { label: 'Rate limiting', slug: 'guides/rate-limiting' },
                 { label: 'Validation', slug: 'guides/validation' },
                 { label: 'API versioning', slug: 'guides/versioning' },
