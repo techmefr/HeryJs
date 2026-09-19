@@ -42,12 +42,12 @@ async function copiedFromPackageRoot(
  * way, and nothing in the manifest says so.
  */
 describe('what a module has to publish', () => {
-  // Eight more than the original eleven: the module-and-driver convention added
-  // export, import and http-client, plus the three driver packages that land
-  // inside the module they extend (mail-resend, export-xlsx, export-pdf), plus
-  // sms and push.
+  // Ten more than the original eleven: the module-and-driver convention added
+  // export, import and http-client, plus the driver packages that land inside
+  // the module they extend (mail-resend, export-xlsx, export-pdf), plus sms,
+  // push and billing, plus billing-stripe landing inside billing.
   it('found the modules to check', () => {
-    expect(MODULES).toHaveLength(19);
+    expect(MODULES).toHaveLength(21);
   });
 
   it.each(MODULES.map((module) => [module.name, module] as const))(
