@@ -108,6 +108,7 @@ export default defineConfig({
                 { label: 'Impersonation', slug: 'guides/impersonation' },
                 { label: 'Webhooks', slug: 'guides/webhooks' },
                 { label: 'GraphQL and MCP', slug: 'guides/graphql-and-mcp' },
+                { label: 'Billing', slug: 'guides/billing' },
               ],
             },
             {
