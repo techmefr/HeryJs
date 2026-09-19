@@ -24,6 +24,7 @@ export interface StoredObject {
 
 export interface StorageDriver {
   put(key: string, body: Buffer, contentType: string): Promise<StoredObject>;
+  get(key: string): Promise<Buffer>;
   remove(key: string): Promise<void>;
   signedUrl(key: string, expiresInSeconds?: number): Promise<string>;
 }

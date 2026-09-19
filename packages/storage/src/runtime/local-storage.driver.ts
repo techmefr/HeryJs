@@ -117,8 +117,12 @@ export class LocalStorageDriver implements StorageDriver {
     );
   }
 
-  async read(key: string): Promise<Buffer> {
+  async get(key: string): Promise<Buffer> {
     return readFile(insideRoot(key));
+  }
+
+  async read(key: string): Promise<Buffer> {
+    return this.get(key);
   }
 
   private sign(key: string, exp: number): string {

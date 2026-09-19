@@ -49,6 +49,18 @@ export class S3StorageDriver implements StorageDriver {
     return { key, contentType };
   }
 
+  async get(key: string): Promise<Buffer> {
+    const { Body } = await this.client.send(
+      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+    );
+
+    if (!Body) {
+      return Buffer.alloc(0);
+    }
+
+    return Buffer.from(await Body.transformToByteArray());
+  }
+
   async remove(key: string): Promise<void> {
     await this.client.send(
       new DeleteObjectCommand({ Bucket: this.bucket, Key: key }),

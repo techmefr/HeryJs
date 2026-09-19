@@ -47,6 +47,13 @@ describe('local storage keys', () => {
   );
 
   it.each(ESCAPING_KEYS)(
+    'refuses to get outside the root with %s',
+    async (key) => {
+      await expect(driver.get(key)).rejects.toThrow(InvalidStorageKeyException);
+    },
+  );
+
+  it.each(ESCAPING_KEYS)(
     'refuses to remove outside the root with %s',
     async (key) => {
       await expect(driver.remove(key)).rejects.toThrow(
@@ -58,6 +65,9 @@ describe('local storage keys', () => {
   it('still stores and reads back a key inside the root', async () => {
     await driver.put('inside.txt', Buffer.from('kept'), 'text/plain');
     await expect(driver.read('inside.txt')).resolves.toEqual(
+      Buffer.from('kept'),
+    );
+    await expect(driver.get('inside.txt')).resolves.toEqual(
       Buffer.from('kept'),
     );
     await expect(

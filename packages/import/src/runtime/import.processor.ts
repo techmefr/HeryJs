@@ -2,11 +2,14 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Logger } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import type { Job } from 'bullmq';
+import { DriverResolver } from '#kernel/drivers/driver-resolver';
 import { IMPORT_QUEUE } from '#kernel/jobs/jobs.constants';
 import { NOTIFICATION_PROVIDER } from '#kernel/notifications/notification.types';
 import type { NotificationProvider } from '#kernel/notifications/notification.types';
 import { importableToken } from '#kernel/import/import-driver';
 import type { Importable } from '#kernel/import/import-driver';
+import { STORAGE_MODULE } from '#kernel/storage/storage-driver';
+import type { StorageDriver } from '#kernel/storage/storage-driver';
 import {
   IMPORT_CONSUME_JOB,
   IMPORT_DONE_NOTIFICATION,
@@ -17,7 +20,7 @@ import { mergeOutcome, partitionRows } from './import-rows.validator';
 interface ImportJobData {
   format: string;
   importable: string;
-  body: string;
+  key: string;
   userId: string;
 }
 
@@ -28,6 +31,7 @@ export class ImportProcessor extends WorkerHost {
   constructor(
     private readonly registry: ImportDriverRegistry,
     private readonly moduleRef: ModuleRef,
+    private readonly resolver: DriverResolver,
     @Inject(NOTIFICATION_PROVIDER)
     private readonly notifications: NotificationProvider,
   ) {
@@ -39,7 +43,7 @@ export class ImportProcessor extends WorkerHost {
       return;
     }
 
-    const { format, importable, body, userId } = job.data as ImportJobData;
+    const { format, importable, key, userId } = job.data as ImportJobData;
 
     const target = this.find(importable);
 
@@ -50,8 +54,18 @@ export class ImportProcessor extends WorkerHost {
       return;
     }
 
+    const storage = this.resolver.find<StorageDriver>(STORAGE_MODULE, 'local');
+
+    if (!storage) {
+      this.logger.error(
+        `Queued import named "${importable}" but no storage driver is installed to read key "${key}" back. Run "pnpm hery install storage".`,
+      );
+      return;
+    }
+
+    const body = await storage.get(key);
     const driver = this.registry.resolve(format);
-    const parsed = await driver.parse(Buffer.from(body, 'base64'));
+    const parsed = await driver.parse(body);
     const { valid, errors } = partitionRows(parsed, target.columns);
     const consumed = await target.consume(valid);
     const outcome = mergeOutcome(
