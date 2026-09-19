@@ -26,8 +26,10 @@ function stubMail(sent: MailMessage[], fail = false): NotifierMailChannel {
         return Promise.reject(new Error('smtp refused'));
       }
 
+      // Mirrors mail.service.ts's own `{ ...message, to: mailable.to }`:
+      // the wrapper's `to` is authoritative over whatever `build()` renders.
       return Promise.resolve(mailable.build()).then((message) => {
-        sent.push(message);
+        sent.push({ ...message, to: mailable.to });
       });
     },
   };
@@ -210,10 +212,13 @@ describe('NotifierService', () => {
   });
 
   it('reports push as failed once every device refuses, and skipped once none exist', async () => {
+    // `wire` rewires the same module-level token every call, so a second
+    // wire before the first send is awaited would resolve under the wrong
+    // stub -- each stub has to be wired and consumed before the next.
     const failed = wire({ delivery: { sent: 0, expired: 1, failed: 0 } });
-    const none = wire({ delivery: { sent: 0, expired: 0, failed: 0 } });
-
     const failedResult = await failed.send(recipient, new OrderShipped());
+
+    const none = wire({ delivery: { sent: 0, expired: 0, failed: 0 } });
     const noneResult = await none.send(recipient, new OrderShipped());
 
     expect(failedResult).toContainEqual({
