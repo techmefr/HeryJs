@@ -99,6 +99,10 @@ export default defineConfig({
                 },
                 { label: 'Full-text search', slug: 'guides/search' },
                 { label: 'Realtime', slug: 'guides/realtime' },
+                {
+                  label: 'Peer-to-peer signalling',
+                  slug: 'guides/peer',
+                },
                 { label: 'Mail', slug: 'guides/mail' },
                 { label: 'Storage', slug: 'guides/storage' },
                 { label: 'Export', slug: 'guides/export' },

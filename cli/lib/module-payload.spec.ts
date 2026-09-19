@@ -45,9 +45,10 @@ describe('what a module has to publish', () => {
   // Eight more than the original eleven: the module-and-driver convention added
   // export, import and http-client, plus the three driver packages that land
   // inside the module they extend (mail-resend, export-xlsx, export-pdf), plus
-  // sms and push.
+  // sms and push. One more again for peer: WebRTC signalling and TURN
+  // credentials over the live gateway.
   it('found the modules to check', () => {
-    expect(MODULES).toHaveLength(19);
+    expect(MODULES).toHaveLength(20);
   });
 
   it.each(MODULES.map((module) => [module.name, module] as const))(
