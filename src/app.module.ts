@@ -29,6 +29,7 @@ import { WebhooksModule } from '#modules/webhooks/webhooks.module';
 import { InspectorMiddleware } from '#devtools/inspector/inspector.middleware';
 import { PipelineMiddleware } from '#devtools/pipeline/pipeline.middleware';
 import { SignalModule } from '#technical/signal/signal.module';
+import { SseModule } from '#modules/sse/sse.module';
 import { LocaleMiddleware } from '#technical/i18n/locale.middleware';
 import { TenantMiddleware } from '#technical/tenancy/tenant.middleware';
 import { DomainExceptionFilter } from '#technical/errors/domain-exception.filter';
@@ -90,6 +91,7 @@ import { redactedRequestSerializer } from '#technical/logging/redacted-request-s
     SchedulerModule,
     SeedersModule.forRoot([]),
     SignalModule,
+    SseModule,
     StorageModule,
     TeamsModule,
     WebhooksModule,

@@ -105,6 +105,7 @@ export default defineConfig({
                   label: 'Peer-to-peer signalling',
                   slug: 'guides/peer',
                 },
+                { label: 'Server-Sent Events', slug: 'guides/sse' },
                 { label: 'Mail', slug: 'guides/mail' },
                 { label: 'Notifier', slug: 'guides/notifier' },
                 { label: 'Storage', slug: 'guides/storage' },

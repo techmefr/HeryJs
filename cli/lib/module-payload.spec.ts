@@ -42,15 +42,16 @@ async function copiedFromPackageRoot(
  * way, and nothing in the manifest says so.
  */
 describe('what a module has to publish', () => {
-  // Eleven more than the original eleven: the module-and-driver convention
+  // Twelve more than the original eleven: the module-and-driver convention
   // added export, import and http-client, plus the driver packages that land
   // inside the module they extend (mail-resend, export-xlsx, export-pdf,
   // billing-stripe landing inside billing), plus sms, push and billing, plus
-  // peer (WebRTC signalling and TURN credentials over the live gateway) and
+  // peer (WebRTC signalling and TURN credentials over the live gateway),
   // notifier (the facade that composes mail, sms and push rather than adding
-  // a fourth driver registry).
+  // a fourth driver registry), and sse: a single-implementation module like
+  // live, with no driver of its own to swap.
   it('found the modules to check', () => {
-    expect(MODULES).toHaveLength(23);
+    expect(MODULES).toHaveLength(24);
   });
 
   it.each(MODULES.map((module) => [module.name, module] as const))(
