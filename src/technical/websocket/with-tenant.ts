@@ -1,0 +1,21 @@
+import { TenantContextStorage } from '#technical/tenancy/tenant-context';
+import type { AuthenticatedSocket } from './socket-auth.guard';
+
+// WebSocket message handlers never go through TenantMiddleware (it only
+// wraps the initial HTTP handshake, not each subsequent message on an
+// already-open connection), so each handler must open its own tenant
+// context explicitly, derived from the user resolved once at connection
+// time by SocketAuthGuard -- never trusted from a client-sent field.
+export function withTenant<T>(
+  client: AuthenticatedSocket,
+  fn: () => Promise<T>,
+): Promise<T> {
+  return TenantContextStorage.run(
+    {
+      tenantId: client.data.user.tenantId,
+      userId: client.data.user.id,
+      impersonatedBy: client.data.user.impersonatedBy,
+    },
+    fn,
+  );
+}

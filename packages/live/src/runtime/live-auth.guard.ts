@@ -1,47 +1,11 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  Inject,
-  Injectable,
-} from '@nestjs/common';
-import type { Socket } from 'socket.io';
-import { AUTH_PROVIDER } from '#kernel/auth/auth.types';
-import type { AuthenticatedUser, AuthProvider } from '#kernel/auth/auth.types';
-
-export type LiveSocket = Omit<Socket, 'data'> & {
-  data: { user: AuthenticatedUser };
-};
-
-export async function authenticateLiveSocket(
-  client: LiveSocket,
-  authProvider: AuthProvider,
-): Promise<boolean> {
-  if (client.data.user) {
-    return true;
-  }
-
-  const token = client.handshake.auth?.token as string | undefined;
-  if (!token) {
-    return false;
-  }
-
-  const user = await authProvider.validateSession(token);
-  if (!user) {
-    return false;
-  }
-
-  client.data.user = user;
-  return true;
-}
-
-@Injectable()
-export class LiveAuthGuard implements CanActivate {
-  constructor(
-    @Inject(AUTH_PROVIDER) private readonly authProvider: AuthProvider,
-  ) {}
-
-  canActivate(context: ExecutionContext): Promise<boolean> {
-    const client = context.switchToWs().getClient<LiveSocket>();
-    return authenticateLiveSocket(client, this.authProvider);
-  }
-}
+// The socket-auth mechanism moved to the kernel (#kernel/websocket) once a
+// second module (peer) needed the exact same auth path over its own
+// gateway -- a module reaching another module's guard is what the kernel
+// boundary exists to prevent. Re-exported here under live's own names so
+// nothing that already imports LiveAuthGuard/LiveSocket from this module
+// has to change.
+export {
+  authenticateSocket as authenticateLiveSocket,
+  SocketAuthGuard as LiveAuthGuard,
+} from '#kernel/websocket/socket-auth.guard';
+export type { AuthenticatedSocket as LiveSocket } from '#kernel/websocket/socket-auth.guard';
