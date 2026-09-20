@@ -25,6 +25,7 @@ export function buildServerSchema(nodeEnv: string | undefined) {
     SIGNAL_TOKEN_SECRET: devOnlySecret(
       'dev-signal-secret-change-in-production',
     ),
+    SSE_TOKEN_SECRET: devOnlySecret('dev-sse-secret-change-in-production'),
     STORAGE_URL_SECRET: devOnlySecret(
       'dev-storage-secret-change-in-production',
     ),

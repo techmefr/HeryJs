@@ -3,6 +3,7 @@ import { parseEnv } from './env';
 const SECRETS = [
   ['SIGNAL_TOKEN_SECRET', 'dev-signal-secret-change-in-production'],
   ['STORAGE_URL_SECRET', 'dev-storage-secret-change-in-production'],
+  ['SSE_TOKEN_SECRET', 'dev-sse-secret-change-in-production'],
 ] as const;
 
 const NAMES = SECRETS.map(([name]) => name);
