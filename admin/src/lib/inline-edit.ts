@@ -1,8 +1,9 @@
 import type { FormField, FormValue } from './form-schema';
+import type { ResourceRow } from './resource';
 
 export interface InlineEdit {
   fields: Map<string, FormField>;
-  canEdit: (row: { id: string; capabilities?: unknown }) => boolean;
+  canEdit: (row: ResourceRow) => boolean;
   // Resolves to a message when the change was refused, to null when it was kept.
   commit: (
     row: { id: string },
