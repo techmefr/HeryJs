@@ -13,6 +13,9 @@ category is called out here explicitly.
 
 First public release.
 
+### Circuit breaker and bulkhead on the HTTP client
+
+`HttpClientService` now keeps a circuit per host: consecutive timeouts, transport errors, 429s and 5xx answers open it, calls then fail fast with a typed `HttpCircuitOpenException` (503), and after a cooldown a probe call decides whether it closes. A per-host concurrency limit refuses the excess with `HttpBulkheadFullException`. Thresholds come from `httpClient.resilience` in `hery.config.ts`, and the fake driver is held to the same rules. State shows in the readiness probe (`http-circuits`) and in metrics (`http_client_circuit_state`, `http_client_in_flight`, `http_client_rejected_calls`). Admin-only routes under `/http-client/circuits` list circuits and open, close or re-tune one, and an **HTTP circuits** admin page drives them. **Upgrade note:** a project that installed `http-client` copies the new runtime files and the `HttpResilienceController` registration by hand, and an open circuit now fails the readiness probe unless `resilience.healthCheck` is `false`.
 ### Audit export and streaming
 
 The audit trail can be exported (CSV or JSON lines, filtered by date range, model, operation, record and user), its hash chain verified on demand with the first broken entry named, and new entries streamed to a sink (HTTP or object storage) through the outbox, with retry and dead letters. The admin gets an Audit page for all of it. Adds the `AuditSink` table (migration `add_audit_sink`) and `AUDIT_STREAM_ENABLED`, `AUDIT_STREAM_INTERVAL_SECONDS`, `AUDIT_SINK_ALLOW_PRIVATE_HOSTS`. `GET /audit-logs/verify` now answers `{ valid, checked, brokenAtSequence, headHash }`; `valid` is unchanged.
