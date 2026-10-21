@@ -13,9 +13,21 @@ export interface ExposedParam {
   spec: ExposedFieldSpec;
 }
 
+export interface ExposedCronTrigger {
+  expression: string;
+  tenantId: string;
+}
+
+export interface ExposedTriggers {
+  http?: boolean;
+  cron?: ExposedCronTrigger;
+  webhook?: boolean;
+}
+
 export interface ExposeActionOptions {
   capability: PolicyCheck;
   environments?: readonly ExposedEnvironment[];
+  triggers?: ExposedTriggers;
 }
 
 export interface ExposedActionMeta extends ExposeActionOptions {

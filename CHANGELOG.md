@@ -21,6 +21,10 @@ publish (the resolved-capability block, capability-dependent shapes, morph
 targets, included-row types) is stated as absent, not guessed. Nothing in a
 generated file changes.
 
+### Triggers for exposed actions
+
+`@ExposeAction` accepts `triggers`: `http: false` to leave the generic route, `cron` to run on a schedule (cluster-locked, in an explicit tenant), and `webhook` to let a signed webhook endpoint with `source: "expose:<action>"` run it. Adds a `cron` dependency. The webhooks module's service, controller, processor and module change; a project that installed it applies them by hand. Arbitrary user-defined code is not supported.
+
 ### Installing it
 
 Twelve packages, versioned together:

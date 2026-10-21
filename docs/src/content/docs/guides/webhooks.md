@@ -81,3 +81,7 @@ pnpm hery migrate --name add_webhooks
 ```
 
 Next steps after that are the usual ones: import `WebhooksModule` into `src/app.module.ts`, mint an endpoint as an admin, and hand its id and secret to whoever is sending you events.
+
+## Running an exposed action
+
+An endpoint minted with `source: "expose:<action>"` runs that [exposed action](../exposing-actions/#triggers-beyond-the-route) instead of notifying admins, with the payload as its params. See that guide for what it checks.
