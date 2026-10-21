@@ -8,10 +8,7 @@ import type { ScimUserState } from './scim-patch';
 import { parseUserBody, userInputFrom } from './scim-resources';
 
 export type ScimUserAction =
-  | 'created'
-  | 'updated'
-  | 'deactivated'
-  | 'reactivated';
+  'created' | 'updated' | 'deactivated' | 'reactivated';
 
 export interface ScimUserOutcome {
   row: ScimUserRow;

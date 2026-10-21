@@ -61,6 +61,9 @@ export function parseScimListQuery(
   return {
     filter: parseScimFilter(query.filter, kind),
     startIndex: Math.max(1, integer(query.startIndex, 1)),
-    count: Math.min(SCIM_MAX_COUNT, Math.max(0, integer(query.count, SCIM_MAX_COUNT))),
+    count: Math.min(
+      SCIM_MAX_COUNT,
+      Math.max(0, integer(query.count, SCIM_MAX_COUNT)),
+    ),
   };
 }

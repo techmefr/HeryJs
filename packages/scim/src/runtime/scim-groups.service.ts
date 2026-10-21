@@ -115,7 +115,9 @@ export class ScimGroupsService {
       return;
     }
 
-    const known = new Set(await this.store.existingUserIds(tenantId, memberIds));
+    const known = new Set(
+      await this.store.existingUserIds(tenantId, memberIds),
+    );
     const unknown = memberIds.filter((id) => !known.has(id));
 
     if (unknown.length > 0) {

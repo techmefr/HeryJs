@@ -11,7 +11,8 @@ export const SCIM_CONFIG_SCHEMA =
   'urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig';
 export const SCIM_RESOURCE_TYPE_SCHEMA =
   'urn:ietf:params:scim:schemas:core:2.0:ResourceType';
-export const SCIM_SCHEMA_SCHEMA = 'urn:ietf:params:scim:schemas:core:2.0:Schema';
+export const SCIM_SCHEMA_SCHEMA =
+  'urn:ietf:params:scim:schemas:core:2.0:Schema';
 
 export const SCIM_CONTENT_TYPE = 'application/scim+json';
 export const SCIM_MAX_COUNT = 100;

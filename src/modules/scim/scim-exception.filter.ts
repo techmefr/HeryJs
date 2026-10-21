@@ -37,11 +37,11 @@ export class ScimExceptionFilter implements ExceptionFilter {
       return {
         schemas: [SCIM_ERROR_SCHEMA],
         status: String(status),
-        ...(status === HttpStatus.BAD_REQUEST
+        ...(status === Number(HttpStatus.BAD_REQUEST)
           ? { scimType: 'invalidSyntax' as const }
           : {}),
         detail:
-          status < HttpStatus.INTERNAL_SERVER_ERROR
+          status < Number(HttpStatus.INTERNAL_SERVER_ERROR)
             ? exception.message
             : 'The SCIM service failed.',
       };

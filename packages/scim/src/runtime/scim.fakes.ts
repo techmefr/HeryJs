@@ -77,7 +77,10 @@ export class InMemoryScimDirectory implements ScimDirectoryStore {
     });
 
     return Promise.resolve({
-      rows: matching.slice(query.startIndex - 1, query.startIndex - 1 + query.count),
+      rows: matching.slice(
+        query.startIndex - 1,
+        query.startIndex - 1 + query.count,
+      ),
       total: matching.length,
     });
   }
@@ -88,7 +91,9 @@ export class InMemoryScimDirectory implements ScimDirectoryStore {
 
   createUser(_tenantId: string, input: ScimUserInput): Promise<ScimUserRow> {
     if ([...this.users.values()].some((user) => user.email === input.email)) {
-      return Promise.reject(ScimException.conflict('userName is already taken.'));
+      return Promise.reject(
+        ScimException.conflict('userName is already taken.'),
+      );
     }
 
     const now = new Date();
@@ -138,7 +143,10 @@ export class InMemoryScimDirectory implements ScimDirectoryStore {
     const rows = [...this.groups.values()];
 
     return Promise.resolve({
-      rows: rows.slice(query.startIndex - 1, query.startIndex - 1 + query.count),
+      rows: rows.slice(
+        query.startIndex - 1,
+        query.startIndex - 1 + query.count,
+      ),
       total: rows.length,
     });
   }

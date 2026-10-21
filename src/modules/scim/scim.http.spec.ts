@@ -8,6 +8,20 @@ import { registerAndLogin } from '#devtools/testing/register-and-login';
 import type { TestUser } from '#devtools/testing/register-and-login';
 import { SCIM_CONTENT_TYPE, SCIM_PATCH_SCHEMA } from './scim.types';
 
+interface ScimBody {
+  id: string;
+  schemas: string[];
+  userName: string;
+  totalResults: number;
+  active: boolean;
+  patch: { supported: boolean };
+  members: unknown[];
+  data: { token: string };
+}
+
+const bodyOf = (response: { body: unknown }): ScimBody =>
+  response.body as ScimBody;
+
 const EMAIL = 'scim-spec-user@scim-spec.test';
 
 describe('SCIM provisioning', () => {
@@ -34,7 +48,7 @@ describe('SCIM provisioning', () => {
       .set('Authorization', `Bearer ${admin.token}`)
       .expect(201);
 
-    token = issued.body.data.token;
+    token = bodyOf(issued).data.token;
   });
 
   afterAll(async () => {
@@ -59,7 +73,7 @@ describe('SCIM provisioning', () => {
       .get('/scim/v2/Users')
       .expect(401);
 
-    expect(response.body.schemas).toContain(
+    expect(bodyOf(response).schemas).toContain(
       'urn:ietf:params:scim:api:messages:2.0:Error',
     );
 
@@ -82,7 +96,7 @@ describe('SCIM provisioning', () => {
     const response = await scim('get', '/ServiceProviderConfig').expect(200);
 
     expect(response.headers['content-type']).toContain(SCIM_CONTENT_TYPE);
-    expect(response.body.patch.supported).toBe(true);
+    expect(bodyOf(response).patch.supported).toBe(true);
 
     await scim('get', '/ResourceTypes').expect(200);
     await scim('get', '/Schemas').expect(200);
@@ -99,9 +113,9 @@ describe('SCIM provisioning', () => {
       })
       .expect(201);
 
-    const id: string = created.body.id;
+    const id: string = bodyOf(created).id;
 
-    expect(created.body.userName).toBe(EMAIL);
+    expect(bodyOf(created).userName).toBe(EMAIL);
 
     await scim('post', '/Users').send({ userName: EMAIL }).expect(409);
 
@@ -110,7 +124,7 @@ describe('SCIM provisioning', () => {
       `/Users?filter=${encodeURIComponent(`userName eq "${EMAIL}"`)}`,
     ).expect(200);
 
-    expect(found.body.totalResults).toBe(1);
+    expect(bodyOf(found).totalResults).toBe(1);
 
     const off = await scim('patch', `/Users/${id}`)
       .send({
@@ -119,7 +133,7 @@ describe('SCIM provisioning', () => {
       })
       .expect(200);
 
-    expect(off.body.active).toBe(false);
+    expect(bodyOf(off).active).toBe(false);
 
     const stored = await authPrismaClient.user.findUnique({ where: { id } });
 
@@ -132,7 +146,7 @@ describe('SCIM provisioning', () => {
       })
       .expect(200);
 
-    expect(on.body.active).toBe(true);
+    expect(bodyOf(on).active).toBe(true);
 
     await scim('delete', `/Users/${id}`).expect(204);
     await scim('get', `/Users/${id}`).expect(200);
@@ -146,14 +160,14 @@ describe('SCIM provisioning', () => {
     const group = await scim('post', '/Groups')
       .send({
         displayName: 'Scim Spec Team',
-        members: [{ value: user.body.id }],
+        members: [{ value: bodyOf(user).id }],
       })
       .expect(201);
 
-    expect(group.body.members).toHaveLength(1);
+    expect(bodyOf(group).members).toHaveLength(1);
 
-    await scim('delete', `/Groups/${group.body.id}`).expect(204);
-    await scim('get', `/Groups/${group.body.id}`).expect(404);
+    await scim('delete', `/Groups/${bodyOf(group).id}`).expect(204);
+    await scim('get', `/Groups/${bodyOf(group).id}`).expect(404);
     await authPrismaClient.user.deleteMany({
       where: { email: 'scim-group-member@scim-spec.test' },
     });
@@ -165,9 +179,9 @@ describe('SCIM provisioning', () => {
       .set('Authorization', `Bearer ${admin.token}`)
       .expect(200);
 
-    const actions = (response.body.data as Array<{ action: string }>).map(
-      (entry) => entry.action,
-    );
+    const actions = (
+      response.body as { data: Array<{ action: string }> }
+    ).data.map((entry) => entry.action);
 
     expect(actions).toEqual(
       expect.arrayContaining(['created', 'deactivated', 'issued']),
@@ -182,7 +196,7 @@ describe('SCIM provisioning', () => {
 
     await scim('get', '/Users').expect(401);
 
-    token = rotated.body.data.token;
+    token = bodyOf(rotated).data.token;
     await scim('get', '/Users').expect(200);
 
     await request(app.getHttpServer())

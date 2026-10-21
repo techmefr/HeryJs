@@ -1,4 +1,12 @@
-import { Controller, Delete, Get, Post, Query, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Delete,
+  Get,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { SessionGuard } from '#kernel/auth/session.guard';
 import type { RequestWithUser } from '#kernel/auth/session.guard';
 import { CapabilitiesGuard } from '#kernel/capabilities/capabilities.guard';
@@ -58,7 +66,9 @@ export class ScimAdminController {
       });
     }
 
-    return ok(null, [revoked ? 'SCIM token revoked.' : 'No SCIM token was set.']);
+    return ok(null, [
+      revoked ? 'SCIM token revoked.' : 'No SCIM token was set.',
+    ]);
   }
 
   @RateLimit('read')

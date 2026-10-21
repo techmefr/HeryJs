@@ -105,7 +105,9 @@ describe('SCIM users', () => {
   });
 
   it('answers an unknown id with a 404', async () => {
-    await expect(users.get(TENANT, 'nope')).rejects.toMatchObject({ status: 404 });
+    await expect(users.get(TENANT, 'nope')).rejects.toMatchObject({
+      status: 404,
+    });
   });
 
   it('refuses a PATCH without the PatchOp schema', async () => {
@@ -121,7 +123,9 @@ describe('SCIM users', () => {
     const resource = toUserResource(row, 'https://api.test');
 
     expect(resource.userName).toBe('jane@acme.com');
-    expect(resource.meta.location).toBe(`https://api.test/scim/v2/Users/${row.id}`);
+    expect(resource.meta.location).toBe(
+      `https://api.test/scim/v2/Users/${row.id}`,
+    );
     expect(listResponse([resource], 1, 1).totalResults).toBe(1);
   });
 });
@@ -151,7 +155,10 @@ describe('SCIM groups', () => {
 
   it('refuses a member that is not a user of the tenant', async () => {
     await expect(
-      groups.create(TENANT, { displayName: 'X', members: [{ value: 'ghost' }] }),
+      groups.create(TENANT, {
+        displayName: 'X',
+        members: [{ value: 'ghost' }],
+      }),
     ).rejects.toMatchObject({ scimType: 'invalidValue' });
   });
 
@@ -163,7 +170,11 @@ describe('SCIM groups', () => {
     const added = await groups.patch(
       TENANT,
       group.id,
-      patch({ op: 'add', path: 'members', value: [{ value: a.id }, { value: b.id }] }),
+      patch({
+        op: 'add',
+        path: 'members',
+        value: [{ value: a.id }, { value: b.id }],
+      }),
     );
 
     expect(added.row.members).toHaveLength(2);
@@ -181,7 +192,9 @@ describe('SCIM groups', () => {
     const { row } = await groups.create(TENANT, { displayName: 'Team' });
 
     expect((await groups.remove(TENANT, row.id)).action).toBe('deleted');
-    await expect(groups.get(TENANT, row.id)).rejects.toMatchObject({ status: 404 });
+    await expect(groups.get(TENANT, row.id)).rejects.toMatchObject({
+      status: 404,
+    });
   });
 });
 
@@ -191,16 +204,18 @@ describe('SCIM filter', () => {
       attribute: 'username',
       value: 'a@b.co',
     });
-    expect(() => parseScimFilter('userName co "a"', 'user')).toThrow(ScimException);
+    expect(() => parseScimFilter('userName co "a"', 'user')).toThrow(
+      ScimException,
+    );
     expect(() => parseScimFilter('displayName eq "a"', 'user')).toThrow(
       ScimException,
     );
   });
 
   it('bounds the page', () => {
-    expect(parseScimListQuery({ count: '5000', startIndex: '0' }, 'user')).toMatchObject(
-      { startIndex: 1, count: 100 },
-    );
+    expect(
+      parseScimListQuery({ count: '5000', startIndex: '0' }, 'user'),
+    ).toMatchObject({ startIndex: 1, count: 100 });
   });
 });
 

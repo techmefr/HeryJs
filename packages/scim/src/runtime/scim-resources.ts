@@ -47,21 +47,21 @@ function invalid(error: z.ZodError): ScimException {
   const issue = error.issues[0];
 
   return ScimException.badRequest(
-    issue ? `${issue.path.join('.') || 'body'}: ${issue.message}` : 'Invalid body.',
+    issue
+      ? `${issue.path.join('.') || 'body'}: ${issue.message}`
+      : 'Invalid body.',
     'invalidValue',
   );
 }
 
-export function userInputFrom(
-  state: {
-    userName: string;
-    externalId: string | null;
-    displayName: string | null;
-    givenName: string | null;
-    familyName: string | null;
-    isActive: boolean;
-  },
-): ScimUserInput {
+export function userInputFrom(state: {
+  userName: string;
+  externalId: string | null;
+  displayName: string | null;
+  givenName: string | null;
+  familyName: string | null;
+  isActive: boolean;
+}): ScimUserInput {
   const email = state.userName.trim().toLowerCase();
 
   if (!EMAIL.test(email)) {
@@ -71,7 +71,9 @@ export function userInputFrom(
     );
   }
 
-  const composed = [state.givenName, state.familyName].filter(Boolean).join(' ');
+  const composed = [state.givenName, state.familyName]
+    .filter(Boolean)
+    .join(' ');
 
   return {
     email,
@@ -112,7 +114,9 @@ export function parseGroupBody(body: unknown): ScimGroupInput {
   return {
     name: parsed.data.displayName,
     externalId: parsed.data.externalId ?? null,
-    memberIds: [...new Set((parsed.data.members ?? []).map((member) => member.value))],
+    memberIds: [
+      ...new Set((parsed.data.members ?? []).map((member) => member.value)),
+    ],
   };
 }
 

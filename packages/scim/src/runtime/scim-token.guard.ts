@@ -19,7 +19,9 @@ export class ScimTokenGuard implements CanActivate {
 
     http.getResponse<Response>().type(SCIM_CONTENT_TYPE);
 
-    const caller = await this.tokens.authenticate(request.headers.authorization);
+    const caller = await this.tokens.authenticate(
+      request.headers.authorization,
+    );
 
     if (!caller) {
       throw ScimException.unauthorized();

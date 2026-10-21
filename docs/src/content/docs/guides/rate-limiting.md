@@ -75,6 +75,10 @@ A CI check fails the build if any kernel or module route declares neither.
 
 Requests are counted per tenant and per identity: the authenticated user id when there is one, the caller's IP otherwise. Two tenants, or two users within the same tenant, never share a counter.
 
+## A different limit for one tenant
+
+An operator can raise or lower a bucket for a single tenant with an override named `rate-limit:<bucket>`, set through the [quotas](/guides/quotas/#rate-limits-per-tenant) route. The window stays the bucket's. There is no per-plan variant: the kernel does not read the optional billing module's subscriptions.
+
 ## When the store is unreachable
 
 A rate limiter that blocks every request when Redis is down would turn an infrastructure blip into an outage — except for the one bucket where that tradeoff runs the other way. `read` and `write` fail open: if the store cannot be reached, the request goes through uncounted. `auth` fails closed with a 503, because an unreachable counter in front of login is indistinguishable from no rate limit at all, and that is exactly the bucket protecting against credential stuffing.

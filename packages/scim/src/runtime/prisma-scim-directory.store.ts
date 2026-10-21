@@ -85,7 +85,9 @@ export class PrismaScimDirectoryStore implements ScimDirectoryStore {
       );
 
       return {
-        rows: records.map((record) => toUser(record, identities.get(record.id))),
+        rows: records.map((record) =>
+          toUser(record, identities.get(record.id)),
+        ),
         total,
       };
     });
@@ -180,7 +182,9 @@ export class PrismaScimDirectoryStore implements ScimDirectoryStore {
           orderBy: ORDER,
           skip: query.startIndex - 1,
           take: query.count,
-          include: { members: { include: { user: { select: { email: true } } } } },
+          include: {
+            members: { include: { user: { select: { email: true } } } },
+          },
         }),
         this.prisma.team.count({ where }),
       ]);
@@ -205,9 +209,16 @@ export class PrismaScimDirectoryStore implements ScimDirectoryStore {
 
   createGroup(tenantId: string, input: ScimGroupInput): Promise<ScimGroupRow> {
     return runInTenant(tenantId, async () => {
-      await this.assertExternalIdFree(tenantId, 'group', input.externalId, null);
+      await this.assertExternalIdFree(
+        tenantId,
+        'group',
+        input.externalId,
+        null,
+      );
 
-      const team = await this.prisma.team.create({ data: { name: input.name } });
+      const team = await this.prisma.team.create({
+        data: { name: input.name },
+      });
 
       await this.setMembers(team.id, input.memberIds);
       await this.saveIdentity(tenantId, 'group', team.id, input);
@@ -235,7 +246,10 @@ export class PrismaScimDirectoryStore implements ScimDirectoryStore {
       }
 
       await this.assertExternalIdFree(tenantId, 'group', input.externalId, id);
-      await this.prisma.team.update({ where: { id }, data: { name: input.name } });
+      await this.prisma.team.update({
+        where: { id },
+        data: { name: input.name },
+      });
       await this.setMembers(id, input.memberIds);
       await this.saveIdentity(tenantId, 'group', id, input);
 
@@ -291,7 +305,9 @@ export class PrismaScimDirectoryStore implements ScimDirectoryStore {
       return { email: { equals: filter.value, mode: 'insensitive' } };
     }
 
-    return { id: { in: await this.idsByExternalId(tenantId, 'user', filter.value) } };
+    return {
+      id: { in: await this.idsByExternalId(tenantId, 'user', filter.value) },
+    };
   }
 
   private async groupWhere(
@@ -308,7 +324,9 @@ export class PrismaScimDirectoryStore implements ScimDirectoryStore {
       return { name: { equals: filter.value, mode: 'insensitive' } };
     }
 
-    return { id: { in: await this.idsByExternalId(tenantId, 'group', filter.value) } };
+    return {
+      id: { in: await this.idsByExternalId(tenantId, 'group', filter.value) },
+    };
   }
 
   private async idsByExternalId(
@@ -350,7 +368,10 @@ export class PrismaScimDirectoryStore implements ScimDirectoryStore {
       return null;
     }
 
-    return toUser(record, (await this.identities(tenantId, 'user', [id])).get(id));
+    return toUser(
+      record,
+      (await this.identities(tenantId, 'user', [id])).get(id),
+    );
   }
 
   private async loadGroup(
@@ -442,7 +463,9 @@ export class PrismaScimDirectoryStore implements ScimDirectoryStore {
     const holders = await this.idsByExternalId(tenantId, kind, externalId);
 
     if (holders.some((holder) => holder !== ownId)) {
-      throw ScimException.conflict('externalId is already used by another resource.');
+      throw ScimException.conflict(
+        'externalId is already used by another resource.',
+      );
     }
   }
 
