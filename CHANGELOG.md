@@ -16,6 +16,9 @@ First public release.
 ### Production Dockerfile
 
 `hery new` writes a multi-stage `Dockerfile` (non-root, pnpm, Prisma client generated, a health check on `/health/live`) and a `.dockerignore`. Migrations are a separate one-shot target of the same file, `docker build --target migrate`, run once per release rather than on every container start. A new `GET /deployment` route, behind `canReadDeployment`, reports the version, which required environment variables are set (never their values), readiness and applied migrations, and the admin lists it. The [deployment guide](docs/src/content/docs/guides/deployment.md) holds the environment contract. A new project also no longer ships a `blogPost` reference in `guest-upgrade.ts`, which stopped `nest build` from compiling it.
+### SMTP mail driver
+
+A new `mail-smtp` package adds an SMTP driver beside the log and Resend ones. `hery install mail-smtp` lands it in `src/modules/mail`; import `SmtpMailModule`, declare `smtp: { driver: 'smtp' }` under `mail.drivers` in `hery.config.ts`, and set `MAIL_SMTP_HOST` and `MAIL_SMTP_FROM` (plus `MAIL_SMTP_PORT`, `MAIL_SMTP_TLS`, `MAIL_SMTP_USER` and `MAIL_SMTP_PASSWORD` as the server needs). `MAIL_DRIVER=smtp` switches to it. The driver sends through nodemailer, refuses a half-written credential and a refused recipient rather than recording the mail as sent, and its spec delivers over a real socket to an in-process SMTP server. That makes twenty-nine installable modules.
 
 ### Vector fields and similarity search
 
