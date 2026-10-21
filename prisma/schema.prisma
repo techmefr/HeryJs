@@ -187,6 +187,33 @@ model AuditLog {
   // genesis entry.
   @@unique([tenantId, previousHash])
   @@index([tenantId, sequence])
+  @@index([tenantId, createdAt])
+}
+
+// Where a tenant's audit entries are streamed to, for a SIEM. `cursor` is the
+// last AuditLog.sequence already handed to the outbox for this sink, so a
+// sink never skips or repeats an entry: the cursor moves in the same
+// transaction that stages the delivery. `authToken` holds a sealed envelope,
+// never the token.
+model AuditSink {
+  id                    String    @id @default(cuid())
+  tenantId              String
+  name                  String
+  kind                  String
+  url                   String?
+  authToken             String?
+  storageDriver         String?
+  keyPrefix             String?
+  active                Boolean   @default(true)
+  cursor                Int       @default(0)
+  lastError             String?
+  lastDeliveredAt       DateTime?
+  lastDeliveredSequence Int?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([active])
 }
 
 // One row per write to a resource that declared history: true. The snapshot is

@@ -51,6 +51,7 @@ export const ICONS = {
   no: X,
   overview: LayoutDashboard,
   pipeline: Workflow,
+  audit: ScrollText,
   privacy: ShieldCheck,
   prune: Trash2,
   quotas: Gauge,

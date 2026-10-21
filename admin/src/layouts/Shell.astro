@@ -38,6 +38,7 @@ const { title, bare = false } = Astro.props;
               <a class="item" href="/pipeline" id="pipeline-link" />
               <a class="item" href="/devtools" id="devtools-link" />
               <a class="item" href="/prune" id="prune-link" />
+              <a class="item" href="/audit" id="audit-link" />
               <a class="item" href="/job-flows" id="job-flows-link" />
               <a class="item" href="/flags" id="flags-link" />
               <a class="item" href="/privacy" id="privacy-link" />
@@ -118,6 +119,7 @@ const { title, bare = false } = Astro.props;
         'Dev dashboard',
       );
       label(document.getElementById('prune-link'), ICONS.prune, 'Prune');
+      label(document.getElementById('audit-link'), ICONS.audit, 'Audit');
       label(
         document.getElementById('job-flows-link'),
         ICONS.jobFlows,

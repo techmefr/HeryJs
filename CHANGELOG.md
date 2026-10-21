@@ -13,6 +13,9 @@ category is called out here explicitly.
 
 First public release.
 
+### Audit export and streaming
+
+The audit trail can be exported (CSV or JSON lines, filtered by date range, model, operation, record and user), its hash chain verified on demand with the first broken entry named, and new entries streamed to a sink (HTTP or object storage) through the outbox, with retry and dead letters. The admin gets an Audit page for all of it. Adds the `AuditSink` table (migration `add_audit_sink`) and `AUDIT_STREAM_ENABLED`, `AUDIT_STREAM_INTERVAL_SECONDS`, `AUDIT_SINK_ALLOW_PRIVATE_HOSTS`. `GET /audit-logs/verify` now answers `{ valid, checked, brokenAtSequence, headHash }`; `valid` is unchanged.
 ### Outbound webhooks
 
 The `webhooks` module also delivers to your tenants. An admin subscribes an https URL to named events (`webhook.*` names you stage with the outbox, and the `model.*` change messages), each delivery is signed with HMAC-SHA256 (`v1=<hex>` per valid secret), retried ten times with doubling backoff on its own queue, and lands in a visible `dead` state you can replay. Rotating a secret keeps the old one valid for a grace window and signs with both, so no event is dropped. Subscription URLs must be public https addresses. New tables `WebhookSubscription` and `WebhookDelivery` (migration `add_outbound_webhooks`), a `heryjs-webhook-deliveries` queue in the kernel, routes under `/webhook-subscriptions` and `/webhook-deliveries`, and a Webhooks page in the admin panel. A project that already installed the module applies the kernel queue constants and the new runtime files by hand, and sets `SECRETS_KEYS` in production because secrets are sealed with it.
