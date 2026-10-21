@@ -118,6 +118,208 @@ function childPath(ctx: ResourceContext, include: ResolvedInclude): JsonSchema {
   };
 }
 
+function historyPaths(ctx: ResourceContext): PathItems {
+  const base = `/${ctx.routePath}/{id}/history`;
+  const name = typeNameOf(ctx);
+  const parameters = [
+    { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+  ];
+  const notFound = response(
+    'No such record, or no such history entry for it',
+    ref('ErrorResponse'),
+  );
+
+  return {
+    [base]: {
+      post: operation(
+        ctx,
+        'History',
+        `List the history of a ${ctx.pascalName}`,
+        {
+          parameters,
+          requestBody: body(`${name}HistoryListRequest`),
+          responses: {
+            '200': response(
+              "The record's snapshots, newest first. meta.nextBefore is the cursor for the next page, or null at the end.",
+              envelope(
+                { type: 'array', items: ref(`${name}HistoryEntry`) },
+                {
+                  type: 'object',
+                  properties: {
+                    nextBefore: {
+                      anyOf: [{ type: 'integer' }, { type: 'null' }],
+                    },
+                  },
+                  required: ['nextBefore'],
+                },
+              ),
+            ),
+            ...errorResponses(),
+            '404': notFound,
+          },
+        },
+      ),
+    },
+    [`${base}/diff`]: {
+      post: operation(ctx, 'HistoryDiff', `Diff a ${ctx.pascalName} snapshot`, {
+        parameters,
+        requestBody: body(`${name}HistoryDiffRequest`),
+        responses: {
+          '200': response(
+            'The fields that differ between the two sides',
+            envelope(ref(`${name}HistoryDiff`)),
+          ),
+          ...errorResponses(),
+          '404': notFound,
+        },
+      }),
+    },
+    [`${base}/restore`]: {
+      post: operation(
+        ctx,
+        'HistoryRestore',
+        `Restore a ${ctx.pascalName} snapshot`,
+        {
+          parameters,
+          requestBody: body(`${name}HistoryRestoreRequest`),
+          responses: {
+            '201': response(
+              'The record after the snapshot was written back through the update path',
+              envelope(ref(name)),
+            ),
+            ...errorResponses(),
+            '404': notFound,
+            ...(ctx.versioned
+              ? {
+                  '409': response(
+                    'The record changed since the version sent',
+                    ref('ErrorResponse'),
+                  ),
+                }
+              : {}),
+          },
+        },
+      ),
+    },
+  };
+}
+
+const SHARE_SCHEMA: JsonSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'string' },
+    resource: { type: 'string' },
+    recordId: { type: 'string' },
+    granteeType: { type: 'string', enum: ['user', 'team'] },
+    granteeId: { type: 'string' },
+    access: { type: 'string', enum: ['read', 'write'] },
+    grantedById: { type: 'string' },
+    createdAt: { type: 'string', format: 'date-time' },
+  },
+  required: [
+    'id',
+    'resource',
+    'recordId',
+    'granteeType',
+    'granteeId',
+    'access',
+    'grantedById',
+    'createdAt',
+  ],
+};
+
+function sharePaths(ctx: ResourceContext, base: string): PathItems {
+  const id: JsonSchema = {
+    name: 'id',
+    in: 'path',
+    required: true,
+    schema: { type: 'string' },
+  };
+  const forbidden = {
+    ...errorResponses(),
+    '404': response(
+      'The record, or the user or team being shared with, was not found in the caller tenant',
+      ref('ErrorResponse'),
+    ),
+  };
+
+  return {
+    [`${base}/{id}/shares/search`]: {
+      post: operation(
+        ctx,
+        'SearchShares',
+        `Who a ${ctx.pascalName} is shared with`,
+        {
+          parameters: [id],
+          responses: {
+            '200': response(
+              'The shares on the record',
+              envelope({ type: 'array', items: SHARE_SCHEMA }),
+            ),
+            ...forbidden,
+          },
+        },
+      ),
+    },
+    [`${base}/{id}/shares`]: {
+      post: operation(
+        ctx,
+        'GrantShare',
+        `Share a ${ctx.pascalName} with a user or a team`,
+        {
+          parameters: [id],
+          requestBody: {
+            required: true,
+            content: {
+              [JSON_CONTENT]: {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    granteeType: { type: 'string', enum: ['user', 'team'] },
+                    granteeId: { type: 'string' },
+                    access: { type: 'string', enum: ['read', 'write'] },
+                  },
+                  required: ['granteeType', 'granteeId', 'access'],
+                  additionalProperties: false,
+                },
+              },
+            },
+          },
+          responses: {
+            '201': response(
+              'The share; granting again to the same grantee changes its access',
+              envelope(SHARE_SCHEMA),
+            ),
+            ...forbidden,
+          },
+        },
+      ),
+    },
+    [`${base}/{id}/shares/{shareId}`]: {
+      delete: operation(
+        ctx,
+        'RevokeShare',
+        `Revoke a share on a ${ctx.pascalName}`,
+        {
+          parameters: [
+            id,
+            {
+              name: 'shareId',
+              in: 'path',
+              required: true,
+              schema: { type: 'string' },
+            },
+          ],
+          responses: {
+            '200': response('The revoked share', envelope(SHARE_SCHEMA)),
+            ...forbidden,
+          },
+        },
+      ),
+    },
+  };
+}
+
 export function pathsFor(ctx: ResourceContext): PathItems {
   const base = `/${ctx.routePath}`;
   const name = typeNameOf(ctx);
@@ -207,8 +409,16 @@ export function pathsFor(ctx: ResourceContext): PathItems {
     );
   }
 
+  if (ctx.history) {
+    Object.assign(paths, historyPaths(ctx));
+  }
+
   for (const include of ownRouteIncludes(ctx)) {
     paths[`${base}/{id}/${include.relation}/search`] = childPath(ctx, include);
+  }
+
+  if (ctx.sharing) {
+    Object.assign(paths, sharePaths(ctx, base));
   }
 
   return paths;

@@ -1,5 +1,8 @@
 import { writeCell } from './render';
 import type { ResourceExtension } from './extensions';
+import { attachInlineEdit } from './inline-edit';
+import type { InlineEdit } from './inline-edit';
+import { valuesOf } from './form-schema';
 import type { QueryState } from './query';
 import type { ResourceRow } from './resource';
 
@@ -19,6 +22,7 @@ export interface ResourceTableOptions {
   selectable: boolean;
   selected: Set<string>;
   buttonsOf: (row: ResourceRow) => RowButton[];
+  inline?: InlineEdit;
   onSort: (field: string) => void;
   onToggle: (id: string, isChecked: boolean) => void;
   onToggleAll: (isChecked: boolean) => void;
@@ -80,10 +84,30 @@ function headingOf(
   return heading;
 }
 
+function withInline(
+  cell: HTMLTableCellElement,
+  row: ResourceRow,
+  column: string,
+  inline?: InlineEdit,
+): void {
+  const field = inline?.fields.get(column);
+
+  if (inline && field && inline.canEdit(row)) {
+    attachInlineEdit(
+      cell,
+      row,
+      field,
+      valuesOf([field], row)[field.name],
+      inline.commit,
+    );
+  }
+}
+
 function cellOf(
   row: ResourceRow,
   column: string,
   extension: ResourceExtension,
+  inline?: InlineEdit,
 ): HTMLTableCellElement {
   const cell = document.createElement('td');
   const format = extension.columns?.[column]?.format;
@@ -91,10 +115,12 @@ function cellOf(
   if (format) {
     cell.className = 'mono';
     cell.textContent = format(row[column], row);
+    withInline(cell, row, column, inline);
     return cell;
   }
 
   writeCell(cell, column, row[column]);
+  withInline(cell, row, column, inline);
 
   return cell;
 }
@@ -163,7 +189,7 @@ export function resourceTable(options: ResourceTableOptions): HTMLElement {
     }
 
     for (const column of options.columns) {
-      line.appendChild(cellOf(row, column, options.extension));
+      line.appendChild(cellOf(row, column, options.extension, options.inline));
     }
 
     line.appendChild(actionsOf(options.buttonsOf(row)));

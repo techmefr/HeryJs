@@ -1,0 +1,509 @@
+---
+import Shell from '../layouts/Shell.astro';
+---
+
+<Shell title="Feature flags">
+  <h1>Feature flags</h1>
+  <p class="lede">
+    Create a flag, set how many users or tenants get it, add targeting rules and
+    preview what a given user or tenant would see. Rules are checked in order,
+    the first match decides, and the percentage applies to everyone else. A
+    switched-off flag is off for everyone. Every change is live on the next
+    request.
+  </p>
+
+  <form class="card flag-form" id="create-form">
+    <label>
+      Key
+      <input name="key" required placeholder="new-checkout" />
+    </label>
+    <label>
+      Tenant (empty for every tenant)
+      <input name="tenantId" placeholder="tenant id" />
+    </label>
+    <label>
+      Rollout %
+      <input name="percentage" type="number" min="0" max="100" value="100" />
+    </label>
+    <label>
+      Bucket by
+      <select name="rolloutBy">
+        <option value="user">User</option>
+        <option value="tenant">Tenant</option>
+      </select>
+    </label>
+    <label class="check">
+      <input name="enabled" type="checkbox" checked />
+      Enabled
+    </label>
+    <button class="primary" type="submit">Create flag</button>
+    <p class="error" id="create-error" role="alert"></p>
+  </form>
+
+  <div class="output" id="output"></div>
+
+  <h2 class="flag-title">Preview</h2>
+  <form class="card flag-form" id="preview-form">
+    <label>
+      Flag
+      <input name="key" id="preview-key" required list="flag-keys" />
+      <datalist id="flag-keys"></datalist>
+    </label>
+    <label>
+      Tenant
+      <input name="tenantId" />
+    </label>
+    <label>
+      User
+      <input name="userId" />
+    </label>
+    <label>
+      Plan
+      <input name="plan" />
+    </label>
+    <label>
+      Attributes (name=value, comma separated)
+      <input name="attributes" placeholder="country=FR, seats=10" />
+    </label>
+    <button class="primary" type="submit">Preview</button>
+    <p class="flag-result" id="preview-result" role="status"></p>
+  </form>
+</Shell>
+
+<style is:global>
+  .flag-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 0.75rem;
+    padding: 1rem 1.125rem;
+    margin-bottom: 1rem;
+  }
+
+  .flag-form .primary {
+    margin-top: 0;
+  }
+
+  .flag-form .check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .flag-form .error,
+  .flag-result {
+    flex-basis: 100%;
+    margin: 0;
+  }
+
+  .flag-title {
+    margin: 1.5rem 0 0.75rem;
+  }
+
+  .flag-row {
+    padding: 0.875rem 1.125rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .flag-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.625rem;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+  }
+
+  .flag-head .path {
+    color: var(--text);
+  }
+
+  .flag-head input[type='number'] {
+    width: 5rem;
+  }
+
+  .flag-rules {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    border-top: 1px solid var(--border);
+    padding-top: 0.75rem;
+  }
+
+  .flag-rule {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+</style>
+
+<script>
+  import { ApiError, api } from '../lib/api';
+  import {
+    describeEvaluation,
+    flagPath,
+    parseAttributes,
+    parsePercentage,
+    ruleProblem,
+    splitValues,
+  } from '../lib/flags';
+  import type { FlagEvaluation, FlagRecord, FlagRule } from '../lib/flags';
+  import { pill, skeleton, state } from '../lib/render';
+
+  const output = document.getElementById('output')!;
+  const createForm = document.getElementById('create-form') as HTMLFormElement;
+  const createError = document.getElementById('create-error')!;
+  const previewForm = document.getElementById(
+    'preview-form',
+  ) as HTMLFormElement;
+  const previewResult = document.getElementById('preview-result')!;
+  const keys = document.getElementById('flag-keys')!;
+
+  let flags: FlagRecord[] = [];
+
+  function messageOf(error: unknown): string {
+    if (error instanceof ApiError) {
+      return error.status === 403
+        ? 'Feature flags are admin-only.'
+        : (error.serverMessage ?? error.message);
+    }
+
+    return 'Request failed';
+  }
+
+  function element<K extends keyof HTMLElementTagNameMap>(
+    tag: K,
+    className = '',
+    text = '',
+  ): HTMLElementTagNameMap[K] {
+    const node = document.createElement(tag);
+    node.className = className;
+    node.textContent = text;
+
+    return node;
+  }
+
+  function button(label: string, onClick: () => void, primary = false) {
+    const node = element('button', primary ? 'primary' : '', label);
+    node.type = 'button';
+    node.addEventListener('click', onClick);
+
+    return node;
+  }
+
+  async function save(
+    flag: FlagRecord,
+    patch: Partial<FlagRecord>,
+  ): Promise<void> {
+    await api(flagPath(flag.key), {
+      method: 'PATCH',
+      body: JSON.stringify({ ...patch, tenantId: flag.tenantId }),
+    });
+    await load();
+  }
+
+  function ruleEditor(flag: FlagRecord): HTMLElement {
+    const wrapper = element('div', 'flag-rules');
+    const draft: FlagRule[] = flag.rules.map((rule) => ({
+      ...rule,
+      values: [...rule.values],
+    }));
+    const message = element('p', 'error');
+    message.setAttribute('role', 'alert');
+
+    const rows = element('div', 'flag-rules');
+
+    function draw() {
+      rows.replaceChildren(
+        ...draft.map((rule, index) => {
+          const line = element('div', 'flag-rule');
+          const attribute = element('input');
+          attribute.value = rule.attribute;
+          attribute.placeholder = 'tenant, user, plan or a name';
+          attribute.setAttribute('aria-label', 'Rule attribute');
+          attribute.addEventListener('input', () => {
+            rule.attribute = attribute.value.trim();
+          });
+
+          const operator = element('select');
+          operator.setAttribute('aria-label', 'Rule operator');
+          for (const [value, text] of [
+            ['in', 'is one of'],
+            ['notIn', 'is not one of'],
+          ]) {
+            const option = element('option', '', text);
+            option.value = value!;
+            option.selected = rule.operator === value;
+            operator.appendChild(option);
+          }
+          operator.addEventListener('change', () => {
+            rule.operator = operator.value as FlagRule['operator'];
+          });
+
+          const values = element('input');
+          values.value = rule.values.join(', ');
+          values.placeholder = 'comma separated values';
+          values.setAttribute('aria-label', 'Rule values');
+          values.addEventListener('input', () => {
+            rule.values = splitValues(values.value);
+          });
+
+          const serve = element('select');
+          serve.setAttribute('aria-label', 'Rule result');
+          for (const [value, text] of [
+            ['true', 'turn on'],
+            ['false', 'turn off'],
+          ]) {
+            const option = element('option', '', text);
+            option.value = value!;
+            option.selected = String(rule.serve) === value;
+            serve.appendChild(option);
+          }
+          serve.addEventListener('change', () => {
+            rule.serve = serve.value === 'true';
+          });
+
+          line.append(
+            element('span', 'mono', String(index + 1) + '.'),
+            attribute,
+            operator,
+            values,
+            serve,
+            button('Remove', () => {
+              draft.splice(index, 1);
+              draw();
+            }),
+          );
+
+          return line;
+        }),
+      );
+    }
+
+    draw();
+
+    wrapper.append(rows, message, element('div', 'flag-rule'));
+    wrapper.lastElementChild!.append(
+      button('Add rule', () => {
+        draft.push({
+          attribute: 'plan',
+          operator: 'in',
+          values: [],
+          serve: true,
+        });
+        draw();
+      }),
+      button(
+        'Save rules',
+        async () => {
+          const problem = draft
+            .map((rule) => ruleProblem(rule))
+            .find((issue) => issue !== null);
+
+          if (problem) {
+            message.textContent = problem;
+            return;
+          }
+
+          try {
+            await save(flag, { rules: draft });
+          } catch (error) {
+            message.textContent = messageOf(error);
+          }
+        },
+        true,
+      ),
+    );
+
+    return wrapper;
+  }
+
+  function flagRow(flag: FlagRecord): HTMLElement {
+    const card = element('div', 'card flag-row');
+    const head = element('div', 'flag-head');
+    const message = element('p', 'error');
+    message.setAttribute('role', 'alert');
+
+    const run = async (action: () => Promise<void>) => {
+      message.textContent = '';
+
+      try {
+        await action();
+      } catch (error) {
+        message.textContent = messageOf(error);
+      }
+    };
+
+    const percentage = element('input');
+    percentage.type = 'number';
+    percentage.min = '0';
+    percentage.max = '100';
+    percentage.value = String(flag.rolloutPercentage);
+    percentage.setAttribute('aria-label', 'Rollout percentage');
+
+    const rolloutBy = element('select');
+    rolloutBy.setAttribute('aria-label', 'Bucket by');
+    for (const value of ['user', 'tenant']) {
+      const option = element('option', '', value);
+      option.value = value;
+      option.selected = flag.rolloutBy === value;
+      rolloutBy.appendChild(option);
+    }
+
+    const rules = element('div');
+    rules.hidden = true;
+
+    head.append(
+      element('span', 'path', flag.key),
+      pill(flag.tenantId ?? 'all tenants', 'neutral'),
+      pill(flag.enabled ? 'On' : 'Off', flag.enabled ? 'ok' : 'warn'),
+      button(flag.enabled ? 'Switch off' : 'Switch on', () =>
+        run(() => save(flag, { enabled: !flag.enabled })),
+      ),
+      percentage,
+      element('span', '', '%'),
+      rolloutBy,
+      button('Save rollout', () =>
+        run(async () => {
+          const value = parsePercentage(percentage.value);
+
+          if (value === null) {
+            throw new Error('Rollout is a whole number from 0 to 100');
+          }
+
+          await save(flag, {
+            rolloutPercentage: value,
+            rolloutBy: rolloutBy.value as FlagRecord['rolloutBy'],
+          });
+        }),
+      ),
+      button('Rules (' + String(flag.rules.length) + ')', () => {
+        if (rules.hidden && rules.childElementCount === 0) {
+          rules.appendChild(ruleEditor(flag));
+        }
+        rules.hidden = !rules.hidden;
+      }),
+      button('Preview', () => {
+        (document.getElementById('preview-key') as HTMLInputElement).value =
+          flag.key;
+        previewForm.scrollIntoView();
+      }),
+      button('Delete', () =>
+        run(async () => {
+          const query = flag.tenantId
+            ? '?tenantId=' + encodeURIComponent(flag.tenantId)
+            : '';
+          await api(flagPath(flag.key) + query, { method: 'DELETE' });
+          await load();
+        }),
+      ),
+    );
+
+    card.append(head, message, rules);
+
+    return card;
+  }
+
+  async function load(): Promise<void> {
+    try {
+      const { data } = await api<FlagRecord[]>('/feature-flags?limit=100');
+      flags = data;
+      keys.replaceChildren(
+        ...[...new Set(flags.map((flag) => flag.key))].map((key) => {
+          const option = element('option');
+          option.value = key;
+
+          return option;
+        }),
+      );
+
+      output.replaceChildren(
+        flags.length === 0
+          ? state('No flags yet', 'Create the first one above.')
+          : (() => {
+              const list = element('div');
+              list.append(...flags.map(flagRow));
+
+              return list;
+            })(),
+      );
+    } catch (error) {
+      output.replaceChildren(
+        state('Could not load flags', messageOf(error), 'denied'),
+      );
+    }
+  }
+
+  createForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    createError.textContent = '';
+    const form = new FormData(createForm);
+    const value = parsePercentage(String(form.get('percentage')));
+
+    if (value === null) {
+      createError.textContent = 'Rollout is a whole number from 0 to 100';
+      return;
+    }
+
+    try {
+      await api(flagPath(String(form.get('key')).trim()), {
+        method: 'PATCH',
+        body: JSON.stringify({
+          enabled: form.get('enabled') === 'on',
+          rolloutPercentage: value,
+          rolloutBy: form.get('rolloutBy'),
+          tenantId: String(form.get('tenantId')).trim() || null,
+        }),
+      });
+      createForm.reset();
+      await load();
+    } catch (error) {
+      createError.textContent = messageOf(error);
+    }
+  });
+
+  previewForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    previewResult.replaceChildren();
+    const form = new FormData(previewForm);
+    const text = (name: string) => String(form.get(name) ?? '').trim();
+    const attributes = parseAttributes(text('attributes'));
+    const body: Record<string, unknown> = { key: text('key') };
+
+    for (const name of ['tenantId', 'userId', 'plan']) {
+      if (text(name)) {
+        body[name] = text(name);
+      }
+    }
+
+    if (Object.keys(attributes).length > 0) {
+      body.attributes = attributes;
+    }
+
+    try {
+      const { data } = await api<FlagEvaluation>('/feature-flags/evaluate', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      });
+      const tenantFlag = flags.find(
+        (flag) => flag.key === body.key && flag.tenantId === body.tenantId,
+      );
+      const rules =
+        (
+          tenantFlag ??
+          flags.find((flag) => flag.key === body.key && !flag.tenantId)
+        )?.rules ?? [];
+
+      previewResult.append(
+        pill(data.enabled ? 'On' : 'Off', data.enabled ? 'ok' : 'warn'),
+        document.createTextNode(' ' + describeEvaluation(data, rules)),
+      );
+    } catch (error) {
+      previewResult.textContent = messageOf(error);
+    }
+  });
+
+  output.appendChild(skeleton(3));
+  await load();
+</script>

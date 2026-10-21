@@ -8,6 +8,77 @@ export const permissionPresetSchema = z.enum(['own', 'team', 'all', 'none']);
 
 export const VECTOR_MAX_DIMENSIONS = 16000;
 
+export const RICHTEXT_MAX_LENGTH = 1_000_000;
+
+// Mirrors RICHTEXT_FORBIDDEN_* in src/technical/richtext/richtext.ts, which the
+// sanitiser enforces whatever a spec says: naming one here is refused earlier,
+// with the reason, instead of being dropped silently at runtime.
+const FORBIDDEN_RICHTEXT_TAGS = [
+  'script',
+  'style',
+  'iframe',
+  'frame',
+  'frameset',
+  'object',
+  'embed',
+  'applet',
+  'form',
+  'input',
+  'button',
+  'textarea',
+  'select',
+  'option',
+  'svg',
+  'math',
+  'link',
+  'meta',
+  'base',
+  'template',
+  'noscript',
+];
+const FORBIDDEN_RICHTEXT_SCHEMES = ['javascript', 'data', 'vbscript', 'file'];
+
+const richtextAllowSchema = z
+  .strictObject({
+    tags: z.array(z.string().regex(/^[a-z][a-z0-9]*$/)).optional(),
+    attributes: z
+      .record(
+        z.string().regex(/^[a-z][a-z0-9]*$/),
+        z.array(z.string().regex(/^[a-z][a-z0-9-]*$/)),
+      )
+      .optional(),
+    schemes: z.array(z.string().regex(/^[a-z][a-z0-9+.-]*$/)).optional(),
+  })
+  .refine(
+    (allow) =>
+      !(allow.tags ?? []).some((tag) => FORBIDDEN_RICHTEXT_TAGS.includes(tag)),
+    {
+      message: `allow.tags cannot contain ${FORBIDDEN_RICHTEXT_TAGS.join(', ')}`,
+    },
+  )
+  .refine(
+    (allow) =>
+      !Object.values(allow.attributes ?? {})
+        .flat()
+        .some(
+          (name) =>
+            name.startsWith('on') || name === 'style' || name === 'srcdoc',
+        ),
+    {
+      message:
+        'allow.attributes cannot contain an event handler (on*), style or srcdoc',
+    },
+  )
+  .refine(
+    (allow) =>
+      !(allow.schemes ?? []).some((scheme) =>
+        FORBIDDEN_RICHTEXT_SCHEMES.includes(scheme),
+      ),
+    {
+      message: `allow.schemes cannot contain ${FORBIDDEN_RICHTEXT_SCHEMES.join(', ')}`,
+    },
+  );
+
 // A `vector` field is not data a client sends or reads: it is the embedding of
 // another string field of the same resource, written by a queued job and read
 // only by the similarity search. `dimensions` is the column's declared width
@@ -22,16 +93,25 @@ export const blueprintFieldSchema = z.strictObject({
     'file',
     'encrypted',
     'vector',
+    'richtext',
   ]),
   optional: z.boolean().default(false),
   hidden: z.boolean().default(false),
   translatable: z.boolean().default(false),
   reveal: z.boolean().default(false),
+  // Marks the field as personal data: an anonymising erasure rewrites it, and
+  // leaves the resource's other fields as they were. Every field is exported
+  // either way.
+  personal: z.boolean().default(false),
   dimensions: z.number().int().positive().max(VECTOR_MAX_DIMENSIONS).optional(),
   source: z
     .string()
     .regex(/^[a-z][a-zA-Z0-9]*$/)
     .optional(),
+  // Richtext only: the size limit of the HTML a client may send, and the
+  // allow-list the sanitiser keeps. Left out, the runtime defaults apply.
+  maxLength: z.number().int().positive().max(RICHTEXT_MAX_LENGTH).optional(),
+  allow: richtextAllowSchema.optional(),
 });
 
 const fieldNameSchema = z.string().regex(/^[a-z][a-zA-Z0-9]*$/);
@@ -176,6 +256,20 @@ export const blueprintSchema = z.strictObject({
   softDeletes: z.boolean().optional(),
   versioned: z.boolean().default(false),
   workflow: blueprintWorkflowSchema.optional(),
+  // Off unless written: every write to the resource stores a snapshot, and the
+  // generated resource gains routes to read, diff and restore them.
+  history: z.boolean().default(false),
+  // Off by default. On, the resource can be shared record by record with a user
+  // or a team (read or write), on top of its permission presets.
+  sharing: z.boolean().default(false),
+  /**
+   * How the resource answers a privacy request, and the only way it opts in: a
+   * resource that does not declare it is never exported nor erased, and says
+   * nothing about its rows. `delete` removes every row a user owns;
+   * `anonymise` keeps the rows and rewrites the fields marked `personal`, for
+   * a resource other rows still point at.
+   */
+  erasure: z.enum(['delete', 'anonymise']).optional(),
   fields: z.array(blueprintFieldSchema).default([]),
   permissions: z
     .strictObject({
@@ -442,6 +536,15 @@ function assertVectorFieldsAreCoherent(
 
   for (const field of blueprint.fields) {
     if (field.type !== 'vector') {
+      if (
+        field.type !== 'richtext' &&
+        (field.maxLength !== undefined || field.allow !== undefined)
+      ) {
+        report(
+          `field "${field.name}" declares maxLength/allow, which only apply to a richtext field`,
+        );
+      }
+
       if (field.dimensions !== undefined || field.source !== undefined) {
         report(
           `field "${field.name}" declares dimensions/source, which only apply to a vector field`,
@@ -509,6 +612,110 @@ function assertTranslatableIsCoherent(
       report(
         `field "${field.name}" is translatable, which only applies to a routed resource`,
       );
+    }
+  }
+}
+
+/**
+ * A privacy request finds a user's rows through the `ownerId` the generator
+ * adds, so only a routed resource can take part. Beyond that the two halves of
+ * the declaration have to agree: `personal` means nothing unless the rows are
+ * kept and rewritten, and an anonymising erasure with nothing marked personal
+ * would claim to erase while rewriting nothing.
+ */
+function assertErasureIsCoherent(
+  blueprint: RawBlueprint,
+  report: (message: string) => void,
+): void {
+  const personal = blueprint.fields.filter((field) => field.personal);
+
+  if (blueprint.erasure !== undefined && !blueprint.routed) {
+    report(
+      'erasure only applies to a routed resource: an unrouted one has no ownerId to find the rows of a user by',
+    );
+  }
+
+  if (blueprint.erasure === undefined && personal.length > 0) {
+    report(
+      `field ${personal.map((field) => `"${field.name}"`).join(', ')} is personal, which needs the blueprint to declare an erasure`,
+    );
+  }
+
+  if (blueprint.erasure === 'delete' && personal.length > 0) {
+    report(
+      'personal fields only apply to erasure: anonymise -- a delete removes the whole row, so there is nothing to single out',
+    );
+  }
+
+  if (blueprint.erasure === 'anonymise' && personal.length === 0) {
+    report(
+      'erasure: anonymise needs at least one personal field to rewrite, or use erasure: delete',
+    );
+  }
+
+  for (const field of blueprint.fields) {
+    if (field.personal && field.type === 'vector') {
+      report(
+        `vector field "${field.name}" cannot be personal: it is derived from its source, so mark the source`,
+      );
+    }
+  }
+
+  const vector = blueprint.fields.find((field) => field.type === 'vector');
+  const source = blueprint.fields.find(
+    (field) => field.name === vector?.source,
+  );
+
+  if (blueprint.erasure === 'anonymise' && source?.personal) {
+    report(
+      `field "${source.name}" is personal and feeds the embedding "${vector?.name}", which an anonymising erasure would leave behind -- use erasure: delete`,
+    );
+  }
+}
+
+/**
+ * Rich text is sanitised by the service on write and again by the view on
+ * read, so it needs a routed resource. It is HTML, which no comparison or
+ * ordering of text means anything for, and one language per value.
+ */
+function assertRichtextIsCoherent(
+  blueprint: RawBlueprint,
+  report: (message: string) => void,
+): void {
+  const richtext = new Set(
+    blueprint.fields
+      .filter((field) => field.type === 'richtext')
+      .map((field) => field.name),
+  );
+
+  for (const field of blueprint.fields) {
+    if (field.type !== 'richtext') {
+      continue;
+    }
+
+    if (field.translatable || field.reveal) {
+      report(
+        `richtext field "${field.name}" cannot be translatable or revealed`,
+      );
+    }
+
+    if (!blueprint.routed) {
+      report(
+        `richtext field "${field.name}" needs a routed resource: an unrouted one has no service to sanitise on write`,
+      );
+    }
+  }
+
+  for (const [kind, entries] of [
+    ['sort', blueprint.sorts],
+    ['filter', blueprint.filters],
+  ] as const) {
+    for (const entry of entries) {
+      if (richtext.has(entry)) {
+        report(
+          `${kind} "${entry}" names a richtext field, and a comparison of HTML says nothing about its content`,
+        );
+      }
     }
   }
 }
@@ -617,6 +824,26 @@ function assertWorkflowIsCoherent(
   }
 }
 
+function assertSharingIsCoherent(
+  blueprint: RawBlueprint,
+  report: (message: string) => void,
+): void {
+  if (blueprint.sharing && !blueprint.routed) {
+    report(
+      'sharing only applies to a routed resource: an unrouted one has no routes to grant or revoke a share on',
+    );
+  }
+
+  if (
+    blueprint.sharing &&
+    blueprint.fields.some((field) => field.type === 'vector')
+  ) {
+    report(
+      'sharing cannot be combined with a vector field yet: similarity ranking runs in SQL against the view scope, which does not carry the shared ids',
+    );
+  }
+}
+
 function assertVersionedIsCoherent(
   blueprint: RawBlueprint,
   report: (message: string) => void,
@@ -633,6 +860,33 @@ function assertVersionedIsCoherent(
   ) {
     report(
       'field "version" is the column versioned: true adds, so it cannot also be declared as a field',
+    );
+  }
+}
+
+function assertHistoryIsCoherent(
+  blueprint: RawBlueprint,
+  report: (message: string) => void,
+): void {
+  if (!blueprint.history) {
+    return;
+  }
+
+  if (!blueprint.routed) {
+    report(
+      'history only applies to a routed resource: an unrouted one has no routes to read a history from',
+    );
+  }
+
+  if (blueprint.model !== undefined && blueprint.model !== blueprint.name) {
+    report(
+      "history belongs to the resource that owns the model: this one serves another resource's model, so its writes would be snapshotted twice",
+    );
+  }
+
+  for (const field of blueprint.fields.filter((item) => item.translatable)) {
+    report(
+      `field "${field.name}" is translatable, which history does not snapshot yet: a snapshot would have to hold every locale`,
     );
   }
 }
@@ -889,9 +1143,13 @@ export function loadBlueprint(filePath: string): Blueprint {
   );
   assertSoftDeletesIsCoherent(blueprint, (message) => problems.push(message));
   assertTranslatableIsCoherent(blueprint, (message) => problems.push(message));
+  assertRichtextIsCoherent(blueprint, (message) => problems.push(message));
   assertVectorFieldsAreCoherent(blueprint, (message) => problems.push(message));
   assertVersionedIsCoherent(blueprint, (message) => problems.push(message));
   assertWorkflowIsCoherent(blueprint, (message) => problems.push(message));
+  assertHistoryIsCoherent(blueprint, (message) => problems.push(message));
+  assertSharingIsCoherent(blueprint, (message) => problems.push(message));
+  assertErasureIsCoherent(blueprint, (message) => problems.push(message));
   assertRelationsAreUnique(blueprint, (message) => problems.push(message));
   assertOwnRouteOnlyOnIncludes(blueprint, (message) => problems.push(message));
 

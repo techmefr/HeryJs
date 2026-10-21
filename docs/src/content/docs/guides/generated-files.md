@@ -59,7 +59,7 @@ Each mutation also publishes on the resource's signal channel and syncs the sear
 
 ## `task.controller.ts`
 
-The HTTP surface: six routes, each behind `SessionGuard` and `CapabilitiesGuard`, each response passed through `task.view.ts` before it leaves the process. There is no `GET /tasks/:id` — reading one record is the search route filtered to an id, so there is one contract to learn instead of two, and [Details](../guides/endpoints/details/) explains why.
+The HTTP surface: six routes, each behind `SessionGuard` and `CapabilitiesGuard`, each response passed through `task.view.ts` before it leaves the process. A blueprint with `history: true` adds three more (`POST /tasks/:id/history`, `/history/diff`, `/history/restore`); see [Row history](../guides/row-history/). There is no `GET /tasks/:id` — reading one record is the search route filtered to an id, so there is one contract to learn instead of two, and [Details](../guides/endpoints/details/) explains why.
 
 | Route                 | Capability at the guard                                                                     | Per-record check                                |
 | --------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------- |

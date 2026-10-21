@@ -10,15 +10,29 @@ import {
   CapabilitySubject,
 } from '#technical/capabilities/capabilities.types';
 import { SNIPPET_PRESETS, SNIPPET_TRANSITION_PRESETS } from './snippet.presets';
+import type { RecordShare } from '#technical/capabilities/capabilities.types';
 
 export interface SnippetRecordLike {
   ownerId: string;
+  shares?: readonly RecordShare[];
 }
 
 export const canCreateSnippet: PolicyCheck = (subject) =>
   resolveCollectionCapability(SNIPPET_PRESETS.create, subject);
 
 export const canUpdateSnippet: PolicyCheck<SnippetRecordLike> = (
+  subject,
+  record,
+) =>
+  record
+    ? resolveCapability(SNIPPET_PRESETS.update, subject, record, 'write')
+    : { allowed: false };
+
+// Sharing a record is a decision of its own, taken against the update preset
+// and deliberately blind to the shares themselves: whoever was handed write
+// access to a record cannot hand it on, so the owner stays the one who decides
+// who else gets in.
+export const canShareSnippet: PolicyCheck<SnippetRecordLike> = (
   subject,
   record,
 ) =>
@@ -31,6 +45,27 @@ export const canUpdateSnippet: PolicyCheck<SnippetRecordLike> = (
 // route takes, before canUpdateSnippet narrows per record inside the handler.
 export const canUpdateAnySnippet: PolicyCheck = (subject) =>
   resolveCollectionCapability(SNIPPET_PRESETS.update, subject);
+
+// The past of a record is read under the same rule as the record: whoever may
+// see it may see what it used to be. Its own check rather than canViewSnippet
+// so a project can tighten history alone without touching the read route.
+export const canViewHistorySnippet: PolicyCheck<SnippetRecordLike> = (
+  subject,
+  record,
+) =>
+  record
+    ? resolveCapability(SNIPPET_PRESETS.view, subject, record)
+    : { allowed: false };
+
+// Putting a snapshot back is an update, whatever route it travels: it writes
+// the record, so the update preset decides, per record, like canUpdateSnippet.
+export const canRevertSnippet: PolicyCheck<SnippetRecordLike> = (
+  subject,
+  record,
+) =>
+  record
+    ? resolveCapability(SNIPPET_PRESETS.update, subject, record)
+    : { allowed: false };
 
 export const canDeleteSnippet: PolicyCheck<SnippetRecordLike> = (
   subject,
@@ -83,7 +118,7 @@ export const canViewSnippet: PolicyCheck<SnippetRecordLike> = (
   record,
 ) =>
   record
-    ? resolveCapability(SNIPPET_PRESETS.view, subject, record)
+    ? resolveCapability(SNIPPET_PRESETS.view, subject, record, 'read')
     : { allowed: false };
 
 // Same preset as canViewSnippet: whoever may read one record may ask for the
@@ -142,7 +177,15 @@ export class SnippetPolicy {
     subject: CapabilitySubject,
     record: SnippetRecordLike,
   ): Record<
-    'update' | 'delete' | 'restore' | 'publish' | 'archive' | 'reopen',
+    | 'update'
+    | 'delete'
+    | 'share'
+    | 'restore'
+    | 'publish'
+    | 'archive'
+    | 'reopen'
+    | 'history'
+    | 'revert',
     CapabilityDecision
   > {
     return {
@@ -150,16 +193,20 @@ export class SnippetPolicy {
         SNIPPET_PRESETS.update,
         subject,
         record,
+        'write',
       ),
       delete: this.capabilities.resolve(
         SNIPPET_PRESETS.delete,
         subject,
         record,
       ),
+      share: canShareSnippet(subject, record),
       restore: canRestoreSnippet(subject, record),
       publish: canPublishSnippet(subject, record),
       archive: canArchiveSnippet(subject, record),
       reopen: canReopenSnippet(subject, record),
+      history: canViewHistorySnippet(subject, record),
+      revert: canRevertSnippet(subject, record),
     };
   }
 

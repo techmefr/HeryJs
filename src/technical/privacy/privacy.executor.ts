@@ -1,0 +1,313 @@
+import { createHash } from 'node:crypto';
+import { Inject, Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { redactAuditEntries } from '#technical/audit/audit-redaction';
+import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
+import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
+import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
+import { anonymisedData, PersonalDataRegistry } from './personal-data.registry';
+import type { PersonalDataDeclaration } from './personal-data.types';
+
+const TOMBSTONE_DOMAIN = 'erased.invalid';
+const TOMBSTONE_REASON = 'erased';
+const USER_BATCH_SIZE = 500;
+
+type Row = Record<string, unknown>;
+
+interface RowDelegate {
+  findMany(args: unknown): Promise<Row[]>;
+  deleteMany(args: unknown): Promise<{ count: number }>;
+  updateMany(args: unknown): Promise<{ count: number }>;
+}
+
+interface IdentityDelegate {
+  deleteMany(args: unknown): Promise<{ count: number }>;
+}
+
+export interface ExportOutcome {
+  result: Prisma.InputJsonValue;
+  summary: { resources: Record<string, number> };
+}
+
+export interface ErasureOutcome {
+  summary: {
+    resources: Record<string, number>;
+    auditEntriesRedacted: number;
+    identities: number;
+  };
+}
+
+function delegateFor<T>(client: object, model: string): T {
+  const key = model.charAt(0).toLowerCase() + model.slice(1);
+
+  return (client as unknown as Record<string, T>)[key]!;
+}
+
+/**
+ * Every table that hangs off a user and dies with it: sessions, accounts,
+ * keys, second factors, notification settings. Read off Prisma's own DMMF --
+ * a `user` relation backed by a `userId` column -- so a table added later is
+ * erased with the user without anyone remembering to list it. Resources a
+ * blueprint generated are not here: they point at their owner through
+ * `ownerId`, and answer through their declaration.
+ */
+function userKeyedModels(): string[] {
+  return Prisma.dmmf.datamodel.models
+    .filter((model) => {
+      const names = new Set(model.fields.map((field) => field.name));
+
+      return (
+        names.has('userId') &&
+        model.fields.some(
+          (field) =>
+            field.kind === 'object' &&
+            !field.isList &&
+            field.name === 'user' &&
+            field.type === 'User',
+        )
+      );
+    })
+    .map((model) => model.name);
+}
+
+function pseudonymFor(userId: string): string {
+  const digest = createHash('sha256').update(userId).digest('hex');
+
+  return `erased-${digest.slice(0, 24)}@${TOMBSTONE_DOMAIN}`;
+}
+
+function chunked<T>(items: readonly T[], size: number): T[][] {
+  const chunks: T[][] = [];
+
+  for (let start = 0; start < items.length; start += size) {
+    chunks.push(items.slice(start, start + size));
+  }
+
+  return chunks;
+}
+
+/**
+ * The work behind a privacy request, run by a queue worker inside the
+ * requester's tenant context. Resource rows go through the tenant-scoped
+ * client, so the boundary, row-level security and the audit extension apply
+ * to an erasure exactly as they do to any other write; the identity record and
+ * the audit chain are kernel tables and are reached directly.
+ */
+@Injectable()
+export class PrivacyExecutor {
+  constructor(
+    @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,
+    private readonly registry: PersonalDataRegistry,
+  ) {}
+
+  async exportUser(tenantId: string, userId: string): Promise<ExportOutcome> {
+    const identity = await authPrismaClient.user.findFirst({
+      where: { id: userId, tenantId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        image: true,
+        phoneNumber: true,
+        createdAt: true,
+      },
+    });
+
+    if (!identity) {
+      throw new RecordNotFoundException('user');
+    }
+
+    const resources: Record<string, Row[]> = {};
+
+    for (const declaration of this.registry.all()) {
+      const rows = await this.rowsOf(declaration).findMany({
+        where: { ownerId: userId },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      resources[declaration.model] = rows.map((row) =>
+        this.exportedRow(declaration, row),
+      );
+    }
+
+    return {
+      // A bundle is JSON by the time it is stored; round-tripping here turns
+      // dates into strings once instead of leaving it to the column.
+      result: JSON.parse(
+        JSON.stringify({
+          exportedAt: new Date(),
+          identity,
+          resources,
+        }),
+      ) as Prisma.InputJsonValue,
+      summary: {
+        resources: Object.fromEntries(
+          Object.entries(resources).map(([model, rows]) => [
+            model,
+            rows.length,
+          ]),
+        ),
+      },
+    };
+  }
+
+  async eraseUser(tenantId: string, userId: string): Promise<ErasureOutcome> {
+    const identity = await authPrismaClient.user.findFirst({
+      where: { id: userId, tenantId },
+      select: { id: true },
+    });
+
+    if (!identity) {
+      throw new RecordNotFoundException('user');
+    }
+
+    const resources: Record<string, number> = {};
+    let auditEntriesRedacted = 0;
+
+    for (const declaration of this.registry.all()) {
+      const delegate = this.rowsOf(declaration);
+      const where = { ownerId: userId };
+      const ids = (
+        await delegate.findMany({ where, select: { id: true } })
+      ).map((row) => row.id as string);
+
+      // The audit entries go first. A retry after a failure finds no rows left
+      // to name, so redacting afterwards would leave the entries of rows an
+      // earlier attempt already deleted.
+      auditEntriesRedacted += await redactAuditEntries(authPrismaClient, {
+        tenantId,
+        models: [declaration.model],
+        recordIds: ids,
+      });
+      resources[declaration.model] = await this.erase(
+        declaration,
+        delegate,
+        where,
+      );
+    }
+
+    return {
+      summary: {
+        resources,
+        auditEntriesRedacted,
+        identities: await this.tombstone(tenantId, [userId]),
+      },
+    };
+  }
+
+  /**
+   * Every user of the tenant but the one who asked: that account keeps the
+   * session the requester reads the outcome with, and is erased by an erasure
+   * of that user once the outcome has been read.
+   */
+  async eraseTenant(
+    tenantId: string,
+    requesterId: string | null,
+  ): Promise<ErasureOutcome> {
+    const resources: Record<string, number> = {};
+    let auditEntriesRedacted = 0;
+
+    for (const declaration of this.registry.all()) {
+      auditEntriesRedacted += await redactAuditEntries(authPrismaClient, {
+        tenantId,
+        models: [declaration.model],
+      });
+      resources[declaration.model] = await this.erase(
+        declaration,
+        this.rowsOf(declaration),
+        {},
+      );
+    }
+
+    const users = await authPrismaClient.user.findMany({
+      where: {
+        tenantId,
+        ...(requesterId === null ? {} : { id: { not: requesterId } }),
+      },
+      select: { id: true },
+    });
+    let identities = 0;
+
+    for (const batch of chunked(
+      users.map((user) => user.id),
+      USER_BATCH_SIZE,
+    )) {
+      identities += await this.tombstone(tenantId, batch);
+    }
+
+    return { summary: { resources, auditEntriesRedacted, identities } };
+  }
+
+  private rowsOf(declaration: PersonalDataDeclaration): RowDelegate {
+    return delegateFor<RowDelegate>(this.prisma, declaration.model);
+  }
+
+  private exportedRow(declaration: PersonalDataDeclaration, row: Row): Row {
+    const exported: Row = {};
+
+    for (const key of ['id', 'createdAt', 'updatedAt', 'deletedAt']) {
+      if (key in row) {
+        exported[key] = row[key];
+      }
+    }
+
+    for (const field of declaration.fields) {
+      exported[field.name] = row[field.name];
+    }
+
+    return exported;
+  }
+
+  private async erase(
+    declaration: PersonalDataDeclaration,
+    delegate: RowDelegate,
+    where: Row,
+  ): Promise<number> {
+    if (declaration.erase === 'delete') {
+      return (await delegate.deleteMany({ where })).count;
+    }
+
+    return (
+      await delegate.updateMany({ where, data: anonymisedData(declaration) })
+    ).count;
+  }
+
+  /**
+   * Deletes what hangs off each user and rewrites the user row to a tombstone:
+   * the id stays, because resources and the audit chain still point at it, but
+   * nothing on the row identifies anyone, and a banned account with no
+   * credentials cannot sign in again.
+   */
+  private tombstone(tenantId: string, userIds: string[]): Promise<number> {
+    return authPrismaClient.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
+
+      for (const model of userKeyedModels()) {
+        await delegateFor<IdentityDelegate>(tx, model).deleteMany({
+          where: { userId: { in: userIds } },
+        });
+      }
+
+      for (const id of userIds) {
+        await tx.user.update({
+          where: { id },
+          data: {
+            email: pseudonymFor(id),
+            emailVerified: false,
+            name: null,
+            image: null,
+            phoneNumber: null,
+            phoneNumberVerified: false,
+            twoFactorEnabled: false,
+            banned: true,
+            banReason: TOMBSTONE_REASON,
+            banExpires: null,
+          },
+        });
+      }
+
+      return userIds.length;
+    });
+  }
+}
