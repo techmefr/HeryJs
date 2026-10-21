@@ -5,6 +5,7 @@ import {
   Check,
   ChevronRight,
   Clock,
+  Database,
   Inbox,
   LayoutDashboard,
   LockKeyhole,
@@ -27,6 +28,7 @@ import {
 type IconNode = Parameters<typeof createElement>[0];
 
 export const ICONS = {
+  backups: Database,
   brand: Zap,
   circuits: Network,
   crumb: ChevronRight,
