@@ -10,6 +10,7 @@ import type { HealthReport } from '#technical/health/health-check';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import { UnpaginatedRoute } from '#technical/http/unpaginated-route.decorator';
+import { isEnvSet } from '#technical/config/module-env';
 import { canReadDeployment } from './monitoring.policy';
 
 /**
@@ -61,7 +62,7 @@ export class DeploymentController {
       nodeEnv: process.env.NODE_ENV ?? 'development',
       environment: REQUIRED_PRODUCTION_VARIABLES.map((name) => ({
         name,
-        isSet: Boolean(process.env[name]),
+        isSet: isEnvSet(name),
       })),
       health: await this.registry.report('readiness'),
       migrations: await this.migrations(),
