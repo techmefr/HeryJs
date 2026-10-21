@@ -75,8 +75,10 @@ What does not depend on the policy:
 
 ## Turning a login into a session
 
-The module resolves who signed in. How that becomes a session is yours, because
-a session is the auth layer's decision. Pass a handler:
+By default the callback mints a Better Auth session for the resolved user
+(`internalAdapter.createSession`) and returns its bearer token with the
+`OAuthLoginResult`, `Cache-Control: no-store`. To redirect to your front end or
+set a cookie instead, pass your own handler:
 
 ```ts
 @Injectable()
@@ -88,9 +90,6 @@ class IssueSession implements OAuthLoginHandler {
 
 OAuthModule.forRoot({ loginHandler: IssueSession });
 ```
-
-Without one, the callback returns the `OAuthLoginResult` as JSON, which is
-enough to build on and not a login by itself.
 
 ## A provider of your own
 

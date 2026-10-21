@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Response } from 'express';
+import { getAuthContext } from '#technical/auth/better-auth.instance';
 import { ok } from '#technical/http/envelope';
 import type { OAuthLoginResult } from './oauth.types';
 
@@ -13,5 +14,17 @@ export interface OAuthLoginHandler {
 export class JsonOAuthLoginHandler implements OAuthLoginHandler {
   handle(result: OAuthLoginResult, response: Response): void {
     response.json(ok(result));
+  }
+}
+
+@Injectable()
+export class SessionOAuthLoginHandler implements OAuthLoginHandler {
+  async handle(result: OAuthLoginResult, response: Response): Promise<void> {
+    const { auth } = await getAuthContext();
+    const context = await auth.$context;
+    const session = await context.internalAdapter.createSession(result.userId);
+
+    response.setHeader('cache-control', 'no-store');
+    response.json(ok({ ...result, token: session.token }));
   }
 }

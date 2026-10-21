@@ -9,7 +9,7 @@ import {
   PrismaOAuthIdentityStore,
 } from './oauth-identity.store';
 import {
-  JsonOAuthLoginHandler,
+  SessionOAuthLoginHandler,
   OAUTH_LOGIN_HANDLER,
 } from './oauth-login.handler';
 import type { OAuthLoginHandler } from './oauth-login.handler';
@@ -93,7 +93,7 @@ export class OAuthModule {
       providers: [
         {
           provide: OAUTH_LOGIN_HANDLER,
-          useClass: options.loginHandler ?? JsonOAuthLoginHandler,
+          useClass: options.loginHandler ?? SessionOAuthLoginHandler,
         },
       ],
     };
