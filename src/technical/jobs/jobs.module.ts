@@ -7,7 +7,6 @@ import {
   DEFAULT_QUEUE,
   EVENTS_QUEUE,
   EXPORT_QUEUE,
-  FLOW_PRODUCER,
   FLOW_QUEUE,
   IMPORT_QUEUE,
   OUTBOX_QUEUE,
@@ -46,7 +45,6 @@ import { QueueHealthCheck } from './queue-health-check';
     // Chains and batches run here unless a step names another queue: its
     // processor owns every step name registered with JobFlowHandlers.
     BullModule.registerQueue({ name: FLOW_QUEUE }),
-    BullModule.registerFlowProducer({ name: FLOW_PRODUCER }),
   ],
   providers: [JobsService, QueueHealthCheck],
   exports: [BullModule, JobsService],

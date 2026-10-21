@@ -1,10 +1,13 @@
-import { getQueueToken, InjectFlowProducer } from '@nestjs/bullmq';
-import { Injectable } from '@nestjs/common';
+import { getQueueToken } from '@nestjs/bullmq';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
-import type { FlowProducer, Job, Queue } from 'bullmq';
+import { FlowProducer } from 'bullmq';
+import type { Job, Queue } from 'bullmq';
+import IORedis from 'ioredis';
+import { env } from '#technical/config/env';
 import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
 import type { Page, PageQuery } from '#technical/http/page-query';
-import { FLOW_PRODUCER, FLOW_QUEUE } from '#technical/jobs/jobs.constants';
+import { FLOW_QUEUE } from '#technical/jobs/jobs.constants';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import {
   FlowAlreadyFinishedException,
@@ -47,14 +50,36 @@ interface FlowDefinition {
  * resumes the flow, and the steps that already completed are never run again.
  */
 @Injectable()
-export class JobFlowsService {
+export class JobFlowsService implements OnModuleDestroy {
   private readonly definitions = new Map<string, FlowDefinition>();
+  private connection: IORedis | null = null;
+  private flowProducer: FlowProducer | null = null;
 
   constructor(
-    @InjectFlowProducer(FLOW_PRODUCER) private readonly producer: FlowProducer,
     private readonly moduleRef: ModuleRef,
     private readonly store: JobFlowStore,
   ) {}
+
+  /**
+   * Its own connection, opened on first use. A flow producer closes the
+   * connection it was given, so handing it the one the queues share would take
+   * every queue down with the first application that shuts down in a process.
+   */
+  private get producer(): FlowProducer {
+    if (!this.flowProducer) {
+      this.connection = new IORedis(env.REDIS_URL, {
+        maxRetriesPerRequest: null,
+      });
+      this.flowProducer = new FlowProducer({ connection: this.connection });
+    }
+
+    return this.flowProducer;
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.flowProducer?.close();
+    this.connection?.disconnect();
+  }
 
   chain(spec: ChainSpec, options: FlowStartOptions = {}): Promise<FlowDetail> {
     return this.start({ kind: 'chain', ...spec }, options);
@@ -230,11 +255,19 @@ export class JobFlowsService {
           };
         }
 
+        const state = stepStateOf(await job.getState());
+        // The job was read before its state: one that failed in between still
+        // carries the data of its last run, with no reason yet.
+        const settled =
+          state === 'failed' && !job.failedReason
+            ? ((await this.findJob(step.queue, step.id)) ?? job)
+            : job;
+
         return {
           ...step,
-          state: stepStateOf(await job.getState()),
-          attemptsMade: job.attemptsMade,
-          failedReason: job.failedReason ?? null,
+          state,
+          attemptsMade: settled.attemptsMade,
+          failedReason: settled.failedReason ?? null,
         };
       }),
     );
