@@ -1,4 +1,7 @@
 import { ApiError } from './api';
+import { initialState, nextSort, searchBody } from './query';
+import type { QueryState } from './query';
+import { drawPager } from './pager';
 import { state as stateCard, skeleton } from './render';
 import { openCreate, openEdit } from './resource-editor';
 import type { EditorContext } from './resource-editor';
@@ -12,55 +15,97 @@ import {
   searchResource,
   summarize,
 } from './resource';
-import type { ResourceRow } from './resource';
+import type {
+  ResourceDescription,
+  ResourceRow,
+  SearchOutcome,
+} from './resource';
+import { buildToolbar } from './toolbar';
 import { announce, confirmed } from './view-state';
 import type { MountOptions, View } from './view-state';
 
 export type { MountOptions } from './view-state';
 
 async function fetchPage(view: View): Promise<void> {
-  view.outcome = await searchResource(view.options.base + '/search', {
-    capabilities: view.capabilityKeys,
-  });
+  view.outcome = await searchResource(
+    view.options.base + '/search',
+    searchBody(view.description, view.query, view.capabilityKeys),
+  );
 }
 
 async function refreshRow(view: View, id: string): Promise<ResourceRow | null> {
+  const body = searchBody(
+    view.description,
+    initialState(view.description),
+    view.capabilityKeys,
+  );
   const outcome = await searchResource(view.options.base + '/search', {
-    capabilities: view.capabilityKeys,
+    ...body,
+    page: undefined,
+    limit: undefined,
     filters: [{ field: 'id', operator: '=', value: id }],
+    onlyTrashed: view.query.trashed || undefined,
   });
 
   return outcome.rows.find((row) => row.id === id) ?? null;
 }
 
 function buttonsOf(view: View, row: ResourceRow): RowButton[] {
-  return [
-    {
+  const buttons: RowButton[] = [];
+  const { query } = view;
+
+  if (!query.trashed) {
+    buttons.push({
       id: 'edit',
       label: 'Edit',
       isAllowed: isAllowed(row.capabilities, 'update'),
       onClick: () => void openEdit(editorOf(view), row.id),
-    },
-    {
+    });
+  }
+
+  if (query.trashed && view.description.softDeletes) {
+    buttons.push({
+      id: 'restore',
+      label: 'Restore',
+      isAllowed: isAllowed(row.capabilities, 'restore'),
+      onClick: () => void runRowChange(view, 'restore', row),
+    });
+  }
+
+  if (!query.trashed) {
+    buttons.push({
       id: 'delete',
       label: 'Delete',
       isAllowed: isAllowed(row.capabilities, 'delete'),
-      onClick: () => void deleteRow(view, row),
-    },
-  ];
+      onClick: () => void runRowChange(view, 'delete', row),
+    });
+  }
+
+  return buttons;
 }
 
-async function deleteRow(view: View, row: ResourceRow): Promise<void> {
-  if (!confirmed(view, 'Delete this record?')) {
+async function runRowChange(
+  view: View,
+  kind: 'delete' | 'restore',
+  row: ResourceRow,
+): Promise<void> {
+  const verb = kind === 'restore' ? 'Restore' : 'Delete';
+
+  if (!confirmed(view, verb + ' this record?')) {
     return;
   }
 
-  const entries = await mutateIds(view.options.base, 'delete', [row.id]);
-  const failure = summarize(entries).failed[0];
+  const entries = await mutateIds(
+    view.options.base,
+    kind === 'restore' ? 'restore' : 'delete',
+    [row.id],
+  );
+  const summary = summarize(entries);
+  const failure = summary.failed[0];
 
   announce(
     view,
-    failure ? failure.message : 'Delete done.',
+    failure ? failure.message : verb + ' done.',
     failure !== undefined,
   );
   await load(view);
@@ -71,7 +116,12 @@ function drawTable(view: View): void {
 
   if (rows.length === 0) {
     view.table.replaceChildren(
-      stateCard('Nothing to show', 'This resource has no record yet.'),
+      stateCard(
+        view.query.trashed ? 'The trash is empty' : 'Nothing to show',
+        view.query.search || view.query.filters.length > 0
+          ? 'No record matches the current search and filters.'
+          : 'This resource has no record yet.',
+      ),
     );
     return;
   }
@@ -80,9 +130,21 @@ function drawTable(view: View): void {
     resourceTable({
       rows,
       columns: columnsOf(rows),
+      sortable: view.description.sorts,
+      sort: view.query.sort,
       buttonsOf: (row) => buttonsOf(view, row),
+      onSort: (field) => {
+        view.query.sort = nextSort(view.query.sort, field);
+        view.query.page = 1;
+        void load(view);
+      },
     }),
   );
+}
+
+async function goTo(view: View, page: number): Promise<void> {
+  view.query.page = page;
+  await load(view);
 }
 
 async function load(view: View): Promise<void> {
@@ -100,13 +162,16 @@ async function load(view: View): Promise<void> {
   }
 
   drawTable(view);
+  drawPager(view, (page) => goTo(view, page));
   drawHeader(view);
 }
 
 function editorOf(view: View): EditorContext {
+  const { base } = view.options;
+
   return {
     root: view.root,
-    base: view.options.base,
+    base,
     description: view.description,
     refreshRow: (id) => refreshRow(view, id),
     onSaved: async (message) => {
@@ -144,23 +209,20 @@ export async function mountResource(
 ): Promise<void> {
   root.replaceChildren(skeleton());
 
-  let view: View;
+  let description: ResourceDescription;
+  let first: SearchOutcome;
+  const query = (d: ResourceDescription): QueryState => initialState(d);
 
   try {
-    const description = await describeResource(options.base);
-    const capabilityKeys = capabilityKeysOf(description);
-    const outcome = await searchResource(options.base + '/search', {
-      capabilities: capabilityKeys,
-    });
-    view = {
-      options,
-      description,
-      capabilityKeys,
-      outcome,
-      notice: document.createElement('p'),
-      table: document.createElement('div'),
-      root,
-    };
+    description = await describeResource(options.base);
+    first = await searchResource(
+      options.base + '/search',
+      searchBody(
+        description,
+        query(description),
+        capabilityKeysOf(description),
+      ),
+    );
   } catch (error) {
     root.replaceChildren(
       error instanceof ApiError && error.status === 403
@@ -178,7 +240,19 @@ export async function mountResource(
     return;
   }
 
+  const view: View = {
+    options,
+    description,
+    capabilityKeys: capabilityKeysOf(description),
+    query: query(description),
+    outcome: first,
+    notice: document.createElement('p'),
+    table: document.createElement('div'),
+    pager: document.createElement('div'),
+    root,
+  };
   view.notice.dataset.slot = 'notice';
+  view.pager.className = 'pager';
 
   const header = document.createElement('div');
   header.className = 'resource-head';
@@ -186,11 +260,22 @@ export async function mountResource(
   create.dataset.slot = 'create';
   header.appendChild(create);
 
-  root.replaceChildren(header, view.notice, view.table);
+  const toolbar = buildToolbar({
+    description,
+    state: view.query,
+    canListTrash: isAllowed(first.meta.capabilities, 'listTrashed'),
+    onChange: (patch) => {
+      Object.assign(view.query, patch);
+      void load(view);
+    },
+  });
+
+  root.replaceChildren(header, toolbar, view.notice, view.table, view.pager);
   drawTable(view);
+  drawPager(view, (page) => goTo(view, page));
   drawHeader(view);
 
-  for (const message of view.outcome.messages) {
+  for (const message of first.messages) {
     announce(view, message, false);
   }
 

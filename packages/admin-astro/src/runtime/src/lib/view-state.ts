@@ -1,4 +1,5 @@
 import type { DescribedController } from './api';
+import type { QueryState } from './query';
 import type { ResourceDescription, SearchOutcome } from './resource';
 
 export interface MountOptions {
@@ -12,9 +13,11 @@ export interface View {
   options: MountOptions;
   description: ResourceDescription;
   capabilityKeys: string[];
+  query: QueryState;
   outcome: SearchOutcome;
   notice: HTMLElement;
   table: HTMLElement;
+  pager: HTMLElement;
   root: HTMLElement;
 }
 

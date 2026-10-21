@@ -1,4 +1,5 @@
 import { writeCell } from './render';
+import type { QueryState } from './query';
 import type { ResourceRow } from './resource';
 
 export interface RowButton {
@@ -11,7 +12,10 @@ export interface RowButton {
 export interface ResourceTableOptions {
   rows: ResourceRow[];
   columns: string[];
+  sortable: string[];
+  sort: QueryState['sort'];
   buttonsOf: (row: ResourceRow) => RowButton[];
+  onSort: (field: string) => void;
 }
 
 export const DENIED_HINT = 'Your account is not allowed to do this';
@@ -22,6 +26,38 @@ export function columnsOf(rows: ResourceRow[]): string[] {
   const keys = [...new Set(rows.flatMap((row) => Object.keys(row)))];
 
   return keys.filter((key) => !HIDDEN_KEYS.has(key));
+}
+
+function headingOf(
+  column: string,
+  options: ResourceTableOptions,
+): HTMLTableCellElement {
+  const heading = document.createElement('th');
+
+  if (!options.sortable.includes(column)) {
+    heading.textContent = column;
+    return heading;
+  }
+
+  const isSorted = options.sort?.field === column;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'sort';
+  button.textContent =
+    column +
+    (isSorted ? (options.sort?.direction === 'asc' ? ' ↑' : ' ↓') : '');
+  button.addEventListener('click', () => options.onSort(column));
+  heading.setAttribute(
+    'aria-sort',
+    isSorted
+      ? options.sort?.direction === 'asc'
+        ? 'ascending'
+        : 'descending'
+      : 'none',
+  );
+  heading.appendChild(button);
+
+  return heading;
 }
 
 function cellOf(row: ResourceRow, column: string): HTMLTableCellElement {
@@ -60,9 +96,7 @@ export function resourceTable(options: ResourceTableOptions): HTMLElement {
   const head = element.createTHead().insertRow();
 
   for (const column of options.columns) {
-    const heading = document.createElement('th');
-    heading.textContent = column;
-    head.appendChild(heading);
+    head.appendChild(headingOf(column, options));
   }
 
   head.appendChild(document.createElement('th'));

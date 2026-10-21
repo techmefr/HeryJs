@@ -22,6 +22,8 @@ describe('listing a resource', () => {
 
     expect(lastSearch().body).toEqual({
       capabilities: ['update', 'delete', 'restore', 'attachTags', 'detachTags'],
+      page: 1,
+      limit: 15,
     });
   });
 
@@ -30,6 +32,7 @@ describe('listing a resource', () => {
 
     expect(root.querySelectorAll('tbody tr')).toHaveLength(2);
     expect(root.textContent).not.toContain('capabilities');
+    expect(root.textContent).toContain('2 records - page 1 of 1');
   });
 
   it('renders a hostile value as text, never as markup', async () => {
