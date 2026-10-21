@@ -10,23 +10,23 @@ datasource db {
 }
 
 model User {
-  id               String    @id @default(cuid())
-  email            String    @unique
-  emailVerified    Boolean   @default(false)
-  name             String?
-  image            String?
-  tenantId         String    @default("default")
-  currentTeamId    String?
-  role             String?
-  banned           Boolean   @default(false)
-  banReason        String?
-  banExpires       DateTime?
-  twoFactorEnabled Boolean   @default(false)
-  phoneNumber      String?   @unique
-  phoneNumberVerified Boolean @default(false)
-  isAnonymous      Boolean   @default(false)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  emailVerified       Boolean   @default(false)
+  name                String?
+  image               String?
+  tenantId            String    @default("default")
+  currentTeamId       String?
+  role                String?
+  banned              Boolean   @default(false)
+  banReason           String?
+  banExpires          DateTime?
+  twoFactorEnabled    Boolean   @default(false)
+  phoneNumber         String?   @unique
+  phoneNumberVerified Boolean   @default(false)
+  isAnonymous         Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   sessions                  Session[]
   accounts                  Account[]
@@ -124,12 +124,17 @@ model Verification {
 }
 
 model FeatureFlag {
-  id        String   @id @default(cuid())
-  key       String
-  tenantId  String?
-  enabled   Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String   @id @default(cuid())
+  key               String
+  tenantId          String?
+  enabled           Boolean  @default(false)
+  // 0-100, bucketed per user or per tenant (rolloutBy); 100 means everyone.
+  rolloutPercentage Int      @default(100)
+  rolloutBy         String   @default("user")
+  // Ordered targeting rules, first match wins; see feature-flag-evaluation.ts.
+  rules             Json     @default("[]")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@unique([key, tenantId])
 }
@@ -150,13 +155,13 @@ model AppNotification {
 }
 
 model AuditLog {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   // createdAt is a millisecond timestamp, so two entries written in the same
   // millisecond -- routine under load -- have no order at all. Reading the
   // chain by it can hand the verifier a legitimate chain in the wrong order,
   // and reading the tail by it can return the wrong predecessor. The sequence
   // is what actually orders the chain.
-  sequence       Int      @unique @default(autoincrement())
+  sequence       Int       @unique @default(autoincrement())
   tenantId       String
   model          String
   operation      String
@@ -170,7 +175,11 @@ model AuditLog {
   // genesis entries -- as many parallel chains -- while the constraint below
   // looked like it forbade them.
   previousHash   String
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
+  // Set when an erasure request replaced `data` with a digest of it. The entry
+  // stays in the chain so its neighbours still link to it, but its content can
+  // no longer be recomputed, so the verifier checks its links, not its hash.
+  redactedAt     DateTime?
 
   // Two entries in the same tenant's chain can never claim the same
   // predecessor -- that is a fork, and the linear verifier can never accept
@@ -181,15 +190,15 @@ model AuditLog {
 }
 
 model BlogPost {
-  id        String    @id @default(cuid())
-  tenantId  String
-  ownerId   String
-  title     String
-  summary   Json?
+  id          String    @id @default(cuid())
+  tenantId    String
+  ownerId     String
+  title       String
+  summary     Json?
   privateNote String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
 
   owner User           @relation(fields: [ownerId], references: [id])
   notes BlogPostNote[]
@@ -625,16 +634,20 @@ model DevtoolsEntry {
 }
 
 model SsoConnection {
-  id           String   @id @default(cuid())
-  tenantId     String
-  name         String
-  issuer       String
-  clientId     String
-  clientSecret String
-  linkPolicy   String   @default("refuse")
-  isEnabled    Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  tenantId             String
+  name                 String
+  protocol             String   @default("oidc")
+  issuer               String
+  clientId             String
+  clientSecret         String?
+  samlEntryPoint       String?
+  samlCertificate      String?
+  samlAttributeMapping String?
+  linkPolicy           String   @default("refuse")
+  isEnabled            Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   domains    SsoDomain[]
   identities SsoIdentity[]
@@ -704,4 +717,24 @@ model RecordShare {
   // with one subject, for one resource.
   @@index([tenantId, resource, granteeType, granteeId])
   @@index([tenantId, resource, recordId])
+}
+
+// One export, user erasure or tenant erasure, run by a worker. `result` holds an
+// export's bundle until the requester reads it once; it is the only place the
+// bundle is kept, and reading it clears it.
+model PrivacyRequest {
+  id          String    @id @default(cuid())
+  tenantId    String
+  kind        String
+  status      String    @default("pending")
+  subjectId   String
+  requestedBy String?
+  summary     Json?
+  result      Json?
+  error       String?
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+  deliveredAt DateTime?
+
+  @@index([tenantId])
 }

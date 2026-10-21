@@ -238,3 +238,7 @@ Each entry generates an `attach`/`detach`/`sync` block on the update route, gate
 ## Why YAML, not decorators
 
 The blueprint is consumed once, at generation time — never read by the running application. Decorators like `@Capability` exist for behavior that genuinely needs to run per request; a static contract like pagination limits doesn't need that, and giving it decorator-based runtime metadata would just be indirection for something a YAML file already expresses clearly and diffs cleanly in review.
+
+## Erasure
+
+`erasure: delete | anonymise` opts a routed resource into privacy requests, and `personal: true` marks the fields an anonymising erasure rewrites. See [GDPR export and erasure](../gdpr/).

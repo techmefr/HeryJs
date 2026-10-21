@@ -63,6 +63,7 @@ async function promptVector(
     hidden: false,
     translatable: false,
     reveal: false,
+    personal: false,
     dimensions: dimensionsResponse.dimensions,
     source: sourceResponse.source,
   };
@@ -153,6 +154,7 @@ async function promptFields(): Promise<BlueprintField[]> {
       hidden: hiddenResponse.hidden ?? false,
       translatable: translatableResponse.translatable ?? false,
       reveal: false,
+      personal: false,
     });
   }
 
@@ -166,6 +168,7 @@ async function promptFields(): Promise<BlueprintField[]> {
           hidden: false,
           translatable: false,
           reveal: false,
+          personal: false,
         },
       ];
 }

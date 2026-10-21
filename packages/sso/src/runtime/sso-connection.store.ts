@@ -1,7 +1,9 @@
 import type {
   SsoConnectionRecord,
   SsoDomainRecord,
+  SsoAttributeMapping,
   SsoLinkPolicy,
+  SsoProtocol,
 } from './sso.types';
 
 export const SSO_CONNECTION_STORE = Symbol('SSO_CONNECTION_STORE');
@@ -10,9 +12,13 @@ export interface NewSsoConnection {
   id: string;
   tenantId: string;
   name: string;
+  protocol: SsoProtocol;
   issuer: string;
   clientId: string;
-  sealedClientSecret: string;
+  sealedClientSecret: string | null;
+  samlEntryPoint: string | null;
+  samlCertificate: string | null;
+  samlAttributeMapping: SsoAttributeMapping | null;
   linkPolicy: SsoLinkPolicy;
   domains: Array<{ domain: string; verificationToken: string }>;
 }
@@ -22,6 +28,9 @@ export interface SsoConnectionChanges {
   issuer?: string;
   clientId?: string;
   sealedClientSecret?: string;
+  samlEntryPoint?: string;
+  samlCertificate?: string;
+  samlAttributeMapping?: SsoAttributeMapping;
   linkPolicy?: SsoLinkPolicy;
   isEnabled?: boolean;
 }

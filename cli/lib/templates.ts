@@ -2020,16 +2020,57 @@ export class ${ctx.pascalName}ChangeFeed implements OnModuleInit {
 `;
 }
 
+/**
+ * Present only for a resource whose blueprint declares an `erasure`. It hands
+ * the kernel the resource's declaration the same way the change feed file hands
+ * it the resource's channel, so the kernel never imports a resource.
+ */
+export function personalDataFile(ctx: ResourceContext): string {
+  const fields = ctx.fields
+    .map(
+      (field) =>
+        `        { name: '${field.name}', type: '${field.type}', optional: ${field.optional}, translatable: ${field.translatable}, personal: ${field.personal} },`,
+    )
+    .join('\n');
+
+  return `import { Injectable, OnModuleInit } from '@nestjs/common';
+import { PersonalDataRegistry } from '#technical/privacy/personal-data.registry';
+
+@Injectable()
+export class ${ctx.pascalName}PersonalData implements OnModuleInit {
+  constructor(private readonly registry: PersonalDataRegistry) {}
+
+  onModuleInit(): void {
+    this.registry.register({
+      model: '${ctx.modelPascalName}',
+      erase: '${ctx.personalData?.erase ?? 'delete'}',
+      fields: [
+${fields}
+      ],
+    });
+  }
+}
+`;
+}
+
+export function personalDataFiles(
+  ctx: ResourceContext,
+): Record<string, string> {
+  return ctx.personalData
+    ? { [`${ctx.kebabName}.personal-data.ts`]: personalDataFile(ctx) }
+    : {};
+}
+
 export function moduleFile(ctx: ResourceContext): string {
   return `import { Module } from '@nestjs/common';
 import { AuthModule } from '#technical/auth/auth.module';
 import { CapabilitiesService } from '#technical/capabilities/capabilities.service';
 import { ChangeFeedModule } from '#technical/change-feed/change-feed.module';
-import { PrismaModule } from '#technical/prisma/prisma.module';
+import { PrismaModule } from '#technical/prisma/prisma.module';${ctx.personalData ? "\nimport { PrivacyModule } from '#technical/privacy/privacy.module';" : ''}
 import { SearchModule } from '#technical/search/search.module';
 import { SignalModule } from '#technical/signal/signal.module';${ctx.sharing ? "\nimport { SharingModule } from '#technical/sharing/sharing.module';" : ''}${ctx.vector ? "\nimport { VectorModule } from '#technical/vector/vector.module';" : ''}
 import { ${ctx.pascalName}ChangeFeed } from './${ctx.kebabName}.change-feed';
-import { ${ctx.pascalName}Controller } from './${ctx.kebabName}.controller';
+import { ${ctx.pascalName}Controller } from './${ctx.kebabName}.controller';${ctx.personalData ? `\nimport { ${ctx.pascalName}PersonalData } from './${ctx.kebabName}.personal-data';` : ''}
 import { ${ctx.pascalName}Policy } from './${ctx.kebabName}.policy';
 import { ${ctx.pascalName}Service } from './${ctx.kebabName}.service';
 import {
@@ -2045,13 +2086,13 @@ import {
     AuthModule,
     SearchModule,
     SignalModule,
-    ChangeFeedModule${ctx.sharing ? ', SharingModule' : ''}${ctx.vector ? ', VectorModule' : ''},
+    ChangeFeedModule${ctx.sharing ? ', SharingModule' : ''}${ctx.vector ? ', VectorModule' : ''}${ctx.personalData ? ', PrivacyModule' : ''},
   ],
   controllers: [${ctx.pascalName}Controller],
   providers: [
     ${ctx.pascalName}Service,
     ${ctx.pascalName}Policy,
-    ${ctx.pascalName}ChangeFeed,
+    ${ctx.pascalName}ChangeFeed,${ctx.personalData ? `\n    ${ctx.pascalName}PersonalData,` : ''}
     CapabilitiesService,
     { provide: ${ctx.screamingSnakeName}_RECORD_LOADER, useClass: ${ctx.pascalName}RecordLoader },
     {
@@ -3748,6 +3789,312 @@ function sharingSpecBlock(ctx: ResourceContext, createBody: string): string {
 `;
 }
 
+/**
+ * What a generated resource owes a privacy request, proved against the real
+ * routes: the export carries the owner's rows and no one else's, the erasure
+ * removes or rewrites exactly the declared data, the audit trail keeps the
+ * request but not what it erased, and the chain still verifies afterwards.
+ *
+ * Everything runs in a tenant of its own, so an erasure of "the whole tenant"
+ * cannot reach another suite's rows and the chain it verifies is this test's.
+ */
+function privacySpecBlock(ctx: ResourceContext, createBody: string): string {
+  if (!ctx.personalData || ctx.permissions.create === 'none') {
+    return '';
+  }
+
+  const route = ctx.pluralKebabName;
+  const model = ctx.modelPascalName;
+  const delegate = ctx.modelCamelName;
+  const erase = ctx.personalData.erase;
+  const markerField = ctx.fields.find(
+    (field) =>
+      field.type === 'string' && !field.optional && !field.translatable,
+  );
+  const ownedFields = ctx.fields
+    .filter((field) => !field.optional)
+    .map(
+      (field) =>
+        `${field.name}: ${field === markerField ? 'marker' : sampleValueFor(field)}`,
+    );
+  const ownedBody = `{ ${ownedFields.join(', ')} }`;
+  // An encrypted field is the one that proves the export opens what the row
+  // seals, so it travels in the body even when it is optional.
+  const richBody = `{ ${[
+    ...ownedFields,
+    ...ctx.fields
+      .filter((field) => field.type === 'encrypted' && field.optional)
+      .map((field) => `${field.name}: ${sampleValueFor(field)}`),
+  ].join(', ')} }`;
+  const exportedChecks = ctx.fields
+    .filter(
+      (field) =>
+        !field.translatable &&
+        field.type !== 'datetime' &&
+        (!field.optional || field.type === 'encrypted') &&
+        field !== markerField,
+    )
+    .map((field) => `        ${field.name}: ${sampleValueFor(field)},`)
+    .join('\n');
+  // What an anonymised row holds. A sealed or translatable required value is
+  // not readable back through a raw client, so only what can be compared is.
+  const wipedChecks = ctx.fields
+    .filter(
+      (field) =>
+        field.personal &&
+        field.type !== 'datetime' &&
+        (field.optional || (!field.translatable && field.type !== 'encrypted')),
+    )
+    .map((field) => {
+      if (field.optional) {
+        return `        ${field.name}: null,`;
+      }
+
+      switch (field.type) {
+        case 'int':
+          return `        ${field.name}: 0,`;
+        case 'boolean':
+          return `        ${field.name}: false,`;
+        default:
+          return `        ${field.name}: '[erased]',`;
+      }
+    })
+    .join('\n');
+  const markerDeclaration = (prefix: string): string =>
+    markerField ? `      const marker = '${prefix}-' + randomUUID();\n` : '';
+  const rowsAfterErasure = (where: string): string =>
+    erase === 'delete'
+      ? `      expect(await prisma.${delegate}.count({ where: ${where} })).toBe(0);`
+      : `      const rows = await prisma.${delegate}.findMany({ where: ${where} });
+      expect(rows.length).toBeGreaterThan(0);
+      for (const row of rows) {
+        expect(row).toMatchObject({
+${wipedChecks}
+        });
+      }`;
+
+  return `
+  describe('privacy requests', () => {
+    const tenantId = createTestTenantId();
+    let admin: Actor;
+    let subject: Actor;
+    let bystander: Actor;
+
+    beforeAll(async () => {
+      admin = await actingAs(app, { tenantId, role: 'admin' });
+      subject = await actingAs(app, { tenantId });
+      bystander = await actingAs(app, { tenantId });
+    });
+
+    afterAll(async () => {
+      await purgeTenant(tenantId);
+    });
+
+    async function createAs(
+      actor: Actor,
+      body: Record<string, unknown>,
+    ): Promise<string> {
+      const response = await request(app.getHttpServer())
+        .post('/${route}/create')
+        .set('Authorization', actor.authorization)
+        .send({ data: [body] })
+        .expect(201);
+
+      return (response.body as { data: { data: { id: string } }[] }).data[0]!
+        .data.id;
+    }
+
+    async function requestAs(
+      actor: Actor,
+      path: string,
+      body: Record<string, unknown>,
+      status: number,
+    ): Promise<string> {
+      const response = await request(app.getHttpServer())
+        .post(path)
+        .set('Authorization', actor.authorization)
+        .send(body)
+        .expect(status);
+
+      return (response.body as { data?: { id: string } }).data?.id ?? '';
+    }
+
+    // An erasure ends the sessions of the user it erased, so the outcome of
+    // one is read from the request row; an export is collected over the API.
+    async function settled(id: string) {
+      for (let attempt = 0; attempt < 90; attempt += 1) {
+        const row = await prisma.privacyRequest.findUniqueOrThrow({
+          where: { id },
+        });
+
+        if (row.status === 'done' || row.status === 'failed') {
+          return row;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+
+      throw new Error('privacy request ' + id + ' did not settle');
+    }
+
+    async function collect(actor: Actor, id: string) {
+      for (let attempt = 0; attempt < 90; attempt += 1) {
+        const response = await request(app.getHttpServer())
+          .get('/privacy/requests/' + id)
+          .set('Authorization', actor.authorization)
+          .expect(200);
+        const view = (
+          response.body as {
+            data: { status: string; error: string | null; result?: unknown };
+          }
+        ).data;
+
+        if (view.status === 'done' || view.status === 'failed') {
+          return view;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+
+      throw new Error('privacy request ' + id + ' did not settle');
+    }
+
+    it('exports the rows a user owns, opened, and none of anyone else', async () => {
+${markerDeclaration('export')}      const ownId = await createAs(subject, ${richBody});
+      const otherId = await createAs(bystander, ${createBody});
+
+      const id = await requestAs(subject, '/privacy/exports', {}, 202);
+      const bundle = await collect(subject, id);
+
+      expect(bundle).toMatchObject({ status: 'done', error: null });
+
+      const exported = bundle.result as {
+        identity: { id: string };
+        resources: Record<string, Array<Record<string, unknown>>>;
+      };
+      const rows = exported.resources.${model}!;
+
+      expect(exported.identity.id).toBe(subject.id);
+      expect(rows.map((row) => row.id)).toEqual([ownId]);
+      expect(rows[0]).toMatchObject({${markerField ? `\n        ${markerField.name}: marker,` : ''}
+${exportedChecks}
+      });
+      expect(JSON.stringify(bundle.result)).not.toContain(otherId);
+
+      const again = await request(app.getHttpServer())
+        .get('/privacy/requests/' + id)
+        .set('Authorization', subject.authorization)
+        .expect(200);
+      expect(
+        (again.body as { data: { result?: unknown } }).data.result,
+      ).toBeUndefined();
+    });
+
+    it('refuses a request about another user unless an admin makes it', async () => {
+      await requestAs(bystander, '/privacy/exports', { userId: subject.id }, 403);
+      await requestAs(
+        bystander,
+        '/privacy/erasures/user',
+        { userId: subject.id },
+        403,
+      );
+      await requestAs(subject, '/privacy/erasures/tenant', { confirm: tenantId }, 403);
+      await requestAs(admin, '/privacy/erasures/tenant', { confirm: 'another-tenant' }, 400);
+
+      const id = await requestAs(
+        admin,
+        '/privacy/exports',
+        { userId: subject.id },
+        202,
+      );
+
+      await request(app.getHttpServer())
+        .get('/privacy/requests/' + id)
+        .set('Authorization', bystander.authorization)
+        .expect(404);
+      expect(await collect(admin, id)).toMatchObject({ status: 'done' });
+    });
+
+    it('erases a user, redacts what the audit trail held and keeps the request itself', async () => {
+${markerDeclaration('erase')}      const ownId = await createAs(subject, ${ownedBody});
+      const keptId = await createAs(bystander, ${createBody});
+
+      const id = await requestAs(
+        subject,
+        '/privacy/erasures/user',
+        { userId: subject.id },
+        202,
+      );
+
+      expect(await settled(id)).toMatchObject({ status: 'done', error: null });
+
+${rowsAfterErasure(`{ ownerId: subject.id }`)}
+      expect(
+        await prisma.${delegate}.findUnique({ where: { id: keptId } }),
+      ).not.toBeNull();
+
+      const held = await prisma.auditLog.findMany({
+        where: { tenantId, model: '${model}', recordId: ownId },
+      });
+      expect(held.every((entry) => entry.redactedAt !== null)).toBe(true);
+${markerField ? `      expect(JSON.stringify(held)).not.toContain(marker);\n` : ''}
+      const trail = await prisma.auditLog.findMany({
+        where: { tenantId, model: 'PrivacyRequest', recordId: id },
+        orderBy: { sequence: 'asc' },
+      });
+      expect(trail.map((entry) => entry.operation)).toEqual([
+        'privacy.erase-user.requested',
+        'privacy.erase-user.completed',
+      ]);
+${markerField ? `      expect(JSON.stringify(trail)).not.toContain(marker);\n` : ''}
+      const identity = await prisma.user.findUniqueOrThrow({
+        where: { id: subject.id },
+      });
+      expect(identity.email).toMatch(/@erased\\.invalid$/);
+      expect(identity.banned).toBe(true);
+
+      const verified = await request(app.getHttpServer())
+        .get('/audit-logs/verify')
+        .set('Authorization', admin.authorization)
+        .expect(200);
+      expect((verified.body as { data: { valid: boolean } }).data.valid).toBe(
+        true,
+      );
+    });
+
+    it('erases a whole tenant and leaves every other tenant alone', async () => {
+      await createAs(bystander, ${createBody});
+      const foreign = await actingAs(app);
+      const foreignId = await createAs(foreign, ${createBody});
+
+      const id = await requestAs(
+        admin,
+        '/privacy/erasures/tenant',
+        { confirm: tenantId },
+        202,
+      );
+      const outcome = await collect(admin, id);
+
+      expect(outcome).toMatchObject({ status: 'done', error: null });
+
+${rowsAfterErasure(`{ tenantId }`)}
+      expect(
+        await prisma.${delegate}.findUnique({ where: { id: foreignId } }),
+      ).not.toBeNull();
+
+      const erased = await prisma.user.findUniqueOrThrow({
+        where: { id: bystander.id },
+      });
+      const requester = await prisma.user.findUniqueOrThrow({
+        where: { id: admin.id },
+      });
+      expect(erased.email).toMatch(/@erased\\.invalid$/);
+      expect(requester.email).toBe(admin.email);
+    });
+  });
+`;
+}
+
 export function specFile(ctx: ResourceContext): string {
   const requiredFields = ctx.fields.filter((field) => !field.optional);
   const createBody =
@@ -3768,7 +4115,8 @@ export function specFile(ctx: ResourceContext): string {
   const canUpdateAny = ctx.permissions.update !== 'none';
   const canDeleteAny = ctx.permissions.delete !== 'none';
   const hasRelations = ctx.relations.length > 0;
-  const usesPrismaClient = hasRelations || ctx.vector !== null;
+  const usesPrismaClient =
+    hasRelations || ctx.vector !== null || ctx.personalData !== null;
 
   return `import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
@@ -3784,7 +4132,7 @@ import { MAX_BATCH_ENTRIES } from '#technical/http/batch';${
 } from '#technical/i18n/locale.config';`
       : ''
   }
-import { actingAs, registerAndLogin } from '#devtools/test-support';${vectorSpecImports(ctx)}
+${ctx.personalData ? `import { actingAs, createTestTenantId, purgeTenant, registerAndLogin } from '#devtools/test-support';\nimport type { Actor } from '#devtools/test-support';` : `import { actingAs, registerAndLogin } from '#devtools/test-support';`}${vectorSpecImports(ctx)}
 ${usesPrismaClient ? `\nconst adapter = new PrismaPg({ connectionString: env.DATABASE_URL });\nconst prisma = new PrismaClient({ adapter });\n` : ''}${vectorSpecFixtures(ctx)}
 describe('${ctx.pascalName} resource', () => {
   let app: INestApplication<App>;
@@ -4145,7 +4493,7 @@ ${
   });
 `
     : ''
-}${relationSpecBlock(ctx, createBody)}${translatableSpecBlock(ctx, createBody)}});
+}${relationSpecBlock(ctx, createBody)}${translatableSpecBlock(ctx, createBody)}${privacySpecBlock(ctx, createBody)}});
 `;
 }
 

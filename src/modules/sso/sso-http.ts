@@ -72,3 +72,36 @@ export function decodeIdToken(idToken: string): Record<string, unknown> {
     throw new SsoRefusedException('provider-failure');
   }
 }
+
+const MAX_TEXT_BYTES = 524_288;
+
+export async function requestText(
+  fetchImpl: SsoFetch,
+  url: string,
+): Promise<string> {
+  try {
+    const response = await fetchImpl(url, {
+      method: 'GET',
+      redirect: 'error',
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+
+    if (!response.ok) {
+      throw new SsoRefusedException('provider-failure');
+    }
+
+    const body = await response.text();
+
+    if (body.length > MAX_TEXT_BYTES) {
+      throw new SsoRefusedException('provider-failure');
+    }
+
+    return body;
+  } catch (error) {
+    if (error instanceof SsoRefusedException) {
+      throw error;
+    }
+
+    throw new SsoRefusedException('provider-failure');
+  }
+}

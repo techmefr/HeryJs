@@ -13,12 +13,30 @@ category is called out here explicitly.
 
 First public release.
 
+### Admin table editor: inline edit
+
+A generated resource's table edits a plain cell in place (text, number, checkbox, enum): an Edit button on the cell, Enter to save through the resource's `update` route with the form's validation and version check, Escape to cancel, and the server's refusal shown in the cell. It follows the row's `update` capability and is switched off by `disable: ['update']`.
+### Feature flag rollout and targeting
+
+A flag now carries a rollout percentage (0-100, bucketed per user or per tenant with a hash of the flag key and the subject, so the same user always gets the same answer and raising the percentage only adds people) and an ordered list of targeting rules on tenant, user, plan or any custom attribute. The evaluation order is written once, in `feature-flag-evaluation.ts`: no flag is off, `enabled: false` is a kill switch, the first matching rule decides, then the percentage. `FeatureFlagsService.isEnabled` still takes a tenant id and now also a context (`userId`, `plan`, `attributes`); `evaluate` returns the decision with its reason. `PATCH /feature-flags/:key` takes the new fields, `POST /feature-flags/evaluate` previews a user or tenant and `DELETE /feature-flags/:key` removes a flag, all admin-only. The admin panel gets a Feature flags page to create a flag, set the percentage, edit the rules and preview an evaluation. A migration adds the three columns with defaults that keep every existing flag on for everyone. A `FeatureFlagDriver` provider now implements `evaluate` and `remove`, and `set` takes a patch object rather than a boolean.
+### GDPR export and erasure
+
+A blueprint declares how its rows answer a privacy request: `erasure: delete` removes every row a user owns, `erasure: anonymise` keeps the rows and rewrites the fields marked `personal: true`. A resource that declares nothing is left alone. The kernel runs the work itself, on the new `heryjs-privacy` queue: `POST /privacy/exports`, `POST /privacy/erasures/user` and `POST /privacy/erasures/tenant` answer 202 with a request, `GET /privacy/requests` lists the history and `GET /privacy/requests/:id` reads one (an export's bundle is handed over once). Erasure also tombstones the identity record and deletes the user's sessions, accounts and keys, and redacts the audit entries that described the erased rows: the entry keeps its place in the hash chain, its payload becomes a digest, and `GET /audit-logs/verify` still passes. The request itself is audited without the erased data. The admin panel gains a Privacy page and a Privacy section. **Upgrade note:** two migrations add `PrivacyRequest` and `AuditLog.redactedAt`; a generated resource that declares an erasure also gets a `<name>.personal-data.ts` file and imports `PrivacyModule`.
+### A fresh project installs, migrates and builds
+
+`hery new` produced a project whose first `pnpm install` failed: every module package depended on `heryjs@workspace:*`, and the scaffold renames the root package. That dependency only carried the `ModuleDefinition` type, already mapped by path in each package's tsconfig, so `hery new` now drops it from the copied manifests. The project then failed `nest build` because the guest upgrade named the demo's `blogPost`; it now reads every non-cascading reference to a user off Prisma's DMMF, which also covers `Snippet` and any generated resource with an owner. Its first `hery migrate` failed too: the row-level policy migration was named after every table it covers, past the filesystem's limit on a directory name, and is now named by a count once the names would not fit. A new `scaffold` CI job runs `hery new`, install, `hery migrate`, typecheck and build on every push.
+
 ### Admin studio contract and production access
 
 A kernel feature or module contributes to the admin by decorating its own routes: `@AdminSection({ id, title, icon, group, columns })` on a list route and `@AdminAction({ id, title, icon, section, scope, confirm, danger, fields })` on a mutating one. Introspection reports them (`admin` on each route), the sidebar groups by `group`, tables take their columns, and row, bulk and global actions get a button and a generated confirmation or form. `@AdminAction` audits every call itself (field names, never values) and `lint:conventions admin-contract` fails a contribution with no `@Capability`, an unknown icon, a duplicate id, a GET action, a row action without `:id` or an unknown section. `/introspect` now sits behind `@AdminStudio()` instead of `DevOnlyGuard`: development is unchanged, production is a 404 until `ADMIN_STUDIO_ENABLED=true`, then reachable by a platform admin (`canUseAdminStudio`), optionally restricted by `ADMIN_STUDIO_ALLOWED_IPS` and `ADMIN_STUDIO_REQUIRE_2FA`. Nothing a request carries can bypass it.
+
 ### Per-tenant quotas and usage metering
 
 `quotas` in `hery.config.ts` declares a named limit with a default and a period (`month`, `day` or `total`), and `QuotasService` gives resources `check`, `consume` and `usage`. A tenant's limit can be overridden in the database (`PUT /quotas/:name/override`, admin only), and `GET /quotas` lists each quota's limit and use behind a capability, so the admin panel shows it as a section with no wiring. The count is kept in Postgres in one conditional `UPDATE`, so racing requests cannot overshoot, and the two new tables (`QuotaOverride`, `QuotaUsage`) are tenant scoped under row-level security. A rate-limit bucket can also be retuned for one tenant with an override named `rate-limit:<bucket>`; per plan is not covered. It is independent of `billingQuotas`, and usage-based billing is the next step. **Upgrade note:** a project that already exists needs the two new migrations, and has to add `QuotasModule` to its `AppModule` by hand.
+
+### Mail in the admin
+
+The admin panel gains a Messaging group for the mail module: the declared drivers with the active one marked, the tenant's recent sends with their status and error, and a "Send test mail" action that queues a real message to an address you type. They are declared through the admin contract on a new `MailAdminController`, behind the studio gate and admin-only capabilities. In a project that already has the mail module, copy the new controller files and register `MailAdminController` in `MailModule` by hand.
 
 ### SMTP mail driver
 
@@ -239,7 +257,15 @@ installable with `hery install` and removable with `hery uninstall`.
   AES-256-GCM), proves the email domains it claims with a DNS TXT record, and
   its users are provisioned just in time into that tenant. Linking an existing
   local account is a declared per-connection policy, `refuse` by default.
-  SAML is not covered.
+  A connection speaks OpenID Connect or SAML 2.0 (`protocol: 'saml'`): the
+  assertion must be signed, answer the request this browser started, and name
+  an address on a domain the tenant proved. SAML adds three columns to
+  `SsoConnection` and makes `clientSecret` nullable; `@node-saml/node-saml`
+  does the XML signature checking. The provider can be configured from its
+  metadata (a URL or pasted XML) with an attribute mapping, and
+  `GET /sso/connections/checks` tests every connection (certificate expiry,
+  reachability, verified domain, discovery) so the admin panel, which builds
+  itself from introspection, gets a section for it.
 
 - `oauth` adds social sign-in (Google, GitHub, Microsoft) behind a provider
   contract, with PKCE, a signed single-use state cookie and verified emails

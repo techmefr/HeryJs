@@ -70,6 +70,17 @@ export class MailDriverRegistry implements OnModuleInit {
     }
   }
 
+  /**
+   * What the admin shows an operator: which driver is active and which others
+   * the config declares. Names only -- nothing here reads a credential.
+   */
+  get summary(): { active: string; declared: string[] } {
+    return {
+      active: this.config.mail?.default ?? BUILTIN_DRIVER,
+      declared: [...this.drivers.keys()],
+    };
+  }
+
   get active(): MailDriver {
     const keyword = this.config.mail?.default ?? BUILTIN_DRIVER;
     const driver = this.drivers.get(keyword);
