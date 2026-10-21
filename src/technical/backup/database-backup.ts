@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { mkdir, readdir, rm, stat } from 'node:fs/promises';
 import * as path from 'node:path';
 import { Client } from 'pg';
+import { childEnv } from '#technical/config/child-env';
 
 export class DatabaseBackupError extends Error {}
 
@@ -61,7 +62,7 @@ function connectionOf(databaseUrl: string): Connection {
   }
 
   const database = decodeURIComponent(parsed.pathname.replace(/^\//, ''));
-  const env: NodeJS.ProcessEnv = { ...process.env, PGDATABASE: database };
+  const env: NodeJS.ProcessEnv = childEnv({ PGDATABASE: database });
 
   if (parsed.hostname) env.PGHOST = parsed.hostname;
   if (parsed.port) env.PGPORT = parsed.port;
