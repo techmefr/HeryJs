@@ -1,6 +1,6 @@
 # @heryjs/storage
 
-Add file storage behind a swappable provider: local disk (signed local URLs) by default, S3-compatible (real S3 or self-hosted MinIO) via STORAGE_DRIVER=s3.
+Add file storage behind a swappable provider: local disk (signed local URLs) by default, S3-compatible (real S3 or self-hosted MinIO) via STORAGE_DRIVER=s3, with no wiring.
 
 An [official HeryJs module](https://techmefr.github.io/HeryJs/guides/modules/). It is
 already installable from any HeryJs project, so there is nothing to add to your

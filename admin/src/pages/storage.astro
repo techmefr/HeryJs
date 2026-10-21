@@ -1,0 +1,180 @@
+---
+import Shell from '../layouts/Shell.astro';
+---
+
+<Shell title="Storage">
+  <h1>Storage</h1>
+  <p class="lede">
+    The driver this app stores files with, and the files your tenant holds in
+    it. The driver is a line in hery.config.ts; this page only shows it.
+  </p>
+
+  <div class="output" id="status"></div>
+
+  <h2>Upload</h2>
+  <div class="card prune-row">
+    <input type="file" id="file" />
+    <button type="button" class="primary" id="upload">Upload</button>
+    <span class="mono" id="upload-result"></span>
+  </div>
+
+  <h2>Files</h2>
+  <div class="output" id="files"></div>
+</Shell>
+
+<script>
+  import { API_URL, ApiError, api } from '../lib/api';
+  import { pill, skeleton, state } from '../lib/render';
+  import { token } from '../lib/session';
+
+  interface StorageStatus {
+    active: string;
+    declared: string[];
+    maxUploadBytes: number;
+    allowedContentTypes: string[];
+  }
+
+  interface StoredFile {
+    key: string;
+    size: number;
+    url: string;
+  }
+
+  const status = document.getElementById('status')!;
+  const files = document.getElementById('files')!;
+  const fileInput = document.getElementById('file') as HTMLInputElement;
+  const uploadButton = document.getElementById('upload') as HTMLButtonElement;
+  const uploadResult = document.getElementById('upload-result')!;
+
+  function denied(error: unknown, what: string): HTMLElement {
+    return error instanceof ApiError && error.status === 403
+      ? state(
+          'Not available',
+          'Managing files is an admin-only operation.',
+          'denied',
+        )
+      : state('Could not load ' + what, 'The request failed.', 'denied');
+  }
+
+  function fileRow(file: StoredFile): HTMLElement {
+    const row = document.createElement('div');
+    row.className = 'card prune-row';
+
+    const link = document.createElement('a');
+    link.className = 'path';
+    link.textContent = file.key;
+    link.href = file.url.startsWith('/') ? API_URL + file.url : file.url;
+    link.target = '_blank';
+    link.rel = 'noopener';
+
+    const size = document.createElement('span');
+    size.className = 'mono';
+    size.textContent = Math.ceil(file.size / 1024) + ' KB';
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.textContent = 'Delete';
+    remove.addEventListener('click', async () => {
+      remove.disabled = true;
+
+      try {
+        await api('/storage-admin/files/delete', {
+          method: 'POST',
+          body: JSON.stringify({ key: file.key }),
+        });
+        await loadFiles();
+      } catch {
+        remove.disabled = false;
+        size.textContent = 'Delete failed';
+      }
+    });
+
+    row.append(link, size, remove);
+
+    return row;
+  }
+
+  async function loadFiles(): Promise<void> {
+    files.replaceChildren(skeleton(3));
+
+    try {
+      const { data } = await api<StoredFile[]>('/storage-admin/files');
+
+      files.replaceChildren(
+        data.length === 0
+          ? state('No files yet', 'Nothing has been uploaded for this tenant.')
+          : (() => {
+              const list = document.createElement('div');
+              list.className = 'traces';
+              list.append(...data.map(fileRow));
+              return list;
+            })(),
+      );
+    } catch (error) {
+      files.replaceChildren(denied(error, 'files'));
+    }
+  }
+
+  uploadButton.addEventListener('click', async () => {
+    const file = fileInput.files?.[0];
+
+    if (!file) {
+      uploadResult.textContent = 'Choose a file first';
+      return;
+    }
+
+    uploadButton.disabled = true;
+    uploadResult.textContent = 'Uploading…';
+
+    const body = new FormData();
+    body.append('file', file);
+
+    try {
+      const response = await fetch(API_URL + '/storage/upload', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + (token() ?? '') },
+        body,
+      });
+
+      uploadResult.textContent = response.ok
+        ? 'Uploaded'
+        : 'Refused (' + response.status + ')';
+      fileInput.value = '';
+      await loadFiles();
+    } catch {
+      uploadResult.textContent = 'Failed';
+    } finally {
+      uploadButton.disabled = false;
+    }
+  });
+
+  try {
+    const { data } = await api<StorageStatus>('/storage-admin/status');
+    const card = document.createElement('div');
+    card.className = 'card prune-row';
+
+    const name = document.createElement('span');
+    name.className = 'path';
+    name.textContent = data.active;
+
+    const limit = document.createElement('span');
+    limit.className = 'mono';
+    limit.textContent =
+      'max ' +
+      Math.round(data.maxUploadBytes / 1024 / 1024) +
+      ' MB · ' +
+      data.allowedContentTypes.join(', ');
+
+    card.append(name, pill('active', 'ok'), limit);
+    card.append(
+      ...data.declared
+        .filter((driver) => driver !== data.active)
+        .map((driver) => pill(driver, 'neutral')),
+    );
+    status.replaceChildren(card);
+  } catch (error) {
+    status.replaceChildren(denied(error, 'storage status'));
+  }
+
+  await loadFiles();
+</script>
