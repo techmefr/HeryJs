@@ -143,10 +143,11 @@ describe('encrypted columns (real database)', () => {
       }),
     );
 
-    expect(rows.map((row) => row.privateNote).sort()).toEqual([
-      'alpha',
-      'beta',
-    ]);
+    expect(
+      rows
+        .map((row) => row.privateNote)
+        .sort((a, b) => String(a).localeCompare(String(b))),
+    ).toEqual(['alpha', 'beta']);
 
     for (const row of rows) {
       expect(await storedNote(row.id)).not.toMatch(/alpha|beta/);
