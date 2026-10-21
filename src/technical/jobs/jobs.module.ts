@@ -9,6 +9,7 @@ import {
   EXPORT_QUEUE,
   IMPORT_QUEUE,
   OUTBOX_QUEUE,
+  PRIVACY_QUEUE,
   WEBHOOK_QUEUE,
 } from './jobs.constants';
 import { HealthModule } from '#technical/health/health.module';
@@ -41,6 +42,7 @@ import { QueueHealthCheck } from './queue-health-check';
     BullModule.registerQueue({ name: EVENTS_QUEUE }),
     BullModule.registerQueue({ name: BILLING_QUEUE }),
     BullModule.registerQueue({ name: OUTBOX_QUEUE }),
+    BullModule.registerQueue({ name: PRIVACY_QUEUE }),
   ],
   providers: [JobsService, QueueHealthCheck],
   exports: [BullModule, JobsService],

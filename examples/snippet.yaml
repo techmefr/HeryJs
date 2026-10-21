@@ -1,6 +1,9 @@
 name: Snippet
 versioned: true
 
+# Nothing else points at a snippet, so erasing its author removes the rows.
+erasure: delete
+
 fields:
   - name: title
     type: string
