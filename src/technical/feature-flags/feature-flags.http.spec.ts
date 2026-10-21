@@ -60,6 +60,19 @@ describe('feature flags over HTTP', () => {
     return (response.body as { data: Evaluation }).data;
   };
 
+  const evaluateEach = async (
+    key: string,
+    users: string[],
+  ): Promise<Evaluation[]> => {
+    const answers: Evaluation[] = [];
+
+    for (const userId of users) {
+      answers.push(await evaluate(key, { userId }));
+    }
+
+    return answers;
+  };
+
   it('refuses a non-admin caller on every route', async () => {
     const key = `flag-${randomUUID()}`;
     const auth = `Bearer ${member.token}`;
@@ -117,12 +130,8 @@ describe('feature flags over HTTP', () => {
 
     await patch(key, { enabled: true, rolloutPercentage: 50 }).expect(200);
 
-    const first = await Promise.all(
-      users.map((userId) => evaluate(key, { userId })),
-    );
-    const second = await Promise.all(
-      users.map((userId) => evaluate(key, { userId })),
-    );
+    const first = await evaluateEach(key, users);
+    const second = await evaluateEach(key, users);
 
     expect(second).toEqual(first);
     expect(first.some((entry) => entry.enabled)).toBe(true);
@@ -130,9 +139,7 @@ describe('feature flags over HTTP', () => {
 
     await patch(key, { rolloutPercentage: 100 }).expect(200);
 
-    const raised = await Promise.all(
-      users.map((userId) => evaluate(key, { userId })),
-    );
+    const raised = await evaluateEach(key, users);
 
     expect(raised.every((entry) => entry.enabled)).toBe(true);
   });
@@ -154,7 +161,9 @@ describe('feature flags over HTTP', () => {
       reason: 'rule',
       ruleIndex: 0,
     });
-    await expect(evaluate(key, { plan: 'free' })).resolves.toMatchObject({
+    await expect(
+      evaluate(key, { plan: 'free', tenantId: 't-free' }),
+    ).resolves.toMatchObject({
       enabled: false,
       reason: 'rollout',
     });
