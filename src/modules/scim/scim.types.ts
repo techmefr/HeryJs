@@ -19,7 +19,6 @@ export const SCIM_DEACTIVATION_REASON = 'scim-deactivated';
 
 export const SCIM_TOKEN_STORE = Symbol('SCIM_TOKEN_STORE');
 export const SCIM_DIRECTORY_STORE = Symbol('SCIM_DIRECTORY_STORE');
-export const SCIM_AUDIT_STORE = Symbol('SCIM_AUDIT_STORE');
 
 export type ScimResourceKind = 'user' | 'group';
 

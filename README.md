@@ -99,7 +99,7 @@ A kernel that is always there, and modules you install only when you need them (
 
 **As modules**
 
-- **Auth** — two-factor (TOTP), social sign-in (OAuth), enterprise single sign-on (OIDC)
+- **Auth** — two-factor (TOTP), social sign-in (OAuth), enterprise single sign-on (OIDC), SCIM provisioning
 - **Communication** — mail, SMS, push, and a notifier that composes them with per-user preferences, quiet hours and digests
 - **Real time** — WebSocket, server-sent events, WebRTC signalling, LiveKit streaming
 - **Search** — Prisma, Elasticsearch and Meilisearch drivers, plus vector search on pgvector with an embeddings module

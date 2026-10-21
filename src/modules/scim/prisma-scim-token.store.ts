@@ -12,18 +12,14 @@ export class PrismaScimTokenStore implements ScimTokenStore {
     return authPrismaClient.scimToken.findUnique({ where: { tenantId } });
   }
 
-  async replace(
+  replace(
     tenantId: string,
     token: { tokenHash: string; prefix: string },
   ): Promise<ScimTokenRecord> {
-    const existing = await this.findByTenant(tenantId);
-
     return authPrismaClient.scimToken.upsert({
       where: { tenantId },
       create: { tenantId, ...token },
       update: { ...token, rotatedAt: new Date(), lastUsedAt: null },
-      select: undefined,
-      ...(existing ? {} : {}),
     });
   }
 

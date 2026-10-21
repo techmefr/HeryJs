@@ -13,6 +13,10 @@ category is called out here explicitly.
 
 First public release.
 
+### SCIM provisioning
+
+A new `scim` module adds a SCIM 2.0 server for users and groups, scoped to a tenant by a per-tenant bearer token (only its SHA-256 is stored, shown once, replaced to rotate). Users are tenant members and deactivating bans the account and ends its sessions; groups are teams. It supports `PATCH` (including the string booleans Entra ID sends), `eq` filters, paging and the discovery documents, answers in the SCIM error format, and appends every provisioning call to the tenant audit chain. `GET /scim/token`, `POST /scim/token`, `DELETE /scim/token` and `GET /scim/activity` sit behind an admin capability, so the admin panel shows token status and provisioning activity with no admin code. A new `ScimToken` and a tenant-scoped, row-level-secured `ScimIdentity` table are added by a migration. That makes thirty installable modules.
+
 ### SMTP mail driver
 
 A new `mail-smtp` package adds an SMTP driver beside the log and Resend ones. `hery install mail-smtp` lands it in `src/modules/mail`; import `SmtpMailModule`, declare `smtp: { driver: 'smtp' }` under `mail.drivers` in `hery.config.ts`, and set `MAIL_SMTP_HOST` and `MAIL_SMTP_FROM` (plus `MAIL_SMTP_PORT`, `MAIL_SMTP_TLS`, `MAIL_SMTP_USER` and `MAIL_SMTP_PASSWORD` as the server needs). `MAIL_DRIVER=smtp` switches to it. The driver sends through nodemailer, refuses a half-written credential and a refused recipient rather than recording the mail as sent, and its spec delivers over a real socket to an in-process SMTP server. That makes twenty-nine installable modules.

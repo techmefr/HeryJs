@@ -83,5 +83,5 @@ Two rules hold whatever the policy says. An account in **another tenant** is nev
 ## Not covered
 
 - **SAML.** Better Auth's SSO plugin (`@better-auth/sso`) is a separate package this framework does not depend on, and hand-rolling XML signature verification is not something to ship. SAML-only identity providers are out of scope for now.
-- **SCIM.** Users are provisioned at sign-in; there is no directory sync and no deprovisioning when someone leaves the IdP. Disabling a connection stops new sign-ins, it does not end existing sessions.
+- **Directory sync.** Users are provisioned at sign-in. Deprovisioning when someone leaves the IdP is the [`scim`](../scim/) module. Disabling a connection stops new sign-ins, it does not end existing sessions.
 - **Secret key rotation.** There is one `SSO_SECRET_KEY`; rotating it means re-saving each connection's secret.
