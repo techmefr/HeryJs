@@ -59,7 +59,16 @@ describe('Enterprise SSO', () => {
     await app.init();
   });
 
+  beforeEach(async () => {
+    await authPrismaClient.ssoConnection.deleteMany({
+      where: { tenantId: 'default' },
+    });
+  });
+
   afterAll(async () => {
+    await authPrismaClient.ssoConnection.deleteMany({
+      where: { tenantId: 'default' },
+    });
     await app.close();
   });
 
