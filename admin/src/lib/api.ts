@@ -157,11 +157,12 @@ export interface AdminSection {
 // the generic flat table, so it's hidden from the auto-discovered sidebar
 // sections the same way /introspect and /health are. /expose is the mine's
 // own catalog route (see prune.astro for a page built on top of it), not a
-// section in its own right.
+// section in its own right. /feature-flags has a page of its own (flags.astro).
 const HIDDEN_PATHS = [
   '/',
   '/introspect',
   '/expose',
+  '/feature-flags',
   '/health',
   '/health/live',
   '/health/ready',
