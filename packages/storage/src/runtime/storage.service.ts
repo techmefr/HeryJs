@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
 import { storageEnv } from './storage.env';
 import { StorageUploadRejectedException } from './storage-upload-rejected.exception';
+import { StorageNotInTenantException } from './storage-not-in-tenant.exception';
 import { StorageDriverRegistry } from './storage-driver.registry';
 
 const DEFAULT_ALLOWED_CONTENT_TYPES = [
@@ -31,6 +32,14 @@ export interface StoredFile {
   key: string;
   url: string;
 }
+
+export interface ListedFile {
+  key: string;
+  size: number;
+  url: string;
+}
+
+const LIST_LIMIT = 200;
 
 export function allowedContentTypes(): string[] {
   return storageEnv.STORAGE_ALLOWED_CONTENT_TYPES
@@ -74,6 +83,38 @@ export class StorageService {
     const url = await this.drivers.active.signedUrl(key);
 
     return { key, url };
+  }
+
+  /**
+   * The current tenant's files only: the prefix is the tenant id, the same one
+   * `upload()` writes under, so one tenant's admin never lists another's keys.
+   */
+  async list(): Promise<ListedFile[]> {
+    const driver = this.drivers.active;
+    const objects = await driver.list(
+      `${TenantContextStorage.getTenantId()}/`,
+      LIST_LIMIT,
+    );
+
+    return Promise.all(
+      objects.map(async (object) => ({
+        ...object,
+        url: await driver.signedUrl(object.key),
+      })),
+    );
+  }
+
+  /**
+   * `remove()` takes any key, because export and import write their own. This
+   * is the one an HTTP caller reaches, so it refuses a key outside the
+   * caller's tenant instead of trusting the client to name its own.
+   */
+  async removeOwn(key: string): Promise<void> {
+    if (!key.startsWith(`${TenantContextStorage.getTenantId()}/`)) {
+      throw new StorageNotInTenantException(key);
+    }
+
+    await this.drivers.active.remove(key);
   }
 
   remove(key: string): Promise<void> {

@@ -1,12 +1,13 @@
 import type {
   DescribedSlug,
+  DescribedRichtext,
   ResourceDescription,
   ResourceRow,
 } from './resource';
 import type { FieldOverride } from './extensions';
 
 export type FieldKind =
-  'text' | 'number' | 'checkbox' | 'datetime' | 'select' | 'slug';
+  'text' | 'number' | 'checkbox' | 'datetime' | 'select' | 'slug' | 'richtext';
 export type FormMode = 'create' | 'update';
 export type FormValue = string | boolean;
 export type FormValues = Record<string, FormValue>;
@@ -29,12 +30,14 @@ export interface FormField {
   maximum?: number;
   pattern?: string;
   slug?: DescribedSlug;
+  richtext?: DescribedRichtext;
 }
 
 const KIND_BY_TYPE: Record<string, FieldKind> = {
   string: 'text',
   file: 'text',
   slug: 'slug',
+  richtext: 'richtext',
   int: 'number',
   boolean: 'checkbox',
   datetime: 'datetime',
@@ -105,7 +108,11 @@ export function formFieldsOf(
       readonly: override.readonly === true && !isRequired,
       help:
         override.help ??
-        (field.slug ? slugHelp(field.slug, mode, overrides) : undefined),
+        (field.slug
+          ? slugHelp(field.slug, mode, overrides)
+          : field.richtext
+            ? 'HTML. Anything outside the allow-list is stripped when you save, as the preview shows.'
+            : undefined),
       placeholder: override.placeholder,
       options,
       minLength: schema.minLength,
@@ -114,6 +121,7 @@ export function formFieldsOf(
       maximum: boundOf(schema.maximum),
       pattern: schema.pattern,
       slug: field.slug,
+      richtext: field.richtext,
     });
   }
 

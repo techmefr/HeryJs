@@ -69,7 +69,7 @@ export function present(root: HTMLElement, dialog: HTMLDialogElement): void {
   }
 }
 
-function failureOfEntry(entry: BatchEntry | undefined): string[] {
+export function failureOfEntry(entry: BatchEntry | undefined): string[] {
   if (!entry) {
     return ['The API gave no answer for this record.'];
   }

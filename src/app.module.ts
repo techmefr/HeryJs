@@ -3,6 +3,7 @@ import { APP_FILTER } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AdminStudioModule } from '#technical/admin/admin-studio.module';
 import { AuditModule } from '#technical/audit/audit.module';
 import { AuthModule } from '#technical/auth/auth.module';
 import { CacheModule } from '#technical/cache/cache.module';
@@ -18,6 +19,7 @@ import { DevDashboardMiddleware } from '#devtools/dashboard/dev-dashboard.middle
 import { InspectorModule } from '#devtools/inspector/inspector.module';
 import { PipelineModule } from '#devtools/pipeline/pipeline.module';
 import { ImpersonationModule } from '#modules/impersonation/impersonation.module';
+import { JobFlowsModule } from '#technical/job-flows/job-flows.module';
 import { JobsModule } from '#technical/jobs/jobs.module';
 import { ExportModule } from '#modules/export/export.module';
 import { MailModule } from '#modules/mail/mail.module';
@@ -26,9 +28,11 @@ import { MaintenanceMiddleware } from '#technical/maintenance/maintenance.middle
 import { MonitoringModule } from '#technical/monitoring/monitoring.module';
 import { OutboxModule } from '#technical/outbox/outbox.module';
 import { NotificationsModule } from '#technical/notifications/notifications.module';
+import { PrivacyModule } from '#technical/privacy/privacy.module';
 import { BackupModule } from '#technical/backup/backup.module';
 import { PruneModule } from '#technical/prune/prune.module';
 import { QuotasModule } from '#technical/quotas/quotas.module';
+import { OutputCacheModule } from '#technical/output-cache/output-cache.module';
 import { RateLimitModule } from '#technical/rate-limit/rate-limit.module';
 import { SchedulerModule } from '#technical/scheduler/scheduler.module';
 import { SecretsModule } from '#technical/secrets/secrets.module';
@@ -44,6 +48,7 @@ import { SignalModule } from '#technical/signal/signal.module';
 import { SseModule } from '#modules/sse/sse.module';
 import { OAuthModule } from '#modules/oauth/oauth.module';
 import { SsoModule } from '#modules/sso/sso.module';
+import { ScimModule } from '#modules/scim/scim.module';
 import { LocaleMiddleware } from '#technical/i18n/locale.middleware';
 import { TenantMiddleware } from '#technical/tenancy/tenant.middleware';
 import { DomainExceptionFilter } from '#technical/errors/domain-exception.filter';
@@ -101,6 +106,7 @@ const telemetryOptions = telemetryPinoOptions();
         logShippingStream,
       ],
     }),
+    AdminStudioModule,
     AuditModule,
     AuthModule,
     CacheModule,
@@ -116,6 +122,7 @@ const telemetryOptions = telemetryPinoOptions();
     ImpersonationModule,
     InspectorModule,
     IntrospectionModule,
+    JobFlowsModule,
     JobsModule,
     LogShippingModule,
     MailModule,
@@ -123,7 +130,9 @@ const telemetryOptions = telemetryPinoOptions();
     MonitoringModule,
     NotificationsModule,
     OutboxModule,
+    OutputCacheModule,
     PipelineModule,
+    PrivacyModule,
     BackupModule,
     PruneModule,
     QuotasModule,
@@ -135,6 +144,7 @@ const telemetryOptions = telemetryPinoOptions();
     SignalModule,
     SseModule,
     SsoModule.forRoot(),
+    ScimModule,
     StorageModule,
     TeamsModule,
     TelemetryModule,

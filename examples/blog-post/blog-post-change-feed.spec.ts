@@ -154,6 +154,7 @@ describe('BlogPost change feed (real database, real outbox, real redis)', () => 
         change?.type === 'change' ? (change.record ?? {}) : {},
       ).sort(),
     ).toEqual([
+      'body',
       'createdAt',
       'deletedAt',
       'id',

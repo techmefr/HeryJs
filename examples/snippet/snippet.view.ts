@@ -6,10 +6,12 @@ export const snippetViewSchema = z.object({
   tenantId: z.string(),
   ownerId: z.string(),
   title: z.string().min(1).max(255),
+  summary: z.string().min(1).max(255).nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
   deletedAt: z.coerce.date().nullable(),
   version: z.number().int(),
+  status: z.string(),
 });
 export type SnippetView = z.infer<typeof snippetViewSchema>;
 

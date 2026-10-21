@@ -6,6 +6,7 @@ import type {
   StorageDriver,
   StoredObject,
   StoredObjectStat,
+  StoredObjectSummary,
 } from '#technical/storage/storage-driver';
 import { StorageDriverRegistry } from './storage-driver.registry';
 import { StorageUploadIntentMismatchException } from './storage-upload-intent-mismatch.exception';
@@ -53,6 +54,14 @@ class FakeDriver implements StorageDriver {
       object
         ? { size: object.body.byteLength, contentType: object.contentType }
         : null,
+    );
+  }
+
+  list(prefix: string): Promise<StoredObjectSummary[]> {
+    return Promise.resolve(
+      [...this.objects.entries()]
+        .filter(([key]) => key.startsWith(prefix))
+        .map(([key, object]) => ({ key, size: object.body.byteLength })),
     );
   }
 

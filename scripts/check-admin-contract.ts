@@ -118,6 +118,22 @@ function declarationsOf(filePath: string): {
   return { declarations, usesDevOnlyGuard: /\bDevOnlyGuard\b/.test(text) };
 }
 
+/**
+ * A module exists twice in this repository, authored under packages/<name>/src/runtime
+ * and installed under src/, and the module-drift check holds the two equal. The
+ * same declaration appearing in both is that copy, not a second contribution.
+ */
+function isInstalledCopy(first: string, second: string): boolean {
+  const file = (where: string) => where.replace(/:\d+$/, '');
+  const isAuthored = (where: string) =>
+    /packages\/[^/]+\/src\/runtime\//.test(file(where));
+
+  return (
+    path.basename(file(first)) === path.basename(file(second)) &&
+    isAuthored(first) !== isAuthored(second)
+  );
+}
+
 export function adminContractViolations(files: string[]): string[] {
   const violations: string[] = [];
   const all: Declaration[] = [];
@@ -156,7 +172,7 @@ export function adminContractViolations(files: string[]): string[] {
       violations.push(
         `${where} — @${kind} needs a literal kebab-case id (got ${id ?? 'none'})`,
       );
-    } else if (seen.has(id)) {
+    } else if (seen.has(id) && !isInstalledCopy(where, seen.get(id) ?? '')) {
       violations.push(
         `${where} — @${kind} id "${id}" is already used at ${seen.get(id)}`,
       );
@@ -234,13 +250,30 @@ export function adminContractViolations(files: string[]): string[] {
   return violations;
 }
 
+/**
+ * A module installed in this repo exists twice, authored under
+ * packages/<name>/src/runtime and installed under src/modules/<name>, and
+ * lint:module-drift keeps them identical, so counting both would report every
+ * contribution as a duplicate of itself.
+ */
+function isInstalledRuntimeCopy(repoRoot: string, file: string): boolean {
+  const relative = path.relative(repoRoot, file).split(path.sep);
+
+  return (
+    relative[0] === 'packages' &&
+    relative[2] === 'src' &&
+    relative[3] === 'runtime' &&
+    existsSync(path.join(repoRoot, 'src', 'modules', relative[1] ?? ''))
+  );
+}
+
 export function checkAdminContract(): boolean {
   const repoRoot = path.resolve(__dirname, '..');
   const files = ROOTS.flatMap((root) => {
     const dir = path.join(repoRoot, root);
 
     return existsSync(dir) ? controllerFiles(dir) : [];
-  });
+  }).filter((file) => !isInstalledRuntimeCopy(repoRoot, file));
   const violations = adminContractViolations(files);
 
   if (violations.length > 0) {

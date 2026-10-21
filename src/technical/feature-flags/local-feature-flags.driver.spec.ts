@@ -11,24 +11,38 @@ describe('LocalFeatureFlagsDriver', () => {
     it('returns the tenant flag when one exists', async () => {
       const prisma = {
         featureFlag: {
-          findUnique: jest.fn().mockResolvedValue({ enabled: true }),
+          findUnique: jest.fn().mockResolvedValue({
+            enabled: true,
+            rolloutPercentage: 100,
+            rolloutBy: 'user',
+            rules: [],
+          }),
         },
       } as never;
       const driver = new LocalFeatureFlagsDriver(prisma);
 
-      await expect(driver.isEnabled('beta', 'tenant-1')).resolves.toBe(true);
+      await expect(
+        driver.isEnabled('beta', { tenantId: 'tenant-1' }),
+      ).resolves.toBe(true);
     });
 
     it('falls back to the global flag when no tenant override exists', async () => {
       const prisma = {
         featureFlag: {
           findUnique: jest.fn().mockResolvedValue(null),
-          findFirst: jest.fn().mockResolvedValue({ enabled: true }),
+          findFirst: jest.fn().mockResolvedValue({
+            enabled: true,
+            rolloutPercentage: 100,
+            rolloutBy: 'user',
+            rules: [],
+          }),
         },
       } as never;
       const driver = new LocalFeatureFlagsDriver(prisma);
 
-      await expect(driver.isEnabled('beta', 'tenant-1')).resolves.toBe(true);
+      await expect(
+        driver.isEnabled('beta', { tenantId: 'tenant-1' }),
+      ).resolves.toBe(true);
     });
 
     it('defaults to disabled when nothing is declared anywhere', async () => {
@@ -45,7 +59,9 @@ describe('LocalFeatureFlagsDriver', () => {
 
   describe('set', () => {
     it('updates the existing row when one is already there', async () => {
-      const update = jest.fn().mockResolvedValue({ id: '1', enabled: true });
+      const update = jest
+        .fn()
+        .mockResolvedValue({ id: '1', enabled: true, rules: [] });
       const prisma = {
         featureFlag: {
           findFirst: jest.fn().mockResolvedValue({ id: '1' }),
@@ -54,7 +70,7 @@ describe('LocalFeatureFlagsDriver', () => {
       } as never;
       const driver = new LocalFeatureFlagsDriver(prisma);
 
-      await driver.set('beta', true);
+      await driver.set('beta', { enabled: true });
 
       expect(update).toHaveBeenCalledWith({
         where: { id: '1' },
@@ -72,7 +88,7 @@ describe('LocalFeatureFlagsDriver', () => {
     it('turns a concurrent create collision into an update of the winning row', async () => {
       const update = jest
         .fn()
-        .mockResolvedValue({ id: 'winner', enabled: true });
+        .mockResolvedValue({ id: 'winner', enabled: true, rules: [] });
       const prisma = {
         featureFlag: {
           findFirst: jest.fn().mockResolvedValue(null),
@@ -83,7 +99,7 @@ describe('LocalFeatureFlagsDriver', () => {
       } as never;
       const driver = new LocalFeatureFlagsDriver(prisma);
 
-      await driver.set('beta', true);
+      await driver.set('beta', { enabled: true });
 
       expect(update).toHaveBeenCalledWith({
         where: { id: 'winner' },
@@ -100,7 +116,9 @@ describe('LocalFeatureFlagsDriver', () => {
       } as never;
       const driver = new LocalFeatureFlagsDriver(prisma);
 
-      await expect(driver.set('beta', true)).rejects.toThrow('connection lost');
+      await expect(driver.set('beta', { enabled: true })).rejects.toThrow(
+        'connection lost',
+      );
     });
   });
 });

@@ -1,8 +1,13 @@
 name: BlogPost
 
+# The posts stay, because notes, comments and tags still point at them; what
+# identifies the author is rewritten when the author is erased.
+erasure: anonymise
+
 fields:
   - name: title
     type: string
+    personal: true
   - name: slug
     type: slug
     source: title
@@ -10,9 +15,15 @@ fields:
     type: string
     optional: true
     translatable: true
+    personal: true
+  - name: body
+    type: richtext
+    optional: true
+    maxLength: 20000
   - name: privateNote
     type: encrypted
     optional: true
+    personal: true
 
 permissions:
   view: own

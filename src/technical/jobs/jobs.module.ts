@@ -7,8 +7,11 @@ import {
   DEFAULT_QUEUE,
   EVENTS_QUEUE,
   EXPORT_QUEUE,
+  FLOW_QUEUE,
   IMPORT_QUEUE,
   OUTBOX_QUEUE,
+  WEBHOOK_DELIVERY_QUEUE,
+  PRIVACY_QUEUE,
   WEBHOOK_QUEUE,
 } from './jobs.constants';
 import { HealthModule } from '#technical/health/health.module';
@@ -41,6 +44,13 @@ import { QueueHealthCheck } from './queue-health-check';
     BullModule.registerQueue({ name: EVENTS_QUEUE }),
     BullModule.registerQueue({ name: BILLING_QUEUE }),
     BullModule.registerQueue({ name: OUTBOX_QUEUE }),
+    // Outbound deliveries are not inbound events: a second processor on
+    // WEBHOOK_QUEUE would complete the other's jobs without running them.
+    BullModule.registerQueue({ name: WEBHOOK_DELIVERY_QUEUE }),
+    // Chains and batches run here unless a step names another queue: its
+    // processor owns every step name registered with JobFlowHandlers.
+    BullModule.registerQueue({ name: FLOW_QUEUE }),
+    BullModule.registerQueue({ name: PRIVACY_QUEUE }),
   ],
   providers: [JobsService, QueueHealthCheck],
   exports: [BullModule, JobsService],

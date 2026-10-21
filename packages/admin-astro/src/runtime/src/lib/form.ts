@@ -1,5 +1,6 @@
 import type { FormField, FormValue, FormValues } from './form-schema';
 import { slugify } from './slug';
+import { renderSafeHtml } from './safe-html';
 
 export interface FormHandle {
   element: HTMLFormElement;
@@ -29,6 +30,20 @@ function controlOf(
   id: string,
   value: FormValue,
 ): HTMLElement {
+  if (field.kind === 'richtext') {
+    const area = document.createElement('textarea');
+    area.id = id;
+    area.name = field.name;
+    area.rows = 10;
+    area.value = String(value);
+
+    if (field.maxLength !== undefined) {
+      area.maxLength = field.maxLength;
+    }
+
+    return area;
+  }
+
   if (field.kind === 'select') {
     const select = document.createElement('select');
     select.id = id;
@@ -84,7 +99,49 @@ function valueOf(field: FormField, control: HTMLElement): FormValue {
     return control.checked;
   }
 
-  return (control as HTMLInputElement | HTMLSelectElement).value;
+  return (control as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement)
+    .value;
+}
+
+// What the API will keep of the HTML, redrawn on every keystroke, with a
+// running count against the limit. The count is on what is sent: the limit is
+// checked before sanitising.
+function previewOf(
+  field: FormField,
+  area: HTMLTextAreaElement,
+  id: string,
+): HTMLElement {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'form-preview';
+
+  const count = document.createElement('p');
+  count.className = 'form-help';
+  count.id = id + '-count';
+
+  const view = document.createElement('div');
+  view.className = 'form-preview-body';
+  view.setAttribute('aria-live', 'polite');
+  view.setAttribute('aria-label', 'Preview of ' + field.label);
+
+  const allow = field.richtext?.allow;
+  const limit = field.richtext?.maxLength ?? field.maxLength;
+
+  const refresh = (): void => {
+    count.textContent =
+      area.value.length +
+      (limit === undefined ? '' : ' / ' + limit) +
+      ' characters';
+
+    if (allow) {
+      renderSafeHtml(view, area.value, allow);
+    }
+  };
+
+  area.addEventListener('input', refresh);
+  refresh();
+  wrapper.append(count, view);
+
+  return wrapper;
 }
 
 interface BuiltRow {
@@ -154,6 +211,10 @@ function rowOf(field: FormField, value: FormValue, index: number): BuiltRow {
     }
 
     row.appendChild(suggest);
+  }
+
+  if (field.kind === 'richtext' && control instanceof HTMLTextAreaElement) {
+    row.appendChild(previewOf(field, control, id));
   }
 
   if (field.help) {

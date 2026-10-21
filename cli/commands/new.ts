@@ -365,6 +365,51 @@ function rewritePackageJson(destRoot: string, projectName: string): void {
 }
 
 /**
+ * Each module package lists `heryjs@workspace:*` so this repository builds it
+ * against the kernel sitting next to it. A project renames that root package,
+ * so the specifier names a workspace member that no longer exists and the
+ * first `pnpm install` refuses to resolve. The dependency only ever carried
+ * the `ModuleDefinition` type, which every package's tsconfig already maps to
+ * cli/module-contract.ts by path, so inside a project it is dropped.
+ */
+export function withoutKernelDependency(
+  manifest: Record<string, unknown>,
+): Record<string, unknown> {
+  const copy = structuredClone(manifest);
+
+  for (const field of ['dependencies', 'devDependencies', 'peerDependencies']) {
+    const entries = copy[field] as Record<string, string> | undefined;
+
+    if (entries) {
+      delete entries.heryjs;
+    }
+  }
+
+  return copy;
+}
+
+function rewriteModuleManifests(destRoot: string): void {
+  const packagesDir = path.join(destRoot, 'packages');
+
+  for (const entry of readdirSync(packagesDir, { withFileTypes: true })) {
+    const file = path.join(packagesDir, entry.name, 'package.json');
+
+    if (!entry.isDirectory() || !existsSync(file)) {
+      continue;
+    }
+
+    const manifest = JSON.parse(readFileSync(file, 'utf8')) as Record<
+      string,
+      unknown
+    >;
+    writeFileSync(
+      file,
+      `${JSON.stringify(withoutKernelDependency(manifest), null, 2)}\n`,
+    );
+  }
+}
+
+/**
  * 'admin' and 'docs' are this repository's own workspace members. Neither
  * ships: the admin is opt-in (`hery install admin-astro` adds it back to this
  * same file), and the doc site is specific to the framework itself.
@@ -406,6 +451,17 @@ on.
 policy for every tenant-scoped table, so the database boundary is created with
 the tables rather than remembered afterwards.
 
+## Deploying
+
+\`Dockerfile\` builds the production image and a one-shot migration job from
+the same source. The environment contract and the rollout order are in the
+[deployment guide](https://techmefr.github.io/HeryJs/guides/deployment/).
+
+\`\`\`bash
+docker build --target migrate -t ${projectName}-migrate .
+docker build -t ${projectName} .
+\`\`\`
+
 ## Adding a resource
 
 \`\`\`bash
@@ -439,6 +495,24 @@ function writeGitignore(destRoot: string): void {
       path.join(REPO_ROOT, 'templates', 'project.gitignore'),
       'utf8',
     ),
+  );
+}
+
+/**
+ * The production image, written from templates for the same reason as the
+ * gitignore: `.dockerignore` is the name Docker reads, and a template keeps the
+ * framework's own repository free of an image it never builds.
+ */
+function writeContainerFiles(destRoot: string): void {
+  const templates = path.join(REPO_ROOT, 'templates');
+
+  writeFileSync(
+    path.join(destRoot, 'Dockerfile'),
+    readFileSync(path.join(templates, 'Dockerfile'), 'utf8'),
+  );
+  writeFileSync(
+    path.join(destRoot, '.dockerignore'),
+    readFileSync(path.join(templates, 'dockerignore'), 'utf8'),
   );
 }
 
@@ -497,9 +571,11 @@ export function registerNewCommand(program: Command): void {
       );
       rewriteWorkflows(destRoot);
       rewritePackageJson(destRoot, name);
+      rewriteModuleManifests(destRoot);
       rewriteWorkspaceFile(destRoot);
       writeReadme(destRoot, name);
       writeGitignore(destRoot);
+      writeContainerFiles(destRoot);
 
       spawnSync('git', ['init'], { cwd: destRoot, stdio: 'ignore' });
       spawnSync('git', ['add', '-A'], { cwd: destRoot, stdio: 'ignore' });

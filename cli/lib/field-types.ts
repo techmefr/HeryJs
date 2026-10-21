@@ -15,6 +15,8 @@ const ZOD_TYPES: Record<ScalarFieldType, string> = {
   file: 'z.string().min(1).max(255)',
   encrypted: 'z.string().min(1).max(4096)',
   slug: 'z.string().min(1).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)',
+  // The view's rule: sanitising can leave nothing of what was sent.
+  richtext: 'z.string()',
 };
 
 const PRISMA_TYPES: Record<ScalarFieldType, string> = {
@@ -25,7 +27,21 @@ const PRISMA_TYPES: Record<ScalarFieldType, string> = {
   file: 'String',
   encrypted: 'String',
   slug: 'String',
+  richtext: 'String',
 };
+
+export const RICHTEXT_DEFAULT_MAX_LENGTH = 20000;
+
+export function richtextMaxLength(field: ScalarBlueprintField): number {
+  return field.maxLength ?? RICHTEXT_DEFAULT_MAX_LENGTH;
+}
+
+// The size limit is on what the client sends, before the sanitiser shrinks it.
+function inputRuleFor(field: ScalarBlueprintField): string {
+  return field.type === 'richtext'
+    ? `z.string().min(1).max(${richtextMaxLength(field)})`
+    : ZOD_TYPES[field.type];
+}
 
 // A slug is filled in by the service when the client sends none, so it is
 // never required on the way in, however the blueprint spells optional.
@@ -34,7 +50,7 @@ export function isOptionalOnInput(field: ScalarBlueprintField): boolean {
 }
 
 export function zodTypeFor(field: ScalarBlueprintField): string {
-  const rule = ZOD_TYPES[field.type];
+  const rule = inputRuleFor(field);
   const base = field.translatable ? `translatableInputSchema(${rule})` : rule;
   return isOptionalOnInput(field) ? `${base}.optional()` : base;
 }
@@ -65,6 +81,8 @@ export function sampleValueFor(field: ScalarBlueprintField): string {
       return `'${field.name}-secret-value'`;
     case 'slug':
       return `'${field.name}-value'`;
+    case 'richtext':
+      return `'<p>${field.name}-value</p>'`;
   }
 }
 
@@ -76,6 +94,7 @@ const GRAPHQL_TYPES: Record<ScalarFieldType, string> = {
   file: 'String',
   encrypted: 'String',
   slug: 'String',
+  richtext: 'String',
 };
 
 export function graphqlTypeFor(field: ScalarBlueprintField): string {
@@ -90,6 +109,7 @@ const TS_TYPES: Record<ScalarFieldType, string> = {
   file: 'string',
   encrypted: 'string',
   slug: 'string',
+  richtext: 'string',
 };
 
 export function tsTypeFor(field: ScalarBlueprintField): string {
@@ -108,6 +128,7 @@ const FAKER_VALUES: Record<ScalarFieldType, string> = {
   file: '`${faker.string.uuid()}.png`',
   encrypted: 'faker.string.alphanumeric(24)',
   slug: "`${faker.lorem.slug(3)}-${faker.string.alphanumeric({ length: 6, casing: 'lower' })}`",
+  richtext: '`<p>${faker.lorem.sentence()}</p>`',
 };
 
 export function fakerValueFor(field: ScalarBlueprintField): string {

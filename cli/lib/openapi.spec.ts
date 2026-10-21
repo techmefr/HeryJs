@@ -124,6 +124,7 @@ describe('buildOpenApiDocument for a paginated, soft-deleting resource with incl
       'slug',
       'summary',
       'summaryTranslations',
+      'body',
       'createdAt',
       'updatedAt',
       'deletedAt',

@@ -22,6 +22,7 @@ import {
   sortByResolvedTranslations,
 } from '#technical/i18n/translatable-query';
 import type { TranslatableRow } from '#technical/i18n/translatable-query';
+import { sanitizeRichtextWrite } from '#technical/richtext/richtext';
 import {
   SLUG_LOOKUP_LIMIT,
   resolveSlugs,
@@ -46,6 +47,7 @@ import {
   UpdateBlogPostInput,
 } from './blog-post.dto';
 import { BLOG_POST_PRESETS } from './blog-post.presets';
+import { RICHTEXT_FIELDS } from './blog-post.dto';
 
 const SEARCHABLE_FIELDS = ['title', 'summary'] as const;
 const SEARCH_COLLECTION = 'blog-post';
@@ -384,6 +386,7 @@ export class BlogPostService {
   }
 
   async create(subject: CapabilitySubject, data: CreateBlogPostInput) {
+    data = sanitizeRichtextWrite(data, RICHTEXT_FIELDS);
     const record = await withSlugRetry(
       SLUG_FIELDS,
       data,
@@ -404,6 +407,7 @@ export class BlogPostService {
   }
 
   async update(record: BlogPost, data: UpdateBlogPostInput) {
+    data = sanitizeRichtextWrite(data, RICHTEXT_FIELDS);
     const updated = await withSlugRetry(
       SLUG_FIELDS,
       data,
@@ -459,6 +463,7 @@ export class BlogPostService {
   }
 
   async restore(record: BlogPost, patch?: UpdateBlogPostInput) {
+    patch = patch && sanitizeRichtextWrite(patch, RICHTEXT_FIELDS);
     const updated = await withSlugRetry(
       SLUG_FIELDS,
       patch ?? {},

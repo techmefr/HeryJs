@@ -108,6 +108,51 @@ Its own branch, not a spread, so a declared filter can never widen it back — w
 
 Listing soft-deleted rows follows the `delete` preset instead of the read one (`canListTrashedX`), on the grounds that opening the bin is a moderation move. The rows that come back are still narrowed by the view scope: the gate answers "may I look at the bin", the scope answers "which rows I may see".
 
+## Sharing one record
+
+Presets answer "whose records". Sharing answers "this one record, for this person": the owner grants a user or a team read or write access to a single record, and the same capability engine resolves it. It is off by default; declare it in the blueprint:
+
+```yaml
+sharing: true
+```
+
+The resource then gains three routes, all behind the `share` capability (the `update` preset, evaluated without the shares, so only the owner or whoever the preset names can share, and a user who was handed write access cannot hand it on):
+
+| Route                              | What it does                                                          |
+| ---------------------------------- | --------------------------------------------------------------------- |
+| `POST /<resource>/:id/shares/search` | Lists who the record is shared with.                                |
+| `POST /<resource>/:id/shares`        | Grants `{ granteeType: user \| team, granteeId, access: read \| write }`. Granting again changes the access. |
+| `DELETE /<resource>/:id/shares/:shareId` | Revokes one share.                                              |
+
+A `read` share lets the grantee see the record, in the list as well as on the detail route. A `write` share also lets them update it, and attach or detach its relations. Deleting is never shareable, and a preset of `none` stays closed: a share extends a perimeter, it does not reopen a closed one. A decision allowed by a share reports `scope: shared`.
+
+### It still resolves in memory
+
+Nothing queries per row:
+
+- A collection search fetches the ids shared with the caller once (directly or through any of its teams) and folds them into the scope filter: `scopeWhereFor(preset, subject, sharedIds)` returns `{ OR: [presetScope, { id: { in: sharedIds } }] }`. The same filter feeds the list and the count.
+- A record loaded for a detail or bulk route carries its shares (one query for the record, one for its shares), and a page of search results fetches the shares of all its rows in one query. `resolveCapability(preset, subject, record, read | write)` then decides from what is already on the record.
+
+The ids set is bounded (5000 most recent shares per resource and caller); a caller with more still reaches every shared record by id.
+
+### Tenant isolation is untouched
+
+`RecordShare` carries a `tenantId`, goes through the tenant-scoped Prisma client and has its own row-level security policy. A grantee has to exist in the caller's tenant: a user or team of another tenant is refused with a 404 rather than stored as an inert row.
+
+### Auditable
+
+`RecordShare` is an audited model: every grant and revoke is written to the hash-chained audit log with the acting user (and the impersonator, if any). Each row also records who granted it and when.
+
+### From the admin
+
+The resource page shows a Share button on a row where the `share` decision is allowed. It opens a dialog listing the shares with a revoke on each, and a form to grant a user (by id) or one of your teams read or write access.
+
+### Limits
+
+- A resource with `view: team` and a caller in no team is refused by the collection capability before shares are looked at; that caller still reaches shared records by id.
+- Sharing cannot be combined with a `vector` field yet: similarity ranking runs in SQL against the view scope.
+- The GraphQL resolver and MCP tools of a resource apply shares to the list scope, but their per-row capability reports do not carry them.
+
 ## `@Capability` and `CapabilitiesGuard`
 
 A controller route declares its policy as a plain, exported function — not a class method:

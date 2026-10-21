@@ -9,3 +9,5 @@ import type { PolicyCheck } from '#technical/capabilities/capability-check';
 export const canReadMetrics: PolicyCheck = adminAbility;
 
 export const canReadHealth: PolicyCheck = adminAbility;
+
+export const canReadDeployment: PolicyCheck = adminAbility;
