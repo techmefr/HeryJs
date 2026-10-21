@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { inflateRawSync } from 'node:zlib';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -10,6 +11,11 @@ import type { TestUser } from '#devtools/testing/register-and-login';
 import { SSO_TXT_RESOLVER } from './sso-domain-verifier';
 import { SSO_FETCH } from './sso-http';
 import { SSO_HOST_RESOLVER } from './sso-url-guard';
+import {
+  encodeSamlResponse,
+  generateSamlTestIdp,
+  samlResponseXml,
+} from './sso-saml.fakes';
 
 const ISSUER = 'https://idp.sso-spec.test';
 const CLIENT_SECRET = 'sso-spec-client-secret';
@@ -140,7 +146,7 @@ describe('Enterprise SSO', () => {
 
     expect(JSON.stringify(created.body)).not.toContain(CLIENT_SECRET);
     expect(stored.clientSecret).not.toContain(CLIENT_SECRET);
-    expect(stored.clientSecret.startsWith('v1:')).toBe(true);
+    expect(stored.clientSecret?.startsWith('v1:')).toBe(true);
 
     const fetched = await request(app.getHttpServer())
       .get(`/sso/connections/${body.data.id}`)
@@ -359,7 +365,7 @@ describe('Enterprise SSO', () => {
       .patch(`/sso/connections/${id}`)
       .set('Authorization', `Bearer ${admin.token}`)
       .send({ issuer: 'https://other-idp.sso-spec.test' })
-      .expect(400);
+      .expect(422);
 
     const renamed = await request(app.getHttpServer())
       .patch(`/sso/connections/${id}`)
@@ -390,5 +396,179 @@ describe('Enterprise SSO', () => {
       .get(`/sso/connections/${id}`)
       .set('Authorization', `Bearer ${admin.token}`)
       .expect(404);
+  });
+
+  describe('with a SAML identity provider', () => {
+    const idp = generateSamlTestIdp();
+    const samlIssuer = 'https://idp.sso-spec.test/saml';
+
+    const createSamlConnection = (admin: TestUser, domain: string) =>
+      request(app.getHttpServer())
+        .post('/sso/connections')
+        .set('Authorization', `Bearer ${admin.token}`)
+        .send({
+          protocol: 'saml',
+          name: 'Spec SAML IdP',
+          issuer: samlIssuer,
+          entryPoint: `${samlIssuer}/login`,
+          certificate: idp.certificate,
+          domains: [domain],
+        });
+
+    it('lets a tenant admin configure it without returning the certificate', async () => {
+      const admin = await asAdmin();
+      const created = await createSamlConnection(
+        admin,
+        `${randomUUID()}.example.test`,
+      ).expect(201);
+      const body = created.body as {
+        data: {
+          protocol: string;
+          hasClientSecret: boolean;
+          saml: { acsUrl: string; spEntityId: string };
+        };
+      };
+
+      expect(body.data).toMatchObject({
+        protocol: 'saml',
+        hasClientSecret: false,
+      });
+      expect(body.data.saml.acsUrl).toContain('/sso/saml/acs');
+      expect(JSON.stringify(created.body)).not.toContain('BEGIN CERTIFICATE');
+    });
+
+    it('signs a user in from a signed assertion posted to the ACS, once', async () => {
+      const admin = await asAdmin();
+      const domain = `${randomUUID()}.example.test`;
+      const created = await createSamlConnection(admin, domain).expect(201);
+      const connection = (
+        created.body as {
+          data: {
+            id: string;
+            domains: Array<{
+              dnsRecord: { name: string; value: string } | null;
+            }>;
+            saml: { acsUrl: string; spEntityId: string };
+          };
+        }
+      ).data;
+
+      await verify(admin, connection, domain);
+
+      const started = await request(app.getHttpServer())
+        .get('/sso/start')
+        .query({ email: `jane@${domain}`, returnTo: '/welcome' })
+        .expect(302);
+      const location = new URL(String(started.headers.location));
+      const cookieHeader = String(started.headers['set-cookie']);
+      const authnRequest = inflateRawSync(
+        Buffer.from(location.searchParams.get('SAMLRequest') ?? '', 'base64'),
+      ).toString();
+      const requestId = /ID="([^"]+)"/.exec(authnRequest)?.[1] ?? '';
+      const cookie = cookieHeader.split(';')[0] ?? '';
+      const samlResponse = encodeSamlResponse(
+        samlResponseXml({
+          idp,
+          idpIssuer: samlIssuer,
+          audience: connection.saml.spEntityId,
+          acsUrl: connection.saml.acsUrl,
+          inResponseTo: requestId,
+          email: `jane@${domain}`,
+          name: 'Jane',
+        }),
+      );
+
+      expect(location.origin + location.pathname).toBe(`${samlIssuer}/login`);
+      expect(cookieHeader).toContain('SameSite=None');
+      expect(cookieHeader).toContain('Secure');
+
+      const acs = await request(app.getHttpServer())
+        .post('/sso/saml/acs')
+        .set('Cookie', cookie)
+        .type('form')
+        .send({
+          SAMLResponse: samlResponse,
+          RelayState: location.searchParams.get('RelayState'),
+        })
+        .expect(201);
+      const result = (
+        acs.body as {
+          data: {
+            outcome: string;
+            userId: string;
+            tenantId: string;
+            token: string;
+            returnTo: string;
+          };
+        }
+      ).data;
+
+      expect(result).toMatchObject({
+        outcome: 'signed-up',
+        tenantId: 'default',
+        returnTo: '/welcome',
+      });
+      expect(result.token).toBeTruthy();
+
+      await request(app.getHttpServer())
+        .post('/sso/saml/acs')
+        .type('form')
+        .send({
+          SAMLResponse: samlResponse,
+          RelayState: location.searchParams.get('RelayState'),
+        })
+        .expect(400);
+    });
+
+    it('refuses an unsigned assertion with a valid state cookie', async () => {
+      const admin = await asAdmin();
+      const domain = `${randomUUID()}.example.test`;
+      const created = await createSamlConnection(admin, domain).expect(201);
+      const connection = (
+        created.body as {
+          data: {
+            id: string;
+            domains: Array<{
+              dnsRecord: { name: string; value: string } | null;
+            }>;
+            saml: { acsUrl: string; spEntityId: string };
+          };
+        }
+      ).data;
+
+      await verify(admin, connection, domain);
+
+      const started = await request(app.getHttpServer())
+        .get('/sso/start')
+        .query({ email: `jane@${domain}` })
+        .expect(302);
+      const location = new URL(String(started.headers.location));
+      const authnRequest = inflateRawSync(
+        Buffer.from(location.searchParams.get('SAMLRequest') ?? '', 'base64'),
+      ).toString();
+
+      await request(app.getHttpServer())
+        .post('/sso/saml/acs')
+        .set(
+          'Cookie',
+          String(started.headers['set-cookie']).split(';')[0] ?? '',
+        )
+        .type('form')
+        .send({
+          SAMLResponse: encodeSamlResponse(
+            samlResponseXml({
+              idp,
+              idpIssuer: samlIssuer,
+              audience: connection.saml.spEntityId,
+              acsUrl: connection.saml.acsUrl,
+              inResponseTo: /ID="([^"]+)"/.exec(authnRequest)?.[1] ?? '',
+              email: `jane@${domain}`,
+              sign: 'none',
+            }),
+          ),
+          RelayState: location.searchParams.get('RelayState'),
+        })
+        .expect(400);
+    });
   });
 });

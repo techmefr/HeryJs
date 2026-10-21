@@ -625,16 +625,20 @@ model DevtoolsEntry {
 }
 
 model SsoConnection {
-  id           String   @id @default(cuid())
-  tenantId     String
-  name         String
-  issuer       String
-  clientId     String
-  clientSecret String
-  linkPolicy   String   @default("refuse")
-  isEnabled    Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String   @id @default(cuid())
+  tenantId        String
+  name            String
+  protocol        String   @default("oidc")
+  issuer          String
+  clientId        String
+  clientSecret    String?
+  samlEntryPoint  String?
+  samlCertificate String?
+  samlAttributeMapping String?
+  linkPolicy      String   @default("refuse")
+  isEnabled       Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   domains    SsoDomain[]
   identities SsoIdentity[]
