@@ -68,8 +68,7 @@ import Shell from '../layouts/Shell.astro';
       // A paged listing shows one page: saying "25 rows" and stopping there
       // would read as "that is all there is", which is exactly what it is not.
       const window = meta as
-        | { page?: number; total?: number; last_page?: number }
-        | undefined;
+        { page?: number; total?: number; last_page?: number } | undefined;
       const label =
         window?.total !== undefined && window.total > rows.length
           ? rows.length +

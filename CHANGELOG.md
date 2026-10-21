@@ -13,6 +13,10 @@ category is called out here explicitly.
 
 First public release.
 
+### Admin table editor: inline edit
+
+A generated resource's table edits a plain cell in place (text, number, checkbox, enum): an Edit button on the cell, Enter to save through the resource's `update` route with the form's validation and version check, Escape to cancel, and the server's refusal shown in the cell. It follows the row's `update` capability and is switched off by `disable: ['update']`.
+
 ### Per-tenant quotas and usage metering
 
 `quotas` in `hery.config.ts` declares a named limit with a default and a period (`month`, `day` or `total`), and `QuotasService` gives resources `check`, `consume` and `usage`. A tenant's limit can be overridden in the database (`PUT /quotas/:name/override`, admin only), and `GET /quotas` lists each quota's limit and use behind a capability, so the admin panel shows it as a section with no wiring. The count is kept in Postgres in one conditional `UPDATE`, so racing requests cannot overshoot, and the two new tables (`QuotaOverride`, `QuotaUsage`) are tenant scoped under row-level security. A rate-limit bucket can also be retuned for one tenant with an override named `rate-limit:<bucket>`; per plan is not covered. It is independent of `billingQuotas`, and usage-based billing is the next step. **Upgrade note:** a project that already exists needs the two new migrations, and has to add `QuotasModule` to its `AppModule` by hand.
