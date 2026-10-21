@@ -163,6 +163,15 @@ Twelve packages, versioned together:
   unless `reveal: true`, redacted in the audit chain and refused in filters and
   sorts. Keys are versioned in `SECRETS_KEYS`; `SecretsService` seals values
   that are not columns and `hery secrets:rotate` re-encrypts to the active key.
+- A realtime change feed: the outbox's model messages are published, row and
+  all, to a channel per resource, filtered per subscriber by its own
+  capability and tenant, with hidden fields never in the payload. The `sse`
+  module serves it at `GET /sse/changes` (token from `POST /sse/changes/token`)
+  and the `live` module on a Socket.IO `/changes` namespace, which also carries
+  presence and capability-gated client broadcast. A generated resource now
+  includes `<name>.change-feed.ts` and its module imports `ChangeFeedModule`;
+  an existing project adds that file and the two lines by hand. The model
+  outbox message also carries `ownerId` and `teamId` now.
 - `/health` is now fed by a registry any module registers a check on, and
   `/health/live` and `/health/ready` give an orchestrator the two probes
   separately, public and carrying only ok or error. The report no longer names

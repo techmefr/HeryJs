@@ -16,6 +16,7 @@ export default {
     context.nextSteps([
       'Run "hery generate <Name> --live" to add a live gateway to a resource',
       `Import "LiveModule" and add "<Name>LiveGateway" to the imports/providers of <name>.module.ts`,
+      `Row changes, presence and broadcast: connect to io('/changes', { auth: { token } }) and emit 'subscribe' with { channels } -- see the change feed guide`,
       `Clients connect with "io('/live/<name>', { auth: { token } })" using the same bearer token as REST`,
     ]);
   },

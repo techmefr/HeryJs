@@ -8,6 +8,7 @@ Realtime is not one feature. Telling a browser that a list is stale, letting two
 |          | Transport                             | In the box?            | For                           |
 | -------- | ------------------------------------- | ---------------------- | ----------------------------- |
 | `signal` | Server-Sent Events over Redis pub/sub | kernel, always present | "something changed, refetch"  |
+| change feed | SSE (`sse`) or Socket.IO (`live`)  | kernel hub, transport per module | "this row changed", filtered per subscriber |
 | `live`   | Socket.IO                             | `hery install live`    | two-way messaging on a record |
 | `stream` | LiveKit (SFU)                         | `hery install stream`  | one-to-many audio/video       |
 
@@ -49,6 +50,10 @@ The security property is in how the channel name is assembled. The client sends 
 So `channels=blogPost` subscribes to `signal:<your-tenant>:blogPost` and there is no way to spell another tenant's channel — the tenant segment is not yours to write. A missing or invalid token is a 401; no channels at all is a 400.
 
 Because it is Redis pub/sub, this works across processes: an instance that handles a write reaches subscribers connected to every other instance.
+
+## The change feed — the row itself, to whoever may see it
+
+`signal` deliberately carries no data. When the client wants the row without a refetch, and only the rows it could have fetched, that is the [change feed](../change-feed/): the same channel names, published from the transactional outbox, filtered per subscriber by capability.
 
 ## `live` — bidirectional messaging
 

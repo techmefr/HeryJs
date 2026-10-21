@@ -122,6 +122,7 @@ export default defineConfig({
                   slug: 'guides/peer',
                 },
                 { label: 'Server-Sent Events', slug: 'guides/sse' },
+                { label: 'Realtime change feed', slug: 'guides/change-feed' },
                 { label: 'Social sign-in', slug: 'guides/oauth' },
                 { label: 'Enterprise SSO', slug: 'guides/sso' },
                 { label: 'Mail', slug: 'guides/mail' },

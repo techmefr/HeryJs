@@ -73,10 +73,26 @@ describe('modelChangeMessages', () => {
         recordId: 'post-1',
         tenantId: 'tenant-1',
         changedFields: [],
+        ownerId: null,
+        teamId: null,
         userId: 'user-1',
         impersonatedBy: 'admin-1',
       },
     });
+  });
+
+  it('carries the owner and team ids a subscriber is filtered by, and no other value', async () => {
+    const [message] = await messagesFor(
+      'create',
+      { data: { title: 'hello' } },
+      { id: 'post-1', ownerId: 'owner-1', teamId: 'team-1', title: 'hello' },
+    );
+
+    expect(message?.payload).toMatchObject({
+      ownerId: 'owner-1',
+      teamId: 'team-1',
+    });
+    expect(JSON.stringify(message?.payload)).not.toContain('hello');
   });
 
   it('lists the fields an update touched, never their values', async () => {
