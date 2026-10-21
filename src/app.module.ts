@@ -29,6 +29,7 @@ import { NotificationsModule } from '#technical/notifications/notifications.modu
 import { PrivacyModule } from '#technical/privacy/privacy.module';
 import { BackupModule } from '#technical/backup/backup.module';
 import { PruneModule } from '#technical/prune/prune.module';
+import { QuotasModule } from '#technical/quotas/quotas.module';
 import { RateLimitModule } from '#technical/rate-limit/rate-limit.module';
 import { SchedulerModule } from '#technical/scheduler/scheduler.module';
 import { SecretsModule } from '#technical/secrets/secrets.module';
@@ -127,6 +128,7 @@ const telemetryOptions = telemetryPinoOptions();
     PrivacyModule,
     BackupModule,
     PruneModule,
+    QuotasModule,
     RateLimitModule,
     OAuthModule.forRoot(),
     SchedulerModule,
