@@ -4,3 +4,4 @@ export const EXPORT_QUEUE = 'heryjs-exports';
 export const IMPORT_QUEUE = 'heryjs-imports';
 export const EVENTS_QUEUE = 'heryjs-events';
 export const BILLING_QUEUE = 'heryjs-billing';
+export const OUTBOX_QUEUE = 'heryjs-outbox';
