@@ -17,6 +17,7 @@ import {
   Table2,
   ToggleRight,
   Trash2,
+  Webhook,
   Workflow,
   X,
   Zap,
@@ -37,6 +38,7 @@ export const ICONS = {
   prune: Trash2,
   refresh: RefreshCw,
   signOut: LogOut,
+  webhooks: Webhook,
   yes: Check,
 };
 

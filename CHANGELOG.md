@@ -13,6 +13,10 @@ category is called out here explicitly.
 
 First public release.
 
+### Outbound webhooks
+
+The `webhooks` module also delivers to your tenants. An admin subscribes an https URL to named events (`webhook.*` names you stage with the outbox, and the `model.*` change messages), each delivery is signed with HMAC-SHA256 (`v1=<hex>` per valid secret), retried ten times with doubling backoff on its own queue, and lands in a visible `dead` state you can replay. Rotating a secret keeps the old one valid for a grace window and signs with both, so no event is dropped. Subscription URLs must be public https addresses. New tables `WebhookSubscription` and `WebhookDelivery` (migration `add_outbound_webhooks`), a `heryjs-webhook-deliveries` queue in the kernel, routes under `/webhook-subscriptions` and `/webhook-deliveries`, and a Webhooks page in the admin panel. A project that already installed the module applies the kernel queue constants and the new runtime files by hand, and sets `SECRETS_KEYS` in production because secrets are sealed with it.
+
 ### Vector fields and similarity search
 
 A blueprint field `type: vector` (with `dimensions` and a `source` string field) becomes a pgvector column, filled through the outbox whenever the source changes, and the search route accepts `search: { q, mode: 'similar' }`. The new `embeddings` module holds the driver contract (a deterministic `fake` driver and an `openai-compatible` one over the built-in `fetch`). Tenant, capability scope and soft-delete are part of the ranking query, which runs under the tenant's row-level security. The docker-compose and CI Postgres images are now `pgvector/pgvector:pg17` and a migration enables the extension: **upgrade note:** a project created before this must switch its Postgres image to `pgvector/pgvector:pg17` (compose and CI) before migrating, because the new migration runs `CREATE EXTENSION vector`. `hery embeddings:backfill <name>` embeds rows that existed before the field; `hery create:blueprint` can now declare a vector field. `hery generate` no longer corrupts `TENANT_SCOPED_MODELS` when the list ends with a trailing comma.

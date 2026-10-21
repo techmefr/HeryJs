@@ -222,6 +222,12 @@ export const APP_ENFORCED_TENANT_MODELS = new Set<string>([
   'MailLog',
   'WebhookEndpoint',
   'WebhookEvent',
+  // Subscriptions are managed through the admin routes, but deliveries are
+  // written and updated by the outbox relay and a queue worker with no request
+  // behind them, and both read across tenants to fan a message out. Every
+  // query passes the tenantId explicitly.
+  'WebhookSubscription',
+  'WebhookDelivery',
   'IdempotencyKey',
   // Staged inside the transaction of the write it describes, and drained by a
   // relay with no request behind it, so it can be neither stamped nor filtered
