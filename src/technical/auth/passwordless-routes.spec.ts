@@ -24,6 +24,13 @@ const PASSWORDLESS_ROUTES = [
   'POST /sign-in/email-otp',
   'POST /sign-in/magic-link',
   'POST /sign-in/phone-number',
+  'POST /passkey/delete-passkey',
+  'GET /passkey/generate-authenticate-options',
+  'GET /passkey/generate-register-options',
+  'GET /passkey/list-user-passkeys',
+  'POST /passkey/update-passkey',
+  'POST /passkey/verify-authentication',
+  'POST /passkey/verify-registration',
   'POST /delete-anonymous-user',
 ];
 
@@ -47,7 +54,7 @@ describe('what the passwordless methods add to /api/auth/*', () => {
       });
 
     const added = mounted.filter((route) =>
-      /magic-link|email-otp|phone-number|anonymous/.test(route),
+      /magic-link|email-otp|phone-number|anonymous|passkey/.test(route),
     );
 
     expect(added.sort()).toEqual([...PASSWORDLESS_ROUTES].sort());

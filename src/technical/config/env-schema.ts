@@ -132,6 +132,13 @@ export function buildServerSchema(nodeEnv: string | undefined) {
       .string()
       .default('false')
       .transform((value) => value === 'true'),
+    AUTH_PASSKEY_ENABLED: z
+      .string()
+      .default('false')
+      .transform((value) => value === 'true'),
+    AUTH_PASSKEY_RP_ID: z.string().min(1).optional(),
+    AUTH_PASSKEY_RP_NAME: z.string().min(1).default('HeryJs'),
+    AUTH_PASSKEY_ORIGIN: z.string().min(1).optional(),
     AUTH_PASSWORDLESS_ALLOW_SIGN_UP: z
       .string()
       .default('true')

@@ -10,7 +10,34 @@ export function parseEnv(source: NodeJS.ProcessEnv) {
     throw new Error(`Invalid environment configuration:\n${issues}`);
   }
 
+  const missing = missingPasskeySettings(result.data);
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Invalid environment configuration:\n${missing
+        .map((name) => `  ${name}: required when AUTH_PASSKEY_ENABLED is true`)
+        .join('\n')}`,
+    );
+  }
+
   return result.data;
+}
+
+function missingPasskeySettings(data: {
+  AUTH_PASSKEY_ENABLED: boolean;
+  AUTH_PASSKEY_RP_ID?: string;
+  AUTH_PASSKEY_ORIGIN?: string;
+}): string[] {
+  if (!data.AUTH_PASSKEY_ENABLED) {
+    return [];
+  }
+
+  const required: Array<[string, string | undefined]> = [
+    ['AUTH_PASSKEY_RP_ID', data.AUTH_PASSKEY_RP_ID],
+    ['AUTH_PASSKEY_ORIGIN', data.AUTH_PASSKEY_ORIGIN],
+  ];
+
+  return required.filter(([, value]) => !value).map(([name]) => name);
 }
 
 export function parsePublicEnv(source: NodeJS.ProcessEnv) {

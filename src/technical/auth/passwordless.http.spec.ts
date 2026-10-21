@@ -244,6 +244,53 @@ describe('passwordless sign-in over a real HTTP round trip', () => {
     expect(sentMail.length - before).toBe(3);
   });
 
+  it('hands a signed-in user passkey registration options for the configured relying party', async () => {
+    const email = `${randomUUID()}@example.test`;
+
+    await request(server())
+      .post('/api/auth/email-otp/send-verification-otp')
+      .send({ email, type: 'sign-in' })
+      .expect(200);
+
+    const signedIn = await request(server())
+      .post('/api/auth/sign-in/email-otp')
+      .send({ email, otp: codeIn(lastMailTo(email)) })
+      .expect(200);
+    const { token } = signedIn.body as SessionBody;
+
+    await request(server())
+      .get('/api/auth/passkey/generate-register-options')
+      .expect(401);
+
+    const options = await request(server())
+      .get('/api/auth/passkey/generate-register-options')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(options.body).toMatchObject({
+      rp: { id: 'localhost' },
+      user: { name: email },
+    });
+
+    const listed = await request(server())
+      .get('/api/auth/passkey/list-user-passkeys')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(listed.body).toEqual([]);
+  });
+
+  it('hands anyone passkey sign-in options without creating anything', async () => {
+    const options = await request(server())
+      .get('/api/auth/passkey/generate-authenticate-options')
+      .expect(200);
+
+    expect(options.body).toMatchObject({ rpId: 'localhost' });
+    expect(typeof (options.body as { challenge: string }).challenge).toBe(
+      'string',
+    );
+  });
+
   it('refuses a phone number that is not E.164 before sending anything', async () => {
     const before = sentSms.length;
 

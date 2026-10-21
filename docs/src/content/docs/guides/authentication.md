@@ -16,7 +16,7 @@ Both return a bearer token backed by Better Auth. It expires the way any login s
 
 ## Passwordless sign-in
 
-Four methods sit beside the password, each **off** until its flag is `true`. They are off by default because Better Auth is mounted wholesale under `/api/auth`: registering a plugin adds its routes to the public surface. `passwordless-routes.spec.ts` lists exactly what each one adds, so turning a flag on is a reviewed diff.
+Five methods sit beside the password, each **off** until its flag is `true`. They are off by default because Better Auth is mounted wholesale under `/api/auth`: registering a plugin adds its routes to the public surface. `passwordless-routes.spec.ts` lists exactly what each one adds, so turning a flag on is a reviewed diff.
 
 | Flag                     | What it adds                                  | Delivered through       |
 | ------------------------ | --------------------------------------------- | ----------------------- |
@@ -24,6 +24,7 @@ Four methods sit beside the password, each **off** until its flag is `true`. The
 | `AUTH_EMAIL_OTP_ENABLED`  | `POST /api/auth/email-otp/send-verification-otp`, `POST /api/auth/sign-in/email-otp` | the mail module |
 | `AUTH_PHONE_OTP_ENABLED`  | `POST /api/auth/phone-number/send-otp`, `POST /api/auth/phone-number/verify` | the sms module |
 | `AUTH_ANONYMOUS_ENABLED`  | `POST /api/auth/sign-in/anonymous`            | nothing to deliver      |
+| `AUTH_PASSKEY_ENABLED`    | `/api/auth/passkey/*`: register, list, rename, delete and sign in with a WebAuthn passkey | nothing to deliver |
 
 Delivery follows the same rule as the password-reset email: the kernel never imports `mail` or `sms`. It finds them by token (`AUTH_MAILER`, `AUTH_SMS_SENDER`), and with the module not installed the message is dropped with a logged warning telling you which `hery install` to run, instead of failing the request.
 
@@ -45,6 +46,12 @@ Settings, all optional:
 - `AUTH_ANONYMOUS_EMAIL_DOMAIN`: the domain of the placeholder email a guest gets.
 
 Phone numbers must be E.164 (`+33612345678`); anything else is a 400 before a message is sent. A phone-only account gets a placeholder email on `phone.heryjs.local`.
+
+### Passkeys
+
+`AUTH_PASSKEY_ENABLED=true` also needs `AUTH_PASSKEY_RP_ID` (the domain the credential is bound to, e.g. `example.com`) and `AUTH_PASSKEY_ORIGIN` (the origin of the page that calls `navigator.credentials`, comma-separated for several); the app refuses to boot without them. `AUTH_PASSKEY_RP_NAME` is the label the browser shows (default `HeryJs`). Registration needs a session; `GET /api/auth/passkey/generate-authenticate-options` and `POST /api/auth/passkey/verify-authentication` run before one. A passkey belongs to a user, so signing in with it lands in that user's tenant like every other method.
+
+The WebAuthn ceremony itself happens in the browser; the specs here cover the server side (options, ownership, routes) and do not drive an authenticator.
 
 ### Rate limits
 

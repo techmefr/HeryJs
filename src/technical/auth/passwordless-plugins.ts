@@ -105,5 +105,24 @@ export async function buildPasswordlessPlugins(
     );
   }
 
+  if (config.AUTH_PASSKEY_ENABLED) {
+    const { passkey } = await import('@better-auth/passkey');
+
+    plugins.push(
+      passkey({
+        rpID: config.AUTH_PASSKEY_RP_ID,
+        rpName: config.AUTH_PASSKEY_RP_NAME,
+        origin: passkeyOrigins(config.AUTH_PASSKEY_ORIGIN),
+      }),
+    );
+  }
+
   return plugins;
+}
+
+export function passkeyOrigins(raw: string | undefined): string[] {
+  return (raw ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0);
 }

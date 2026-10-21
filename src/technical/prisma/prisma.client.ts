@@ -166,6 +166,11 @@ export const TENANT_FREE_MODELS = new Set<string>([
   // Second-factor secrets and backup codes, hanging off a User like the rows
   // above and written only by better-auth's own adapter.
   'TwoFactor',
+  // WebAuthn credentials, hanging off a User and written only by better-auth's
+  // passkey plugin. A sign-in finds the row by its credential id before any
+  // session exists, so there is no tenant to scope the lookup by -- the user
+  // it resolves to carries the tenant.
+  'Passkey',
   // Email-verification and password-reset tokens, looked up by their own value
   // before any session exists, so there is no tenant to scope the lookup by.
   'Verification',
