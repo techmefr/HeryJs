@@ -184,6 +184,15 @@ export function buildServerSchema(nodeEnv: string | undefined) {
     OAUTH_GITHUB_CLIENT_SECRET: z.string().min(1).optional(),
     OAUTH_MICROSOFT_CLIENT_ID: z.string().min(1).optional(),
     OAUTH_MICROSOFT_CLIENT_SECRET: z.string().min(1).optional(),
+    OTEL_EXPORTER_OTLP_ENDPOINT: z.string().min(1).optional(),
+    OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: z.string().min(1).optional(),
+    OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: z.string().min(1).optional(),
+    OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: z.string().min(1).optional(),
+    OTEL_TRACES_EXPORTER: z.string().min(1).optional(),
+    OTEL_METRICS_EXPORTER: z.string().min(1).optional(),
+    OTEL_LOGS_EXPORTER: z.string().min(1).optional(),
+    OTEL_SDK_DISABLED: z.string().min(1).optional(),
+    OTEL_SERVICE_NAME: z.string().min(1).optional(),
   });
 }
 

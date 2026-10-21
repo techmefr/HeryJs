@@ -95,6 +95,23 @@ Twelve packages, versioned together:
   unless `reveal: true`, redacted in the audit chain and refused in filters and
   sorts. Keys are versioned in `SECRETS_KEYS`; `SecretsService` seals values
   that are not columns and `hery secrets:rotate` re-encrypts to the active key.
+- `/health` is now fed by a registry any module registers a check on, and
+  `/health/live` and `/health/ready` give an orchestrator the two probes
+  separately, public and carrying only ok or error. The report no longer names
+  a `redis` check: it reports `cache` and `queue`.
+- `hery down` puts every instance in maintenance mode, answering 503 with a
+  `Retry-After` unless the request carries the bypass secret, and
+  `hery up --lift` ends it. The health probes stay reachable throughout.
+- An error reporter contract (`errorReporter` in `hery.config.ts`) hands every
+  unexpected 500, with its `errorId`, tenant, caller and request path, to a
+  Sentry-style driver. The built-in `noop` driver is the default; a domain
+  exception or any other `HttpException` is never reported.
+- OpenTelemetry export of traces, metrics and logs over OTLP, configured by the
+  standard `OTEL_*` variables and off until `OTEL_EXPORTER_OTLP_ENDPOINT` is
+  set. Spans carry the request inspector's pipeline steps, `/metrics` is
+  unchanged, and every log line carries `trace_id` and `span_id`. New
+  dependencies: `@opentelemetry/api`, `@opentelemetry/api-logs` and
+  `@opentelemetry/sdk-node`.
 - An architecture linter that fails CI on a domain missing a concern, plus
   fourteen convention checks covering capabilities, pagination, RLS, rate
   limiting, module drift and patched kernel files.
