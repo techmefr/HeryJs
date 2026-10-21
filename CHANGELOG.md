@@ -40,6 +40,9 @@ Twelve packages, versioned together:
 ### The kernel
 
 - Authentication, API keys and sessions on better-auth.
+- Session management: list devices, revoke one, sign out everywhere, a password
+  change that revokes the other sessions, and per-account lockout after
+  repeated failed sign-ins.
 - Capabilities resolved server-side in memory and returned as decisions
   (`{ allowed, scope }`) — never as rules the frontend could reinterpret.
 - Multi-tenancy resolved once per request and enforced underneath permissions,

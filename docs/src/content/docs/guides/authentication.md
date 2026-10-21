@@ -54,3 +54,27 @@ Revoking a key sets `revokedAt` rather than deleting the row — every request m
 - **Outlive its owner's access.** A key has no independent lifetime beyond the user it belongs to; there is nothing to configure per key beyond a name.
 - **Act as anyone but its creator.** There is no "service account" concept separate from a real user — if a script needs its own identity rather than borrowing a person's, create a dedicated user for it and mint the key from that account.
 - **Mint, list or revoke keys.** All three routes above refuse a request authenticated by a key rather than a session, with a 403 `apiKey.forbidden`. Otherwise revoking a leaked key would not actually cut off access: the bearer could have minted further keys with it, each with its own prefix and its own `revokedAt`, so revoking the one you know about leaves the others live.
+
+## Managing sessions
+
+A signed-in person can see where they are signed in and end any of it. Every route takes the session token in `Authorization: Bearer`, and acts on the caller's own sessions only.
+
+```
+GET    /auth/sessions?page=&limit=   // live sessions: id, ipAddress, userAgent, createdAt, expiresAt, isCurrent
+DELETE /auth/sessions/:id            // sign one device out
+DELETE /auth/sessions/others         // sign out everything but this session
+DELETE /auth/sessions                // sign out everywhere, this session included
+POST   /auth/password/change         { currentPassword, newPassword }
+```
+
+The list never contains a token, only the id that the revoke routes take, and `isCurrent` marks the session that made the request. Another user's session id answers 404, the same as one that does not exist.
+
+`POST /auth/password/change` checks the current password (400 `auth.currentPasswordInvalid` when it is wrong), signs every other session out and returns a fresh `token` for the caller, because the one that was sent is revoked with the rest. A password reset through `/api/auth/reset-password` revokes every session as well, and Better Auth's own `/api/auth/change-password` is forced to revoke the other sessions even when the client does not ask, so no route changes a password and leaves an old session alive.
+
+An API key is refused on all five routes with a 403 `apiKey.sessionsForbidden`, for the same reason it cannot manage keys: a leaked key must not be able to sign its owner out or change their password.
+
+## Lockout after repeated failures
+
+The `auth` rate-limit bucket counts per IP. Lockout counts per account: after `AUTH_LOCKOUT_MAX_ATTEMPTS` consecutive wrong passwords (default 5) the email is refused for `AUTH_LOCKOUT_SECONDS` (default 900), even for the right password. The answer is a 429 `auth.accountLocked` from `/auth/login`, and a 429 with a `Retry-After` header from Better Auth's own `/api/auth/sign-in/email`, which is guarded by the same counter. A successful sign-in resets it.
+
+Addresses that are not registered are counted like registered ones, so the lockout cannot be used to find out which emails have an account. Redis keys hold a hash of the address, never the address itself, and the case of the email does not matter. Two-factor codes are not counted here.
