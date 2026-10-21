@@ -10,6 +10,7 @@ import {
   FLOW_QUEUE,
   IMPORT_QUEUE,
   OUTBOX_QUEUE,
+  PRIVACY_QUEUE,
   WEBHOOK_QUEUE,
 } from './jobs.constants';
 import { HealthModule } from '#technical/health/health.module';
@@ -45,6 +46,7 @@ import { QueueHealthCheck } from './queue-health-check';
     // Chains and batches run here unless a step names another queue: its
     // processor owns every step name registered with JobFlowHandlers.
     BullModule.registerQueue({ name: FLOW_QUEUE }),
+    BullModule.registerQueue({ name: PRIVACY_QUEUE }),
   ],
   providers: [JobsService, QueueHealthCheck],
   exports: [BullModule, JobsService],

@@ -7,7 +7,7 @@ The admin panel has no configuration file listing your resources. It asks the ru
 
 ## `GET /introspect`
 
-One route, guarded by `SessionGuard` and `DevOnlyGuard`. It returns every controller and every route the DI container actually has:
+One route, behind `@AdminStudio()` (see [Running the studio in production](#running-the-studio-in-production)). It returns every controller and every route the DI container actually has:
 
 ```ts
 export interface DescribedRoute {
@@ -66,7 +66,7 @@ pnpm --filter admin dev
 
 Astro on port 4322, in its own pnpm workspace. Statically built on purpose: every page authenticates from the browser with the session token, so there is nothing to render on a server and no adapter to deploy — the pages are files.
 
-Ten pages. An overview counting controllers, routes and how many sit behind a capability; a browse page rendering one plain route as a table; a resource page managing a generated resource; a login form; the [Pipeline](../guides/debugging/) page, one card per traced request with the blocked step outlined; a [Dev dashboard](../guides/dev-dashboard/) page, the persisted requests, slow queries, N+1 findings, jobs, messages and exceptions of your tenant, one tab per kind; a [Prune](../guides/prune/#the-admin-page) page, one row per configured model with a button that triggers a run; a [Backups](../guides/backups/#from-the-admin-panel) page to create, download and restore dumps and edit their schedule; and a [Job flows](../guides/jobs/#chains-batches-and-resume) page listing chains and batches with retry, cancel and start. Sign in with any account of your API — it posts to the same `/auth/login` the rest of the world uses and keeps the token in the browser. A [Quotas](/guides/quotas/#managing-it-from-the-admin-panel) page shows every tenant's usage against its limit and edits limits and counters.
+Twelve pages. An overview counting controllers, routes and how many sit behind a capability; a browse page rendering one plain route as a table; a resource page managing a generated resource; a login form; the [Pipeline](../guides/debugging/) page, one card per traced request with the blocked step outlined; a [Dev dashboard](../guides/dev-dashboard/) page, the persisted requests, slow queries, N+1 findings, jobs, messages and exceptions of your tenant, one tab per kind; a [Prune](../guides/prune/#the-admin-page) page, one row per configured model with a button that triggers a run; and a [Backups](../guides/backups/#from-the-admin-panel) page to create, download and restore dumps and edit their schedule. The Privacy routes also use the contract (a Compliance section and export and erasure actions, see the [GDPR guide](../guides/gdpr/#the-admin-page)). A [Privacy](../guides/gdpr/#the-admin-page) page requests an export of a user and downloads it, asks for an erasure behind a typed confirmation, and lists every request with its status. A [Feature flags](../guides/feature-flags/#editing-at-runtime) page creates a flag, sets its rollout, edits its targeting rules and previews an evaluation. A [Job flows](../guides/jobs/#chains-batches-and-resume) page lists chains and batches with retry, cancel and start. Sign in with any account of your API — it posts to the same `/auth/login` the rest of the world uses and keeps the token in the browser. A [Quotas](/guides/quotas/#managing-it-from-the-admin-panel) page shows every tenant's usage against its limit and edits limits and counters.
 
 ### Every argument-free GET, and every POST search route, becomes a section
 
@@ -100,10 +100,14 @@ The consequence is a useful one: **a field the resource's view strips never reac
 
 A controller that exposes `POST /search`, `GET /describe` and `POST /create` is a generated resource, and its sidebar entry opens the resource page (`/resource?base=/blog-posts`) instead of the flat table. Everything on that page is read from the contract the API publishes; there is no per-resource file.
 
-- **Forms.** New and Edit are generated from `GET /describe`. The field list gives the kinds (text, whole number, checkbox, date), and `rules.create` / `rules.update`, the JSON Schema reflected off the Zod DTOs, give what is required and each field's length, bounds, pattern and enum. The form validates with those same rules before anything is sent, so the client and the server refuse the same values. The validation pipe answers a 400 with the flattened report older clients read plus an `issues` list carrying each issue's full path, so a server refusal, including a cross-field `check` in the DTO, is pinned to the field it names; an issue that names no field is shown at the top of the form. Edit sends only the fields that changed, and an update cannot empty a field, because an optional field in the DTO accepts a value or nothing, never `null`.
+- **Forms.** New and Edit are generated from `GET /describe`. The field list gives the kinds (text, whole number, checkbox, date, and rich text, a textarea with a live preview of what the API will keep and a count against the limit), and `rules.create` / `rules.update`, the JSON Schema reflected off the Zod DTOs, give what is required and each field's length, bounds, pattern and enum. The form validates with those same rules before anything is sent, so the client and the server refuse the same values. The validation pipe answers a 400 with the flattened report older clients read plus an `issues` list carrying each issue's full path, so a server refusal, including a cross-field `check` in the DTO, is pinned to the field it names; an issue that names no field is shown at the top of the form. Edit sends only the fields that changed, and an update cannot empty a field, because an optional field in the DTO accepts a value or nothing, never `null`.
 - **Table.** Search, filters, sorting and paging are driven by the search contract in `describe`: only the `sorts` and `filters` it declares are offered, the operators depend on the field type, values are converted to the type Prisma expects (a number is sent as a number, a date as an ISO timestamp), `search.q` is offered only when the resource has a text field, and `limits` fills the page size menu. A resource that does not paginate is never sent `page` or `limit`, which the API would refuse.
+- **Inline edit.** A text, number, checkbox or enum cell has an Edit button (keyboard reachable, labelled with the column and the row) when the row's `update` decision is allowed. Enter sends that one field through the same `update` route, with the same validation and version check as the form; Escape or leaving the cell drops it, and a refusal is shown in the cell instead of the value. Dates and relations stay in the full form.
 - **Bulk actions.** Tick rows to delete, delete permanently, or restore from the trash. Each action only sends the ids the API allowed, reports per record what was refused, and keeps the refused rows selected. A batch larger than `MAX_BATCH_ENTRIES` is split into several requests.
+- **Sharing.** A resource declared with `sharing: true` shows a Share button on each row whose `share` decision is allowed: a dialog lists who the record is shared with, revokes a share, and grants a user or one of your teams read or write access, through the generated `/:id/shares` routes.
 - **Relations.** Editing a record also shows its relations. A many-to-many relation lists who is attached (`POST /:id/tags/members`), detaches one at a time, and attaches through a picker that searches the related resource (`POST /:id/tags/options`), offering only what is not attached yet. Both routes are generated, gated by the view and the attach capability. An own-route child (`notes`) lists its rows through `POST /:id/notes/search`, and links to the child's own resource page when the child is itself a generated resource. A child declared `routed: false` is read-only here on purpose: it has no write route, no policy and no tenant or owner columns of its own, and writing it through its parent would mean inventing all three, so edit it by giving it a real blueprint.
+
+- **History.** A resource declaring `history: true` shows a History button per row: the entries, a diff of each against the current record, and a restore, driven by `POST /:id/history`, `/diff` and `/restore` and enabled by the `history` and `revert` decisions. See [Row history](../guides/row-history/).
 
 ### A disabled button is a refused request
 
@@ -157,6 +161,48 @@ The surface can relabel, hide, lock, format and add, and it can switch a feature
 
 Point it at another API with `PUBLIC_API_URL` if yours is not on `http://localhost:3000`.
 
+## Contributing a section and an action
+
+A feature contributes to the admin without a registry: it decorates the routes it already has, and introspection carries the declaration. `DescribedRoute` gains an `admin` field.
+
+```ts
+@Controller('mail')
+@AdminStudio()
+export class MailAdminController {
+  @AdminSection({
+    id: 'mail',
+    title: 'Outbox',
+    icon: 'mail',
+    group: 'Messaging',
+    columns: [{ key: 'subject', label: 'Subject' }, { key: 'sentAt', label: 'Sent', format: 'date' }],
+  })
+  @Get()
+  @Capability(canReadMail)
+  list() {}
+
+  @AdminAction({ id: 'mail-resend', title: 'Resend', icon: 'mail', section: 'mail', scope: 'row' })
+  @Post(':id/resend')
+  @Capability(canResendMail)
+  resend() {}
+}
+```
+
+- `@AdminSection` goes on a list route (an argument-free GET or a POST `/search`). `group` is the sidebar heading, `order` sorts inside it, `columns` order, rename and format the columns the payload carries (a declared key the payload lacks is ignored, an undeclared one is kept).
+- `@AdminAction` goes on a non-GET route. `scope` is `row` (needs `:id`; shown on each row, also on a generated resource page whose list route carries the section), `bulk` (sends `{ ids }`) or `global`. `fields` makes the admin collect a form (`text`, `textarea`, `number`, `boolean`, `select`, `password`) and send it as the JSON body; `confirm` or `danger` make it ask first. A dialog is only shown when one of those is present.
+- Every `@AdminAction` call is audited before it runs (model `AdminAction`, operation = the action id, the names of the fields sent and never their values). A failed audit write stops the request.
+- The route keeps its own `@Capability`; the admin never grants. The contract is checked by `pnpm run lint:conventions admin-contract`: ids are unique kebab-case literals, the icon is one of `ADMIN_ICONS`, titles are literal, an action names a declared section, and a contributing controller does not use `DevOnlyGuard` (it would vanish in production).
+
+## Running the studio in production
+
+`/introspect` and any controller decorated with `@AdminStudio()` use this chain: gate, session, second factor, capability.
+
+| Variable | Effect |
+| --- | --- |
+| `ADMIN_STUDIO_ENABLED` | Must be exactly `true` in production; otherwise the routes answer 404, signed in or not. Ignored outside production, where the studio opens to any signed-in developer as before. |
+| `ADMIN_STUDIO_ALLOWED_IPS` | Comma separated peer addresses; any other caller gets 404. It reads the address Express resolved, so set `trust proxy` deliberately behind a proxy. |
+| `ADMIN_STUDIO_REQUIRE_2FA` | `true` makes a platform admin without an enrolled second factor get 403. |
+
+The capability `canUseAdminStudio` is the platform admin role in production. No header, query parameter or client value can switch the checks off.
 ## Before you deploy any of this
 
 `/introspect` is a map of your application, and the protections on it are worth understanding precisely.

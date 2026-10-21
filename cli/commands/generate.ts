@@ -4,6 +4,7 @@ import type { Command } from 'commander';
 import pc from 'picocolors';
 import { loadBlueprint, resolveBlueprintPath } from '../lib/blueprint';
 import { buildResourceContext } from '../lib/resource-context';
+import { historyColumnEntries } from '../lib/history-templates';
 import { patchModelSet, patchPrismaSchema } from '../lib/schema-patch';
 import {
   changeFeedFile,
@@ -13,6 +14,7 @@ import {
   liveGatewayFile,
   mcpToolsFile,
   moduleFile,
+  personalDataFiles,
   policyFile,
   presetsFile,
   recordLoaderFile,
@@ -105,6 +107,7 @@ export function registerGenerateCommand(program: Command): void {
           [`${ctx.kebabName}.change-feed.ts`]: changeFeedFile(ctx),
           [`${ctx.kebabName}.module.ts`]: moduleFile(ctx),
           [`${ctx.kebabName}.spec.ts`]: specFile(ctx),
+          ...personalDataFiles(ctx),
         };
 
         if (options.graphql) {
@@ -146,6 +149,14 @@ export function registerGenerateCommand(program: Command): void {
           'audit-log.ts',
         );
 
+        const historyColumnsPath = path.join(
+          root,
+          'src',
+          'technical',
+          'history',
+          'history-columns.ts',
+        );
+
         const encryptedColumnsPath = path.join(
           root,
           'src',
@@ -167,6 +178,11 @@ export function registerGenerateCommand(program: Command): void {
             ctx.pascalName,
           );
           patchModelSet(auditLogPath, 'AUDITED_MODELS', ctx.pascalName);
+          if (ctx.history) {
+            for (const entry of historyColumnEntries(ctx)) {
+              patchModelSet(historyColumnsPath, 'HISTORY_COLUMNS', entry);
+            }
+          }
           for (const field of ctx.fields.filter(
             (candidate) => candidate.type === 'encrypted',
           )) {

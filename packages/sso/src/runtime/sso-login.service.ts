@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { SSO_CONNECTION_STORE } from './sso-connection.store';
 import type { SsoConnectionStore } from './sso-connection.store';
 import { SsoDiscoveryService } from './sso-discovery.service';
-import { domainOfEmail } from './sso-domain';
+import { assertVerifiedEmailDomain } from './sso-domain-guard';
 import { decodeIdToken, requestJson, SSO_FETCH, stringField } from './sso-http';
 import type { SsoFetch } from './sso-http';
 import { SsoProvisioningService } from './sso-provisioning.service';
@@ -110,6 +110,10 @@ export class SsoLoginService {
       throw new SsoRefusedException('connection-disabled');
     }
 
+    if (connection.protocol !== 'oidc' || !connection.clientSecret) {
+      throw new SsoRefusedException('invalid-state');
+    }
+
     const profile = await this.exchange(connection, payload, input.code);
 
     return this.provisioning.resolve(
@@ -138,7 +142,7 @@ export class SsoLoginService {
         redirect_uri: this.redirectUri,
         client_id: connection.clientId,
         client_secret: this.secrets.open(
-          connection.clientSecret,
+          connection.clientSecret ?? '',
           connection.id,
         ),
       }).toString(),
@@ -185,7 +189,7 @@ export class SsoLoginService {
       throw new SsoRefusedException('email-unverified');
     }
 
-    this.assertVerifiedDomain(connection, email);
+    assertVerifiedEmailDomain(connection, email);
 
     return {
       subject,
@@ -193,19 +197,5 @@ export class SsoLoginService {
       name: stringField(claims, 'name'),
       avatarUrl: stringField(claims, 'picture'),
     };
-  }
-
-  private assertVerifiedDomain(
-    connection: SsoConnectionRecord,
-    email: string,
-  ): void {
-    const domain = domainOfEmail(email);
-    const isVerified = connection.domains.some(
-      (entry) => entry.verifiedAt !== null && entry.domain === domain,
-    );
-
-    if (!isVerified) {
-      throw new SsoRefusedException('email-domain-not-verified');
-    }
   }
 }

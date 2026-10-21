@@ -4,6 +4,7 @@ import {
   CapabilityRecord,
   CapabilitySubject,
   PermissionPreset,
+  ShareAccess,
 } from './capabilities.types';
 import { resolveCapability } from './resolve-capability';
 
@@ -13,7 +14,8 @@ export class CapabilitiesService {
     preset: PermissionPreset,
     subject: CapabilitySubject,
     record: CapabilityRecord,
+    access?: ShareAccess,
   ): CapabilityDecision {
-    return resolveCapability(preset, subject, record);
+    return resolveCapability(preset, subject, record, access);
   }
 }

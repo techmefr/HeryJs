@@ -39,13 +39,13 @@ const { title, bare = false } = Astro.props;
               <a class="item" href="/devtools" id="devtools-link" />
               <a class="item" href="/prune" id="prune-link" />
               <a class="item" href="/job-flows" id="job-flows-link" />
+              <a class="item" href="/flags" id="flags-link" />
+              <a class="item" href="/privacy" id="privacy-link" />
               <a class="item" href="/quotas" id="quotas-link" />
               <a class="item" href="/backups" id="backups-link" />
             </nav>
 
-            <nav class="group scrolls" id="sections">
-              <h2>Sections</h2>
-            </nav>
+            <nav class="group scrolls" id="sections" aria-label="Sections" />
 
             <footer>
               <code id="api-url" />
@@ -73,14 +73,10 @@ const { title, bare = false } = Astro.props;
     }
 
     <script>
-      import {
-        API_URL,
-        api,
-        sectionsOf,
-        type DescribedController,
-      } from '../lib/api';
+      import { API_URL, groupedSections, sectionsOf } from '../lib/api';
+      import { loadControllers } from '../lib/introspection';
       import { resourcesOf } from '../lib/resource';
-      import { ICONS, icon, iconFor, tintOf } from '../lib/icons';
+      import { ICONS, adminIcon, icon, tintOf } from '../lib/icons';
       import { clearToken, token } from '../lib/session';
 
       const onLogin = window.location.pathname.startsWith('/login');
@@ -126,6 +122,12 @@ const { title, bare = false } = Astro.props;
         ICONS.jobFlows,
         'Job flows',
       );
+      label(
+        document.getElementById('flags-link'),
+        ICONS.flags,
+        'Feature flags',
+      );
+      label(document.getElementById('privacy-link'), ICONS.privacy, 'Privacy');
       label(document.getElementById('quotas-link'), ICONS.quotas, 'Quotas');
       label(document.getElementById('backups-link'), ICONS.backups, 'Backups');
       label(document.getElementById('sign-out'), ICONS.signOut, 'Sign out');
@@ -144,32 +146,39 @@ const { title, bare = false } = Astro.props;
 
       if (token() && !onLogin) {
         const nav = document.getElementById('sections');
-        const { data } = await api<DescribedController[]>('/introspect');
+        const data = await loadControllers().catch(() => []);
         const query = new URLSearchParams(window.location.search);
         const current = query.get('path') ?? query.get('base');
         const bases = resourcesOf(data).map((resource) => resource.base);
 
-        for (const section of sectionsOf(data)) {
-          const link = document.createElement('a');
-          link.className = 'item ' + tintOf(section.path);
-          const base =
-            section.method === 'POST'
-              ? section.path.slice(0, -'/search'.length)
-              : section.path;
-          const isResource = section.method === 'POST' && bases.includes(base);
-          link.href = isResource
-            ? '/resource?base=' + encodeURIComponent(base)
-            : '/browse?path=' +
-              encodeURIComponent(section.path) +
-              '&method=' +
-              section.method;
-          label(link, iconFor(section.path), section.label);
+        for (const { group, sections } of groupedSections(sectionsOf(data))) {
+          const heading = document.createElement('h2');
+          heading.textContent = group;
+          nav?.appendChild(heading);
 
-          if (section.path === current || base === current) {
-            link.setAttribute('aria-current', 'page');
+          for (const section of sections) {
+            const link = document.createElement('a');
+            link.className = 'item ' + tintOf(section.path);
+            const base =
+              section.method === 'POST'
+                ? section.path.slice(0, -'/search'.length)
+                : section.path;
+            const isResource =
+              section.method === 'POST' && bases.includes(base);
+            link.href = isResource
+              ? '/resource?base=' + encodeURIComponent(base)
+              : '/browse?path=' +
+                encodeURIComponent(section.path) +
+                '&method=' +
+                section.method;
+            label(link, adminIcon(section.icon, section.path), section.label);
+
+            if (section.path === current || base === current) {
+              link.setAttribute('aria-current', 'page');
+            }
+
+            nav?.appendChild(link);
           }
-
-          nav?.appendChild(link);
         }
       }
     </script>

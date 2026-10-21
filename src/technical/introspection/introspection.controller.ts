@@ -1,16 +1,17 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
-import { SessionGuard } from '#technical/auth/session.guard';
+import { Controller, Get } from '@nestjs/common';
+import { AdminStudio } from '#technical/admin/admin-studio.guard';
+import { canUseAdminStudio } from '#technical/admin/admin-studio.policy';
 import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
-import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { Capability } from '#technical/capabilities/capability.decorator';
-import { DevOnlyGuard } from '#technical/dev-only/dev-only.guard';
-import { canUseDevtools } from '#technical/dev-only/dev-only.policy';
 import { ok } from '#technical/http/envelope';
 import { UnpaginatedRoute } from '#technical/http/unpaginated-route.decorator';
 import { IntrospectionService } from './introspection.service';
 
+// The studio's own door rather than DevOnlyGuard: development keeps working as
+// it did, and production is reachable by a platform admin once an operator has
+// switched the studio on. See AdminStudio for the order of the guards.
 @Controller('introspect')
-@UseGuards(SessionGuard, DevOnlyGuard, CapabilitiesGuard)
+@AdminStudio()
 export class IntrospectionController {
   constructor(private readonly introspection: IntrospectionService) {}
 
@@ -19,7 +20,7 @@ export class IntrospectionController {
   )
   @RateLimit('read')
   @Get()
-  @Capability(canUseDevtools)
+  @Capability(canUseAdminStudio)
   list() {
     return ok(this.introspection.all());
   }

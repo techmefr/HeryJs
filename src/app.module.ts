@@ -27,6 +27,7 @@ import { MaintenanceMiddleware } from '#technical/maintenance/maintenance.middle
 import { MonitoringModule } from '#technical/monitoring/monitoring.module';
 import { OutboxModule } from '#technical/outbox/outbox.module';
 import { NotificationsModule } from '#technical/notifications/notifications.module';
+import { PrivacyModule } from '#technical/privacy/privacy.module';
 import { BackupModule } from '#technical/backup/backup.module';
 import { PruneModule } from '#technical/prune/prune.module';
 import { QuotasModule } from '#technical/quotas/quotas.module';
@@ -126,6 +127,7 @@ const telemetryOptions = telemetryPinoOptions();
     NotificationsModule,
     OutboxModule,
     PipelineModule,
+    PrivacyModule,
     BackupModule,
     PruneModule,
     QuotasModule,

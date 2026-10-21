@@ -1,7 +1,12 @@
-import type { ResourceDescription, ResourceRow } from './resource';
+import type {
+  DescribedRichtext,
+  ResourceDescription,
+  ResourceRow,
+} from './resource';
 import type { FieldOverride } from './extensions';
 
-export type FieldKind = 'text' | 'number' | 'checkbox' | 'datetime' | 'select';
+export type FieldKind =
+  'text' | 'number' | 'checkbox' | 'datetime' | 'select' | 'richtext';
 export type FormMode = 'create' | 'update';
 export type FormValue = string | boolean;
 export type FormValues = Record<string, FormValue>;
@@ -13,6 +18,8 @@ export interface FormField {
   required: boolean;
   integer: boolean;
   readonly: boolean;
+  // Rendered as a password input: a value the operator types and nobody reads.
+  secret?: boolean;
   help?: string;
   placeholder?: string;
   options?: string[];
@@ -21,15 +28,17 @@ export interface FormField {
   minimum?: number;
   maximum?: number;
   pattern?: string;
+  richtext?: DescribedRichtext;
 }
 
-const KIND_BY_TYPE = {
+const KIND_BY_TYPE: Record<string, FieldKind> = {
   string: 'text',
   file: 'text',
+  richtext: 'richtext',
   int: 'number',
   boolean: 'checkbox',
   datetime: 'datetime',
-} as const;
+};
 
 function boundOf(value: number | undefined): number | undefined {
   if (value === undefined || Math.abs(value) >= Number.MAX_SAFE_INTEGER) {
@@ -74,11 +83,15 @@ export function formFieldsOf(
     fields.push({
       name: field.name,
       label: override.label ?? humanize(field.name),
-      kind: options ? 'select' : KIND_BY_TYPE[field.type],
+      kind: options ? 'select' : (KIND_BY_TYPE[field.type] ?? 'text'),
       required: isRequired,
       integer: field.type === 'int',
       readonly: override.readonly === true && !isRequired,
-      help: override.help,
+      help:
+        override.help ??
+        (field.richtext
+          ? 'HTML. Anything outside the allow-list is stripped when you save, as the preview shows.'
+          : undefined),
       placeholder: override.placeholder,
       options,
       minLength: schema.minLength,
@@ -86,6 +99,7 @@ export function formFieldsOf(
       minimum: boundOf(schema.minimum),
       maximum: boundOf(schema.maximum),
       pattern: schema.pattern,
+      richtext: field.richtext,
     });
   }
 
