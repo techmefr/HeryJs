@@ -14,3 +14,7 @@ export function resolveSupportedLocales(): string[] {
 export function resolveDefaultLocale(): string {
   return heryConfig.i18n?.defaultLocale ?? FALLBACK_LOCALE;
 }
+
+export function resolveLocaleFallbacks(): Record<string, string[]> {
+  return heryConfig.i18n?.fallbacks ?? {};
+}

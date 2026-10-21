@@ -54,6 +54,7 @@ export interface HeryConfigRateLimit {
 export interface HeryConfigI18n {
   supportedLocales: string[];
   defaultLocale: string;
+  fallbacks?: Record<string, string[]>;
 }
 
 /**

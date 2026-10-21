@@ -4,6 +4,7 @@ import {
   graphqlTypeFor,
   prismaTypeFor,
   sampleValueFor,
+  storedTsTypeFor,
   tsTypeFor,
   zodOutputTypeFor,
   zodTypeFor,
@@ -61,6 +62,16 @@ export const ${ctx.screamingSnakeName}_PRESETS = {
 `;
 }
 
+function translatableFields(ctx: ResourceContext): ResourceContext['fields'] {
+  return ctx.fields.filter((field) => field.translatable);
+}
+
+function translatableFieldsLiteral(ctx: ResourceContext): string {
+  return `[${translatableFields(ctx)
+    .map((field) => `{ name: '${field.name}', optional: ${field.optional} }`)
+    .join(', ')}]`;
+}
+
 function pascalRelationName(relation: { relation: string }): string {
   return relation.relation[0]!.toUpperCase() + relation.relation.slice(1);
 }
@@ -113,7 +124,7 @@ export function dtoFile(ctx: ResourceContext): string {
   const hasRelations = ctx.relations.length > 0;
 
   return `import { z } from 'zod';
-import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
+import { MAX_BATCH_ENTRIES } from '#technical/http/batch';${translatableFields(ctx).length > 0 ? `\nimport { translatableInputSchema } from '#technical/i18n/translatable';` : ''}
 
 const ${ctx.camelName}Fields = z.object({
 ${fieldLines(ctx, '  ')}
@@ -484,6 +495,7 @@ export { ${ctx.pascalName}RecordLoader as ${ctx.pascalName}VisibleRecordLoader }
 }
 
 export function serviceFile(ctx: ResourceContext): string {
+  const hasTranslatable = translatableFields(ctx).length > 0;
   const searchableFields = ctx.fields
     .filter((field) => field.type === 'string')
     .map((field) => field.name);
@@ -502,7 +514,22 @@ import { SearchEngineRegistry } from '#technical/search/search-engine.registry';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { writeAuditLog } from '#technical/audit/audit-log';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
-import { resolveRelationInstructions } from '#technical/http/relation-resolver';
+${
+  hasTranslatable
+    ? `import {
+  normalizeTranslatableWrite,
+  searchDocumentFor,
+} from '#technical/i18n/translatable';
+import type { TranslatableFieldSpec } from '#technical/i18n/translatable';
+import {
+  hasTranslatableSort,
+  resolveTranslatableFilters,
+  sortByResolvedTranslations,
+} from '#technical/i18n/translatable-query';
+import type { TranslatableRow } from '#technical/i18n/translatable-query';
+`
+    : ''
+}import { resolveRelationInstructions } from '#technical/http/relation-resolver';
 import type { PrismaRelationClient } from '#technical/http/relation-resolver';
 ${ctx.versioned ? `import { VersionConflictException } from '#technical/errors/version-conflict.exception';\nimport { assertVersionIsCurrent, isLostRaceError } from '#technical/http/record-version';\nimport type { ExpectedVersion } from '#technical/http/record-version';\n` : ''}import type { RelationInstruction${childIncludes.length > 0 ? ', ParsedListQuery' : ''} } from '#technical/http/list-query';${ctx.relations.length > 0 ? `\nimport { applyRelationMutation } from '#technical/http/relation-mutations';\nimport type { PivotDelegate, RelatedDelegate } from '#technical/http/relation-mutations';\nimport { MAX_BATCH_ENTRIES } from '#technical/http/batch';` : ''}
 import {
@@ -512,7 +539,13 @@ import {
 import { ${ctx.screamingSnakeName}_PRESETS } from './${ctx.kebabName}.presets';
 
 const SEARCHABLE_FIELDS = [${searchableFields.map((name) => `'${name}'`).join(', ')}] as const;
-const SEARCH_COLLECTION = '${ctx.kebabName}';${vectorServiceConstants(ctx)}
+const SEARCH_COLLECTION = '${ctx.kebabName}';${vectorServiceConstants(ctx)}${
+    hasTranslatable
+      ? `
+const TRANSLATABLE_FIELDS: readonly TranslatableFieldSpec[] = ${translatableFieldsLiteral(ctx)};
+const TRANSLATABLE_FIELD_NAMES = TRANSLATABLE_FIELDS.map((field) => field.name);`
+      : ''
+  }
 
 export interface ${ctx.pascalName}SearchOptions {${
     ctx.softDeletes
@@ -577,9 +610,17 @@ export class ${ctx.pascalName}Service {
   }
     for (const driver of this.searchEngines.externalDrivers) {
       try {
-        const document = Object.fromEntries(
+${
+  hasTranslatable
+    ? `        const document = searchDocumentFor(
+          record,
+          SEARCHABLE_FIELDS,
+          TRANSLATABLE_FIELD_NAMES,
+        );`
+    : `        const document = Object.fromEntries(
           SEARCHABLE_FIELDS.map((field) => [field, record[field]]),
-        );
+        );`
+}
         await driver.index(
           SEARCH_COLLECTION,
           record.id,
@@ -648,10 +689,24 @@ ${vectorSearchDispatch(ctx)}${
 
     // The scope clause sits in its own AND branch so a declared filter can
     // never widen it back, whatever the caller passes in the query string.
-    const where = {
+${
+  hasTranslatable
+    ? `    const visibleWhere = {
       AND: [
         scopeWhereFor(${ctx.screamingSnakeName}_PRESETS.view, subject),${ctx.softDeletes ? '\n        trashedWhere,' : ''}
-        ...(options.where ? [options.where] : []),
+      ],
+    };
+    const filterWhere = options.where
+      ? ((await resolveTranslatableFilters(options.where, (field) =>
+          this.loadTranslations(visibleWhere, field),
+        )) as Record<string, unknown>)
+      : undefined;
+`
+    : ''
+}    const where = {
+      AND: [
+        scopeWhereFor(${ctx.screamingSnakeName}_PRESETS.view, subject),${ctx.softDeletes ? '\n        trashedWhere,' : ''}
+        ...(${hasTranslatable ? 'filterWhere' : 'options.where'} ? [${hasTranslatable ? 'filterWhere' : 'options.where'}] : []),
         ...(searchWhere ? [searchWhere] : []),
       ],
     };
@@ -660,7 +715,22 @@ ${vectorSearchDispatch(ctx)}${
     // undefined, never null: Prisma reads an absent take as "every row", which
     // is what a resource with no declared pagination asks for.
     const limit = options.limit ?? undefined;
+${
+  hasTranslatable
+    ? `
+    if (hasTranslatableSort(options.sorts, TRANSLATABLE_FIELD_NAMES)) {
+      const sorted = await this.searchSortedByTranslation(
+        where,
+        options,
+        page,
+        limit,
+      );
 
+      return { ...sorted, matches };
+    }
+`
+    : ''
+}
     const [records, total] = await Promise.all([
       this.prisma.${ctx.modelCamelName}.findMany({
         where: options.cursorWhere
@@ -685,7 +755,64 @@ ${vectorSearchDispatch(ctx)}${
 
     ${vectorTextResult(ctx)}
   }
-${vectorSimilarMethod(ctx)}${childIncludes
+${
+  hasTranslatable
+    ? `
+  private async loadTranslations(
+    where: Record<string, unknown>,
+    field: string,
+  ): Promise<TranslatableRow[]> {
+    const rows = (await this.prisma.${ctx.modelCamelName}.findMany({
+      where,
+      select: { id: true, [field]: true },
+    })) as unknown as Record<string, unknown>[];
+
+    return rows.map((row) => ({ id: String(row.id), value: row[field] }));
+  }
+
+  private async searchSortedByTranslation(
+    where: Record<string, unknown>,
+    options: ${ctx.pascalName}SearchOptions,
+    page: number,
+    limit: number | undefined,
+  ) {
+    const sorts = options.sorts ?? [];
+    const keys = (await this.prisma.${ctx.modelCamelName}.findMany({
+      where,
+      select: Object.fromEntries([
+        ['id', true],
+        ...sorts.map((sort) => [sort.field, true]),
+      ]) as Prisma.${ctx.modelPascalName}Select,
+    })) as unknown as Record<string, unknown>[];
+    const ids = sortByResolvedTranslations(
+      keys,
+      sorts,
+      TRANSLATABLE_FIELD_NAMES,
+    ).map((row) => String(row.id));
+    const pageIds = limit ? ids.slice((page - 1) * limit, page * limit) : ids;
+
+    const found = await this.prisma.${ctx.modelCamelName}.findMany({
+      where: { AND: [where, { id: { in: pageIds } }] },
+      include: options.include as Prisma.${ctx.modelPascalName}Include | undefined,
+    });
+    const byId = new Map(found.map((record) => [record.id, record] as const));
+    const records = pageIds.flatMap((id) => {
+      const record = byId.get(id);
+
+      return record ? [record] : [];
+    });
+
+    await resolveRelationInstructions(
+      this.prisma as unknown as PrismaRelationClient,
+      records,
+      options.relationInstructions,
+    );
+
+    return { records, total: ids.length };
+  }
+`
+    : ''
+}${vectorSimilarMethod(ctx)}${childIncludes
     .map((include) => {
       const pascalRelation = pascalRelationName(include);
       const childDelegate = camelCase(include.resource);
@@ -784,7 +911,7 @@ ${
 }    const record = await this.prisma.${ctx.modelCamelName}.create({
       // tenantId is injected by the tenant-scoping Prisma extension, invisible to callers by design.
       data: {
-        ...data,
+        ...${hasTranslatable ? 'normalizeTranslatableWrite(data, TRANSLATABLE_FIELDS)' : 'data'},
         ownerId: subject.id,${ownedByTeam(ctx) ? `\n        // The team comes from the session, never from the request body, so a\n        // caller cannot file a record into a team it does not belong to.\n        teamId: subject.currentTeamId,` : ''}
       } as unknown as Prisma.${ctx.modelPascalName}CreateInput,
     });
@@ -805,7 +932,7 @@ ${
     try {
       const updated = await this.prisma.${ctx.modelCamelName}.update({
         where: { id: record.id, version: expected.value },
-        data: { ...data, version: { increment: 1 } },
+        data: { ...${hasTranslatable ? 'normalizeTranslatableWrite(data, TRANSLATABLE_FIELDS, record)' : 'data'}, version: { increment: 1 } },
       });
       this.notify();
       await this.syncSearchIndex(updated);
@@ -819,7 +946,7 @@ ${
     }
   }`
     : `  async update(record: ${ctx.modelPascalName}, data: Update${ctx.pascalName}Input) {
-    const updated = await this.prisma.${ctx.modelCamelName}.update({ where: { id: record.id }, data });
+    const updated = await this.prisma.${ctx.modelCamelName}.update({ where: { id: record.id }, data${hasTranslatable ? `: normalizeTranslatableWrite(data, TRANSLATABLE_FIELDS, record)` : ''} });
     this.notify();
     await this.syncSearchIndex(updated);
     return updated;
@@ -871,7 +998,7 @@ ${
   async restore(record: ${ctx.modelPascalName}, patch?: Update${ctx.pascalName}Input) {
     const updated = await this.prisma.${ctx.modelCamelName}.update({
       where: { id: record.id },
-      data: { ...patch, deletedAt: null${ctx.versioned ? ', version: { increment: 1 }' : ''} },
+      data: { ...${hasTranslatable ? 'normalizeTranslatableWrite(patch ?? {}, TRANSLATABLE_FIELDS, record)' : 'patch'}, deletedAt: null${ctx.versioned ? ', version: { increment: 1 }' : ''} },
     });
     this.notify();
     await this.syncSearchIndex(updated);
@@ -1142,11 +1269,19 @@ ${indent}  },`,
 }
 
 export function controllerFile(ctx: ResourceContext): string {
+  const translatable = translatableFields(ctx);
+  const hasTranslatable = translatable.length > 0;
   const selectableFields = [
     'id',
     'ownerId',
     ...(ownedByTeam(ctx) ? ['teamId'] : []),
-    ...ctx.fields.filter((field) => !field.hidden).map((field) => field.name),
+    ...ctx.fields
+      .filter((field) => !field.hidden)
+      .flatMap((field) =>
+        field.translatable
+          ? [field.name, `${field.name}Translations`]
+          : [field.name],
+      ),
     'createdAt',
     'updatedAt',
     ...(ctx.softDeletes ? ['deletedAt'] : []),
@@ -1189,7 +1324,7 @@ import type {
   ListQueryContract,
   SearchRequestBody,
 } from '#technical/http/list-query';
-import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
+${hasTranslatable ? `import { describeLocales } from '#technical/i18n/translatable';\n` : ''}import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import {
   create${ctx.pascalName}RequestSchema,
   create${ctx.pascalName}Schema,
@@ -1248,7 +1383,7 @@ import type { ${ctx.pascalName}View } from './${ctx.kebabName}.view';
 const ${ctx.screamingSnakeName}_CONTRACT = {
   sorts: [${ctx.sorts.map((field) => `'${field}'`).join(', ')}],
   filters: ['id', ${ctx.filters.map((field) => `'${field}'`).join(', ')}],
-  selects: [${selectableFields.map((field) => `'${field}'`).join(', ')}],
+  selects: [${selectableFields.map((field) => `'${field}'`).join(', ')}],${hasTranslatable ? `\n  translatable: [${translatable.map((field) => `'${field.name}'`).join(', ')}],` : ''}
   includes: ${includesContractLiteral(ctx, '  ')},
   aggregates: ${aggregatesContractLiteral(ctx, '  ')},
 ${ctx.vector ? '  similar: true,\n' : ''}${paginationContractLines(ctx.pagination)}} as const satisfies ListQueryContract;
@@ -1262,8 +1397,8 @@ const ${ctx.screamingSnakeName}_DESCRIBE = {
   // inferring it from the path it happened to call.
   version: ${ctx.version},
   fields: [
-${ctx.fields.map((field) => `    { name: '${field.name}', type: '${field.type}', optional: ${field.optional} },`).join('\n')}
-  ],
+${ctx.fields.map((field) => `    { name: '${field.name}', type: '${field.type}', optional: ${field.optional}${field.translatable ? ', translatable: true' : ''} },`).join('\n')}
+  ],${hasTranslatable ? '\n  locales: describeLocales(),' : ''}
   ...${ctx.screamingSnakeName}_CONTRACT,
   // Stated rather than implied by the absence of limits: a client reading this
   // knows the search route returns every match, and that asking for a page is
@@ -1804,10 +1939,11 @@ export function resolverFile(ctx: ResourceContext): string {
   // than the resolver bodies below.
   const objectFields = ctx.fields
     .filter((field) => !field.hidden)
-    .map(
-      (field) =>
-        `  @Field(() => ${graphqlTypeFor(field)}${field.optional ? ', { nullable: true }' : ''})\n  declare ${field.name}${field.optional ? '?' : ''}: ${tsTypeFor(field)};`,
-    )
+    .map((field) => {
+      const isNullable = field.optional || field.translatable;
+
+      return `  @Field(() => ${graphqlTypeFor(field)}${isNullable ? ', { nullable: true }' : ''})\n  declare ${field.name}${isNullable ? '?' : ''}: ${tsTypeFor(field)}${field.translatable ? ' | null' : ''};`;
+    })
     .join('\n\n');
 
   // Every field, hidden ones included -- hidden governs the read side
@@ -3005,6 +3141,235 @@ function relationSpecBlock(ctx: ResourceContext, createBody: string): string {
     .join('');
 }
 
+function translatableSpecBlock(
+  ctx: ResourceContext,
+  createBody: string,
+): string {
+  const field = translatableFields(ctx)[0];
+
+  if (
+    !field ||
+    ctx.permissions.create === 'none' ||
+    ctx.permissions.update === 'none'
+  ) {
+    return '';
+  }
+
+  const name = field.name;
+  const route = ctx.pluralKebabName;
+  const isFilterable = ctx.filters.includes(name);
+  const isSortable = ctx.sorts.includes(name);
+  const isSearchable = !field.hidden;
+
+  return `
+  describe('translatable field ${name}', () => {
+    const defaultLocale = resolveDefaultLocale();
+    const otherLocale = resolveSupportedLocales().find(
+      (locale) => locale !== defaultLocale,
+    );
+    const itWithAnotherLocale = otherLocale ? it : it.skip;
+
+    async function createWith(value: unknown): Promise<Record<string, unknown>> {
+      const response = await request(app.getHttpServer())
+        .post('/${route}/create')
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .send({ data: [{ ...${createBody}, ${name}: value }] })
+        .expect(201);
+
+      return (
+        response.body as { data: { data: Record<string, unknown> }[] }
+      ).data[0]!.data;
+    }
+
+    async function searchAs(
+      locale: string,
+      body: Record<string, unknown>,
+    ): Promise<Record<string, unknown>[]> {
+      const response = await request(app.getHttpServer())
+        .post('/${route}/search')
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .set('Accept-Language', locale)
+        .send(body)
+        .expect(200);
+
+      return (response.body as { data: Record<string, unknown>[] }).data;
+    }
+
+    it('publishes which fields are translatable and the locales it serves', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/${route}/describe')
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .expect(200);
+
+      const body = response.body as {
+        data: {
+          fields: Array<{ name: string; translatable?: boolean }>;
+          locales: { supported: string[]; default: string };
+        };
+      };
+      expect(
+        body.data.fields.find((entry) => entry.name === '${name}')?.translatable,
+      ).toBe(true);
+      expect(body.data.locales.default).toBe(defaultLocale);
+      expect(body.data.locales.supported).toContain(defaultLocale);
+    });
+
+    it('writes a plain string to the locale of the request', async () => {
+      const created = await createWith('plain-' + randomUUID());
+
+      expect(created.${name}Translations).toEqual({ [defaultLocale]: created.${name} });
+    });
+
+    itWithAnotherLocale('stores several locales at once and answers in the requested one', async () => {
+      const marker = randomUUID();
+      const created = await createWith({
+        [defaultLocale]: 'default-' + marker,
+        [otherLocale!]: 'other-' + marker,
+      });
+
+      expect(created.${name}).toBe('default-' + marker);
+      expect(created.${name}Translations).toEqual({
+        [defaultLocale]: 'default-' + marker,
+        [otherLocale!]: 'other-' + marker,
+      });
+
+      const rows = await searchAs(otherLocale!, {
+        filters: [{ field: 'id', value: created.id }],
+      });
+      expect(rows[0]!.${name}).toBe('other-' + marker);
+    });
+
+    itWithAnotherLocale('falls back along the declared chain when a locale has no value', async () => {
+      const marker = randomUUID();
+      const created = await createWith({ [defaultLocale]: 'only-' + marker });
+
+      const rows = await searchAs(otherLocale!, {
+        filters: [{ field: 'id', value: created.id }],
+      });
+      expect(rows[0]!.${name}).toBe('only-' + marker);
+    });
+
+    itWithAnotherLocale('merges the locales of an update into the stored ones and removes a null one', async () => {
+      const marker = randomUUID();
+      const created = await createWith({ [defaultLocale]: 'first-' + marker });
+
+      await request(app.getHttpServer())
+        .post('/${route}/update')
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .send({ data: [{ id: created.id, ${name}: { [otherLocale!]: 'second-' + marker } }] })
+        .expect(201);
+
+      const merged = await searchAs(defaultLocale, {
+        filters: [{ field: 'id', value: created.id }],
+      });
+      expect(merged[0]!.${name}Translations).toEqual({
+        [defaultLocale]: 'first-' + marker,
+        [otherLocale!]: 'second-' + marker,
+      });
+
+      await request(app.getHttpServer())
+        .post('/${route}/update')
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .send({ data: [{ id: created.id, ${name}: { [otherLocale!]: null } }] })
+        .expect(201);
+
+      const removed = await searchAs(defaultLocale, {
+        filters: [{ field: 'id', value: created.id }],
+      });
+      expect(removed[0]!.${name}Translations).toEqual({
+        [defaultLocale]: 'first-' + marker,
+      });
+    });
+
+    it('rejects a locale the project does not support', async () => {
+      await request(app.getHttpServer())
+        .post('/${route}/create')
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .send({ data: [{ ...${createBody}, ${name}: { xx: 'nope' } }] })
+        .expect(400);
+    });
+
+    it('rejects a value that breaks the field rule in any locale', async () => {
+      await request(app.getHttpServer())
+        .post('/${route}/create')
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .send({ data: [{ ...${createBody}, ${name}: { [defaultLocale]: '' } }] })
+        .expect(400);
+    });
+${
+  isSearchable
+    ? `
+    itWithAnotherLocale('finds a record by text in the resolved locale only', async () => {
+      const marker = randomUUID();
+      const created = await createWith({
+        [defaultLocale]: 'alpha-' + marker,
+        [otherLocale!]: 'beta-' + marker,
+      });
+
+      const hit = await searchAs(otherLocale!, {
+        search: { q: 'beta-' + marker, engine: 'prisma' },
+      });
+      expect(hit.map((row) => row.id)).toContain(created.id);
+
+      const miss = await searchAs(defaultLocale, {
+        search: { q: 'beta-' + marker, engine: 'prisma' },
+      });
+      expect(miss.map((row) => row.id)).not.toContain(created.id);
+    });
+`
+    : ''
+}${
+    isFilterable
+      ? `
+    itWithAnotherLocale('filters on the value resolved for the request locale', async () => {
+      const marker = randomUUID();
+      const created = await createWith({
+        [defaultLocale]: 'left-' + marker,
+        [otherLocale!]: 'right-' + marker,
+      });
+      const filters = [{ field: '${name}', operator: '=', value: 'right-' + marker }];
+
+      const hit = await searchAs(otherLocale!, { filters });
+      expect(hit.map((row) => row.id)).toEqual([created.id]);
+
+      const miss = await searchAs(defaultLocale, { filters });
+      expect(miss).toEqual([]);
+    });
+
+    it('refuses an operator that has no meaning on translated text', async () => {
+      await request(app.getHttpServer())
+        .post('/${route}/search')
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .send({ filters: [{ field: '${name}', operator: '>', value: 'a' }] })
+        .expect(400);
+    });
+`
+      : ''
+  }${
+    isSortable && isFilterable
+      ? `
+    it('sorts on the value resolved for the request locale', async () => {
+      const marker = randomUUID();
+      await createWith({ [defaultLocale]: 'b-' + marker });
+      await createWith({ [defaultLocale]: 'a-' + marker });
+      await createWith({ [defaultLocale]: 'c-' + marker });
+
+      const rows = await searchAs(defaultLocale, {
+        filters: [{ field: '${name}', operator: 'like', value: marker }],
+        sorts: [{ field: '${name}', direction: 'desc' }],
+      });
+      expect(rows.map((row) => row.${name})).toEqual([
+        'c-' + marker,
+        'b-' + marker,
+        'a-' + marker,
+      ]);
+    });
+`
+      : ''
+  }  });
+`;
+}
+
 function encryptedFieldTests(ctx: ResourceContext, createBody: string): string {
   return ctx.fields
     .filter((field) => field.type === 'encrypted')
@@ -3076,7 +3441,14 @@ import { Test } from '@nestjs/testing';${usesPrismaClient ? `\nimport { PrismaPg
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';${primarySearchField || usesPrismaClient ? `\nimport { env } from '#technical/config/env';` : ''}
-import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
+import { MAX_BATCH_ENTRIES } from '#technical/http/batch';${
+    translatableFields(ctx).length > 0
+      ? `\nimport {
+  resolveDefaultLocale,
+  resolveSupportedLocales,
+} from '#technical/i18n/locale.config';`
+      : ''
+  }
 import { actingAs, registerAndLogin } from '#devtools/test-support';${vectorSpecImports(ctx)}
 ${usesPrismaClient ? `\nconst adapter = new PrismaPg({ connectionString: env.DATABASE_URL });\nconst prisma = new PrismaClient({ adapter });\n` : ''}${vectorSpecFixtures(ctx)}
 describe('${ctx.pascalName} resource', () => {
@@ -3429,16 +3801,32 @@ ${
   });
 `
     : ''
-}${relationSpecBlock(ctx, createBody)}});
+}${relationSpecBlock(ctx, createBody)}${translatableSpecBlock(ctx, createBody)}});
 `;
 }
 
 export function viewFile(ctx: ResourceContext): string {
   const hiddenFields = ctx.fields.filter((field) => field.hidden);
   const visibleFields = ctx.fields.filter((field) => !field.hidden);
+  const visibleTranslatable = visibleFields.filter(
+    (field) => field.translatable,
+  );
+  const translatableImport =
+    visibleTranslatable.length > 0
+      ? `import { withResolvedTranslations } from '#technical/i18n/translatable';\n`
+      : '';
+  const translatableNames = `[${visibleTranslatable.map((field) => `'${field.name}'`).join(', ')}]`;
+  const parseInput = (source: string): string =>
+    visibleTranslatable.length > 0
+      ? `withResolvedTranslations(${source}, ${translatableNames})`
+      : source;
 
   const visibleFieldLines = visibleFields
-    .map((field) => `  ${field.name}: ${zodOutputTypeFor(field)},`)
+    .map((field) =>
+      field.translatable
+        ? `  ${field.name}: z.string().nullable(),\n  ${field.name}Translations: z.record(z.string(), z.string()),`
+        : `  ${field.name}: ${zodOutputTypeFor(field)},`,
+    )
     .join('\n');
 
   const schema = `export const ${ctx.camelName}ViewSchema = z.object({
@@ -3455,10 +3843,10 @@ export type ${ctx.pascalName}View = z.infer<typeof ${ctx.camelName}ViewSchema>;
   if (hiddenFields.length === 0) {
     return `import { z } from 'zod';
 import type { ${ctx.modelPascalName} } from '@prisma/client';
-
+${translatableImport}
 ${schema}
 export function to${ctx.pascalName}View(record: ${ctx.modelPascalName}): ${ctx.pascalName}View {
-  return ${ctx.camelName}ViewSchema.parse(record);
+  return ${ctx.camelName}ViewSchema.parse(${parseInput('record')});
 }
 `;
   }
@@ -3467,18 +3855,18 @@ export function to${ctx.pascalName}View(record: ${ctx.modelPascalName}): ${ctx.p
 
   return `import { z } from 'zod';
 import type { ${ctx.modelPascalName} } from '@prisma/client';
-
+${translatableImport}
 ${schema}
 export function to${ctx.pascalName}View(record: ${ctx.modelPascalName}): ${ctx.pascalName}View {
   const { ${hiddenNames}, ...view } = record;
-  return ${ctx.camelName}ViewSchema.parse(view);
+  return ${ctx.camelName}ViewSchema.parse(${parseInput('view')});
 }
 `;
 }
 
 export function factoryFile(ctx: ResourceContext): string {
   const overrideLines = ctx.fields
-    .map((field) => `  ${field.name}?: ${tsTypeFor(field)};`)
+    .map((field) => `  ${field.name}?: ${storedTsTypeFor(field)};`)
     .join('\n');
 
   const buildLines = ctx.fields
@@ -3488,7 +3876,7 @@ export function factoryFile(ctx: ResourceContext): string {
     )
     .join('\n');
 
-  return `import { faker } from '@faker-js/faker';
+  return `import { faker } from '@faker-js/faker';${translatableFields(ctx).length > 0 ? `\nimport { resolveDefaultLocale } from '#technical/i18n/locale.config';` : ''}
 
 export interface ${ctx.pascalName}FactoryOverrides {
   ownerId: string;${ownedByTeam(ctx) ? '\n  teamId: string;' : ''}

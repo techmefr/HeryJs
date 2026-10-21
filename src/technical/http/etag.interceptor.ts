@@ -41,6 +41,7 @@ export class EtagInterceptor implements NestInterceptor {
         response.setHeader('Cache-Control', 'private, no-cache');
         response.vary('Authorization');
         response.vary('Cookie');
+        response.vary('Accept-Language');
 
         if (ifNoneMatch && etagMatches(ifNoneMatch, etag)) {
           response.status(304);
