@@ -156,7 +156,7 @@ describe('test support: seam fakes and the clock', () => {
   });
 
   it('records notifier deliveries per channel', async () => {
-    await new NotifierService().send(
+    await testApp.app.get(NotifierService).send(
       { email: 'a@example.test', userId: 'u-1' },
       {
         toMail: () => ({ to: 'a@example.test', subject: 'Hi', html: '' }),
