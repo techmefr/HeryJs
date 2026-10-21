@@ -189,6 +189,10 @@ Reachable here means the service answered as itself, not that a socket opened: P
 
 `--start` brings the compose services up first and then does something more interesting: it reads back the **ports Docker actually assigned** and writes them into `.env`. The compose files publish container ports without fixing a host port, so several projects can run side by side without colliding, and `hery up --start` is what reconciles that with your configuration. It resolves `DATABASE_URL` and `REDIS_URL`, plus `ELASTICSEARCH_URL` or `MEILISEARCH_URL` if the matching search module is installed.
 
+## `hery down` and `hery up --lift`
+
+`hery down` puts the running application in [maintenance mode](/HeryJs/guides/maintenance): every request answers `503` with a `Retry-After` until `hery up --lift` ends it. `--secret` lets requests carrying a secret through, `--retry <seconds>` sets the `Retry-After`, and `--message <text>` sets what the 503 says. The switch lives in Redis, so it reaches every instance at once.
+
 ## `hery doctor`
 
 Everything `hery up` checks, plus the two config files a broken value in either would otherwise crash the whole CLI on: environment variables (parsed against the same zod schema `env.ts` builds at startup) and `hery.config.ts` (loaded for real, then checked for one thing loading it does not catch on its own — that `search.default` actually names a key in `search.engines`).

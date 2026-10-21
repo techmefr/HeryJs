@@ -17,6 +17,8 @@ import { ImpersonationModule } from '#modules/impersonation/impersonation.module
 import { JobsModule } from '#technical/jobs/jobs.module';
 import { ExportModule } from '#modules/export/export.module';
 import { MailModule } from '#modules/mail/mail.module';
+import { MaintenanceModule } from '#technical/maintenance/maintenance.module';
+import { MaintenanceMiddleware } from '#technical/maintenance/maintenance.middleware';
 import { MonitoringModule } from '#technical/monitoring/monitoring.module';
 import { OutboxModule } from '#technical/outbox/outbox.module';
 import { NotificationsModule } from '#technical/notifications/notifications.module';
@@ -90,6 +92,7 @@ import { redactedRequestSerializer } from '#technical/logging/redacted-request-s
     IntrospectionModule,
     JobsModule,
     MailModule,
+    MaintenanceModule,
     MonitoringModule,
     NotificationsModule,
     OutboxModule,
@@ -120,6 +123,7 @@ export class AppModule implements NestModule {
     // downstream (tenant resolution included) can attach a step to the same
     // request-scoped context.
     consumer.apply(SecurityHeadersMiddleware).forRoutes('*');
+    consumer.apply(MaintenanceMiddleware).forRoutes('*');
     consumer.apply(LocaleMiddleware).forRoutes('*');
     consumer.apply(PipelineMiddleware).forRoutes('*');
     consumer.apply(TenantMiddleware).forRoutes('*');

@@ -21,7 +21,7 @@ class CoreHealthChecks implements OnModuleInit {
     this.registry.register({
       name: 'process',
       probes: ['liveness'],
-      check: async () => undefined,
+      check: () => Promise.resolve(),
     });
 
     this.registry.register({

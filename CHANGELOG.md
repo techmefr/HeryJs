@@ -99,6 +99,9 @@ Twelve packages, versioned together:
   `/health/live` and `/health/ready` give an orchestrator the two probes
   separately, public and carrying only ok or error. The report no longer names
   a `redis` check: it reports `cache` and `queue`.
+- `hery down` puts every instance in maintenance mode, answering 503 with a
+  `Retry-After` unless the request carries the bypass secret, and
+  `hery up --lift` ends it. The health probes stay reachable throughout.
 - An architecture linter that fails CI on a domain missing a concern, plus
   fourteen convention checks covering capabilities, pagination, RLS, rate
   limiting, module drift and patched kernel files.

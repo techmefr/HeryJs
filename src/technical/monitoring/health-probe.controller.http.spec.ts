@@ -15,16 +15,17 @@ describe('Health probes over a real HTTP round trip', () => {
     registry.register({
       name: 'process',
       probes: ['liveness'],
-      check: async () => undefined,
+      check: () => Promise.resolve(),
     });
     registry.register({
       name: 'database',
       probes: ['readiness'],
-      check: async () => {
-        if (!isDatabaseUp) {
-          throw new Error('password authentication failed for user heryjs');
-        }
-      },
+      check: () =>
+        isDatabaseUp
+          ? Promise.resolve()
+          : Promise.reject(
+              new Error('password authentication failed for user heryjs'),
+            ),
     });
 
     const moduleRef = await Test.createTestingModule({

@@ -1,7 +1,7 @@
 import { DuplicateHealthCheckException } from './duplicate-health-check.exception';
 import { HealthRegistry } from './health-registry';
 
-const up = async (): Promise<void> => undefined;
+const up = (): Promise<void> => Promise.resolve();
 
 describe('HealthRegistry', () => {
   it('reports ok when every check of the probe passes', async () => {
@@ -46,7 +46,7 @@ describe('HealthRegistry', () => {
     expect(registry.names('liveness')).toEqual(['process']);
   });
 
-  it('lets one check serve both probes', async () => {
+  it('lets one check serve both probes', () => {
     const registry = new HealthRegistry();
     registry.register({
       name: 'both',
