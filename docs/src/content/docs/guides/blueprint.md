@@ -76,6 +76,10 @@ Off by default. `versioned: true` adds an integer `version` column that every up
 
 Off by default. `sharing: true` lets the owner grant a user or a team read or write access to one record, on top of the permission presets: it adds the `shares` routes and a `share` capability, and folds the shares into the search scope without a query per row. It is refused on a `routed: false` resource and on one with a vector field. See [Capabilities](../guides/capabilities/#sharing-one-record).
 
+### History
+
+Off by default. `history: true` stores a snapshot of the record after every write and adds three routes to read, diff and restore them. Hidden and encrypted fields are never stored. See [Row history](../guides/row-history/).
+
 ## Permissions
 
 One preset per action, each resolved through the same capabilities engine described in the capabilities guide.

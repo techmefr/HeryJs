@@ -46,6 +46,27 @@ export const canShareSnippet: PolicyCheck<SnippetRecordLike> = (
 export const canUpdateAnySnippet: PolicyCheck = (subject) =>
   resolveCollectionCapability(SNIPPET_PRESETS.update, subject);
 
+// The past of a record is read under the same rule as the record: whoever may
+// see it may see what it used to be. Its own check rather than canViewSnippet
+// so a project can tighten history alone without touching the read route.
+export const canViewHistorySnippet: PolicyCheck<SnippetRecordLike> = (
+  subject,
+  record,
+) =>
+  record
+    ? resolveCapability(SNIPPET_PRESETS.view, subject, record)
+    : { allowed: false };
+
+// Putting a snapshot back is an update, whatever route it travels: it writes
+// the record, so the update preset decides, per record, like canUpdateSnippet.
+export const canRevertSnippet: PolicyCheck<SnippetRecordLike> = (
+  subject,
+  record,
+) =>
+  record
+    ? resolveCapability(SNIPPET_PRESETS.update, subject, record)
+    : { allowed: false };
+
 export const canDeleteSnippet: PolicyCheck<SnippetRecordLike> = (
   subject,
   record,
@@ -117,7 +138,10 @@ export class SnippetPolicy {
   recordCapabilities(
     subject: CapabilitySubject,
     record: SnippetRecordLike,
-  ): Record<'update' | 'delete' | 'share' | 'restore', CapabilityDecision> {
+  ): Record<
+    'update' | 'delete' | 'share' | 'restore' | 'history' | 'revert',
+    CapabilityDecision
+  > {
     return {
       update: this.capabilities.resolve(
         SNIPPET_PRESETS.update,
@@ -132,6 +156,8 @@ export class SnippetPolicy {
       ),
       share: canShareSnippet(subject, record),
       restore: canRestoreSnippet(subject, record),
+      history: canViewHistorySnippet(subject, record),
+      revert: canRevertSnippet(subject, record),
     };
   }
 

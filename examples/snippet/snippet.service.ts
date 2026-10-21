@@ -13,6 +13,14 @@ import type { GrantShareInput } from '#technical/sharing/sharing.dto';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { writeAuditLog } from '#technical/audit/audit-log';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { HistoryService } from '#technical/history/history.service';
+import { HistoryOperationStorage } from '#technical/history/history-operation';
+import { revertPatchOf } from '#technical/history/snapshot';
+import type {
+  HistoryDiffBody,
+  HistoryListBody,
+} from '#technical/history/history.schemas';
+import type { HistoryEntry } from '#technical/history/history.types';
 import { resolveRelationInstructions } from '#technical/http/relation-resolver';
 import type { PrismaRelationClient } from '#technical/http/relation-resolver';
 import { VersionConflictException } from '#technical/errors/version-conflict.exception';
@@ -27,6 +35,10 @@ import { SNIPPET_PRESETS } from './snippet.presets';
 
 const SEARCHABLE_FIELDS = ['title'] as const;
 const SEARCH_COLLECTION = 'snippet';
+const HISTORY_MODEL = 'Snippet';
+// What a restore writes back: the blueprint's fields minus anything hidden or
+// encrypted, which history never stored and so can neither show nor restore.
+const HISTORY_REVERTIBLE_FIELDS = ['title'] as const;
 
 export interface SnippetSearchOptions {
   withTrashed?: boolean;
@@ -54,6 +66,7 @@ export class SnippetService {
     private readonly signal: SignalService,
     private readonly searchEngines: SearchEngineRegistry,
     private readonly sharing: SharingService,
+    private readonly historyLog: HistoryService,
   ) {}
 
   private notify() {
@@ -326,7 +339,40 @@ export class SnippetService {
     await authPrismaClient.snippet.delete({
       where: { id: record.id, tenantId: record.tenantId },
     });
+    await authPrismaClient.recordSnapshot.deleteMany({
+      where: {
+        tenantId: record.tenantId,
+        model: HISTORY_MODEL,
+        recordId: record.id,
+      },
+    });
     this.notify();
     await this.removeFromSearchIndex(record.id, record.tenantId);
+  }
+
+  historyOf(record: Snippet, query: HistoryListBody) {
+    return this.historyLog.list(HISTORY_MODEL, record.id, query);
+  }
+
+  historyEntryOf(record: Snippet, entryId: string) {
+    return this.historyLog.find(HISTORY_MODEL, record.id, entryId);
+  }
+
+  historyDiffOf(record: Snippet, body: HistoryDiffBody) {
+    return this.historyLog.diff(HISTORY_MODEL, record, body.from, body.to);
+  }
+
+  // Declared as a revert so the entry it leaves says so; the write itself is
+  // update(), unchanged, which is what keeps every rule of an edit in force.
+  async revert(
+    record: Snippet,
+    entry: HistoryEntry,
+    expected: ExpectedVersion,
+  ) {
+    const patch = revertPatchOf(entry.snapshot, HISTORY_REVERTIBLE_FIELDS);
+
+    return HistoryOperationStorage.run('revert', () =>
+      this.update(record, patch as unknown as UpdateSnippetInput, expected),
+    );
   }
 }

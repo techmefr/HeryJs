@@ -189,6 +189,30 @@ model AuditLog {
   @@index([tenantId, sequence])
 }
 
+// One row per write to a resource that declared history: true. The snapshot is
+// the record as it stood after the write, restricted to the columns the
+// generator registered in HISTORY_COLUMNS -- a hidden or encrypted field is
+// never registered, so it is never stored here, not merely never shown.
+// Written like AuditLog, from the client's own extension with the tenant passed
+// explicitly, and read through HistoryService, which filters on it.
+model RecordSnapshot {
+  id             String   @id @default(cuid())
+  // Orders a record's history; createdAt alone cannot when two writes land in
+  // the same millisecond.
+  sequence       Int      @unique @default(autoincrement())
+  tenantId       String
+  model          String
+  recordId       String
+  operation      String
+  snapshot       Json
+  userId         String?
+  impersonatedBy String?
+  createdAt      DateTime @default(now())
+
+  @@index([tenantId, model, recordId, sequence])
+  @@index([createdAt])
+}
+
 model BlogPost {
   id          String    @id @default(cuid())
   tenantId    String
