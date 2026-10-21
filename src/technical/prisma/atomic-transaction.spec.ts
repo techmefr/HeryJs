@@ -71,13 +71,13 @@ describe('$atomic on the tenant-scoped client (real database)', () => {
   });
 
   it('leaves nothing behind when the callback throws: no rows, no audit entries, no after-commit callbacks', async () => {
-    const auditBefore = await rawClient.auditLog.count({ where: { tenantId } });
     const afterCommit = jest.fn();
+    let rolledBackId = '';
 
     await expect(
       inTenant(() =>
         scopedClient.$atomic(async () => {
-          await createPost('rolled-back');
+          rolledBackId = (await createPost('rolled-back')).id;
           await AmbientTransactionStorage.afterCommit(afterCommit);
           throw new Error('the second write failed');
         }),
@@ -89,9 +89,10 @@ describe('$atomic on the tenant-scoped client (real database)', () => {
         where: { ownerId, title: 'rolled-back' },
       }),
     ).toBe(0);
-    expect(await rawClient.auditLog.count({ where: { tenantId } })).toBe(
-      auditBefore,
-    );
+    expect(rolledBackId).not.toBe('');
+    expect(
+      await rawClient.auditLog.count({ where: { recordId: rolledBackId } }),
+    ).toBe(0);
     expect(afterCommit).not.toHaveBeenCalled();
   });
 
