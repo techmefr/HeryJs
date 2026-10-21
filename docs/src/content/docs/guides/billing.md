@@ -121,6 +121,8 @@ not already say.
 
 ## What is still open
 
+Per-tenant limits that do not depend on a plan are in [Quotas and usage](/guides/quotas/). Pricing what a tenant consumed, usage-based billing, is the next step: the usage rows are kept per period for it, but nothing here turns them into a charge.
+
 Checkout, plan changes and proration are not here. See issue #34 for the
 research behind that boundary, and open a new module -- or extend this one
 deliberately -- once your project has made the decisions this one declined to

@@ -5,6 +5,7 @@
  * package scripts do. Every selected check runs even when an earlier one fails,
  * so one pass reports everything that is wrong.
  */
+import { checkAdminContract } from './check-admin-contract';
 import { checkCapabilityDecorator } from './check-capability-decorator';
 import { checkExampleFreshness } from './check-example-freshness';
 import { checkKernelVersion } from './check-kernel-version';
@@ -22,6 +23,7 @@ import { checkTemplateImports } from './check-template-imports';
 
 const CHECKS: Array<{ name: string; run: () => boolean | Promise<boolean> }> = [
   { name: 'capabilities', run: checkCapabilityDecorator },
+  { name: 'admin-contract', run: checkAdminContract },
   { name: 'scope-parity', run: checkScopeParity },
   { name: 'rls', run: checkRls },
   { name: 'pagination', run: checkPagination },

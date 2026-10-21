@@ -60,6 +60,14 @@ export const CATALOGUE: Catalogue = {
   'rate-limit.unavailable': {
     fr: 'Impossible de vérifier la limite de requêtes pour cette requête.',
   },
+  'quota.exceeded': {
+    fr: (details) =>
+      `Ce tenant a utilisé ${String(details.used)} des ${String(details.limit)} autorisés pour « ${String(details.name)} ».`,
+  },
+  'quota.notDeclared': {
+    fr: (details) =>
+      `Aucun quota nommé « ${String(details.name)} » n'est déclaré dans hery.config.ts.`,
+  },
   'record.notFound': {
     fr: (details) => `${String(details.resource)} introuvable.`,
   },
