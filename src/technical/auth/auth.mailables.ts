@@ -38,3 +38,44 @@ export class ResetPasswordMailable implements Mailable {
     };
   }
 }
+
+export class MagicLinkMailable implements Mailable {
+  constructor(
+    readonly to: string,
+    private readonly url: string,
+  ) {}
+
+  build(): MailMessage {
+    return {
+      to: this.to,
+      subject: 'Your sign-in link',
+      html: `<p>Use this link to sign in. It works once and expires soon. If you did not ask for it, ignore this message.</p><p><a href="${this.url}">Sign in</a></p>`,
+    };
+  }
+}
+
+export type EmailOtpPurpose =
+  'sign-in' | 'email-verification' | 'forget-password' | 'change-email';
+
+const EMAIL_OTP_SUBJECTS: Record<EmailOtpPurpose, string> = {
+  'sign-in': 'Your sign-in code',
+  'email-verification': 'Your email verification code',
+  'forget-password': 'Your password reset code',
+  'change-email': 'Your email change code',
+};
+
+export class EmailOtpMailable implements Mailable {
+  constructor(
+    readonly to: string,
+    private readonly code: string,
+    private readonly purpose: EmailOtpPurpose,
+  ) {}
+
+  build(): MailMessage {
+    return {
+      to: this.to,
+      subject: EMAIL_OTP_SUBJECTS[this.purpose],
+      html: `<p>Your code is <strong>${this.code}</strong>. It expires soon. If you did not ask for it, ignore this message.</p>`,
+    };
+  }
+}
