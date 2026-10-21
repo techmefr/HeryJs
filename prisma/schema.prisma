@@ -362,3 +362,20 @@ model BillingSubscription {
   @@unique([provider, providerSubscriptionId])
   @@index([tenantId])
 }
+
+model IdempotencyKey {
+  id           String    @id @default(cuid())
+  tenantId     String
+  key          String
+  route        String
+  bodyHash     String
+  status       String    @default("pending")
+  statusCode   Int?
+  responseBody Json?
+  responseHeaders Json?
+  createdAt    DateTime  @default(now())
+  deletedAt    DateTime?
+
+  @@unique([tenantId, key])
+  @@index([tenantId])
+}

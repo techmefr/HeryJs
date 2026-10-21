@@ -24,7 +24,9 @@ import { AlreadyRestoredException } from '#technical/errors/already-restored.exc
 import { resolveDomainError } from '#technical/errors/domain-exception.filter';
 import type { ResolvedError } from '#technical/errors/domain-exception.filter';
 import { ok } from '#technical/http/envelope';
+import { CacheableRead } from '#technical/http/etag.decorator';
 import {
+  nextCursorFor,
   parseSearchRequest,
   searchRequestSchema,
   withIncludesAndAggregates,
@@ -218,6 +220,7 @@ export class BlogPostController {
   @Post('search')
   @HttpCode(200)
   @Capability(canViewAnyBlogPost)
+  @CacheableRead()
   async search(
     @Req() req: RequestWithUser,
     @Body(new ZodValidationPipe(searchRequestSchema)) body: SearchRequestBody,
@@ -251,6 +254,7 @@ export class BlogPostController {
       page: query.page ?? 1,
       limit: pageLimit,
       last_page: Math.max(1, Math.ceil(total / pageLimit)),
+      next_cursor: nextCursorFor(records, query.sorts, pageLimit),
       total,
       ...(matches
         ? {
@@ -308,6 +312,7 @@ export class BlogPostController {
 
   @Get('describe')
   @Capability(canViewAnyBlogPost)
+  @CacheableRead()
   describe() {
     return ok(BLOG_POST_DESCRIBE);
   }
@@ -318,6 +323,7 @@ export class BlogPostController {
   @Post(':id/notes/search')
   @HttpCode(200)
   @Capability(canViewBlogPost)
+  @CacheableRead()
   @LoadRecordWith(BLOG_POST_VISIBLE_RECORD_LOADER, 'blog-post')
   async searchNotes(
     @Req() req: RequestWithBlogPost,
@@ -334,6 +340,7 @@ export class BlogPostController {
       page: query.page ?? 1,
       limit: pageLimit,
       last_page: Math.max(1, Math.ceil(total / pageLimit)),
+      next_cursor: nextCursorFor(records, query.sorts, pageLimit),
       total,
     };
 

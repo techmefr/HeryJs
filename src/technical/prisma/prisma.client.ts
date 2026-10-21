@@ -190,6 +190,7 @@ export const APP_ENFORCED_TENANT_MODELS = new Set<string>([
   'MailLog',
   'WebhookEndpoint',
   'WebhookEvent',
+  'IdempotencyKey',
 ]);
 
 type TenantHandling =
