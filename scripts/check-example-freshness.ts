@@ -13,6 +13,7 @@ import { loadBlueprint } from '../cli/lib/blueprint';
 import { buildResourceContext } from '../cli/lib/resource-context';
 import type { ResourceContext } from '../cli/lib/resource-context';
 import {
+  changeFeedFile,
   controllerFile,
   dtoFile,
   factoryFile,
@@ -59,6 +60,7 @@ function generatedFiles(ctx: ResourceContext): Record<string, string> {
     [`${ctx.kebabName}-record.loader.ts`]: recordLoaderFile(ctx),
     [`${ctx.kebabName}.service.ts`]: serviceFile(ctx),
     [`${ctx.kebabName}.controller.ts`]: controllerFile(ctx),
+    [`${ctx.kebabName}.change-feed.ts`]: changeFeedFile(ctx),
     [`${ctx.kebabName}.module.ts`]: moduleFile(ctx),
     [`${ctx.kebabName}.spec.ts`]: specFile(ctx),
   };
@@ -90,6 +92,7 @@ function handOwned(ctx: ResourceContext): Set<string> {
     'doc-examples.spec.ts',
     'blog-post-notes-route.spec.ts',
     'blog-post-pagination.spec.ts',
+    'blog-post-change-feed.spec.ts',
   ]);
 }
 

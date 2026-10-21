@@ -27,6 +27,8 @@ export interface ModelChangePayload extends Record<string, unknown> {
   recordId: string | null;
   tenantId: string;
   changedFields: string[];
+  ownerId: string | null;
+  teamId: string | null;
   userId: string | null;
   impersonatedBy: string | null;
 }
