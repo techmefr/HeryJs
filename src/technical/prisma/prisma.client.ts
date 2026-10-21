@@ -51,6 +51,7 @@ const TENANT_SCOPED_MODELS = new Set<string>([
   'Snippet',
   'NotificationPreference',
   'NotificationSetting',
+  'PrivacyRequest',
   'QuotaOverride',
   'QuotaUsage',
 ]);

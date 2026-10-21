@@ -128,6 +128,11 @@ model FeatureFlag {
   key       String
   tenantId  String?
   enabled   Boolean  @default(false)
+  // 0-100, bucketed per user or per tenant (rolloutBy); 100 means everyone.
+  rolloutPercentage Int @default(100)
+  rolloutBy String @default("user")
+  // Ordered targeting rules, first match wins; see feature-flag-evaluation.ts.
+  rules     Json     @default("[]")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -171,6 +176,10 @@ model AuditLog {
   // looked like it forbade them.
   previousHash   String
   createdAt      DateTime @default(now())
+  // Set when an erasure request replaced `data` with a digest of it. The entry
+  // stays in the chain so its neighbours still link to it, but its content can
+  // no longer be recomputed, so the verifier checks its links, not its hash.
+  redactedAt     DateTime?
 
   // Two entries in the same tenant's chain can never claim the same
   // predecessor -- that is a fork, and the linear verifier can never accept
@@ -625,16 +634,20 @@ model DevtoolsEntry {
 }
 
 model SsoConnection {
-  id           String   @id @default(cuid())
-  tenantId     String
-  name         String
-  issuer       String
-  clientId     String
-  clientSecret String
-  linkPolicy   String   @default("refuse")
-  isEnabled    Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String   @id @default(cuid())
+  tenantId        String
+  name            String
+  protocol        String   @default("oidc")
+  issuer          String
+  clientId        String
+  clientSecret    String?
+  samlEntryPoint  String?
+  samlCertificate String?
+  samlAttributeMapping String?
+  linkPolicy      String   @default("refuse")
+  isEnabled       Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   domains    SsoDomain[]
   identities SsoIdentity[]
@@ -683,4 +696,24 @@ model LogEntry {
 
   @@index([tenantId, loggedAt])
   @@index([loggedAt])
+}
+
+// One export, user erasure or tenant erasure, run by a worker. `result` holds an
+// export's bundle until the requester reads it once; it is the only place the
+// bundle is kept, and reading it clears it.
+model PrivacyRequest {
+  id          String    @id @default(cuid())
+  tenantId    String
+  kind        String
+  status      String    @default("pending")
+  subjectId   String
+  requestedBy String?
+  summary     Json?
+  result      Json?
+  error       String?
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+  deliveredAt DateTime?
+
+  @@index([tenantId])
 }

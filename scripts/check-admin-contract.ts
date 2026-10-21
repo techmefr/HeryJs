@@ -118,6 +118,22 @@ function declarationsOf(filePath: string): {
   return { declarations, usesDevOnlyGuard: /\bDevOnlyGuard\b/.test(text) };
 }
 
+/**
+ * A module exists twice in this repository, authored under packages/<name>/src/runtime
+ * and installed under src/, and the module-drift check holds the two equal. The
+ * same declaration appearing in both is that copy, not a second contribution.
+ */
+function isInstalledCopy(first: string, second: string): boolean {
+  const file = (where: string) => where.replace(/:\d+$/, '');
+  const isAuthored = (where: string) =>
+    /packages\/[^/]+\/src\/runtime\//.test(file(where));
+
+  return (
+    path.basename(file(first)) === path.basename(file(second)) &&
+    isAuthored(first) !== isAuthored(second)
+  );
+}
+
 export function adminContractViolations(files: string[]): string[] {
   const violations: string[] = [];
   const all: Declaration[] = [];
@@ -156,7 +172,7 @@ export function adminContractViolations(files: string[]): string[] {
       violations.push(
         `${where} — @${kind} needs a literal kebab-case id (got ${id ?? 'none'})`,
       );
-    } else if (seen.has(id)) {
+    } else if (seen.has(id) && !isInstalledCopy(where, seen.get(id) ?? '')) {
       violations.push(
         `${where} — @${kind} id "${id}" is already used at ${seen.get(id)}`,
       );
