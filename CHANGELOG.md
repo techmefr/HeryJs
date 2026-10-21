@@ -13,6 +13,10 @@ category is called out here explicitly.
 
 First public release.
 
+### SMTP mail driver
+
+A new `mail-smtp` package adds an SMTP driver beside the log and Resend ones. `hery install mail-smtp` lands it in `src/modules/mail`; import `SmtpMailModule`, declare `smtp: { driver: 'smtp' }` under `mail.drivers` in `hery.config.ts`, and set `MAIL_SMTP_HOST` and `MAIL_SMTP_FROM` (plus `MAIL_SMTP_PORT`, `MAIL_SMTP_TLS`, `MAIL_SMTP_USER` and `MAIL_SMTP_PASSWORD` as the server needs). `MAIL_DRIVER=smtp` switches to it. The driver sends through nodemailer, refuses a half-written credential and a refused recipient rather than recording the mail as sent, and its spec delivers over a real socket to an in-process SMTP server. That makes twenty-nine installable modules.
+
 ### S3 storage selected by `STORAGE_DRIVER`
 
 `STORAGE_DRIVER=s3` now stores in S3 or any S3-compatible server with no wiring: the driver is bound by the storage module, the registry falls back to the variable when `hery.config.ts` declares no `storage` slice, and the S3 client is built on first use, so an app on local disk in production is no longer refused a boot over S3 credentials. Upload intents are tested against a real MinIO in CI. The bundled `docker-compose.storage.yml` now pins the Bitnami MinIO image, because `minio/minio` no longer pulls. The admin panel gains a Storage page, backed by `storage-admin` routes that report the driver and list, upload and delete the tenant's files. **Upgrade note:** `StorageDriver` has a new `list(prefix, limit)` method; a driver you wrote yourself has to implement it. In a project that already has the storage module, copy the new files by hand.
