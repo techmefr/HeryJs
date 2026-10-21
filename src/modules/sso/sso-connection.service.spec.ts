@@ -9,6 +9,7 @@ import {
 } from './sso-domain-verifier';
 import { SsoSecretService } from './sso-secret.service';
 import { InMemorySsoConnectionStore } from './sso.fakes';
+import { generateSamlTestIdp, samlMetadataXml } from './sso-saml.fakes';
 import type { CreateConnectionInput } from './sso.dto';
 
 const ISSUER = 'https://idp.acme.test';
@@ -42,6 +43,7 @@ function build(txtRecords: string[] = []) {
 }
 
 const input: CreateConnectionInput = {
+  protocol: 'oidc',
   name: 'Acme',
   issuer: ISSUER,
   clientId: 'client-1',
@@ -241,5 +243,178 @@ describe('SsoConnectionService', () => {
     ).rejects.toMatchObject({
       reason: 'domain-unknown',
     });
+  });
+});
+
+describe('SsoConnectionService with a SAML identity provider', () => {
+  const idp = generateSamlTestIdp();
+  const samlInput: CreateConnectionInput = {
+    protocol: 'saml',
+    name: 'Acme Entra',
+    issuer: 'https://idp.acme.test/metadata',
+    entryPoint: 'https://idp.acme.test/sso',
+    certificate: idp.certificate,
+    linkPolicy: 'refuse',
+    domains: ['acme.test'],
+  };
+
+  function buildSaml() {
+    const store = new InMemorySsoConnectionStore();
+    const service = new SsoConnectionService(
+      store,
+      'https://api.test/sso/callback',
+      new SsoSecretService(),
+      new SsoDiscoveryService(
+        () => Promise.reject(new Error('SAML never discovers')),
+        () => Promise.resolve([]),
+      ),
+      new SsoDomainVerifier(() => Promise.resolve([])),
+    );
+
+    return { store, service };
+  }
+
+  it('stores no secret, defaults the entity id under the API and tells the administrator what to register', async () => {
+    const { store, service } = buildSaml();
+
+    const view = await service.create('acme', samlInput);
+
+    expect(store.rows[0]).toMatchObject({
+      protocol: 'saml',
+      clientSecret: null,
+      samlEntryPoint: 'https://idp.acme.test/sso',
+    });
+    expect(view.hasClientSecret).toBe(false);
+    expect(view.saml).toMatchObject({
+      spEntityId: `https://api.test/sso/saml/${view.id}`,
+      acsUrl: 'https://api.test/sso/saml/acs',
+      entryPoint: 'https://idp.acme.test/sso',
+    });
+    expect(view.saml?.certificateFingerprints).toHaveLength(1);
+    expect(JSON.stringify(view)).not.toContain('BEGIN CERTIFICATE');
+  });
+
+  it('keeps an entity id the administrator chose', async () => {
+    const { service } = buildSaml();
+
+    const view = await service.create('acme', {
+      ...samlInput,
+      spEntityId: 'urn:acme:heryjs',
+    });
+
+    expect(view.clientId).toBe('urn:acme:heryjs');
+  });
+
+  it('refuses a certificate that is not one, and an entry point that is not https', async () => {
+    const { service } = buildSaml();
+
+    await expect(
+      service.create('acme', { ...samlInput, certificate: 'garbage' }),
+    ).rejects.toMatchObject({ reason: 'saml-certificate-invalid' });
+    await expect(
+      service.create('acme', {
+        ...samlInput,
+        entryPoint: 'http://idp.acme.test/sso',
+      }),
+    ).rejects.toMatchObject({ reason: 'saml-entry-point-insecure' });
+    await expect(
+      service.create('acme', {
+        ...samlInput,
+        entryPoint: 'javascript:alert(1)',
+      }),
+    ).rejects.toMatchObject({ reason: 'saml-entry-point-insecure' });
+  });
+
+  it('rotates the certificate and the entry point, and refuses OIDC-only fields', async () => {
+    const { store, service } = buildSaml();
+    const view = await service.create('acme', samlInput);
+    const next = generateSamlTestIdp('next.acme.test');
+
+    await service.update('acme', view.id, {
+      certificate: next.certificate,
+      entryPoint: 'https://idp.acme.test/sso-v2',
+    });
+
+    expect(store.rows[0]).toMatchObject({
+      samlCertificate: next.certificate,
+      samlEntryPoint: 'https://idp.acme.test/sso-v2',
+    });
+    await expect(
+      service.update('acme', view.id, { clientSecret: 'nope' }),
+    ).rejects.toMatchObject({ reason: 'protocol-mismatch' });
+  });
+
+  it('refuses SAML-only fields on an OIDC connection', async () => {
+    const { service } = build();
+    const view = await service.create('acme', input);
+
+    await expect(
+      service.update('acme', view.id, { entryPoint: 'https://x.test/sso' }),
+    ).rejects.toMatchObject({ reason: 'protocol-mismatch' });
+  });
+
+  it('configures the provider from a pasted metadata document', async () => {
+    const { store, service } = buildSaml();
+    const view = await service.create('acme', {
+      protocol: 'saml',
+      name: 'From metadata',
+      metadataXml: samlMetadataXml(idp.certificate),
+      attributeMapping: { email: 'corporateEmail' },
+      linkPolicy: 'refuse',
+      domains: ['acme.test'],
+    });
+
+    expect(store.rows[0]).toMatchObject({
+      issuer: 'https://idp.acme.test/metadata',
+      samlEntryPoint: 'https://idp.acme.test/redirect',
+      samlAttributeMapping: { email: 'corporateEmail' },
+    });
+    expect(view.saml?.attributeMapping).toEqual({ email: 'corporateEmail' });
+  });
+
+  it('lets what is typed override the metadata, and refuses a connection neither supplies', async () => {
+    const { store, service } = buildSaml();
+
+    await service.create('acme', {
+      protocol: 'saml',
+      name: 'Override',
+      metadataXml: samlMetadataXml(idp.certificate),
+      entryPoint: 'https://idp.acme.test/custom',
+      linkPolicy: 'refuse',
+      domains: ['acme.test'],
+    });
+
+    expect(store.rows[0]?.samlEntryPoint).toBe('https://idp.acme.test/custom');
+    await expect(
+      service.create('acme', {
+        protocol: 'saml',
+        name: 'Nothing',
+        linkPolicy: 'refuse',
+        domains: ['acme.test'],
+      }),
+    ).rejects.toMatchObject({ reason: 'saml-incomplete' });
+    await expect(
+      service.create('acme', {
+        protocol: 'saml',
+        name: 'Broken',
+        metadataXml: '<nothing/>',
+        linkPolicy: 'refuse',
+        domains: ['acme.test'],
+      }),
+    ).rejects.toMatchObject({ reason: 'saml-metadata-invalid' });
+  });
+
+  it('re-imports a rotated certificate from fresh metadata', async () => {
+    const { store, service } = buildSaml();
+    const view = await service.create('acme', samlInput);
+    const next = generateSamlTestIdp('next.acme.test');
+
+    await service.update('acme', view.id, {
+      metadataXml: samlMetadataXml(next.certificate),
+    });
+
+    expect(store.rows[0]?.samlCertificate).toContain(
+      next.certificate.split('\n')[1] ?? 'missing',
+    );
   });
 });
