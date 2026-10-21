@@ -8,6 +8,8 @@ import { scopeWhereFor } from '#technical/capabilities/scope-where';
 import { env } from '#technical/config/env';
 import { SignalService } from '#technical/signal/signal.service';
 import { SearchEngineRegistry } from '#technical/search/search-engine.registry';
+import { SharingService } from '#technical/sharing/sharing.service';
+import type { GrantShareInput } from '#technical/sharing/sharing.dto';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { writeAuditLog } from '#technical/audit/audit-log';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
@@ -63,6 +65,7 @@ export class SnippetService {
     @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,
     private readonly signal: SignalService,
     private readonly searchEngines: SearchEngineRegistry,
+    private readonly sharing: SharingService,
     private readonly historyLog: HistoryService,
   ) {}
 
@@ -132,7 +135,29 @@ export class SnippetService {
     }
   }
 
+  // A page of rows carries its shares, fetched in one query, so the per-row
+  // capability decisions stay an in-memory function of what is already loaded.
+  withShares<T extends { id: string }>(records: T[]) {
+    return this.sharing.withShares('Snippet', records);
+  }
+
+  listShares(recordId: string) {
+    return this.sharing.list('Snippet', recordId);
+  }
+
+  grantShare(recordId: string, grantedById: string, input: GrantShareInput) {
+    return this.sharing.grant('Snippet', recordId, grantedById, input);
+  }
+
+  revokeShare(recordId: string, shareId: string) {
+    return this.sharing.revoke('Snippet', recordId, shareId);
+  }
+
   async search(subject: CapabilitySubject, options: SnippetSearchOptions = {}) {
+    // One query for the whole request: the ids shared with this caller join
+    // the view scope below instead of being checked row by row.
+    const sharedIds = await this.sharing.sharedRecordIds('Snippet', subject);
+
     // Excluding trashed rows is the default branch, not an opt-in one: a
     // caller that says nothing gets live rows only, so a forgotten flag hides
     // a deleted record rather than resurfacing it.
@@ -163,7 +188,7 @@ export class SnippetService {
     // never widen it back, whatever the caller passes in the query string.
     const where = {
       AND: [
-        scopeWhereFor(SNIPPET_PRESETS.view, subject),
+        scopeWhereFor(SNIPPET_PRESETS.view, subject, sharedIds),
         trashedWhere,
         ...(options.where ? [options.where] : []),
         ...(searchWhere ? [searchWhere] : []),

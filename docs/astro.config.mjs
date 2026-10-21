@@ -57,6 +57,7 @@ export default defineConfig({
                 { label: 'Cache', slug: 'guides/cache' },
                 { label: 'Feature flags', slug: 'guides/feature-flags' },
                 { label: 'Rate limiting', slug: 'guides/rate-limiting' },
+                { label: 'Quotas and usage', slug: 'guides/quotas' },
                 { label: 'Validation', slug: 'guides/validation' },
                 { label: 'API versioning', slug: 'guides/versioning' },
                 {
@@ -83,11 +84,13 @@ export default defineConfig({
                 },
                 { label: 'Row history', slug: 'guides/row-history' },
                 { label: 'Dev dashboard', slug: 'guides/dev-dashboard' },
+                { label: 'Backups', slug: 'guides/backups' },
                 { label: 'Bulk mutations', slug: 'guides/bulk-mutations' },
                 { label: 'Jobs', slug: 'guides/jobs' },
                 { label: 'Logging', slug: 'guides/logging' },
                 { label: 'Migrations', slug: 'guides/migrations' },
                 { label: 'Prune', slug: 'guides/prune' },
+                { label: 'GDPR export and erasure', slug: 'guides/gdpr' },
               ],
             },
             {

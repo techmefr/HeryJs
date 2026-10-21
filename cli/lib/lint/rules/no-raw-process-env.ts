@@ -30,8 +30,11 @@ function packageRuntimeRoots(repoRoot: string): string[] {
 // exist to validate what they read: env.ts parses the application's own schema,
 // module-env.ts parses the schema an installed module declares for itself. Every
 // other read is supposed to go through one of their exports instead.
+// child-env.ts is the third, and the one that cannot validate: it hands a child
+// process the whole environment it inherited.
 const ALLOWED_FILES = [
   'src/technical/config/env.ts',
+  'src/technical/config/child-env.ts',
   'src/technical/config/module-env.ts',
 ];
 

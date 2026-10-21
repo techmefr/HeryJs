@@ -1,18 +1,30 @@
 import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
 import { SnippetModule } from './snippet.module';
 import { env } from '#technical/config/env';
 import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
-import { actingAs, registerAndLogin } from '#devtools/test-support';
+import {
+  actingAs,
+  createTestTenantId,
+  purgeTenant,
+  registerAndLogin,
+} from '#devtools/test-support';
+import type { Actor } from '#devtools/test-support';
+
+const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
+const prisma = new PrismaClient({ adapter });
 
 describe('Snippet resource', () => {
   let app: INestApplication<App>;
   let ownerToken: string;
   let strangerToken: string;
+  let strangerId: string;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -21,12 +33,16 @@ describe('Snippet resource', () => {
     app = moduleRef.createNestApplication();
     await app.init();
 
-    ownerToken = (await registerAndLogin(app)).token;
-    strangerToken = (await registerAndLogin(app)).token;
+    const owner = await registerAndLogin(app);
+    const stranger = await registerAndLogin(app);
+    ownerToken = owner.token;
+    strangerToken = stranger.token;
+    strangerId = stranger.id;
   });
 
   afterAll(async () => {
     await app.close();
+    await prisma.$disconnect();
   });
 
   it('creates records owned by the current user, scoped to the current tenant', async () => {
@@ -101,6 +117,193 @@ describe('Snippet resource', () => {
       (list.body as { data: { id: string }[] }).data.map((record) => record.id),
     ).not.toContain(recordId);
   });
+  describe('sharing', () => {
+    const createRecord = async (): Promise<string> => {
+      const created = await request(app.getHttpServer())
+        .post('/snippets/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ title: 'title-value' }] })
+        .expect(201);
+
+      return (
+        created.body as { data: { status: string; data: { id: string } }[] }
+      ).data[0]!.data.id;
+    };
+
+    const grant = (
+      recordId: string,
+      body: { granteeType: string; granteeId: string; access: string },
+      token = ownerToken,
+    ) =>
+      request(app.getHttpServer())
+        .post(`/snippets/${recordId}/shares`)
+        .set('Authorization', `Bearer ${token}`)
+        .send(body);
+
+    const strangerView = async (recordId: string) => {
+      const response = await request(app.getHttpServer())
+        .post('/snippets/search')
+        .set('Authorization', `Bearer ${strangerToken}`)
+        .send({
+          filters: [{ field: 'id', value: recordId }],
+          capabilities: ['update', 'delete', 'share'],
+        })
+        .expect(200);
+
+      return (
+        response.body as {
+          data: {
+            id: string;
+            capabilities: Record<string, { allowed: boolean; scope?: string }>;
+          }[];
+        }
+      ).data;
+    };
+
+    it('opens a record to the user it is shared with, in the list and in search, for reading only', async () => {
+      const recordId = await createRecord();
+
+      expect(await strangerView(recordId)).toHaveLength(0);
+
+      const granted = await grant(recordId, {
+        granteeType: 'user',
+        granteeId: strangerId,
+        access: 'read',
+      }).expect(201);
+
+      expect((granted.body as { data: { access: string } }).data.access).toBe(
+        'read',
+      );
+
+      const rows = await strangerView(recordId);
+
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.capabilities.update!.allowed).toBe(false);
+      expect(rows[0]!.capabilities.delete!.allowed).toBe(false);
+      expect(rows[0]!.capabilities.share!.allowed).toBe(false);
+
+      const list = await request(app.getHttpServer())
+        .post('/snippets/search')
+        .set('Authorization', `Bearer ${strangerToken}`)
+        .send({})
+        .expect(200);
+
+      expect(
+        (list.body as { data: { id: string }[] }).data.map((row) => row.id),
+      ).toContain(recordId);
+    });
+
+    it('lets a write share update but never delete or share onward', async () => {
+      const recordId = await createRecord();
+
+      await grant(recordId, {
+        granteeType: 'user',
+        granteeId: strangerId,
+        access: 'read',
+      }).expect(201);
+      await grant(recordId, {
+        granteeType: 'user',
+        granteeId: strangerId,
+        access: 'write',
+      }).expect(201);
+
+      const rows = await strangerView(recordId);
+
+      expect(rows[0]!.capabilities.update).toMatchObject({
+        allowed: true,
+        scope: 'shared',
+      });
+      expect(rows[0]!.capabilities.delete!.allowed).toBe(false);
+      expect(rows[0]!.capabilities.share!.allowed).toBe(false);
+
+      await grant(
+        recordId,
+        { granteeType: 'user', granteeId: strangerId, access: 'write' },
+        strangerToken,
+      ).expect(403);
+
+      const shares = await request(app.getHttpServer())
+        .post(`/snippets/${recordId}/shares/search`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      expect((shares.body as { data: unknown[] }).data).toHaveLength(1);
+    });
+
+    it('closes the record again once the share is revoked', async () => {
+      const recordId = await createRecord();
+      const granted = await grant(recordId, {
+        granteeType: 'user',
+        granteeId: strangerId,
+        access: 'read',
+      }).expect(201);
+      const shareId = (granted.body as { data: { id: string } }).data.id;
+
+      expect(await strangerView(recordId)).toHaveLength(1);
+
+      await request(app.getHttpServer())
+        .delete(`/snippets/${recordId}/shares/${shareId}`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      expect(await strangerView(recordId)).toHaveLength(0);
+
+      await request(app.getHttpServer())
+        .delete(`/snippets/${recordId}/shares/${shareId}`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(404);
+    });
+
+    it('shares with a team, reaching every member of it', async () => {
+      const recordId = await createRecord();
+      const team = await request(app.getHttpServer())
+        .post('/teams')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ name: 'Sharing Team' })
+        .expect(201);
+      const teamId = (team.body as { data: { id: string } }).data.id;
+
+      await request(app.getHttpServer())
+        .post(`/teams/${teamId}/members`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ userId: strangerId })
+        .expect(201);
+
+      expect(await strangerView(recordId)).toHaveLength(0);
+
+      await grant(recordId, {
+        granteeType: 'team',
+        granteeId: teamId,
+        access: 'read',
+      }).expect(201);
+
+      expect(await strangerView(recordId)).toHaveLength(1);
+    });
+
+    it('keeps a share inside its tenant', async () => {
+      const recordId = await createRecord();
+      const outsider = await actingAs(app, {
+        tenantId: `tenant-${randomUUID()}`,
+      });
+
+      await grant(recordId, {
+        granteeType: 'user',
+        granteeId: outsider.id,
+        access: 'read',
+      }).expect(404);
+
+      await grant(
+        recordId,
+        { granteeType: 'user', granteeId: outsider.id, access: 'read' },
+        outsider.token,
+      ).expect(404);
+
+      await request(app.getHttpServer())
+        .post(`/snippets/${recordId}/shares/search`)
+        .set('Authorization', `Bearer ${outsider.token}`)
+        .expect(404);
+    });
+  });
 
   it('keeps a trashed record out of the bin of anyone who cannot open it', async () => {
     const created = await request(app.getHttpServer())
@@ -140,7 +343,14 @@ describe('Snippet resource', () => {
     const response = await request(app.getHttpServer())
       .post('/snippets/search')
       .send({
-        capabilities: ['update', 'delete', 'restore', 'history', 'revert'],
+        capabilities: [
+          'update',
+          'delete',
+          'share',
+          'restore',
+          'history',
+          'revert',
+        ],
       })
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(200);
@@ -156,6 +366,7 @@ describe('Snippet resource', () => {
       'history',
       'restore',
       'revert',
+      'share',
       'update',
     ]);
     expect(body.meta).toMatchObject({
@@ -1047,5 +1258,245 @@ describe('Snippet resource', () => {
       .send({ search: { q: 'anything', engine: 'nonexistent' } })
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(400);
+  });
+
+  describe('privacy requests', () => {
+    const tenantId = createTestTenantId();
+    let admin: Actor;
+    let subject: Actor;
+    let bystander: Actor;
+
+    beforeAll(async () => {
+      admin = await actingAs(app, { tenantId, role: 'admin' });
+      subject = await actingAs(app, { tenantId });
+      bystander = await actingAs(app, { tenantId });
+    });
+
+    afterAll(async () => {
+      await purgeTenant(tenantId);
+    });
+
+    async function createAs(
+      actor: Actor,
+      body: Record<string, unknown>,
+    ): Promise<string> {
+      const response = await request(app.getHttpServer())
+        .post('/snippets/create')
+        .set('Authorization', actor.authorization)
+        .send({ data: [body] })
+        .expect(201);
+
+      return (response.body as { data: { data: { id: string } }[] }).data[0]!
+        .data.id;
+    }
+
+    async function requestAs(
+      actor: Actor,
+      path: string,
+      body: Record<string, unknown>,
+      status: number,
+    ): Promise<string> {
+      const response = await request(app.getHttpServer())
+        .post(path)
+        .set('Authorization', actor.authorization)
+        .send(body)
+        .expect(status);
+
+      return (response.body as { data?: { id: string } }).data?.id ?? '';
+    }
+
+    // An erasure ends the sessions of the user it erased, so the outcome of
+    // one is read from the request row; an export is collected over the API.
+    async function settled(id: string) {
+      for (let attempt = 0; attempt < 90; attempt += 1) {
+        const row = await prisma.privacyRequest.findUniqueOrThrow({
+          where: { id },
+        });
+
+        if (row.status === 'done' || row.status === 'failed') {
+          return row;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+
+      throw new Error('privacy request ' + id + ' did not settle');
+    }
+
+    async function collect(actor: Actor, id: string) {
+      for (let attempt = 0; attempt < 90; attempt += 1) {
+        const response = await request(app.getHttpServer())
+          .get('/privacy/requests/' + id)
+          .set('Authorization', actor.authorization)
+          .expect(200);
+        const view = (
+          response.body as {
+            data: { status: string; error: string | null; result?: unknown };
+          }
+        ).data;
+
+        if (view.status === 'done' || view.status === 'failed') {
+          return view;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+
+      throw new Error('privacy request ' + id + ' did not settle');
+    }
+
+    it('exports the rows a user owns, opened, and none of anyone else', async () => {
+      const marker = 'export-' + randomUUID();
+      const ownId = await createAs(subject, { title: marker });
+      const otherId = await createAs(bystander, { title: 'title-value' });
+
+      const id = await requestAs(subject, '/privacy/exports', {}, 202);
+      const bundle = await collect(subject, id);
+
+      expect(bundle).toMatchObject({ status: 'done', error: null });
+
+      const exported = bundle.result as {
+        identity: { id: string };
+        resources: Record<string, Array<Record<string, unknown>>>;
+      };
+      const rows = exported.resources.Snippet!;
+
+      expect(exported.identity.id).toBe(subject.id);
+      expect(rows.map((row) => row.id)).toEqual([ownId]);
+      expect(rows[0]).toMatchObject({
+        title: marker,
+      });
+      expect(JSON.stringify(bundle.result)).not.toContain(otherId);
+
+      const again = await request(app.getHttpServer())
+        .get('/privacy/requests/' + id)
+        .set('Authorization', subject.authorization)
+        .expect(200);
+      expect(
+        (again.body as { data: { result?: unknown } }).data.result,
+      ).toBeUndefined();
+    });
+
+    it('refuses a request about another user unless an admin makes it', async () => {
+      await requestAs(
+        bystander,
+        '/privacy/exports',
+        { userId: subject.id },
+        403,
+      );
+      await requestAs(
+        bystander,
+        '/privacy/erasures/user',
+        { userId: subject.id },
+        403,
+      );
+      await requestAs(
+        subject,
+        '/privacy/erasures/tenant',
+        { confirm: tenantId },
+        403,
+      );
+      await requestAs(
+        admin,
+        '/privacy/erasures/tenant',
+        { confirm: 'another-tenant' },
+        400,
+      );
+
+      const id = await requestAs(
+        admin,
+        '/privacy/exports',
+        { userId: subject.id },
+        202,
+      );
+
+      await request(app.getHttpServer())
+        .get('/privacy/requests/' + id)
+        .set('Authorization', bystander.authorization)
+        .expect(404);
+      expect(await collect(admin, id)).toMatchObject({ status: 'done' });
+    });
+
+    it('erases a user, redacts what the audit trail held and keeps the request itself', async () => {
+      const marker = 'erase-' + randomUUID();
+      const ownId = await createAs(subject, { title: marker });
+      const keptId = await createAs(bystander, { title: 'title-value' });
+
+      const id = await requestAs(
+        subject,
+        '/privacy/erasures/user',
+        { userId: subject.id },
+        202,
+      );
+
+      expect(await settled(id)).toMatchObject({ status: 'done', error: null });
+
+      expect(
+        await prisma.snippet.count({ where: { ownerId: subject.id } }),
+      ).toBe(0);
+      expect(
+        await prisma.snippet.findUnique({ where: { id: keptId } }),
+      ).not.toBeNull();
+
+      const held = await prisma.auditLog.findMany({
+        where: { tenantId, model: 'Snippet', recordId: ownId },
+      });
+      expect(held.every((entry) => entry.redactedAt !== null)).toBe(true);
+      expect(JSON.stringify(held)).not.toContain(marker);
+
+      const trail = await prisma.auditLog.findMany({
+        where: { tenantId, model: 'PrivacyRequest', recordId: id },
+        orderBy: { sequence: 'asc' },
+      });
+      expect(trail.map((entry) => entry.operation)).toEqual([
+        'privacy.erase-user.requested',
+        'privacy.erase-user.completed',
+      ]);
+      expect(JSON.stringify(trail)).not.toContain(marker);
+
+      const identity = await prisma.user.findUniqueOrThrow({
+        where: { id: subject.id },
+      });
+      expect(identity.email).toMatch(/@erased\.invalid$/);
+      expect(identity.banned).toBe(true);
+
+      const verified = await request(app.getHttpServer())
+        .get('/audit-logs/verify')
+        .set('Authorization', admin.authorization)
+        .expect(200);
+      expect((verified.body as { data: { valid: boolean } }).data.valid).toBe(
+        true,
+      );
+    });
+
+    it('erases a whole tenant and leaves every other tenant alone', async () => {
+      await createAs(bystander, { title: 'title-value' });
+      const foreign = await actingAs(app);
+      const foreignId = await createAs(foreign, { title: 'title-value' });
+
+      const id = await requestAs(
+        admin,
+        '/privacy/erasures/tenant',
+        { confirm: tenantId },
+        202,
+      );
+      const outcome = await collect(admin, id);
+
+      expect(outcome).toMatchObject({ status: 'done', error: null });
+
+      expect(await prisma.snippet.count({ where: { tenantId } })).toBe(0);
+      expect(
+        await prisma.snippet.findUnique({ where: { id: foreignId } }),
+      ).not.toBeNull();
+
+      const erased = await prisma.user.findUniqueOrThrow({
+        where: { id: bystander.id },
+      });
+      const requester = await prisma.user.findUniqueOrThrow({
+        where: { id: admin.id },
+      });
+      expect(erased.email).toMatch(/@erased\.invalid$/);
+      expect(requester.email).toBe(admin.email);
+    });
   });
 });

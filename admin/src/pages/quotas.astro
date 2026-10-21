@@ -1,0 +1,186 @@
+---
+import Shell from '../layouts/Shell.astro';
+---
+
+<Shell title="Quotas">
+  <h1>Quotas</h1>
+  <p class="lede">
+    What each tenant has used against its limit this period. Edit a limit to
+    override the default for that tenant, clear it to go back, or reset the
+    counter.
+  </p>
+
+  <h2>Defaults</h2>
+  <div class="output" id="defaults"></div>
+
+  <h2>Tenants</h2>
+  <div class="output" id="tenants"></div>
+</Shell>
+
+<script>
+  import { ApiError, api } from '../lib/api';
+  import { pill, skeleton, state, table } from '../lib/render';
+
+  interface QuotaStatus {
+    name: string;
+    period: string;
+    periodKey: string;
+    limit: number;
+    used: number;
+    remaining: number;
+    overridden: boolean;
+  }
+
+  interface TenantUsage {
+    tenantId: string;
+    quotas: QuotaStatus[];
+  }
+
+  interface QuotaDefault {
+    name: string;
+    limit: number;
+    period: string;
+  }
+
+  const defaultsOutput = document.getElementById('defaults')!;
+  const tenantsOutput = document.getElementById('tenants')!;
+  defaultsOutput.appendChild(skeleton(2));
+  tenantsOutput.appendChild(skeleton(3));
+
+  function send(method: string, path: string, body: unknown) {
+    return api(path, { method, body: JSON.stringify(body) });
+  }
+
+  function button(label: string, onClick: () => Promise<void>) {
+    const element = document.createElement('button');
+    element.type = 'button';
+    element.textContent = label;
+    element.addEventListener('click', async () => {
+      element.disabled = true;
+
+      try {
+        await onClick();
+        await load();
+      } catch {
+        element.textContent = 'Failed';
+        element.disabled = false;
+      }
+    });
+
+    return element;
+  }
+
+  function quotaRow(tenantId: string, quota: QuotaStatus): HTMLElement {
+    const row = document.createElement('div');
+    row.className = 'card prune-row';
+
+    const name = document.createElement('span');
+    name.className = 'path';
+    name.textContent = tenantId + ' / ' + quota.name;
+
+    const usage = document.createElement('span');
+    usage.className = 'mono';
+    usage.textContent =
+      quota.used + ' / ' + quota.limit + ' (' + quota.periodKey + ')';
+
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = '0';
+    input.value = String(quota.limit);
+    input.setAttribute('aria-label', 'Limit for ' + quota.name);
+
+    row.append(
+      name,
+      pill(
+        quota.overridden ? 'Override' : 'Default',
+        quota.overridden ? 'warn' : 'neutral',
+      ),
+      usage,
+      input,
+      button('Save limit', async () => {
+        await send(
+          'PUT',
+          '/quotas/' + encodeURIComponent(quota.name) + '/override',
+          {
+            tenantId,
+            limit: Number(input.value),
+          },
+        );
+      }),
+    );
+
+    if (quota.overridden) {
+      row.appendChild(
+        button('Use default', async () => {
+          await send(
+            'PUT',
+            '/quotas/' + encodeURIComponent(quota.name) + '/override',
+            {
+              tenantId,
+              limit: null,
+            },
+          );
+        }),
+      );
+    }
+
+    row.appendChild(
+      button('Reset counter', async () => {
+        await send(
+          'POST',
+          '/quotas/' + encodeURIComponent(quota.name) + '/reset',
+          {
+            tenantId,
+          },
+        );
+      }),
+    );
+
+    return row;
+  }
+
+  async function load() {
+    try {
+      const [defaults, tenants] = await Promise.all([
+        api<QuotaDefault[]>('/quotas/defaults'),
+        api<TenantUsage[]>('/quotas/tenants?limit=100'),
+      ]);
+
+      defaultsOutput.replaceChildren(
+        defaults.data.length === 0
+          ? state('No quota declared', 'Add a quotas block to hery.config.ts.')
+          : table(defaults.data as unknown as Record<string, unknown>[]),
+      );
+
+      const rows = tenants.data.flatMap((tenant) =>
+        tenant.quotas.map((quota) => quotaRow(tenant.tenantId, quota)),
+      );
+      const list = document.createElement('div');
+      list.className = 'traces';
+      list.append(...rows);
+
+      tenantsOutput.replaceChildren(
+        rows.length === 0
+          ? state(
+              'Nothing to show',
+              'No tenant has a user, or no quota is declared.',
+            )
+          : list,
+      );
+    } catch (error) {
+      const denied = error instanceof ApiError && error.status === 403;
+      const message = denied
+        ? state('Not available', 'Quotas are an admin-only view.', 'denied')
+        : state(
+            'Could not load quotas',
+            'The request to /quotas failed.',
+            'denied',
+          );
+
+      defaultsOutput.replaceChildren(message);
+      tenantsOutput.replaceChildren();
+    }
+  }
+
+  await load();
+</script>

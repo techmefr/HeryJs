@@ -63,6 +63,7 @@ async function promptVector(
     hidden: false,
     translatable: false,
     reveal: false,
+    personal: false,
     dimensions: dimensionsResponse.dimensions,
     source: sourceResponse.source,
   };
@@ -153,6 +154,7 @@ async function promptFields(): Promise<BlueprintField[]> {
       hidden: hiddenResponse.hidden ?? false,
       translatable: translatableResponse.translatable ?? false,
       reveal: false,
+      personal: false,
     });
   }
 
@@ -166,6 +168,7 @@ async function promptFields(): Promise<BlueprintField[]> {
           hidden: false,
           translatable: false,
           reveal: false,
+          personal: false,
         },
       ];
 }
@@ -332,6 +335,11 @@ versioned: false
 # list its history, diff an entry against the record as it is now, and restore
 # one through the normal update path. Snapshots age out with prune.
 history: false
+
+# Off unless you say so. Turn it on and the owner can grant a user or a team read or
+# write access to a single record: the resource gets share routes and a share
+# capability, and shared records join the list scope without a query per row.
+sharing: false
 
 permissions:
   # preset: own (creator/owner only) | team (same team) | all (any authenticated user) | none (nobody)

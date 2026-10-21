@@ -76,6 +76,14 @@ export function buildServerSchema(nodeEnv: string | undefined) {
       .default('true')
       .transform((value) => value === 'true'),
     OUTBOX_RELAY_INTERVAL_MS: z.coerce.number().int().positive().default(2000),
+    BACKUP_ENABLED: z
+      .string()
+      .default('false')
+      .transform((value) => value === 'true'),
+    BACKUP_CRON: z.string().min(1).default('0 3 * * *'),
+    BACKUP_DIR: z.string().min(1).default('backups'),
+    BACKUP_KEEP: z.coerce.number().int().min(1).default(7),
+    BACKUP_STORAGE_DRIVER: z.string().min(1).optional(),
     SEARCH_MATCH_LIMIT: z.coerce.number().int().positive().default(1000),
     // The most rows a similarity search ranks and returns. Nearest-neighbour
     // search never runs out of matches -- every embedded row has a distance --
@@ -195,6 +203,14 @@ export function buildServerSchema(nodeEnv: string | undefined) {
     OAUTH_GITHUB_CLIENT_SECRET: z.string().min(1).optional(),
     OAUTH_MICROSOFT_CLIENT_ID: z.string().min(1).optional(),
     OAUTH_MICROSOFT_CLIENT_SECRET: z.string().min(1).optional(),
+    /**
+     * The admin studio is dev-only unless an operator opts in. These three are
+     * read per request by admin-settings.ts; they are declared here so a typo
+     * stops the boot rather than reading as "off".
+     */
+    ADMIN_STUDIO_ENABLED: z.enum(['true', 'false']).default('false'),
+    ADMIN_STUDIO_ALLOWED_IPS: z.string().optional(),
+    ADMIN_STUDIO_REQUIRE_2FA: z.enum(['true', 'false']).default('false'),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.string().min(1).optional(),
     OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: z.string().min(1).optional(),
     OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: z.string().min(1).optional(),

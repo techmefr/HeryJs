@@ -1,9 +1,12 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  NotFoundException,
   Param,
   Patch,
+  Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -14,10 +17,19 @@ import { SessionGuard } from '#technical/auth/session.guard';
 import { ok } from '#technical/http/envelope';
 import { okPage, parsePageQuery } from '#technical/http/page-query';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
-import { canManageFeatureFlags } from './feature-flags.policy';
+import {
+  canEvaluateFeatureFlags,
+  canManageFeatureFlags,
+} from './feature-flags.policy';
 import { FeatureFlagsService } from './feature-flags.service';
-import { setFeatureFlagSchema } from './set-feature-flag.dto';
-import type { SetFeatureFlagDto } from './set-feature-flag.dto';
+import {
+  evaluateFeatureFlagSchema,
+  setFeatureFlagSchema,
+} from './set-feature-flag.dto';
+import type {
+  EvaluateFeatureFlagDto,
+  SetFeatureFlagDto,
+} from './set-feature-flag.dto';
 
 @Controller('feature-flags')
 @UseGuards(SessionGuard, CapabilitiesGuard)
@@ -33,6 +45,23 @@ export class FeatureFlagsController {
     return okPage(await this.featureFlags.listAll(page), page);
   }
 
+  /**
+   * What would this user, tenant or plan get? Answers with the reason, so an
+   * operator can see whether a rule, the percentage or the kill switch
+   * decided. A preview only: it reads, it never writes.
+   */
+  @RateLimit('read')
+  @Post('evaluate')
+  @Capability(canEvaluateFeatureFlags)
+  async evaluate(
+    @Body(new ZodValidationPipe(evaluateFeatureFlagSchema))
+    body: EvaluateFeatureFlagDto,
+  ) {
+    const { key, ...context } = body;
+
+    return ok(await this.featureFlags.evaluate(key, context));
+  }
+
   @RateLimit('write')
   @Patch(':key')
   @Capability(canManageFeatureFlags)
@@ -40,12 +69,22 @@ export class FeatureFlagsController {
     @Param('key') key: string,
     @Body(new ZodValidationPipe(setFeatureFlagSchema)) body: SetFeatureFlagDto,
   ) {
-    return ok(
-      await this.featureFlags.set(
-        key,
-        body.enabled,
-        body.tenantId ?? undefined,
-      ),
-    );
+    const { tenantId, ...patch } = body;
+
+    return ok(await this.featureFlags.set(key, patch, tenantId ?? undefined));
+  }
+
+  @RateLimit('write')
+  @Delete(':key')
+  @Capability(canManageFeatureFlags)
+  async remove(
+    @Param('key') key: string,
+    @Query('tenantId') tenantId?: string,
+  ) {
+    if (!(await this.featureFlags.remove(key, tenantId || undefined))) {
+      throw new NotFoundException('Feature flag not found');
+    }
+
+    return ok({ key, tenantId: tenantId || null });
   }
 }

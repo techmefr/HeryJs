@@ -16,10 +16,38 @@ First public release.
 ### Row history, with diff and restore
 
 `history: true` in a blueprint stores a snapshot of the record after every create, update, soft delete and restore, in the new `RecordSnapshot` table (a migration ships with it). The generated resource gains `POST /:id/history`, `POST /:id/history/diff` and `POST /:id/history/restore`, each behind its own capability (`history` and `revert` are also resolved per record on search). A restore writes the old fields back through the normal update path, so the update policy, the version check and the audit entry apply, and it becomes the newest entry. Hidden and encrypted fields are never snapshotted. Retention is bounded by prune: `RecordSnapshot` is listed on the prune page and ages out per record while always keeping the newest snapshot. The admin resource page shows a History button that lists entries, diffs and restores. A hard delete, purge or prune of a row removes its history. Bulk writes (`updateMany`, `deleteMany`) are not snapshotted. `history` is refused on a translatable resource for now. **Existing projects:** apply the migration and copy `src/technical/history/`; the registry `HISTORY_COLUMNS` is filled by `hery generate`.
+### Admin table editor: inline edit
+
+A generated resource's table edits a plain cell in place (text, number, checkbox, enum): an Edit button on the cell, Enter to save through the resource's `update` route with the form's validation and version check, Escape to cancel, and the server's refusal shown in the cell. It follows the row's `update` capability and is switched off by `disable: ['update']`.
+### Feature flag rollout and targeting
+
+A flag now carries a rollout percentage (0-100, bucketed per user or per tenant with a hash of the flag key and the subject, so the same user always gets the same answer and raising the percentage only adds people) and an ordered list of targeting rules on tenant, user, plan or any custom attribute. The evaluation order is written once, in `feature-flag-evaluation.ts`: no flag is off, `enabled: false` is a kill switch, the first matching rule decides, then the percentage. `FeatureFlagsService.isEnabled` still takes a tenant id and now also a context (`userId`, `plan`, `attributes`); `evaluate` returns the decision with its reason. `PATCH /feature-flags/:key` takes the new fields, `POST /feature-flags/evaluate` previews a user or tenant and `DELETE /feature-flags/:key` removes a flag, all admin-only. The admin panel gets a Feature flags page to create a flag, set the percentage, edit the rules and preview an evaluation. A migration adds the three columns with defaults that keep every existing flag on for everyone. A `FeatureFlagDriver` provider now implements `evaluate` and `remove`, and `set` takes a patch object rather than a boolean.
+### GDPR export and erasure
+
+A blueprint declares how its rows answer a privacy request: `erasure: delete` removes every row a user owns, `erasure: anonymise` keeps the rows and rewrites the fields marked `personal: true`. A resource that declares nothing is left alone. The kernel runs the work itself, on the new `heryjs-privacy` queue: `POST /privacy/exports`, `POST /privacy/erasures/user` and `POST /privacy/erasures/tenant` answer 202 with a request, `GET /privacy/requests` lists the history and `GET /privacy/requests/:id` reads one (an export's bundle is handed over once). Erasure also tombstones the identity record and deletes the user's sessions, accounts and keys, and redacts the audit entries that described the erased rows: the entry keeps its place in the hash chain, its payload becomes a digest, and `GET /audit-logs/verify` still passes. The request itself is audited without the erased data. The admin panel gains a Privacy page and a Privacy section. **Upgrade note:** two migrations add `PrivacyRequest` and `AuditLog.redactedAt`; a generated resource that declares an erasure also gets a `<name>.personal-data.ts` file and imports `PrivacyModule`.
+### A fresh project installs, migrates and builds
+
+`hery new` produced a project whose first `pnpm install` failed: every module package depended on `heryjs@workspace:*`, and the scaffold renames the root package. That dependency only carried the `ModuleDefinition` type, already mapped by path in each package's tsconfig, so `hery new` now drops it from the copied manifests. The project then failed `nest build` because the guest upgrade named the demo's `blogPost`; it now reads every non-cascading reference to a user off Prisma's DMMF, which also covers `Snippet` and any generated resource with an owner. Its first `hery migrate` failed too: the row-level policy migration was named after every table it covers, past the filesystem's limit on a directory name, and is now named by a count once the names would not fit. A new `scaffold` CI job runs `hery new`, install, `hery migrate`, typecheck and build on every push.
+
+### Admin studio contract and production access
+
+A kernel feature or module contributes to the admin by decorating its own routes: `@AdminSection({ id, title, icon, group, columns })` on a list route and `@AdminAction({ id, title, icon, section, scope, confirm, danger, fields })` on a mutating one. Introspection reports them (`admin` on each route), the sidebar groups by `group`, tables take their columns, and row, bulk and global actions get a button and a generated confirmation or form. `@AdminAction` audits every call itself (field names, never values) and `lint:conventions admin-contract` fails a contribution with no `@Capability`, an unknown icon, a duplicate id, a GET action, a row action without `:id` or an unknown section. `/introspect` now sits behind `@AdminStudio()` instead of `DevOnlyGuard`: development is unchanged, production is a 404 until `ADMIN_STUDIO_ENABLED=true`, then reachable by a platform admin (`canUseAdminStudio`), optionally restricted by `ADMIN_STUDIO_ALLOWED_IPS` and `ADMIN_STUDIO_REQUIRE_2FA`. Nothing a request carries can bypass it.
+
+### Per-tenant quotas and usage metering
+
+`quotas` in `hery.config.ts` declares a named limit with a default and a period (`month`, `day` or `total`), and `QuotasService` gives resources `check`, `consume` and `usage`. A tenant's limit can be overridden in the database (`PUT /quotas/:name/override`, admin only), and `GET /quotas` lists each quota's limit and use behind a capability, so the admin panel shows it as a section with no wiring. The count is kept in Postgres in one conditional `UPDATE`, so racing requests cannot overshoot, and the two new tables (`QuotaOverride`, `QuotaUsage`) are tenant scoped under row-level security. A rate-limit bucket can also be retuned for one tenant with an override named `rate-limit:<bucket>`; per plan is not covered. It is independent of `billingQuotas`, and usage-based billing is the next step. **Upgrade note:** a project that already exists needs the two new migrations, and has to add `QuotasModule` to its `AppModule` by hand.
+
+### Mail in the admin
+
+The admin panel gains a Messaging group for the mail module: the declared drivers with the active one marked, the tenant's recent sends with their status and error, and a "Send test mail" action that queues a real message to an address you type. They are declared through the admin contract on a new `MailAdminController`, behind the studio gate and admin-only capabilities. In a project that already has the mail module, copy the new controller files and register `MailAdminController` in `MailModule` by hand.
 
 ### SMTP mail driver
 
 A new `mail-smtp` package adds an SMTP driver beside the log and Resend ones. `hery install mail-smtp` lands it in `src/modules/mail`; import `SmtpMailModule`, declare `smtp: { driver: 'smtp' }` under `mail.drivers` in `hery.config.ts`, and set `MAIL_SMTP_HOST` and `MAIL_SMTP_FROM` (plus `MAIL_SMTP_PORT`, `MAIL_SMTP_TLS`, `MAIL_SMTP_USER` and `MAIL_SMTP_PASSWORD` as the server needs). `MAIL_DRIVER=smtp` switches to it. The driver sends through nodemailer, refuses a half-written credential and a refused recipient rather than recording the mail as sent, and its spec delivers over a real socket to an in-process SMTP server. That makes twenty-nine installable modules.
+
+### Object-level sharing
+
+A routed resource can declare `sharing: true` in its blueprint and let its owner grant a user or a team read or write access to one record. A new `RecordShare` table (tenant-scoped, with row-level security and in the audit chain) holds the grants; the generated controller gains `POST /<resource>/:id/shares`, `POST /<resource>/:id/shares/search` and `DELETE /<resource>/:id/shares/:shareId`, gated by a new `share` capability, and `describe` reports `sharing: true`. The decision stays in memory: `scopeWhereFor` takes the ids shared with the caller, fetched once per search, and `resolveCapability` takes an access (`read` or `write`) and reads the shares carried on the loaded record, so there is no query per row. A write share can update, never delete or share onward; a `none` preset stays closed. The admin resource page gets a Share dialog. The `snippet` example turns it on and its generated suite proves a share, a revoke, a team share and tenant isolation. **For an existing project**, sharing is opt-in and nothing changes until a blueprint declares it; to adopt it on a resource generated before, regenerate or apply the policy, loader, service, controller and module changes by hand and run the new migrations.
 
 ### Vector fields and similarity search
 
@@ -34,6 +62,10 @@ can now have its own handler: a kernel `WebhookHandler` contract that the
 webhook processor calls per event, inside the event's tenant. In a project
 that already has the webhooks module, copy
 `src/technical/webhooks/webhook-handler.ts` and the processor change by hand.
+
+### Database backup and restore
+
+`hery db:backup` writes a timestamped `pg_dump` (custom format) into `backups/` and keeps the newest `BACKUP_KEEP` (7), `hery db:backups` lists them, and `hery db:restore <file|latest>` restores one with `pg_restore`, refusing a target that already holds rows unless `--force` is passed. A `database-backup` scheduled task runs the same dump daily at 03:00 when `BACKUP_ENABLED="true"`, and uploads it through the storage driver named by `BACKUP_STORAGE_DRIVER`. It needs `pg_dump` and `pg_restore` (same major version as the server) on the machine; CI installs the 17 clients and restores a dump against a real Postgres. Point-in-time recovery is WAL archiving on your Postgres, which the new backups guide describes but does not provide. The admin panel gets a Backups page over capability-gated `/backups` routes (list, create, download, restore behind a typed confirmation, edit schedule and retention; the schedule is editable at runtime and saved next to the dumps). A new `/backups/` line in `.gitignore` keeps dumps out of the repository.
 
 ### Database workflow
 
@@ -228,7 +260,15 @@ installable with `hery install` and removable with `hery uninstall`.
   AES-256-GCM), proves the email domains it claims with a DNS TXT record, and
   its users are provisioned just in time into that tenant. Linking an existing
   local account is a declared per-connection policy, `refuse` by default.
-  SAML is not covered.
+  A connection speaks OpenID Connect or SAML 2.0 (`protocol: 'saml'`): the
+  assertion must be signed, answer the request this browser started, and name
+  an address on a domain the tenant proved. SAML adds three columns to
+  `SsoConnection` and makes `clientSecret` nullable; `@node-saml/node-saml`
+  does the XML signature checking. The provider can be configured from its
+  metadata (a URL or pasted XML) with an attribute mapping, and
+  `GET /sso/connections/checks` tests every connection (certificate expiry,
+  reachability, verified domain, discovery) so the admin panel, which builds
+  itself from introspection, gets a section for it.
 
 - `oauth` adds social sign-in (Google, GitHub, Microsoft) behind a provider
   contract, with PKCE, a signed single-use state cookie and verified emails

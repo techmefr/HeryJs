@@ -204,6 +204,122 @@ function historyPaths(ctx: ResourceContext): PathItems {
   };
 }
 
+const SHARE_SCHEMA: JsonSchema = {
+  type: 'object',
+  properties: {
+    id: { type: 'string' },
+    resource: { type: 'string' },
+    recordId: { type: 'string' },
+    granteeType: { type: 'string', enum: ['user', 'team'] },
+    granteeId: { type: 'string' },
+    access: { type: 'string', enum: ['read', 'write'] },
+    grantedById: { type: 'string' },
+    createdAt: { type: 'string', format: 'date-time' },
+  },
+  required: [
+    'id',
+    'resource',
+    'recordId',
+    'granteeType',
+    'granteeId',
+    'access',
+    'grantedById',
+    'createdAt',
+  ],
+};
+
+function sharePaths(ctx: ResourceContext, base: string): PathItems {
+  const id: JsonSchema = {
+    name: 'id',
+    in: 'path',
+    required: true,
+    schema: { type: 'string' },
+  };
+  const forbidden = {
+    ...errorResponses(),
+    '404': response(
+      'The record, or the user or team being shared with, was not found in the caller tenant',
+      ref('ErrorResponse'),
+    ),
+  };
+
+  return {
+    [`${base}/{id}/shares/search`]: {
+      post: operation(
+        ctx,
+        'SearchShares',
+        `Who a ${ctx.pascalName} is shared with`,
+        {
+          parameters: [id],
+          responses: {
+            '200': response(
+              'The shares on the record',
+              envelope({ type: 'array', items: SHARE_SCHEMA }),
+            ),
+            ...forbidden,
+          },
+        },
+      ),
+    },
+    [`${base}/{id}/shares`]: {
+      post: operation(
+        ctx,
+        'GrantShare',
+        `Share a ${ctx.pascalName} with a user or a team`,
+        {
+          parameters: [id],
+          requestBody: {
+            required: true,
+            content: {
+              [JSON_CONTENT]: {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    granteeType: { type: 'string', enum: ['user', 'team'] },
+                    granteeId: { type: 'string' },
+                    access: { type: 'string', enum: ['read', 'write'] },
+                  },
+                  required: ['granteeType', 'granteeId', 'access'],
+                  additionalProperties: false,
+                },
+              },
+            },
+          },
+          responses: {
+            '201': response(
+              'The share; granting again to the same grantee changes its access',
+              envelope(SHARE_SCHEMA),
+            ),
+            ...forbidden,
+          },
+        },
+      ),
+    },
+    [`${base}/{id}/shares/{shareId}`]: {
+      delete: operation(
+        ctx,
+        'RevokeShare',
+        `Revoke a share on a ${ctx.pascalName}`,
+        {
+          parameters: [
+            id,
+            {
+              name: 'shareId',
+              in: 'path',
+              required: true,
+              schema: { type: 'string' },
+            },
+          ],
+          responses: {
+            '200': response('The revoked share', envelope(SHARE_SCHEMA)),
+            ...forbidden,
+          },
+        },
+      ),
+    },
+  };
+}
+
 export function pathsFor(ctx: ResourceContext): PathItems {
   const base = `/${ctx.routePath}`;
   const name = typeNameOf(ctx);
@@ -288,6 +404,10 @@ export function pathsFor(ctx: ResourceContext): PathItems {
 
   for (const include of ownRouteIncludes(ctx)) {
     paths[`${base}/{id}/${include.relation}/search`] = childPath(ctx, include);
+  }
+
+  if (ctx.sharing) {
+    Object.assign(paths, sharePaths(ctx, base));
   }
 
   return paths;

@@ -1,0 +1,190 @@
+---
+import Shell from '../layouts/Shell.astro';
+---
+
+<Shell title="Privacy">
+  <h1>Privacy</h1>
+  <p class="lede">
+    Export the data held about a user, erase a user, or erase a whole tenant.
+    Every action is a request run in the background, audited, and listed below
+    with its status. An export is collected once.
+  </p>
+
+  <div class="card privacy-form">
+    <label>
+      User id
+      <input id="user-id" type="text" autocomplete="off" />
+    </label>
+    <button type="button" class="primary" id="export">Export data</button>
+    <button type="button" id="erase-user">Erase user</button>
+  </div>
+
+  <div class="card privacy-form">
+    <label>
+      Tenant id
+      <input id="tenant-id" type="text" autocomplete="off" />
+    </label>
+    <button type="button" id="erase-tenant">Erase tenant</button>
+  </div>
+
+  <p class="mono" id="message"></p>
+  <div class="output" id="output"></div>
+</Shell>
+
+<script>
+  import { ApiError, api } from '../lib/api';
+  import { skeleton, state, table } from '../lib/render';
+
+  interface PrivacyRequest {
+    id: string;
+    kind: string;
+    status: string;
+    subjectId: string;
+    error: string | null;
+    createdAt: string;
+    completedAt: string | null;
+    result?: unknown;
+  }
+
+  const output = document.getElementById('output')!;
+  const message = document.getElementById('message')!;
+  const userId = document.getElementById('user-id') as HTMLInputElement;
+  const tenantId = document.getElementById('tenant-id') as HTMLInputElement;
+
+  function post(path: string, body: Record<string, string>) {
+    return api<PrivacyRequest>(path, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  }
+
+  async function settle(id: string): Promise<PrivacyRequest> {
+    for (;;) {
+      const { data } = await api<PrivacyRequest>('/privacy/requests/' + id);
+
+      if (data.status === 'done' || data.status === 'failed') {
+        return data;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+
+  function download(name: string, content: unknown): void {
+    const url = URL.createObjectURL(
+      new Blob([JSON.stringify(content, null, 2)], {
+        type: 'application/json',
+      }),
+    );
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = name;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function run(work: () => Promise<void>): Promise<void> {
+    message.textContent = 'Running…';
+
+    try {
+      await work();
+    } catch (error) {
+      message.textContent =
+        error instanceof ApiError && error.status === 403
+          ? 'Not allowed.'
+          : 'The request failed.';
+    }
+
+    await refresh();
+  }
+
+  document.getElementById('export')!.addEventListener('click', () =>
+    run(async () => {
+      const subject = userId.value.trim();
+      const { data } = await post(
+        '/privacy/exports',
+        subject ? { userId: subject } : {},
+      );
+      const done = await settle(data.id);
+
+      if (done.status === 'failed' || done.result === undefined) {
+        message.textContent = done.error ?? 'Nothing to download.';
+        return;
+      }
+
+      download('export-' + done.subjectId + '.json', done.result);
+      message.textContent = 'Export downloaded.';
+    }),
+  );
+
+  // Erasure is irreversible, so it is never one click: the operator types the
+  // id of what is about to be erased, and a different text cancels it.
+  function confirmed(what: string, expected: string): boolean {
+    return (
+      expected !== '' &&
+      window.prompt('Type "' + expected + '" to erase this ' + what + '.') ===
+        expected
+    );
+  }
+
+  document.getElementById('erase-user')!.addEventListener('click', () =>
+    run(async () => {
+      const subject = userId.value.trim();
+
+      if (!confirmed('user', subject)) {
+        message.textContent = 'Cancelled.';
+        return;
+      }
+
+      await post('/privacy/erasures/user', { userId: subject });
+      message.textContent = 'Erasure requested.';
+    }),
+  );
+
+  document.getElementById('erase-tenant')!.addEventListener('click', () =>
+    run(async () => {
+      const tenant = tenantId.value.trim();
+
+      if (!confirmed('tenant', tenant)) {
+        message.textContent = 'Cancelled.';
+        return;
+      }
+
+      await post('/privacy/erasures/tenant', { confirm: tenant });
+      message.textContent = 'Erasure requested.';
+    }),
+  );
+
+  async function refresh(): Promise<void> {
+    output.replaceChildren(skeleton(3));
+
+    try {
+      const { data } = await api<PrivacyRequest[]>('/privacy/requests');
+
+      output.replaceChildren(
+        data.length === 0
+          ? state('No requests yet', 'Requests appear here once made.')
+          : table(
+              data.map((request) => ({
+                kind: request.kind,
+                status: request.status,
+                subject: request.subjectId,
+                requested: request.createdAt,
+                completed: request.completedAt,
+                error: request.error,
+              })),
+            ),
+      );
+    } catch {
+      output.replaceChildren(
+        state(
+          'Could not load requests',
+          'GET /privacy/requests failed.',
+          'denied',
+        ),
+      );
+    }
+  }
+
+  void refresh();
+</script>

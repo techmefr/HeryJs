@@ -47,6 +47,12 @@ function ownedByTeam(ctx: ResourceContext): boolean {
   return Object.values(ctx.permissions).includes('team');
 }
 
+// What a share can grant: reading and writing, never deleting, so only the
+// view and update decisions of a sharing resource name an access.
+function shareAccess(ctx: ResourceContext, access: 'read' | 'write'): string {
+  return ctx.sharing ? `, '${access}'` : '';
+}
+
 export function presetsFile(ctx: ResourceContext): string {
   return `import type { PermissionPreset } from '#technical/capabilities/capabilities.types';
 
@@ -267,12 +273,12 @@ function relationPolicyBlock(ctx: ResourceContext): string {
 export const canAttach${pascalRelation}To${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike> = (
   subject,
   record,
-) => (record ? resolveCapability(${ctx.screamingSnakeName}_PRESETS.update, subject, record) : { allowed: false });
+) => (record ? resolveCapability(${ctx.screamingSnakeName}_PRESETS.update, subject, record${shareAccess(ctx, 'write')}) : { allowed: false });
 
 export const canDetach${pascalRelation}From${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike> = (
   subject,
   record,
-) => (record ? resolveCapability(${ctx.screamingSnakeName}_PRESETS.update, subject, record) : { allowed: false });
+) => (record ? resolveCapability(${ctx.screamingSnakeName}_PRESETS.update, subject, record${shareAccess(ctx, 'write')}) : { allowed: false });
 `;
     })
     .join('');
@@ -280,6 +286,10 @@ export const canDetach${pascalRelation}From${ctx.pascalName}: PolicyCheck<${ctx.
 
 function recordCapabilityKeyList(ctx: ResourceContext): string[] {
   const keys = ['update', 'delete'];
+
+  if (ctx.sharing) {
+    keys.push('share');
+  }
 
   if (ctx.softDeletes) {
     keys.push('restore');
@@ -309,6 +319,10 @@ function metaCapabilityKeys(ctx: ResourceContext): string {
 
 function recordCapabilityLines(ctx: ResourceContext): string {
   const lines: string[] = [];
+
+  if (ctx.sharing) {
+    lines.push(`      share: canShare${ctx.pascalName}(subject, record),`);
+  }
 
   if (ctx.softDeletes) {
     lines.push(`      restore: canRestore${ctx.pascalName}(subject, record),`);
@@ -348,10 +362,20 @@ import {
   CapabilityDecision,
   CapabilitySubject,
 } from '#technical/capabilities/capabilities.types';
-import { ${ctx.screamingSnakeName}_PRESETS } from './${ctx.kebabName}.presets';
+import { ${ctx.screamingSnakeName}_PRESETS } from './${ctx.kebabName}.presets';${
+    ctx.sharing
+      ? `
+import type { RecordShare } from '#technical/capabilities/capabilities.types';`
+      : ''
+  }
 
 export interface ${ctx.pascalName}RecordLike {
-  ownerId: string;
+  ownerId: string;${
+    ctx.sharing
+      ? `
+  shares?: readonly RecordShare[];`
+      : ''
+  }
 }
 
 export const canCreate${ctx.pascalName}: PolicyCheck = (subject) =>
@@ -360,8 +384,21 @@ export const canCreate${ctx.pascalName}: PolicyCheck = (subject) =>
 export const canUpdate${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike> = (
   subject,
   record,
+) => (record ? resolveCapability(${ctx.screamingSnakeName}_PRESETS.update, subject, record${shareAccess(ctx, 'write')}) : { allowed: false });
+${
+  ctx.sharing
+    ? `
+// Sharing a record is a decision of its own, taken against the update preset
+// and deliberately blind to the shares themselves: whoever was handed write
+// access to a record cannot hand it on, so the owner stays the one who decides
+// who else gets in.
+export const canShare${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike> = (
+  subject,
+  record,
 ) => (record ? resolveCapability(${ctx.screamingSnakeName}_PRESETS.update, subject, record) : { allowed: false });
-
+`
+    : ''
+}
 // The outer gate on the bulk update route -- there is no single record yet
 // to check against, so this is the same broad pass the collection search
 // route takes, before canUpdate${ctx.pascalName} narrows per record inside the handler.
@@ -411,7 +448,7 @@ export const canPurge${ctx.pascalName}: PolicyCheck = (subject) =>
 export const canView${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike> = (
   subject,
   record,
-) => (record ? resolveCapability(${ctx.screamingSnakeName}_PRESETS.view, subject, record) : { allowed: false });
+) => (record ? resolveCapability(${ctx.screamingSnakeName}_PRESETS.view, subject, record${shareAccess(ctx, 'read')}) : { allowed: false });
 
 // Same preset as canView${ctx.pascalName}: whoever may read one record may ask for the
 // collection, and scopeWhereFor narrows that collection to the very same rows.
@@ -436,7 +473,7 @@ export class ${ctx.pascalName}Policy {
     record: ${ctx.pascalName}RecordLike,
   ): Record<${recordCapabilityKeys(ctx)}, CapabilityDecision> {
     return {
-      update: this.capabilities.resolve(${ctx.screamingSnakeName}_PRESETS.update, subject, record),
+      update: this.capabilities.resolve(${ctx.screamingSnakeName}_PRESETS.update, subject, record${shareAccess(ctx, 'write')}),
       delete: this.capabilities.resolve(${ctx.screamingSnakeName}_PRESETS.delete, subject, record),${recordCapabilityLines(ctx)}
     };
   }
@@ -457,7 +494,7 @@ export function recordLoaderFile(ctx: ResourceContext): string {
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import type { RecordLoader } from '#technical/capabilities/capability-check';
-import type { ${ctx.pascalName}RecordLike } from './${ctx.kebabName}.policy';
+${ctx.sharing ? `import { SharingService } from '#technical/sharing/sharing.service';\n` : ''}import type { ${ctx.pascalName}RecordLike } from './${ctx.kebabName}.policy';
 
 export const ${ctx.screamingSnakeName}_RECORD_LOADER = Symbol(
   '${ctx.screamingSnakeName}_RECORD_LOADER',
@@ -477,11 +514,16 @@ export class ${ctx.pascalName}RecordLoader
   implements RecordLoader<${ctx.pascalName}RecordLike>
 {
   constructor(
-    @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,
+    @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,${ctx.sharing ? `\n    private readonly sharing: SharingService,` : ''}
   ) {}
 
   async load(id: string) {
-    return this.prisma.${ctx.modelCamelName}.findUnique({ where: { id } });
+${
+  ctx.sharing
+    ? `    const record = await this.prisma.${ctx.modelCamelName}.findUnique({ where: { id } });
+    return record ? (await this.sharing.withShares('${ctx.modelPascalName}', [record]))[0]! : null;`
+    : `    return this.prisma.${ctx.modelCamelName}.findUnique({ where: { id } });`
+}
   }
 }
 ${
@@ -493,12 +535,18 @@ export class ${ctx.pascalName}VisibleRecordLoader
   implements RecordLoader<${ctx.pascalName}RecordLike>
 {
   constructor(
-    @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,
+    @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,${ctx.sharing ? `\n    private readonly sharing: SharingService,` : ''}
   ) {}
 
   async load(id: string) {
     const record = await this.prisma.${ctx.modelCamelName}.findUnique({ where: { id } });
-    return record && !record.deletedAt ? record : null;
+${
+  ctx.sharing
+    ? `    return record && !record.deletedAt
+      ? (await this.sharing.withShares('${ctx.modelPascalName}', [record]))[0]!
+      : null;`
+    : `    return record && !record.deletedAt ? record : null;`
+}
   }
 }
 `
@@ -528,7 +576,7 @@ import { CapabilitySubject } from '#technical/capabilities/capabilities.types';
 import { scopeWhereFor } from '#technical/capabilities/scope-where';
 import { env } from '#technical/config/env';${ownedByTeam(ctx) ? `\nimport { NoCurrentTeamException } from '#technical/errors/no-current-team.exception';` : ''}
 import { SignalService } from '#technical/signal/signal.service';
-import { SearchEngineRegistry } from '#technical/search/search-engine.registry';${vectorServiceImports(ctx)}
+import { SearchEngineRegistry } from '#technical/search/search-engine.registry';${ctx.sharing ? `\nimport { SharingService } from '#technical/sharing/sharing.service';\nimport type { GrantShareInput } from '#technical/sharing/sharing.dto';` : ''}${vectorServiceImports(ctx)}
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { writeAuditLog } from '#technical/audit/audit-log';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
@@ -593,7 +641,7 @@ export class ${ctx.pascalName}Service {
   constructor(
     @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,
     private readonly signal: SignalService,
-    private readonly searchEngines: SearchEngineRegistry,${vectorConstructorParameter(ctx)}${historyConstructorParameter(ctx)}
+    private readonly searchEngines: SearchEngineRegistry,${ctx.sharing ? `\n    private readonly sharing: SharingService,` : ''}${vectorConstructorParameter(ctx)}${historyConstructorParameter(ctx)}
   ) {${vectorConstructorBody(ctx)}}
 
   private notify() {
@@ -671,11 +719,41 @@ ${
     }
   }
 
-  async search(
+${
+  ctx.sharing
+    ? `  // A page of rows carries its shares, fetched in one query, so the per-row
+  // capability decisions stay an in-memory function of what is already loaded.
+  withShares<T extends { id: string }>(records: T[]) {
+    return this.sharing.withShares('${ctx.modelPascalName}', records);
+  }
+
+  listShares(recordId: string) {
+    return this.sharing.list('${ctx.modelPascalName}', recordId);
+  }
+
+  grantShare(recordId: string, grantedById: string, input: GrantShareInput) {
+    return this.sharing.grant('${ctx.modelPascalName}', recordId, grantedById, input);
+  }
+
+  revokeShare(recordId: string, shareId: string) {
+    return this.sharing.revoke('${ctx.modelPascalName}', recordId, shareId);
+  }
+
+`
+    : ''
+}  async search(
     subject: CapabilitySubject,
     options: ${ctx.pascalName}SearchOptions = {},
   ) {
 ${vectorSearchDispatch(ctx)}${
+    ctx.sharing
+      ? `    // One query for the whole request: the ids shared with this caller join
+    // the view scope below instead of being checked row by row.
+    const sharedIds = await this.sharing.sharedRecordIds('${ctx.modelPascalName}', subject);
+
+`
+      : ''
+  }${
     ctx.softDeletes
       ? `    // Excluding trashed rows is the default branch, not an opt-in one: a
     // caller that says nothing gets live rows only, so a forgotten flag hides
@@ -711,7 +789,7 @@ ${
   hasTranslatable
     ? `    const visibleWhere = {
       AND: [
-        scopeWhereFor(${ctx.screamingSnakeName}_PRESETS.view, subject),${ctx.softDeletes ? '\n        trashedWhere,' : ''}
+        scopeWhereFor(${ctx.screamingSnakeName}_PRESETS.view, subject${ctx.sharing ? ', sharedIds' : ''}),${ctx.softDeletes ? '\n        trashedWhere,' : ''}
       ],
     };
     const filterWhere = options.where
@@ -723,7 +801,7 @@ ${
     : ''
 }    const where = {
       AND: [
-        scopeWhereFor(${ctx.screamingSnakeName}_PRESETS.view, subject),${ctx.softDeletes ? '\n        trashedWhere,' : ''}
+        scopeWhereFor(${ctx.screamingSnakeName}_PRESETS.view, subject${ctx.sharing ? ', sharedIds' : ''}),${ctx.softDeletes ? '\n        trashedWhere,' : ''}
         ...(${hasTranslatable ? 'filterWhere' : 'options.where'} ? [${hasTranslatable ? 'filterWhere' : 'options.where'}] : []),
         ...(searchWhere ? [searchWhere] : []),
       ],
@@ -1308,6 +1386,10 @@ export function controllerFile(ctx: ResourceContext): string {
   const childIncludes = ownRouteIncludes(ctx);
   const hasParentRoutes =
     childIncludes.length > 0 || ctx.relations.length > 0 || ctx.history;
+  // A sharing resource also loads a single record per route (to share, list
+  // shares of, or revoke on it), so it needs the loader decorator and the
+  // request type even with no relation of its own.
+  const loadsRecords = hasParentRoutes || ctx.sharing;
   // The child route loads its parent through the loader that refuses a trashed
   // row: without it, soft-deleting a parent would leave its children listable
   // through POST /<parent>/:id/<relation>/search, which is the record coming
@@ -1316,7 +1398,7 @@ export function controllerFile(ctx: ResourceContext): string {
     ? `${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER`
     : `${ctx.screamingSnakeName}_RECORD_LOADER`;
 
-  return `import { Body, Controller, Get, ${ctx.versioned ? 'Headers, ' : ''}HttpCode, Inject, Post, Req, UseGuards } from '@nestjs/common';
+  return `import { Body, Controller, ${ctx.sharing ? 'Delete, ' : ''}Get, ${ctx.versioned ? 'Headers, ' : ''}HttpCode, Inject, ${ctx.sharing ? 'Param, ' : ''}Post, Req, UseGuards } from '@nestjs/common';
 import type { ${ctx.modelPascalName} } from '@prisma/client';
 import { z } from 'zod';
 import { SessionGuard } from '#technical/auth/session.guard';
@@ -1324,11 +1406,11 @@ import type { RequestWithUser } from '#technical/auth/session.guard';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { subjectOf } from '#technical/capabilities/subject';
 import {
-  Capability,${hasParentRoutes ? '\n  LoadRecordWith,' : ''}
+  Capability,${loadsRecords ? '\n  LoadRecordWith,' : ''}
 } from '#technical/capabilities/capability.decorator';
 import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
 import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
-${ctx.softDeletes ? `import { AlreadyRestoredException } from '#technical/errors/already-restored.exception';\n` : `import { SoftDeletesNotOfferedException } from '#technical/errors/invalid-query.exception';\n`}import { resolveDomainError } from '#technical/errors/domain-exception.filter';
+${ctx.sharing ? `import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';\nimport { grantShareSchema } from '#technical/sharing/sharing.dto';\nimport type { GrantShareInput } from '#technical/sharing/sharing.dto';\n` : ''}${ctx.softDeletes ? `import { AlreadyRestoredException } from '#technical/errors/already-restored.exception';\n` : `import { SoftDeletesNotOfferedException } from '#technical/errors/invalid-query.exception';\n`}import { resolveDomainError } from '#technical/errors/domain-exception.filter';
 import type { ResolvedError } from '#technical/errors/domain-exception.filter';
 import { executeBatch } from '#technical/http/batch-execution';
 import type { BatchEntry } from '#technical/http/batch-execution';
@@ -1379,7 +1461,7 @@ ${
 `
     : ''
 }  canUpdate${ctx.pascalName},
-  canUpdateAny${ctx.pascalName},${childIncludes.length > 0 || ctx.relations.length > 0 ? `\n  canView${ctx.pascalName},` : ''}${historyPolicyImports(ctx)}
+  canUpdateAny${ctx.pascalName},${ctx.sharing ? `\n  canShare${ctx.pascalName},` : ''}${childIncludes.length > 0 || ctx.relations.length > 0 ? `\n  canView${ctx.pascalName},` : ''}${historyPolicyImports(ctx)}
   canViewAny${ctx.pascalName},
   ${ctx.pascalName}Policy,
 } from './${ctx.kebabName}.policy';
@@ -1388,7 +1470,7 @@ import {
   ${ctx.pascalName}Service,
 } from './${ctx.kebabName}.service';
 import {
-  ${ctx.screamingSnakeName}_RECORD_LOADER,${hasParentRoutes && ctx.softDeletes ? `\n  ${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER,` : ''}
+  ${ctx.screamingSnakeName}_RECORD_LOADER,${loadsRecords && ctx.softDeletes ? `\n  ${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER,` : ''}
 } from './${ctx.kebabName}-record.loader';
 import type { ${ctx.pascalName}RecordLoader } from './${ctx.kebabName}-record.loader';
 import { to${ctx.pascalName}View } from './${ctx.kebabName}.view';
@@ -1423,7 +1505,7 @@ ${ctx.fields.map((field) => `    { name: '${field.name}', type: '${field.type}',
   // knows the search route returns every match, and that asking for a page is
   // an error rather than a no-op.
   paginated: ${ctx.pagination ? 'true' : 'false'},
-  softDeletes: ${ctx.softDeletes ? 'true' : 'false'},${ctx.versioned ? `\n  versioned: { field: 'version', header: 'If-Match' },` : ''}${ctx.history ? `\n  history: true,` : ''}
+  softDeletes: ${ctx.softDeletes ? 'true' : 'false'},${ctx.versioned ? `\n  versioned: { field: 'version', header: 'If-Match' },` : ''}${ctx.history ? `\n  history: true,` : ''}${ctx.sharing ? `\n  sharing: true,` : ''}
   // The many-to-many relations the update route can attach to and detach from
   // by id. A client builds its relation controls from this list and reads
   // whether each is allowed from the record's own capabilities, so it neither
@@ -1438,7 +1520,7 @@ ${ctx.fields.map((field) => `    { name: '${field.name}', type: '${field.type}',
   },
 };
 ${
-  hasParentRoutes
+  loadsRecords
     ? `\ntype RequestWith${ctx.pascalName} = RequestWithUser & { record: ${ctx.modelPascalName} };
 `
     : ''
@@ -1591,8 +1673,13 @@ ${paginationMetaLines(ctx.pagination, ctx.vector !== null)}      total,
       );
     }
 
-    return ok(
-      records.map((record) => {
+    ${
+      ctx.sharing
+        ? `const shared = await this.${ctx.camelName}s.withShares(records);
+    `
+        : ''
+    }return ok(
+      ${ctx.sharing ? 'shared' : 'records'}.map((record) => {
         const resolved = this.policy.recordCapabilities(subject, record);
         return {
           ...withIncludesAndAggregates(project(to${ctx.pascalName}View(record)), record, query),
@@ -1679,6 +1766,51 @@ ${paginationMetaLines(include.pagination)}      total,
     })
     .join('')}
 ${historyRoutes(ctx)}
+${
+  ctx.sharing
+    ? `
+  // Who a record is shared with. Gated by the share capability, which is the
+  // owner's: a reader or writer by share cannot see, or change, the list.
+  @RateLimit('read')
+  @Post(':id/shares/search')
+  @HttpCode(200)
+  @Capability(canShare${ctx.pascalName})
+  @LoadRecordWith(${childRouteLoader}, '${ctx.kebabName}')
+  async listShares(@Req() req: RequestWith${ctx.pascalName}) {
+    return ok(await this.${ctx.camelName}s.listShares(req.record.id));
+  }
+
+  // Granting twice to the same user or team changes the access rather than
+  // adding a row. The grantee must exist in the caller's tenant.
+  @RateLimit('write')
+  @Post(':id/shares')
+  @Capability(canShare${ctx.pascalName})
+  @LoadRecordWith(${childRouteLoader}, '${ctx.kebabName}')
+  async grantShare(
+    @Req() req: RequestWith${ctx.pascalName},
+    @Body(new ZodValidationPipe(grantShareSchema)) body: GrantShareInput,
+  ) {
+    return ok(
+      await this.${ctx.camelName}s.grantShare(req.record.id, req.user.id, body),
+      ['Share granted.'],
+    );
+  }
+
+  @RateLimit('write')
+  @Delete(':id/shares/:shareId')
+  @Capability(canShare${ctx.pascalName})
+  @LoadRecordWith(${childRouteLoader}, '${ctx.kebabName}')
+  async revokeShare(
+    @Req() req: RequestWith${ctx.pascalName},
+    @Param('shareId') shareId: string,
+  ) {
+    return ok(await this.${ctx.camelName}s.revokeShare(req.record.id, shareId), [
+      'Share revoked.',
+    ]);
+  }
+`
+    : ''
+}
   @Post('create')
   @Capability(canCreate${ctx.pascalName})
   async create(
@@ -1908,16 +2040,57 @@ export class ${ctx.pascalName}ChangeFeed implements OnModuleInit {
 `;
 }
 
+/**
+ * Present only for a resource whose blueprint declares an `erasure`. It hands
+ * the kernel the resource's declaration the same way the change feed file hands
+ * it the resource's channel, so the kernel never imports a resource.
+ */
+export function personalDataFile(ctx: ResourceContext): string {
+  const fields = ctx.fields
+    .map(
+      (field) =>
+        `        { name: '${field.name}', type: '${field.type}', optional: ${field.optional}, translatable: ${field.translatable}, personal: ${field.personal} },`,
+    )
+    .join('\n');
+
+  return `import { Injectable, OnModuleInit } from '@nestjs/common';
+import { PersonalDataRegistry } from '#technical/privacy/personal-data.registry';
+
+@Injectable()
+export class ${ctx.pascalName}PersonalData implements OnModuleInit {
+  constructor(private readonly registry: PersonalDataRegistry) {}
+
+  onModuleInit(): void {
+    this.registry.register({
+      model: '${ctx.modelPascalName}',
+      erase: '${ctx.personalData?.erase ?? 'delete'}',
+      fields: [
+${fields}
+      ],
+    });
+  }
+}
+`;
+}
+
+export function personalDataFiles(
+  ctx: ResourceContext,
+): Record<string, string> {
+  return ctx.personalData
+    ? { [`${ctx.kebabName}.personal-data.ts`]: personalDataFile(ctx) }
+    : {};
+}
+
 export function moduleFile(ctx: ResourceContext): string {
   return `import { Module } from '@nestjs/common';
 import { AuthModule } from '#technical/auth/auth.module';
 import { CapabilitiesService } from '#technical/capabilities/capabilities.service';
 import { ChangeFeedModule } from '#technical/change-feed/change-feed.module';${ctx.history ? "\nimport { HistoryModule } from '#technical/history/history.module';" : ''}
-import { PrismaModule } from '#technical/prisma/prisma.module';
+import { PrismaModule } from '#technical/prisma/prisma.module';${ctx.personalData ? "\nimport { PrivacyModule } from '#technical/privacy/privacy.module';" : ''}
 import { SearchModule } from '#technical/search/search.module';
-import { SignalModule } from '#technical/signal/signal.module';${ctx.vector ? "\nimport { VectorModule } from '#technical/vector/vector.module';" : ''}
+import { SignalModule } from '#technical/signal/signal.module';${ctx.sharing ? "\nimport { SharingModule } from '#technical/sharing/sharing.module';" : ''}${ctx.vector ? "\nimport { VectorModule } from '#technical/vector/vector.module';" : ''}
 import { ${ctx.pascalName}ChangeFeed } from './${ctx.kebabName}.change-feed';
-import { ${ctx.pascalName}Controller } from './${ctx.kebabName}.controller';
+import { ${ctx.pascalName}Controller } from './${ctx.kebabName}.controller';${ctx.personalData ? `\nimport { ${ctx.pascalName}PersonalData } from './${ctx.kebabName}.personal-data';` : ''}
 import { ${ctx.pascalName}Policy } from './${ctx.kebabName}.policy';
 import { ${ctx.pascalName}Service } from './${ctx.kebabName}.service';
 import {
@@ -1933,13 +2106,13 @@ import {
     AuthModule,
     SearchModule,
     SignalModule,
-    ChangeFeedModule${ctx.vector ? ', VectorModule' : ''}${ctx.history ? ', HistoryModule' : ''},
+    ChangeFeedModule${ctx.sharing ? ', SharingModule' : ''}${ctx.vector ? ', VectorModule' : ''}${ctx.history ? ', HistoryModule' : ''}${ctx.personalData ? ', PrivacyModule' : ''},
   ],
   controllers: [${ctx.pascalName}Controller],
   providers: [
     ${ctx.pascalName}Service,
     ${ctx.pascalName}Policy,
-    ${ctx.pascalName}ChangeFeed,
+    ${ctx.pascalName}ChangeFeed,${ctx.personalData ? `\n    ${ctx.pascalName}PersonalData,` : ''}
     CapabilitiesService,
     { provide: ${ctx.screamingSnakeName}_RECORD_LOADER, useClass: ${ctx.pascalName}RecordLoader },
     {
@@ -3433,6 +3606,515 @@ ${searchCheck}
     .join('');
 }
 
+// Proves the three claims sharing makes -- a share opens a record to its
+// grantee (in the list as well as on the detail route) and no further than the
+// access it names, a revoke closes it again, and none of it crosses a tenant --
+// against the real scope filter and the real policy, over HTTP.
+function sharingSpecBlock(ctx: ResourceContext, createBody: string): string {
+  const canCreateAny = ctx.permissions.create !== 'none';
+  const closedToStranger =
+    ctx.permissions.view === 'own' || ctx.permissions.view === 'team';
+
+  if (!ctx.sharing || !canCreateAny || !closedToStranger) {
+    return '';
+  }
+
+  const base = ctx.pluralKebabName;
+  const keys = `capabilities: ['update', 'delete', 'share']`;
+
+  return `  describe('sharing', () => {
+    const createRecord = async (): Promise<string> => {
+      const created = await request(app.getHttpServer())
+        .post('/${base}/create')
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .send({ data: [${createBody}] })
+        .expect(201);
+
+      return (
+        created.body as { data: { status: string; data: { id: string } }[] }
+      ).data[0]!.data.id;
+    };
+
+    const grant = (
+      recordId: string,
+      body: { granteeType: string; granteeId: string; access: string },
+      token = ownerToken,
+    ) =>
+      request(app.getHttpServer())
+        .post(\`/${base}/\${recordId}/shares\`)
+        .set('Authorization', \`Bearer \${token}\`)
+        .send(body);
+
+    const strangerView = async (recordId: string) => {
+      const response = await request(app.getHttpServer())
+        .post('/${base}/search')
+        .set('Authorization', \`Bearer \${strangerToken}\`)
+        .send({ filters: [{ field: 'id', value: recordId }], ${keys} })
+        .expect(200);
+
+      return (
+        response.body as {
+          data: {
+            id: string;
+            capabilities: Record<string, { allowed: boolean; scope?: string }>;
+          }[];
+        }
+      ).data;
+    };
+
+    it('opens a record to the user it is shared with, in the list and in search, for reading only', async () => {
+      const recordId = await createRecord();
+
+      expect(await strangerView(recordId)).toHaveLength(0);
+
+      const granted = await grant(recordId, {
+        granteeType: 'user',
+        granteeId: strangerId,
+        access: 'read',
+      }).expect(201);
+
+      expect((granted.body as { data: { access: string } }).data.access).toBe(
+        'read',
+      );
+
+      const rows = await strangerView(recordId);
+
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.capabilities.update!.allowed).toBe(false);
+      expect(rows[0]!.capabilities.delete!.allowed).toBe(false);
+      expect(rows[0]!.capabilities.share!.allowed).toBe(false);
+
+      const list = await request(app.getHttpServer())
+        .post('/${base}/search')
+        .set('Authorization', \`Bearer \${strangerToken}\`)
+        .send({})
+        .expect(200);
+
+      expect(
+        (list.body as { data: { id: string }[] }).data.map((row) => row.id),
+      ).toContain(recordId);
+    });
+
+    it('lets a write share update but never delete or share onward', async () => {
+      const recordId = await createRecord();
+
+      await grant(recordId, {
+        granteeType: 'user',
+        granteeId: strangerId,
+        access: 'read',
+      }).expect(201);
+      await grant(recordId, {
+        granteeType: 'user',
+        granteeId: strangerId,
+        access: 'write',
+      }).expect(201);
+
+      const rows = await strangerView(recordId);
+
+      expect(rows[0]!.capabilities.update).toMatchObject({
+        allowed: true,
+        scope: 'shared',
+      });
+      expect(rows[0]!.capabilities.delete!.allowed).toBe(false);
+      expect(rows[0]!.capabilities.share!.allowed).toBe(false);
+
+      await grant(
+        recordId,
+        { granteeType: 'user', granteeId: strangerId, access: 'write' },
+        strangerToken,
+      ).expect(403);
+
+      const shares = await request(app.getHttpServer())
+        .post(\`/${base}/\${recordId}/shares/search\`)
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .expect(200);
+
+      expect((shares.body as { data: unknown[] }).data).toHaveLength(1);
+    });
+
+    it('closes the record again once the share is revoked', async () => {
+      const recordId = await createRecord();
+      const granted = await grant(recordId, {
+        granteeType: 'user',
+        granteeId: strangerId,
+        access: 'read',
+      }).expect(201);
+      const shareId = (granted.body as { data: { id: string } }).data.id;
+
+      expect(await strangerView(recordId)).toHaveLength(1);
+
+      await request(app.getHttpServer())
+        .delete(\`/${base}/\${recordId}/shares/\${shareId}\`)
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .expect(200);
+
+      expect(await strangerView(recordId)).toHaveLength(0);
+
+      await request(app.getHttpServer())
+        .delete(\`/${base}/\${recordId}/shares/\${shareId}\`)
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .expect(404);
+    });
+
+    it('shares with a team, reaching every member of it', async () => {
+      const recordId = await createRecord();
+      const team = await request(app.getHttpServer())
+        .post('/teams')
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .send({ name: 'Sharing Team' })
+        .expect(201);
+      const teamId = (team.body as { data: { id: string } }).data.id;
+
+      await request(app.getHttpServer())
+        .post(\`/teams/\${teamId}/members\`)
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .send({ userId: strangerId })
+        .expect(201);
+
+      expect(await strangerView(recordId)).toHaveLength(0);
+
+      await grant(recordId, {
+        granteeType: 'team',
+        granteeId: teamId,
+        access: 'read',
+      }).expect(201);
+
+      expect(await strangerView(recordId)).toHaveLength(1);
+    });
+
+    it('keeps a share inside its tenant', async () => {
+      const recordId = await createRecord();
+      const outsider = await actingAs(app, {
+        tenantId: \`tenant-\${randomUUID()}\`,
+      });
+
+      await grant(recordId, {
+        granteeType: 'user',
+        granteeId: outsider.id,
+        access: 'read',
+      }).expect(404);
+
+      await grant(
+        recordId,
+        { granteeType: 'user', granteeId: outsider.id, access: 'read' },
+        outsider.token,
+      ).expect(404);
+
+      await request(app.getHttpServer())
+        .post(\`/${base}/\${recordId}/shares/search\`)
+        .set('Authorization', \`Bearer \${outsider.token}\`)
+        .expect(404);
+    });
+  });
+`;
+}
+
+/**
+ * What a generated resource owes a privacy request, proved against the real
+ * routes: the export carries the owner's rows and no one else's, the erasure
+ * removes or rewrites exactly the declared data, the audit trail keeps the
+ * request but not what it erased, and the chain still verifies afterwards.
+ *
+ * Everything runs in a tenant of its own, so an erasure of "the whole tenant"
+ * cannot reach another suite's rows and the chain it verifies is this test's.
+ */
+function privacySpecBlock(ctx: ResourceContext, createBody: string): string {
+  if (!ctx.personalData || ctx.permissions.create === 'none') {
+    return '';
+  }
+
+  const route = ctx.pluralKebabName;
+  const model = ctx.modelPascalName;
+  const delegate = ctx.modelCamelName;
+  const erase = ctx.personalData.erase;
+  const markerField = ctx.fields.find(
+    (field) =>
+      field.type === 'string' && !field.optional && !field.translatable,
+  );
+  const ownedFields = ctx.fields
+    .filter((field) => !field.optional)
+    .map(
+      (field) =>
+        `${field.name}: ${field === markerField ? 'marker' : sampleValueFor(field)}`,
+    );
+  const ownedBody = `{ ${ownedFields.join(', ')} }`;
+  // An encrypted field is the one that proves the export opens what the row
+  // seals, so it travels in the body even when it is optional.
+  const richBody = `{ ${[
+    ...ownedFields,
+    ...ctx.fields
+      .filter((field) => field.type === 'encrypted' && field.optional)
+      .map((field) => `${field.name}: ${sampleValueFor(field)}`),
+  ].join(', ')} }`;
+  const exportedChecks = ctx.fields
+    .filter(
+      (field) =>
+        !field.translatable &&
+        field.type !== 'datetime' &&
+        (!field.optional || field.type === 'encrypted') &&
+        field !== markerField,
+    )
+    .map((field) => `        ${field.name}: ${sampleValueFor(field)},`)
+    .join('\n');
+  // What an anonymised row holds. A sealed or translatable required value is
+  // not readable back through a raw client, so only what can be compared is.
+  const wipedChecks = ctx.fields
+    .filter(
+      (field) =>
+        field.personal &&
+        field.type !== 'datetime' &&
+        (field.optional || (!field.translatable && field.type !== 'encrypted')),
+    )
+    .map((field) => {
+      if (field.optional) {
+        return `        ${field.name}: null,`;
+      }
+
+      switch (field.type) {
+        case 'int':
+          return `        ${field.name}: 0,`;
+        case 'boolean':
+          return `        ${field.name}: false,`;
+        default:
+          return `        ${field.name}: '[erased]',`;
+      }
+    })
+    .join('\n');
+  const markerDeclaration = (prefix: string): string =>
+    markerField ? `      const marker = '${prefix}-' + randomUUID();\n` : '';
+  const rowsAfterErasure = (where: string): string =>
+    erase === 'delete'
+      ? `      expect(await prisma.${delegate}.count({ where: ${where} })).toBe(0);`
+      : `      const rows = await prisma.${delegate}.findMany({ where: ${where} });
+      expect(rows.length).toBeGreaterThan(0);
+      for (const row of rows) {
+        expect(row).toMatchObject({
+${wipedChecks}
+        });
+      }`;
+
+  return `
+  describe('privacy requests', () => {
+    const tenantId = createTestTenantId();
+    let admin: Actor;
+    let subject: Actor;
+    let bystander: Actor;
+
+    beforeAll(async () => {
+      admin = await actingAs(app, { tenantId, role: 'admin' });
+      subject = await actingAs(app, { tenantId });
+      bystander = await actingAs(app, { tenantId });
+    });
+
+    afterAll(async () => {
+      await purgeTenant(tenantId);
+    });
+
+    async function createAs(
+      actor: Actor,
+      body: Record<string, unknown>,
+    ): Promise<string> {
+      const response = await request(app.getHttpServer())
+        .post('/${route}/create')
+        .set('Authorization', actor.authorization)
+        .send({ data: [body] })
+        .expect(201);
+
+      return (response.body as { data: { data: { id: string } }[] }).data[0]!
+        .data.id;
+    }
+
+    async function requestAs(
+      actor: Actor,
+      path: string,
+      body: Record<string, unknown>,
+      status: number,
+    ): Promise<string> {
+      const response = await request(app.getHttpServer())
+        .post(path)
+        .set('Authorization', actor.authorization)
+        .send(body)
+        .expect(status);
+
+      return (response.body as { data?: { id: string } }).data?.id ?? '';
+    }
+
+    // An erasure ends the sessions of the user it erased, so the outcome of
+    // one is read from the request row; an export is collected over the API.
+    async function settled(id: string) {
+      for (let attempt = 0; attempt < 90; attempt += 1) {
+        const row = await prisma.privacyRequest.findUniqueOrThrow({
+          where: { id },
+        });
+
+        if (row.status === 'done' || row.status === 'failed') {
+          return row;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+
+      throw new Error('privacy request ' + id + ' did not settle');
+    }
+
+    async function collect(actor: Actor, id: string) {
+      for (let attempt = 0; attempt < 90; attempt += 1) {
+        const response = await request(app.getHttpServer())
+          .get('/privacy/requests/' + id)
+          .set('Authorization', actor.authorization)
+          .expect(200);
+        const view = (
+          response.body as {
+            data: { status: string; error: string | null; result?: unknown };
+          }
+        ).data;
+
+        if (view.status === 'done' || view.status === 'failed') {
+          return view;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+
+      throw new Error('privacy request ' + id + ' did not settle');
+    }
+
+    it('exports the rows a user owns, opened, and none of anyone else', async () => {
+${markerDeclaration('export')}      const ownId = await createAs(subject, ${richBody});
+      const otherId = await createAs(bystander, ${createBody});
+
+      const id = await requestAs(subject, '/privacy/exports', {}, 202);
+      const bundle = await collect(subject, id);
+
+      expect(bundle).toMatchObject({ status: 'done', error: null });
+
+      const exported = bundle.result as {
+        identity: { id: string };
+        resources: Record<string, Array<Record<string, unknown>>>;
+      };
+      const rows = exported.resources.${model}!;
+
+      expect(exported.identity.id).toBe(subject.id);
+      expect(rows.map((row) => row.id)).toEqual([ownId]);
+      expect(rows[0]).toMatchObject({${markerField ? `\n        ${markerField.name}: marker,` : ''}
+${exportedChecks}
+      });
+      expect(JSON.stringify(bundle.result)).not.toContain(otherId);
+
+      const again = await request(app.getHttpServer())
+        .get('/privacy/requests/' + id)
+        .set('Authorization', subject.authorization)
+        .expect(200);
+      expect(
+        (again.body as { data: { result?: unknown } }).data.result,
+      ).toBeUndefined();
+    });
+
+    it('refuses a request about another user unless an admin makes it', async () => {
+      await requestAs(bystander, '/privacy/exports', { userId: subject.id }, 403);
+      await requestAs(
+        bystander,
+        '/privacy/erasures/user',
+        { userId: subject.id },
+        403,
+      );
+      await requestAs(subject, '/privacy/erasures/tenant', { confirm: tenantId }, 403);
+      await requestAs(admin, '/privacy/erasures/tenant', { confirm: 'another-tenant' }, 400);
+
+      const id = await requestAs(
+        admin,
+        '/privacy/exports',
+        { userId: subject.id },
+        202,
+      );
+
+      await request(app.getHttpServer())
+        .get('/privacy/requests/' + id)
+        .set('Authorization', bystander.authorization)
+        .expect(404);
+      expect(await collect(admin, id)).toMatchObject({ status: 'done' });
+    });
+
+    it('erases a user, redacts what the audit trail held and keeps the request itself', async () => {
+${markerDeclaration('erase')}      const ownId = await createAs(subject, ${ownedBody});
+      const keptId = await createAs(bystander, ${createBody});
+
+      const id = await requestAs(
+        subject,
+        '/privacy/erasures/user',
+        { userId: subject.id },
+        202,
+      );
+
+      expect(await settled(id)).toMatchObject({ status: 'done', error: null });
+
+${rowsAfterErasure(`{ ownerId: subject.id }`)}
+      expect(
+        await prisma.${delegate}.findUnique({ where: { id: keptId } }),
+      ).not.toBeNull();
+
+      const held = await prisma.auditLog.findMany({
+        where: { tenantId, model: '${model}', recordId: ownId },
+      });
+      expect(held.every((entry) => entry.redactedAt !== null)).toBe(true);
+${markerField ? `      expect(JSON.stringify(held)).not.toContain(marker);\n` : ''}
+      const trail = await prisma.auditLog.findMany({
+        where: { tenantId, model: 'PrivacyRequest', recordId: id },
+        orderBy: { sequence: 'asc' },
+      });
+      expect(trail.map((entry) => entry.operation)).toEqual([
+        'privacy.erase-user.requested',
+        'privacy.erase-user.completed',
+      ]);
+${markerField ? `      expect(JSON.stringify(trail)).not.toContain(marker);\n` : ''}
+      const identity = await prisma.user.findUniqueOrThrow({
+        where: { id: subject.id },
+      });
+      expect(identity.email).toMatch(/@erased\\.invalid$/);
+      expect(identity.banned).toBe(true);
+
+      const verified = await request(app.getHttpServer())
+        .get('/audit-logs/verify')
+        .set('Authorization', admin.authorization)
+        .expect(200);
+      expect((verified.body as { data: { valid: boolean } }).data.valid).toBe(
+        true,
+      );
+    });
+
+    it('erases a whole tenant and leaves every other tenant alone', async () => {
+      await createAs(bystander, ${createBody});
+      const foreign = await actingAs(app);
+      const foreignId = await createAs(foreign, ${createBody});
+
+      const id = await requestAs(
+        admin,
+        '/privacy/erasures/tenant',
+        { confirm: tenantId },
+        202,
+      );
+      const outcome = await collect(admin, id);
+
+      expect(outcome).toMatchObject({ status: 'done', error: null });
+
+${rowsAfterErasure(`{ tenantId }`)}
+      expect(
+        await prisma.${delegate}.findUnique({ where: { id: foreignId } }),
+      ).not.toBeNull();
+
+      const erased = await prisma.user.findUniqueOrThrow({
+        where: { id: bystander.id },
+      });
+      const requester = await prisma.user.findUniqueOrThrow({
+        where: { id: admin.id },
+      });
+      expect(erased.email).toMatch(/@erased\\.invalid$/);
+      expect(requester.email).toBe(admin.email);
+    });
+  });
+`;
+}
+
 export function specFile(ctx: ResourceContext): string {
   const requiredFields = ctx.fields.filter((field) => !field.optional);
   const createBody =
@@ -3453,7 +4135,8 @@ export function specFile(ctx: ResourceContext): string {
   const canUpdateAny = ctx.permissions.update !== 'none';
   const canDeleteAny = ctx.permissions.delete !== 'none';
   const hasRelations = ctx.relations.length > 0;
-  const usesPrismaClient = hasRelations || ctx.vector !== null;
+  const usesPrismaClient =
+    hasRelations || ctx.vector !== null || ctx.personalData !== null;
 
   return `import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
@@ -3469,12 +4152,12 @@ import { MAX_BATCH_ENTRIES } from '#technical/http/batch';${
 } from '#technical/i18n/locale.config';`
       : ''
   }
-import { actingAs, registerAndLogin } from '#devtools/test-support';${vectorSpecImports(ctx)}
+${ctx.personalData ? `import { actingAs, createTestTenantId, purgeTenant, registerAndLogin } from '#devtools/test-support';\nimport type { Actor } from '#devtools/test-support';` : `import { actingAs, registerAndLogin } from '#devtools/test-support';`}${vectorSpecImports(ctx)}
 ${usesPrismaClient ? `\nconst adapter = new PrismaPg({ connectionString: env.DATABASE_URL });\nconst prisma = new PrismaClient({ adapter });\n` : ''}${vectorSpecFixtures(ctx)}
 describe('${ctx.pascalName} resource', () => {
   let app: INestApplication<App>;
   let ownerToken: string;
-  let strangerToken: string;
+  let strangerToken: string;${ctx.sharing ? '\n  let strangerId: string;' : ''}
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -3483,11 +4166,20 @@ describe('${ctx.pascalName} resource', () => {
     app = moduleRef.createNestApplication();
     await app.init();
 
-    ownerToken = (await registerAndLogin(app)).token;
-    strangerToken = (await registerAndLogin(app)).token;
 ${
-  ownedByTeam(ctx)
-    ? `
+  ctx.sharing
+    ? `    const owner = await registerAndLogin(app);
+    const stranger = await registerAndLogin(app);
+    ownerToken = owner.token;
+    strangerToken = stranger.token;
+    strangerId = stranger.id;
+`
+    : `    ownerToken = (await registerAndLogin(app)).token;
+    strangerToken = (await registerAndLogin(app)).token;
+`
+}${
+    ownedByTeam(ctx)
+      ? `
     // Distinct teams, not the same one: the parity test below proves a
     // stranger is refused, and that only holds if the two fixtures do not
     // already share a team. The session is re-resolved from the database on
@@ -3505,8 +4197,8 @@ ${
       .send({ name: 'Stranger Team' })
       .expect(201);
 `
-    : ''
-}  });
+      : ''
+  }  });
 
   afterAll(async () => {
     await app.close();${usesPrismaClient ? `\n    await prisma.$disconnect();` : ''}
@@ -3563,7 +4255,7 @@ ${
   });
 
 ${scopeParityTest(ctx, createBody)}
-${vectorSpecTests(ctx, createBody)}${ctx.softDeletes ? `\n${trashParityTest(ctx, createBody)}\n` : ''}
+${sharingSpecBlock(ctx, createBody)}${vectorSpecTests(ctx, createBody)}${ctx.softDeletes ? `\n${trashParityTest(ctx, createBody)}\n` : ''}
 ${
   canCreateAny && canUpdateAny
     ? `  it('lists records with the capabilities named in the request body', async () => {
@@ -3821,7 +4513,7 @@ ${
   });
 `
     : ''
-}${relationSpecBlock(ctx, createBody)}${translatableSpecBlock(ctx, createBody)}});
+}${relationSpecBlock(ctx, createBody)}${translatableSpecBlock(ctx, createBody)}${privacySpecBlock(ctx, createBody)}});
 `;
 }
 

@@ -37,6 +37,7 @@ export interface ResourceDescription {
   version: number;
   versioned?: DescribedVersioning;
   history?: boolean;
+  sharing?: boolean;
   fields: DescribedField[];
   sorts: string[];
   filters: string[];
@@ -149,6 +150,10 @@ export function capabilityKeysOf(description: ResourceDescription): string[] {
 
   if (description.history) {
     keys.push('history', 'revert');
+  }
+
+  if (description.sharing) {
+    keys.push('share');
   }
 
   for (const relation of description.relations) {
