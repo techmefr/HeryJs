@@ -5,6 +5,7 @@ import { ChangeFeedModule } from '#technical/change-feed/change-feed.module';
 import { PrismaModule } from '#technical/prisma/prisma.module';
 import { SearchModule } from '#technical/search/search.module';
 import { SignalModule } from '#technical/signal/signal.module';
+import { SharingModule } from '#technical/sharing/sharing.module';
 import { SnippetChangeFeed } from './snippet.change-feed';
 import { SnippetController } from './snippet.controller';
 import { SnippetPolicy } from './snippet.policy';
@@ -23,6 +24,7 @@ import {
     SearchModule,
     SignalModule,
     ChangeFeedModule,
+    SharingModule,
   ],
   controllers: [SnippetController],
   providers: [

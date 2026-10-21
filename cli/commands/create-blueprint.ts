@@ -327,6 +327,11 @@ softDeletes: true
 # overwriting what someone else just wrote.
 versioned: false
 
+# Off unless you say so. Turn it on and the owner can grant a user or a team read or
+# write access to a single record: the resource gets share routes and a share
+# capability, and shared records join the list scope without a query per row.
+sharing: false
+
 permissions:
   # preset: own (creator/owner only) | team (same team) | all (any authenticated user) | none (nobody)
   # view drives the detail route and the collection filter from the same preset,

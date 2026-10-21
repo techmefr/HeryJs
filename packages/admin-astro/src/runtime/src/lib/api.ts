@@ -137,7 +137,9 @@ export function sectionsOf(controllers: DescribedController[]): AdminSection[] {
       .filter(
         (route) =>
           (route.method === 'GET' && !route.path.includes(':')) ||
-          (route.method === 'POST' && route.path.endsWith('/search')),
+          (route.method === 'POST' &&
+            route.path.endsWith('/search') &&
+            !route.path.includes(':')),
       )
       .map((route) => ({
         method: route.method as 'GET' | 'POST',

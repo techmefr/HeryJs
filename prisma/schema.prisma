@@ -684,3 +684,24 @@ model LogEntry {
   @@index([tenantId, loggedAt])
   @@index([loggedAt])
 }
+
+// One row grants one user or one team read or write access to one record of a
+// sharing-enabled resource. resource is the Prisma model name, so the table is
+// shared by every such resource and carries no foreign key to any of them.
+model RecordShare {
+  id          String   @id @default(cuid())
+  tenantId    String
+  resource    String
+  recordId    String
+  granteeType String
+  granteeId   String
+  access      String
+  grantedById String
+  createdAt   DateTime @default(now())
+
+  @@unique([tenantId, resource, recordId, granteeType, granteeId], map: "RecordShare_grant_key")
+  // The lookup that folds shares into a collection scope: everything shared
+  // with one subject, for one resource.
+  @@index([tenantId, resource, granteeType, granteeId])
+  @@index([tenantId, resource, recordId])
+}

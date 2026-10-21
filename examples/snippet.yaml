@@ -1,5 +1,6 @@
 name: Snippet
 versioned: true
+sharing: true
 
 fields:
   - name: title

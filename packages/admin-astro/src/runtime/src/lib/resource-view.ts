@@ -15,6 +15,7 @@ import { state as stateCard, skeleton } from './render';
 import { childRelationsOf } from './relations';
 import { openCreate, openEdit } from './resource-editor';
 import type { EditorContext } from './resource-editor';
+import { openShares } from './shares';
 import { resourceTable, columnsOf } from './resource-table';
 import type { RowButton } from './resource-table';
 import {
@@ -72,6 +73,15 @@ function buttonsOf(view: View, row: ResourceRow): RowButton[] {
       label: 'Edit',
       isAllowed: isAllowed(row.capabilities, 'update'),
       onClick: () => void openEdit(editorOf(view), row.id),
+    });
+  }
+
+  if (view.description.sharing && !query.trashed) {
+    buttons.push({
+      id: 'share',
+      label: 'Share',
+      isAllowed: isAllowed(row.capabilities, 'share'),
+      onClick: () => void openShares(view.root, view.options.base, row),
     });
   }
 
