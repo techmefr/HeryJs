@@ -23,6 +23,17 @@ webhook processor calls per event, inside the event's tenant. In a project
 that already has the webhooks module, copy
 `src/technical/webhooks/webhook-handler.ts` and the processor change by hand.
 
+### Database workflow
+
+`migrate:status`, `migrate:fresh`, `db:seed [--fresh]`, `db:diff` and
+`db:branch create|drop|list` sit beside `migrate` and `migrate:down`. The two
+that wipe a database refuse in production, and `db:branch` copies a database
+with `CREATE DATABASE ... TEMPLATE`. `migrate:down` was also broken on Prisma
+7, which dropped `--from-schema-datasource` and `--shadow-database-url`: it now
+reads the shadow database from `SHADOW_DATABASE_URL` through `prisma.config.ts`.
+An existing project adds `shadowDatabaseUrl: process.env.SHADOW_DATABASE_URL`
+to the datasource in its own `prisma.config.ts` by hand.
+
 ### OpenAPI and a typed client
 
 `hery openapi` emits an OpenAPI 3.1 document and `hery openapi:client` a typed
