@@ -156,6 +156,7 @@ ${relationSchemaBlock(ctx)}
 // record, so the response shape never has to differ between one and many.
 export const create${ctx.pascalName}RequestSchema = z.object({
   data: z.array(create${ctx.pascalName}Schema).max(MAX_BATCH_ENTRIES),
+  atomic: z.boolean().default(false),
 });
 export type Create${ctx.pascalName}RequestBody = z.infer<
   typeof create${ctx.pascalName}RequestSchema
@@ -167,6 +168,7 @@ export const update${ctx.pascalName}RequestSchema = z.object({
       id: z.string(),${ctx.versioned ? `\n      version: z.number().int().positive().optional(),` : ''}${hasRelations ? `\n      relations: update${ctx.pascalName}RelationsSchema.optional(),` : ''}
     }).superRefine(check${ctx.pascalName}),
   ).max(MAX_BATCH_ENTRIES),
+  atomic: z.boolean().default(false),
 });
 export type Update${ctx.pascalName}RequestBody = z.infer<
   typeof update${ctx.pascalName}RequestSchema
@@ -180,6 +182,7 @@ export type Delete${ctx.pascalName}Mode = (typeof DELETE_MODES)[number];
 export const delete${ctx.pascalName}RequestSchema = z.object({
   ids: z.array(z.string()).max(MAX_BATCH_ENTRIES),
   mode: z.enum(DELETE_MODES).default('soft'),
+  atomic: z.boolean().default(false),
 });
 export type Delete${ctx.pascalName}RequestBody = z.infer<
   typeof delete${ctx.pascalName}RequestSchema
@@ -191,6 +194,7 @@ export const restore${ctx.pascalName}RequestSchema = z.object({
   // it reuses the update schema's own field whitelist rather than inventing
   // a narrower one.
   patch: update${ctx.pascalName}Schema.optional(),
+  atomic: z.boolean().default(false),
 });
 export type Restore${ctx.pascalName}RequestBody = z.infer<
   typeof restore${ctx.pascalName}RequestSchema
@@ -202,6 +206,7 @@ export type Restore${ctx.pascalName}RequestBody = z.infer<
 // that are already gone.
 export const delete${ctx.pascalName}RequestSchema = z.object({
   ids: z.array(z.string()).max(MAX_BATCH_ENTRIES),
+  atomic: z.boolean().default(false),
 });
 export type Delete${ctx.pascalName}RequestBody = z.infer<
   typeof delete${ctx.pascalName}RequestSchema
@@ -474,6 +479,7 @@ export function serviceFile(ctx: ResourceContext): string {
 import type { Prisma, ${ctx.modelPascalName} } from '@prisma/client';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
+import { AmbientTransactionStorage } from '#technical/prisma/transaction-context';
 import { CapabilitySubject } from '#technical/capabilities/capabilities.types';
 import { scopeWhereFor } from '#technical/capabilities/scope-where';
 import { env } from '#technical/config/env';${ownedByTeam(ctx) ? `\nimport { NoCurrentTeamException } from '#technical/errors/no-current-team.exception';` : ''}
@@ -526,9 +532,11 @@ export class ${ctx.pascalName}Service {
   ) {}
 
   private notify() {
-    void this.signal.publish(
-      \`\${TenantContextStorage.getTenantId()}:\${${ctx.screamingSnakeName}_SIGNAL_CHANNEL}\`,
-    );
+    const channel = \`\${TenantContextStorage.getTenantId()}:\${${ctx.screamingSnakeName}_SIGNAL_CHANNEL}\`;
+
+    void AmbientTransactionStorage.afterCommit(() => {
+      void this.signal.publish(channel);
+    });
   }
 
   // A search engine that is down must not turn into a failed write: the
@@ -539,7 +547,11 @@ export class ${ctx.pascalName}Service {
   // not just one -- search[engine] lets a later request read through any of
   // them, so a write has to reach all of them, and one engine being down
   // must not stop the others from getting the update.
-  private async syncSearchIndex(record: ${ctx.modelPascalName}) {${
+  private async syncSearchIndex(record: ${ctx.modelPascalName}) {
+    await AmbientTransactionStorage.afterCommit(() => this.indexRecord(record));
+  }
+
+  private async indexRecord(record: ${ctx.modelPascalName}) {${
     ctx.softDeletes
       ? `
     if (record.deletedAt) {
@@ -571,6 +583,10 @@ export class ${ctx.pascalName}Service {
   // ${ctx.softDeletes ? 'Shared by soft delete (via syncSearchIndex above) and hard delete: a\n  // hard-deleted' : 'A deleted'} row has no updated record to read deletedAt off, only the
   // id and tenant it used to have.
   private async removeFromSearchIndex(id: string, tenantId: string) {
+    await AmbientTransactionStorage.afterCommit(() => this.dropFromIndex(id, tenantId));
+  }
+
+  private async dropFromIndex(id: string, tenantId: string) {
     for (const driver of this.searchEngines.externalDrivers) {
       try {
         await driver.remove(SEARCH_COLLECTION, id, tenantId);
@@ -1141,6 +1157,8 @@ import { CapabilityForbiddenException } from '#technical/errors/capability-forbi
 import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
 ${ctx.softDeletes ? `import { AlreadyRestoredException } from '#technical/errors/already-restored.exception';\n` : `import { SoftDeletesNotOfferedException } from '#technical/errors/invalid-query.exception';\n`}import { resolveDomainError } from '#technical/errors/domain-exception.filter';
 import type { ResolvedError } from '#technical/errors/domain-exception.filter';
+import { executeBatch } from '#technical/http/batch-execution';
+import type { BatchEntry } from '#technical/http/batch-execution';
 import { ok } from '#technical/http/envelope';
 import { CacheableRead } from '#technical/http/etag.decorator';${ctx.versioned ? `\nimport { ifMatchVersionOf, resolveExpectedVersion } from '#technical/http/record-version';` : ''}
 import {${ctx.pagination || childIncludes.some((include) => include.pagination) ? '\n  nextCursorFor,' : ''}
@@ -1152,6 +1170,8 @@ import type {
   ListQueryContract,
   SearchRequestBody,
 } from '#technical/http/list-query';
+import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
+import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import {
   create${ctx.pascalName}RequestSchema,
@@ -1201,6 +1221,7 @@ import {
 } from './${ctx.kebabName}-record.loader';
 import type { ${ctx.pascalName}RecordLoader } from './${ctx.kebabName}-record.loader';
 import { to${ctx.pascalName}View } from './${ctx.kebabName}.view';
+import type { ${ctx.pascalName}View } from './${ctx.kebabName}.view';
 
 // What the search route accepts, declared once. parseSearchRequest validates
 // against this object and GET /describe publishes it, so the endpoint cannot
@@ -1273,7 +1294,16 @@ export class ${ctx.pascalName}Controller {
     private readonly policy: ${ctx.pascalName}Policy,
     @Inject(${ctx.screamingSnakeName}_RECORD_LOADER)
     private readonly loader: ${ctx.pascalName}RecordLoader,
+    @Inject(PRISMA_CLIENT)
+    private readonly prisma: TenantScopedPrismaClient,
   ) {}
+
+  private runBatch<T>(entries: BatchEntry<T>[], atomic: boolean) {
+    return executeBatch(entries, {
+      atomic,
+      runAtomically: (callback) => this.prisma.$atomic(callback),
+    });
+  }
 
   // Reused by update/delete${ctx.softDeletes ? '/restore' : ''}: each id is loaded and checked on its
   // own, and a missing record or a denied one becomes that id's entry in the
@@ -1481,18 +1511,16 @@ ${paginationMetaLines(include.pagination)}      total,
     body: Create${ctx.pascalName}RequestBody,
   ) {
     const subject = subjectOf(req.user);
-    const results = [];
+    const entries = body.data.map(
+      (item, index): BatchEntry<${ctx.pascalName}View> => ({
+        index,
+        run: async () => to${ctx.pascalName}View(await this.${ctx.camelName}s.create(subject, item)),
+      }),
+    );
 
-    for (const [index, item] of body.data.entries()) {
-      try {
-        const created = await this.${ctx.camelName}s.create(subject, item);
-        results.push({ index, status: 'ok' as const, data: to${ctx.pascalName}View(created) });
-      } catch (error) {
-        results.push({ index, status: 'error' as const, error: resolveDomainError(error) });
-      }
-    }
+    const { results, meta } = await this.runBatch(entries, body.atomic);
 
-    return ok(results);
+    return ok(results, meta);
   }
 
   @Post('update')
@@ -1509,17 +1537,17 @@ ${paginationMetaLines(include.pagination)}      total,
       (s, record) => canUpdate${ctx.pascalName}(s, record as never),
     );
 
-    const results = [];
-
-    for (const [index, entry] of loaded.entries()) {
+    const entries = loaded.map((entry, index): BatchEntry<${ctx.relations.length > 0 ? 'unknown' : `${ctx.pascalName}View`}> => {
       if (!entry.ok) {
-        results.push({ index, id: entry.id, status: 'error' as const, error: entry.error });
-        continue;
+        return { index, id: entry.id, failure: entry.error };
       }
 
       const { id: _id,${ctx.versioned ? ' version,' : ''}${ctx.relations.length > 0 ? ' relations,' : ''} ...data } = body.data[index]!;
 
-      try {
+      return {
+        index,
+        id: entry.id,
+        run: async () => {
 ${ctx.versioned ? `        const expected = resolveExpectedVersion('${ctx.kebabName}', version, ifMatchVersion);\n` : ''}        const updated = await this.${ctx.camelName}s.update(entry.record, data${ctx.versioned ? ', expected' : ''});
 ${
   ctx.relations.length === 0
@@ -1555,18 +1583,14 @@ ${ctx.relations
 `;
   })
   .join('')}`
-}        results.push({
-          index,
-          id: entry.id,
-          status: 'ok' as const,
-          data: { ...to${ctx.pascalName}View(updated)${ctx.relations.length > 0 ? ', ...relationResults' : ''} },
-        });
-      } catch (error) {
-        results.push({ index, id: entry.id, status: 'error' as const, error: resolveDomainError(error) });
-      }
-    }
+}        return { ...to${ctx.pascalName}View(updated)${ctx.relations.length > 0 ? ', ...relationResults' : ''} };
+        },
+      };
+    });
 
-    return ok(results);
+    const { results, meta } = await this.runBatch(entries, body.atomic);
+
+    return ok(results, meta);
   }
 
   @Post('delete')
@@ -1595,33 +1619,33 @@ ${
 
 `
     : ''
-}    const results = [];
-
-    for (const [index, entry] of loaded.entries()) {
+}    const entries = loaded.map((entry, index): BatchEntry<${ctx.pascalName}View | null> => {
       if (!entry.ok) {
-        results.push({ index, id: entry.id, status: 'error' as const, error: entry.error });
-        continue;
+        return { index, id: entry.id, failure: entry.error };
       }
 
-      try {
+      return {
+        index,
+        id: entry.id,
+        run: async () => {
 ${
   ctx.softDeletes
-    ? `        if (body.mode === 'hard') {
-          await this.${ctx.camelName}s.hardDelete(entry.record);
-          results.push({ index, id: entry.id, status: 'ok' as const, data: null });
-        } else {
-          const removed = await this.${ctx.camelName}s.softDelete(entry.record);
-          results.push({ index, id: entry.id, status: 'ok' as const, data: to${ctx.pascalName}View(removed) });
-        }`
-    : `        await this.${ctx.camelName}s.hardDelete(entry.record);
-        results.push({ index, id: entry.id, status: 'ok' as const, data: null });`
-}
-      } catch (error) {
-        results.push({ index, id: entry.id, status: 'error' as const, error: resolveDomainError(error) });
-      }
-    }
+    ? `          if (body.mode === 'hard') {
+            await this.${ctx.camelName}s.hardDelete(entry.record);
+            return null;
+          }
 
-    return ok(results);
+          return to${ctx.pascalName}View(await this.${ctx.camelName}s.softDelete(entry.record));`
+    : `          await this.${ctx.camelName}s.hardDelete(entry.record);
+          return null;`
+}
+        },
+      };
+    });
+
+    const { results, meta } = await this.runBatch(entries, body.atomic);
+
+    return ok(results, meta);
   }
 ${
   ctx.softDeletes
@@ -1644,27 +1668,27 @@ ${
       (s, record) => canRestore${ctx.pascalName}(s, record as never),
     );
 
-    const results = [];
-
-    for (const [index, entry] of loaded.entries()) {
+    const entries = loaded.map((entry, index): BatchEntry<${ctx.pascalName}View> => {
       if (!entry.ok) {
-        results.push({ index, id: entry.id, status: 'error' as const, error: entry.error });
-        continue;
+        return { index, id: entry.id, failure: entry.error };
       }
 
-      try {
-        if (!entry.record.deletedAt) {
-          throw new AlreadyRestoredException('${ctx.kebabName}');
-        }
+      return {
+        index,
+        id: entry.id,
+        run: async () => {
+          if (!entry.record.deletedAt) {
+            throw new AlreadyRestoredException('${ctx.kebabName}');
+          }
 
-        const restored = await this.${ctx.camelName}s.restore(entry.record, body.patch);
-        results.push({ index, id: entry.id, status: 'ok' as const, data: to${ctx.pascalName}View(restored) });
-      } catch (error) {
-        results.push({ index, id: entry.id, status: 'error' as const, error: resolveDomainError(error) });
-      }
-    }
+          return to${ctx.pascalName}View(await this.${ctx.camelName}s.restore(entry.record, body.patch));
+        },
+      };
+    });
 
-    return ok(results);
+    const { results, meta } = await this.runBatch(entries, body.atomic);
+
+    return ok(results, meta);
   }
 `
     : ''
@@ -2070,7 +2094,9 @@ export class ${ctx.pascalName}McpToolRegistrar implements McpToolRegistrar {
           return deniedResult();
         }
 
-${ctx.versioned ? `        try {
+${
+  ctx.versioned
+    ? `        try {
           const updated = await this.${ctx.camelName}s.update(record, input, { value: version, source: 'body' });
           return textResult(to${ctx.pascalName}View(updated));
         } catch (error) {
@@ -2079,8 +2105,10 @@ ${ctx.versioned ? `        try {
           }
 
           throw error;
-        }` : `        const updated = await this.${ctx.camelName}s.update(record, input);
-        return textResult(to${ctx.pascalName}View(updated));`}
+        }`
+    : `        const updated = await this.${ctx.camelName}s.update(record, input);
+        return textResult(to${ctx.pascalName}View(updated));`
+}
       },
     );
 
@@ -2581,6 +2609,137 @@ function hardDeleteOnlySpec(ctx: ResourceContext, createBody: string): string {
 `;
 }
 
+function bulkSpecBlock(ctx: ResourceContext, createBody: string): string {
+  const route = `/${ctx.pluralKebabName}`;
+  const versionPart = ctx.versioned ? ' version: 1,' : '';
+  const bodyPart = createBody === '{}' ? '' : `...${createBody}`;
+
+  const rollbackTest = ctx.versioned
+    ? `
+  it('undoes the entries already written when a later entry of an atomic batch fails', async () => {
+    const first = await createOne();
+    const second = await createOne();
+
+    const response = await request(app.getHttpServer())
+      .post('${route}/update')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({
+        atomic: true,
+        data: [
+          { id: first, version: 1, ${bodyPart} },
+          { id: second, version: 99, ${bodyPart} },
+        ],
+      })
+      .expect(422);
+
+    const error = (
+      response.body as { error: { key: string; details: { results: { status: string }[] } } }
+    ).error;
+    expect(error.key).toBe('batch.atomicFailed');
+    expect(error.details.results.map((result) => result.status)).toEqual(['notApplied', 'error']);
+    expect((await readOne(first)).version).toBe(1);
+    expect((await readOne(second)).version).toBe(1);
+  });
+`
+    : '';
+
+  return `  async function createOne(): Promise<string> {
+    const created = await request(app.getHttpServer())
+      .post('${route}/create')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ data: [${createBody}] })
+      .expect(201);
+
+    return (created.body as { data: { data: { id: string } }[] }).data[0]!.data.id;
+  }
+
+  async function readOne(id: string): Promise<Record<string, unknown>> {
+    const found = await request(app.getHttpServer())
+      .post('${route}/search')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ filters: [{ field: 'id', value: id }] })
+      .expect(200);
+
+    return (found.body as { data: Record<string, unknown>[] }).data[0]!;
+  }
+
+  it('reports how many entries of a batch succeeded and failed', async () => {
+    const recordId = await createOne();
+
+    const response = await request(app.getHttpServer())
+      .post('${route}/update')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({
+        data: [
+          { id: recordId,${versionPart} ${bodyPart} },
+          { id: 'missing-record',${versionPart} ${bodyPart} },
+        ],
+      })
+      .expect(201);
+
+    const body = response.body as {
+      data: { status: string; error?: { status: number } }[];
+      meta: { total: number; succeeded: number; failed: number };
+    };
+    expect(body.meta).toEqual({ total: 2, succeeded: 1, failed: 1 });
+    expect(body.data.map((result) => result.status)).toEqual(['ok', 'error']);
+    expect(body.data[1]!.error!.status).toBe(404);
+  });
+
+  it('creates every entry of an atomic batch together', async () => {
+    const response = await request(app.getHttpServer())
+      .post('${route}/create')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ atomic: true, data: [${createBody}, ${createBody}] })
+      .expect(201);
+
+    const body = response.body as {
+      data: { status: string; data: { id: string } }[];
+      meta: { total: number; succeeded: number; failed: number };
+    };
+    expect(body.meta).toEqual({ total: 2, succeeded: 2, failed: 0 });
+
+    for (const result of body.data) {
+      expect(result.status).toBe('ok');
+      expect((await readOne(result.data.id)).id).toBe(result.data.id);
+    }
+  });
+
+  it('writes nothing when an entry of an atomic batch cannot be applied', async () => {
+    const recordId = await createOne();
+    const before = await readOne(recordId);
+
+    const response = await request(app.getHttpServer())
+      .post('${route}/update')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({
+        atomic: true,
+        data: [
+          { id: recordId,${versionPart} ${bodyPart} },
+          { id: 'missing-record',${versionPart} ${bodyPart} },
+        ],
+      })
+      .expect(422);
+
+    const error = (
+      response.body as {
+        error: {
+          key: string;
+          details: {
+            results: { status: string }[];
+            summary: { total: number; succeeded: number; failed: number };
+          };
+        };
+      }
+    ).error;
+    expect(error.key).toBe('batch.atomicFailed');
+    expect(error.details.results.map((result) => result.status)).toEqual(['notApplied', 'error']);
+    expect(error.details.summary).toEqual({ total: 2, succeeded: 0, failed: 1 });
+    expect(await readOne(recordId)).toEqual(before);
+  });
+${rollbackTest}`;
+}
+
 function versionedSpecBlock(ctx: ResourceContext, createBody: string): string {
   const route = `/${ctx.pluralKebabName}/update`;
 
@@ -3012,6 +3171,7 @@ ${
     });
   });
 
+${bulkSpecBlock(ctx, createBody)}
 ${ctx.versioned ? `${versionedSpecBlock(ctx, createBody)}\n` : ''}`
       : ''
   }${

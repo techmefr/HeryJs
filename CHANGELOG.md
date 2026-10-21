@@ -56,6 +56,17 @@ when it came in as `If-Match`). The check is part of the write itself, so two
 concurrent saves at the same version cannot both succeed. Off by default:
 nothing changes for a resource that does not opt in.
 
+### Bulk mutations
+
+Create, update, delete and restore already took an array and answered one
+result per entry. They now also answer `meta: { total, succeeded, failed }`,
+and accept `atomic: true`: every entry is authorised first, the writes run in
+one transaction, and the first failure rolls the whole batch back and answers
+`422 batch.atomicFailed` with a result for every entry. The signal and
+search-index side effects of a generated service wait for the commit. A
+generated controller now injects the Prisma client to open that transaction,
+which only reaches an existing project if its developer applies it by hand.
+
 ### Installing it
 
 Twelve packages, versioned together:

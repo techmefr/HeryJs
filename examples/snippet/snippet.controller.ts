@@ -21,6 +21,8 @@ import { RecordNotFoundException } from '#technical/errors/record-not-found.exce
 import { AlreadyRestoredException } from '#technical/errors/already-restored.exception';
 import { resolveDomainError } from '#technical/errors/domain-exception.filter';
 import type { ResolvedError } from '#technical/errors/domain-exception.filter';
+import { executeBatch } from '#technical/http/batch-execution';
+import type { BatchEntry } from '#technical/http/batch-execution';
 import { ok } from '#technical/http/envelope';
 import { CacheableRead } from '#technical/http/etag.decorator';
 import {
@@ -37,6 +39,8 @@ import type {
   ListQueryContract,
   SearchRequestBody,
 } from '#technical/http/list-query';
+import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
+import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import {
   createSnippetRequestSchema,
@@ -69,6 +73,7 @@ import { SNIPPET_SIGNAL_CHANNEL, SnippetService } from './snippet.service';
 import { SNIPPET_RECORD_LOADER } from './snippet-record.loader';
 import type { SnippetRecordLoader } from './snippet-record.loader';
 import { toSnippetView } from './snippet.view';
+import type { SnippetView } from './snippet.view';
 
 // What the search route accepts, declared once. parseSearchRequest validates
 // against this object and GET /describe publishes it, so the endpoint cannot
@@ -131,7 +136,16 @@ export class SnippetController {
     private readonly policy: SnippetPolicy,
     @Inject(SNIPPET_RECORD_LOADER)
     private readonly loader: SnippetRecordLoader,
+    @Inject(PRISMA_CLIENT)
+    private readonly prisma: TenantScopedPrismaClient,
   ) {}
+
+  private runBatch<T>(entries: BatchEntry<T>[], atomic: boolean) {
+    return executeBatch(entries, {
+      atomic,
+      runAtomically: (callback) => this.prisma.$atomic(callback),
+    });
+  }
 
   // Reused by update/delete/restore: each id is loaded and checked on its
   // own, and a missing record or a denied one becomes that id's entry in the
@@ -288,26 +302,14 @@ export class SnippetController {
     body: CreateSnippetRequestBody,
   ) {
     const subject = subjectOf(req.user);
-    const results = [];
+    const entries = body.data.map((item, index): BatchEntry<SnippetView> => ({
+      index,
+      run: async () => toSnippetView(await this.snippets.create(subject, item)),
+    }));
 
-    for (const [index, item] of body.data.entries()) {
-      try {
-        const created = await this.snippets.create(subject, item);
-        results.push({
-          index,
-          status: 'ok' as const,
-          data: toSnippetView(created),
-        });
-      } catch (error) {
-        results.push({
-          index,
-          status: 'error' as const,
-          error: resolveDomainError(error),
-        });
-      }
-    }
+    const { results, meta } = await this.runBatch(entries, body.atomic);
 
-    return ok(results);
+    return ok(results, meta);
   }
 
   @Post('update')
@@ -326,49 +328,35 @@ export class SnippetController {
       (s, record) => canUpdateSnippet(s, record as never),
     );
 
-    const results = [];
-
-    for (const [index, entry] of loaded.entries()) {
+    const entries = loaded.map((entry, index): BatchEntry<SnippetView> => {
       if (!entry.ok) {
-        results.push({
-          index,
-          id: entry.id,
-          status: 'error' as const,
-          error: entry.error,
-        });
-        continue;
+        return { index, id: entry.id, failure: entry.error };
       }
 
       const { id: _id, version, ...data } = body.data[index]!;
 
-      try {
-        const expected = resolveExpectedVersion(
-          'snippet',
-          version,
-          ifMatchVersion,
-        );
-        const updated = await this.snippets.update(
-          entry.record,
-          data,
-          expected,
-        );
-        results.push({
-          index,
-          id: entry.id,
-          status: 'ok' as const,
-          data: { ...toSnippetView(updated) },
-        });
-      } catch (error) {
-        results.push({
-          index,
-          id: entry.id,
-          status: 'error' as const,
-          error: resolveDomainError(error),
-        });
-      }
-    }
+      return {
+        index,
+        id: entry.id,
+        run: async () => {
+          const expected = resolveExpectedVersion(
+            'snippet',
+            version,
+            ifMatchVersion,
+          );
+          const updated = await this.snippets.update(
+            entry.record,
+            data,
+            expected,
+          );
+          return { ...toSnippetView(updated) };
+        },
+      };
+    });
 
-    return ok(results);
+    const { results, meta } = await this.runBatch(entries, body.atomic);
+
+    return ok(results, meta);
   }
 
   @Post('delete')
@@ -391,48 +379,30 @@ export class SnippetController {
       }
     }
 
-    const results = [];
-
-    for (const [index, entry] of loaded.entries()) {
-      if (!entry.ok) {
-        results.push({
-          index,
-          id: entry.id,
-          status: 'error' as const,
-          error: entry.error,
-        });
-        continue;
-      }
-
-      try {
-        if (body.mode === 'hard') {
-          await this.snippets.hardDelete(entry.record);
-          results.push({
-            index,
-            id: entry.id,
-            status: 'ok' as const,
-            data: null,
-          });
-        } else {
-          const removed = await this.snippets.softDelete(entry.record);
-          results.push({
-            index,
-            id: entry.id,
-            status: 'ok' as const,
-            data: toSnippetView(removed),
-          });
+    const entries = loaded.map(
+      (entry, index): BatchEntry<SnippetView | null> => {
+        if (!entry.ok) {
+          return { index, id: entry.id, failure: entry.error };
         }
-      } catch (error) {
-        results.push({
+
+        return {
           index,
           id: entry.id,
-          status: 'error' as const,
-          error: resolveDomainError(error),
-        });
-      }
-    }
+          run: async () => {
+            if (body.mode === 'hard') {
+              await this.snippets.hardDelete(entry.record);
+              return null;
+            }
 
-    return ok(results);
+            return toSnippetView(await this.snippets.softDelete(entry.record));
+          },
+        };
+      },
+    );
+
+    const { results, meta } = await this.runBatch(entries, body.atomic);
+
+    return ok(results, meta);
   }
 
   // A route rather than a service method alone: restore is the only way back
@@ -451,41 +421,28 @@ export class SnippetController {
       canRestoreSnippet(s, record as never),
     );
 
-    const results = [];
-
-    for (const [index, entry] of loaded.entries()) {
+    const entries = loaded.map((entry, index): BatchEntry<SnippetView> => {
       if (!entry.ok) {
-        results.push({
-          index,
-          id: entry.id,
-          status: 'error' as const,
-          error: entry.error,
-        });
-        continue;
+        return { index, id: entry.id, failure: entry.error };
       }
 
-      try {
-        if (!entry.record.deletedAt) {
-          throw new AlreadyRestoredException('snippet');
-        }
+      return {
+        index,
+        id: entry.id,
+        run: async () => {
+          if (!entry.record.deletedAt) {
+            throw new AlreadyRestoredException('snippet');
+          }
 
-        const restored = await this.snippets.restore(entry.record, body.patch);
-        results.push({
-          index,
-          id: entry.id,
-          status: 'ok' as const,
-          data: toSnippetView(restored),
-        });
-      } catch (error) {
-        results.push({
-          index,
-          id: entry.id,
-          status: 'error' as const,
-          error: resolveDomainError(error),
-        });
-      }
-    }
+          return toSnippetView(
+            await this.snippets.restore(entry.record, body.patch),
+          );
+        },
+      };
+    });
 
-    return ok(results);
+    const { results, meta } = await this.runBatch(entries, body.atomic);
+
+    return ok(results, meta);
   }
 }
