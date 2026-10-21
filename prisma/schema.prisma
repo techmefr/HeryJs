@@ -433,6 +433,36 @@ model BillingSubscription {
   @@index([tenantId])
 }
 
+// A limit set for one tenant, replacing the default declared under `quotas` in
+// hery.config.ts. A row is an exception, so most tenants have none; the
+// rate-limit guard reads `rate-limit:<bucket>` rows the same way.
+model QuotaOverride {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  limit     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, name])
+}
+
+// What a tenant has consumed of a named quota within one period. `period` is a
+// key ("2026-10", "2026-10-21" or "total"), not a date, so a new period is a
+// new row rather than a reset of the old one, and last month's figure stays
+// readable for usage-based billing.
+model QuotaUsage {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  period    String
+  used      Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, name, period])
+}
+
 model IdempotencyKey {
   id              String    @id @default(cuid())
   tenantId        String

@@ -57,6 +57,7 @@ export default defineConfig({
                 { label: 'Cache', slug: 'guides/cache' },
                 { label: 'Feature flags', slug: 'guides/feature-flags' },
                 { label: 'Rate limiting', slug: 'guides/rate-limiting' },
+                { label: 'Quotas and usage', slug: 'guides/quotas' },
                 { label: 'Validation', slug: 'guides/validation' },
                 { label: 'API versioning', slug: 'guides/versioning' },
                 {

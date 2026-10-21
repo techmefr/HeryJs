@@ -1,6 +1,7 @@
 import { Module, Provider } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { env } from '#technical/config/env';
+import { QuotasModule } from '#technical/quotas/quotas.module';
 import { RateLimitGuard } from './rate-limit.guard';
 import { RateLimitStore } from './rate-limit-store';
 
@@ -22,6 +23,7 @@ const globalGuardProvider: Provider[] = env.RATE_LIMIT_DISABLED
   : [{ provide: APP_GUARD, useClass: RateLimitGuard }];
 
 @Module({
+  imports: [QuotasModule],
   providers: [RateLimitStore, RateLimitGuard, ...globalGuardProvider],
 })
 export class RateLimitModule {}
