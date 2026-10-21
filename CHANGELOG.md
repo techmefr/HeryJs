@@ -64,8 +64,9 @@ and accept `atomic: true`: every entry is authorised first, the writes run in
 one transaction, and the first failure rolls the whole batch back and answers
 `422 batch.atomicFailed` with a result for every entry. The signal and
 search-index side effects of a generated service wait for the commit. A
-generated controller now injects the Prisma client to open that transaction,
-which only reaches an existing project if its developer applies it by hand.
+generated service gains an `atomically` method the controller calls to open
+that transaction, which only reaches an existing project if its developer
+applies it by hand.
 
 ### Installing it
 

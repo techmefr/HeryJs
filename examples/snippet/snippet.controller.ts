@@ -39,8 +39,6 @@ import type {
   ListQueryContract,
   SearchRequestBody,
 } from '#technical/http/list-query';
-import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import {
   createSnippetRequestSchema,
@@ -136,14 +134,12 @@ export class SnippetController {
     private readonly policy: SnippetPolicy,
     @Inject(SNIPPET_RECORD_LOADER)
     private readonly loader: SnippetRecordLoader,
-    @Inject(PRISMA_CLIENT)
-    private readonly prisma: TenantScopedPrismaClient,
   ) {}
 
   private runBatch<T>(entries: BatchEntry<T>[], atomic: boolean) {
     return executeBatch(entries, {
       atomic,
-      runAtomically: (callback) => this.prisma.$atomic(callback),
+      runAtomically: (callback) => this.snippets.atomically(callback),
     });
   }
 

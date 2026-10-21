@@ -754,6 +754,10 @@ ${ctx.relations
 `;
   })
   .join('')}
+  atomically<T>(callback: () => Promise<T>): Promise<T> {
+    return this.prisma.$atomic(callback);
+  }
+
   async create(subject: CapabilitySubject, data: Create${ctx.pascalName}Input) {
 ${
   ownedByTeam(ctx)
@@ -1170,8 +1174,6 @@ import type {
   ListQueryContract,
   SearchRequestBody,
 } from '#technical/http/list-query';
-import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import {
   create${ctx.pascalName}RequestSchema,
@@ -1294,14 +1296,12 @@ export class ${ctx.pascalName}Controller {
     private readonly policy: ${ctx.pascalName}Policy,
     @Inject(${ctx.screamingSnakeName}_RECORD_LOADER)
     private readonly loader: ${ctx.pascalName}RecordLoader,
-    @Inject(PRISMA_CLIENT)
-    private readonly prisma: TenantScopedPrismaClient,
   ) {}
 
   private runBatch<T>(entries: BatchEntry<T>[], atomic: boolean) {
     return executeBatch(entries, {
       atomic,
-      runAtomically: (callback) => this.prisma.$atomic(callback),
+      runAtomically: (callback) => this.${ctx.camelName}s.atomically(callback),
     });
   }
 

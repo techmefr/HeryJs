@@ -187,6 +187,10 @@ export class SnippetService {
     return { records, total, matches };
   }
 
+  atomically<T>(callback: () => Promise<T>): Promise<T> {
+    return this.prisma.$atomic(callback);
+  }
+
   async create(subject: CapabilitySubject, data: CreateSnippetInput) {
     const record = await this.prisma.snippet.create({
       // tenantId is injected by the tenant-scoping Prisma extension, invisible to callers by design.
