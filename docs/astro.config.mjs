@@ -76,6 +76,7 @@ export default defineConfig({
                 { label: 'Secrets and encryption', slug: 'guides/secrets' },
                 { label: 'Health checks', slug: 'guides/health' },
                 { label: 'Maintenance mode', slug: 'guides/maintenance' },
+                { label: 'Deploying to production', slug: 'guides/deployment' },
                 { label: 'Error reporting', slug: 'guides/error-reporting' },
                 { label: 'OpenTelemetry', slug: 'guides/opentelemetry' },
                 {
