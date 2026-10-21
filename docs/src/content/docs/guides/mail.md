@@ -155,6 +155,27 @@ Import `ResendMailModule` into `src/app.module.ts`, declare `resend: { driver: '
 
 The driver is one `POST` over `fetch`, with no SDK dependency — a package that added nothing but a typed wrapper around a single request would still have to be installed, audited and upgraded by everyone who only wanted to send mail. A non-2xx from Resend throws rather than logging, because the throw is what flips the `MailLog` row to `failed` and lets BullMQ see the job as failed.
 
+## SMTP is one package away too
+
+```bash
+pnpm hery install mail-smtp
+```
+
+It lands in `src/modules/mail` for the same reason Resend does. Import `SmtpMailModule` into `src/app.module.ts`, declare `smtp: { driver: 'smtp' }`, and set the connection in the environment:
+
+| Variable             | Meaning                                                                           |
+| -------------------- | --------------------------------------------------------------------------------- |
+| `MAIL_SMTP_HOST`     | The server to dial. Required.                                                     |
+| `MAIL_SMTP_PORT`     | Defaults to `587`.                                                                |
+| `MAIL_SMTP_TLS`      | `starttls` (default), `implicit` for a TLS socket from the first byte, or `none`. |
+| `MAIL_SMTP_USER`     | Optional, and only valid together with `MAIL_SMTP_PASSWORD`.                      |
+| `MAIL_SMTP_PASSWORD` | Optional, and only valid together with `MAIL_SMTP_USER`.                          |
+| `MAIL_SMTP_FROM`     | The sender address. Required.                                                     |
+
+`starttls` refuses to send if the server will not upgrade the connection, rather than quietly continuing in the clear; `none` is for a local catcher such as Mailpit and is the only setting that can put a credential on the wire unencrypted. A user without a password, or the reverse, is refused before anything is sent. Like Resend, the variables are parsed lazily on the first send, so an app that declares SMTP but runs on `log` is never refused a boot over a host it will never dial.
+
+The driver uses nodemailer rather than writing the SMTP dialogue by hand, and opens a connection per message instead of pooling: every send is already a queued job, so the connection is off any request's path, and a pooled socket on a long-lived worker would outlive a rotated credential. A refused recipient throws, for the same reason a Resend refusal does. Its spec runs the driver against a real in-process SMTP server, so delivery, authentication and refusal are exercised over an actual socket.
+
 ## Templates are a second, smaller path — and they do not escape
 
 `MailService.queue(to, template, data)` skips the mailable and renders a named template instead:
@@ -192,7 +213,7 @@ Both messages are ordinary mailables (`ResetPasswordMailable`, `VerifyEmailMaila
 
 ## What mail deliberately does not do
 
-- **No SMTP driver ships.** Choosing between SMTP and a vendor API has cost, deliverability and compliance consequences, and the framework has no opinion worth imposing. The convention is what is shipped; writing an `SmtpMailDriver` against `MailDriver` is a contract and a token away.
+- **No opinion on the transport.** Resend and SMTP are both a package away, and neither is the default: choosing between them has cost, deliverability and compliance consequences the framework does not decide for you. SMTP carries no DKIM, SPF or DMARC setup either; that belongs to the server you point it at.
 - **`MailMessage` is `to`, `subject`, `html` and nothing else.** No cc, no bcc, no attachments, no plain-text alternative. Every one of those is a real feature, and none of them is in the contract today — adding one means widening the contract for every driver at once, which is the deliberate friction.
 - **No per-call driver selection.** Unlike [export](../guides/export/), mail has no `as()`. Nothing in a resource should get to decide that _this_ particular message goes over a different transport.
 - **No retry policy, no bounce handling, no suppression list.** The `MailLog` row records what happened; acting on it is yours.
