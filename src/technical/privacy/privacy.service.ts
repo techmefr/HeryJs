@@ -6,6 +6,7 @@ import type { AuthenticatedUser } from '#technical/auth/auth.types';
 import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
 import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
 import { TenantErasureNotConfirmedException } from '#technical/errors/tenant-erasure-not-confirmed.exception';
+import { PersonalDataRegistry } from './personal-data.registry';
 import { PRIVACY_QUEUE } from '#technical/jobs/jobs.constants';
 import { JobsService } from '#technical/jobs/jobs.service';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
@@ -61,6 +62,7 @@ export class PrivacyService {
   constructor(
     @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,
     private readonly jobs: JobsService,
+    private readonly registry: PersonalDataRegistry,
   ) {}
 
   requestExport(
@@ -178,6 +180,7 @@ export class PrivacyService {
       tenantId,
       userId: caller.id,
       impersonatedBy: caller.impersonatedBy,
+      models: this.registry.all().map((declaration) => declaration.model),
     };
 
     try {

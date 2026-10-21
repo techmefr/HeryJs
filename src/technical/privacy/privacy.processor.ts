@@ -1,5 +1,6 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject } from '@nestjs/common';
+import { DelayedError } from 'bullmq';
 import type { Job } from 'bullmq';
 import { writeAuditLog } from '#technical/audit/audit-log';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
@@ -7,7 +8,12 @@ import { PRIVACY_QUEUE } from '#technical/jobs/jobs.constants';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import { runInTenant } from '#technical/tenancy/run-in-tenant';
-import { PRIVACY_PROCESS_JOB } from './privacy.constants';
+import { PersonalDataRegistry } from './personal-data.registry';
+import {
+  PRIVACY_DEFERRAL_DELAY_MS,
+  PRIVACY_MAX_DEFERRALS,
+  PRIVACY_PROCESS_JOB,
+} from './privacy.constants';
 import type { PrivacyJobData, PrivacyRequestKind } from './privacy.constants';
 import { PrivacyExecutor } from './privacy.executor';
 import type { ErasureOutcome, ExportOutcome } from './privacy.executor';
@@ -19,16 +25,36 @@ export class PrivacyProcessor extends WorkerHost {
   constructor(
     @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,
     private readonly executor: PrivacyExecutor,
+    private readonly registry: PersonalDataRegistry,
   ) {
     super();
   }
 
-  async process(job: Job): Promise<void> {
+  async process(job: Job, token?: string): Promise<void> {
     if (job.name !== PRIVACY_PROCESS_JOB) {
       return;
     }
 
     const data = job.data as PrivacyJobData;
+    const known = new Set(this.registry.all().map((entry) => entry.model));
+
+    // Every instance runs a worker on this queue, and an instance that lacks a
+    // resource the request was taken with would finish it without touching
+    // that resource's rows. It hands the job back instead, without spending an
+    // attempt, until one that knows them takes it.
+    if (!data.models.every((model) => known.has(model))) {
+      const deferrals = data.deferrals ?? 0;
+
+      if (deferrals >= PRIVACY_MAX_DEFERRALS) {
+        throw new Error(
+          'No worker knows every resource this privacy request was taken with.',
+        );
+      }
+
+      await job.updateData({ ...data, deferrals: deferrals + 1 });
+      await job.moveToDelayed(Date.now() + PRIVACY_DEFERRAL_DELAY_MS, token);
+      throw new DelayedError();
+    }
 
     await runInTenant(data.tenantId, () => this.run(data), {
       userId: data.userId,
