@@ -40,6 +40,8 @@ const TENANT_SCOPED_MODELS = new Set<string>([
   'PushToken',
   'BillingSubscription',
   'Snippet',
+  'NotificationPreference',
+  'NotificationSetting',
 ]);
 
 /**
@@ -216,6 +218,7 @@ export const APP_ENFORCED_TENANT_MODELS = new Set<string>([
   // relay with no request behind it, so it can be neither stamped nor filtered
   // by the ambient tenant.
   'OutboxMessage',
+  'NotificationDigestEntry',
 ]);
 
 type TenantHandling =

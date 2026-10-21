@@ -179,6 +179,14 @@ installable with `hery install` and removable with `hery uninstall`.
   is the declared `OAUTH_LINK_POLICY`: `refuse` by default, so nothing links
   silently.
 
+- `notifier` honours per-user notification preferences: opt in or out per
+  channel (mail, sms, push, in-app) and per notification type, quiet hours in
+  the user's timezone, mail digests flushed by a scheduled job, and
+  `isMandatory` notifications that no preference can suppress. Users manage
+  their own rules under `/notification-preferences`. In-app is now a notifier
+  channel over `AppNotification`. Installing it adds three tables, so run the
+  migration it prints.
+
 A module is its default export, closed with `satisfies ModuleDefinition` and
 typed through an `import type` the compiler erases — so a published module has
 no runtime dependency on HeryJs at all. Any dependency carrying
