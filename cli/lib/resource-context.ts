@@ -8,6 +8,7 @@ import {
 import { isScalarField, isVectorField } from './blueprint';
 import type {
   Blueprint,
+  BlueprintWorkflow,
   ScalarBlueprintField,
   VectorBlueprintField,
 } from './blueprint';
@@ -29,6 +30,8 @@ export interface ResourceContext {
   pluralKebabName: string;
   softDeletes: Blueprint['softDeletes'];
   versioned: Blueprint['versioned'];
+  /** The state machine, with every state it can reach listed once, initial first. */
+  workflow: (BlueprintWorkflow & { states: string[] }) | null;
   fields: ScalarBlueprintField[];
   /** The embedding column, when the resource declares one: derived from `source`, never client-writable and never returned. */
   vector: VectorBlueprintField | null;
@@ -64,6 +67,20 @@ export function buildResourceContext(blueprint: Blueprint): ResourceContext {
     pluralKebabName,
     softDeletes: blueprint.softDeletes,
     versioned: blueprint.versioned,
+    workflow: blueprint.workflow
+      ? {
+          ...blueprint.workflow,
+          states: [
+            ...new Set([
+              blueprint.workflow.initial,
+              ...blueprint.workflow.transitions.flatMap((transition) => [
+                ...transition.from,
+                transition.to,
+              ]),
+            ]),
+          ],
+        }
+      : null,
     fields: blueprint.fields.filter(isScalarField),
     vector: blueprint.fields.find(isVectorField) ?? null,
     permissions: blueprint.permissions,

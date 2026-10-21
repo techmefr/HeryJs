@@ -523,6 +523,34 @@ export function mutationSchemas(ctx: ResourceContext): SchemaRegistry {
     registry.RelationMutation = relationMutationSchema();
   }
 
+  if (ctx.workflow) {
+    registry[`${name}TransitionRequest`] = {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          maxItems: MAX_BATCH_ENTRIES,
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              transition: {
+                type: 'string',
+                enum: ctx.workflow.transitions.map(
+                  (transition) => transition.name,
+                ),
+              },
+            },
+            required: ['id', 'transition'],
+            additionalProperties: false,
+          },
+        },
+        atomic: ATOMIC_PROPERTY,
+      },
+      required: ['data'],
+    };
+  }
+
   if (ctx.softDeletes) {
     registry[`${name}RestoreRequest`] = {
       type: 'object',
@@ -772,6 +800,32 @@ export function describeSchema(ctx: ResourceContext): JsonSchema {
                 header: { const: 'If-Match' },
               },
               required: ['field', 'header'],
+            },
+          }
+        : {}),
+      ...(ctx.workflow
+        ? {
+            workflow: {
+              type: 'object',
+              properties: {
+                field: { const: ctx.workflow.field },
+                initial: { const: ctx.workflow.initial },
+                states: strings,
+                transitions: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      name: { type: 'string' },
+                      from: strings,
+                      to: { type: 'string' },
+                      requires: strings,
+                    },
+                    required: ['name', 'from', 'to', 'requires'],
+                  },
+                },
+              },
+              required: ['field', 'initial', 'states', 'transitions'],
             },
           }
         : {}),

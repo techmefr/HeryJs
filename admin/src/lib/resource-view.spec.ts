@@ -388,3 +388,101 @@ describe('deleting', () => {
     expect(root.textContent).toContain('Not yours to delete');
   });
 });
+
+describe('a resource with a workflow', () => {
+  const workflow = {
+    field: 'status',
+    initial: 'draft',
+    states: ['draft', 'published'],
+    transitions: [
+      { name: 'publish', from: ['draft'], to: 'published', requires: [] },
+      { name: 'reopen', from: ['published'], to: 'draft', requires: [] },
+    ],
+  };
+  const decisions = {
+    ...mockDecisions,
+    publish: { allowed: true, scope: 'own' },
+    reopen: { allowed: false },
+  };
+
+  it('asks for the transition capabilities along with the others', async () => {
+    mockDescription.workflow = workflow;
+
+    try {
+      await mount();
+
+      expect(lastSearch().body.capabilities).toEqual([
+        'update',
+        'delete',
+        'restore',
+        'attachTags',
+        'detachTags',
+        'publish',
+        'reopen',
+      ]);
+    } finally {
+      delete mockDescription.workflow;
+    }
+  });
+
+  it('shows a button for each transition leaving the row state, disabled when refused', async () => {
+    mockDescription.workflow = workflow;
+    server.rows = [
+      { ...mockRow('a', 'First', decisions), status: 'draft' },
+      { ...mockRow('b', 'Second', decisions), status: 'published' },
+    ];
+
+    try {
+      const root = await mount();
+      const lines = root.querySelectorAll('tbody tr');
+      const transitionsOf = (line: Element) =>
+        [
+          ...line.querySelectorAll<HTMLButtonElement>(
+            '[data-action^="transition-"]',
+          ),
+        ].map((item) => [item.dataset.action, item.disabled]);
+
+      expect(transitionsOf(lines[0]!)).toEqual([['transition-publish', false]]);
+      expect(transitionsOf(lines[1]!)).toEqual([['transition-reopen', true]]);
+    } finally {
+      delete mockDescription.workflow;
+    }
+  });
+
+  it('posts the transition by name and reports the refusal the api gave', async () => {
+    mockDescription.workflow = workflow;
+    server.rows = [{ ...mockRow('a', 'First', decisions), status: 'draft' }];
+    server.handlers['/blog-posts/transition'] = () =>
+      envelope([
+        {
+          index: 0,
+          id: 'a',
+          status: 'error',
+          error: {
+            status: 409,
+            key: 'blog-post.illegalTransition',
+            message: 'Not from here.',
+          },
+        },
+      ]);
+
+    try {
+      const root = await mount();
+
+      root
+        .querySelector<HTMLButtonElement>('[data-action="transition-publish"]')!
+        .click();
+      await settle();
+
+      const posted = server.calls.find(
+        (call) => call.route === '/blog-posts/transition',
+      );
+      expect(posted?.body).toEqual({
+        data: [{ id: 'a', transition: 'publish' }],
+      });
+      expect(root.textContent).toContain('Not from here.');
+    } finally {
+      delete mockDescription.workflow;
+    }
+  });
+});

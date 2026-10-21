@@ -45,6 +45,7 @@ import {
   createSnippetSchema,
   deleteSnippetRequestSchema,
   restoreSnippetRequestSchema,
+  transitionSnippetRequestSchema,
   updateSnippetRequestSchema,
   updateSnippetSchema,
 } from './snippet.dto';
@@ -52,6 +53,7 @@ import type {
   CreateSnippetRequestBody,
   DeleteSnippetRequestBody,
   RestoreSnippetRequestBody,
+  TransitionSnippetRequestBody,
   UpdateSnippetRequestBody,
 } from './snippet.dto';
 import {
@@ -66,6 +68,10 @@ import {
   canUpdateAnySnippet,
   canViewAnySnippet,
   SnippetPolicy,
+  canPublishSnippet,
+  canArchiveSnippet,
+  canReopenSnippet,
+  canTransitionAnySnippet,
 } from './snippet.policy';
 import { SNIPPET_SIGNAL_CHANNEL, SnippetService } from './snippet.service';
 import { SNIPPET_RECORD_LOADER } from './snippet-record.loader';
@@ -85,10 +91,12 @@ const SNIPPET_CONTRACT = {
     'id',
     'ownerId',
     'title',
+    'summary',
     'createdAt',
     'updatedAt',
     'deletedAt',
     'version',
+    'status',
   ],
   includes: {},
   aggregates: {},
@@ -104,7 +112,10 @@ const SNIPPET_DESCRIBE = {
   // Published so a client can tell which contract it is holding without
   // inferring it from the path it happened to call.
   version: 1,
-  fields: [{ name: 'title', type: 'string', optional: false }],
+  fields: [
+    { name: 'title', type: 'string', optional: false },
+    { name: 'summary', type: 'string', optional: true },
+  ],
   ...SNIPPET_CONTRACT,
   // Stated rather than implied by the absence of limits: a client reading this
   // knows the search route returns every match, and that asking for a page is
@@ -112,6 +123,29 @@ const SNIPPET_DESCRIBE = {
   paginated: true,
   softDeletes: true,
   versioned: { field: 'version', header: 'If-Match' },
+  // The machine as data: a client draws one button per transition, enables it
+  // from the record's own capability for that transition and from its current
+  // state, and never encodes the edges itself.
+  workflow: {
+    field: 'status',
+    initial: 'draft',
+    states: ['draft', 'published', 'archived'],
+    transitions: [
+      {
+        name: 'publish',
+        from: ['draft'],
+        to: 'published',
+        requires: ['summary'],
+      },
+      {
+        name: 'archive',
+        from: ['draft', 'published'],
+        to: 'archived',
+        requires: [],
+      },
+      { name: 'reopen', from: ['archived'], to: 'draft', requires: [] },
+    ],
+  },
   // The many-to-many relations the update route can attach to and detach from
   // by id. A client builds its relation controls from this list and reads
   // whether each is allowed from the record's own capabilities, so it neither
@@ -302,6 +336,63 @@ export class SnippetController {
       index,
       run: async () => toSnippetView(await this.snippets.create(subject, item)),
     }));
+
+    const { results, meta } = await this.runBatch(entries, body.atomic);
+
+    return ok(results, meta);
+  }
+
+  // The only way the status column changes. Each entry names a
+  // transition; the outer capability is the broad pass, and the entry's own
+  // transition capability is checked per record, so one request can carry
+  // entries the caller may fire and entries it may not.
+  @Post('transition')
+  @Capability(canTransitionAnySnippet)
+  async transition(
+    @Req() req: RequestWithUser,
+    @Body(new ZodValidationPipe(transitionSnippetRequestSchema))
+    body: TransitionSnippetRequestBody,
+  ) {
+    const subject = subjectOf(req.user);
+    const checks = {
+      publish: canPublishSnippet,
+      archive: canArchiveSnippet,
+      reopen: canReopenSnippet,
+    } as const;
+    const loaded = await this.loadAndAuthorize(
+      body.data.map((item) => item.id),
+      subject,
+      () => ({ allowed: true }),
+    );
+
+    const entries = loaded.map((entry, index): BatchEntry<SnippetView> => {
+      if (!entry.ok) {
+        return { index, id: entry.id, failure: entry.error };
+      }
+
+      const { transition } = body.data[index]!;
+      const decision = checks[transition](subject, entry.record);
+
+      if (!decision.allowed) {
+        return {
+          index,
+          id: entry.id,
+          failure: resolveDomainError(
+            new CapabilityForbiddenException(decision),
+          ),
+        };
+      }
+
+      return {
+        index,
+        id: entry.id,
+        run: async () => {
+          return toSnippetView(
+            await this.snippets.transition(entry.record, transition),
+          );
+        },
+      };
+    });
 
     const { results, meta } = await this.runBatch(entries, body.atomic);
 

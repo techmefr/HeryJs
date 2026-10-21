@@ -222,7 +222,7 @@ describe('what the generators claim against what the controller publishes', () =
       ctx.softDeletes,
     );
     expect(dto.match(/atomic: z\.boolean\(\)\.default\(false\)/g)).toHaveLength(
-      ctx.softDeletes ? 4 : 3,
+      (ctx.softDeletes ? 4 : 3) + (ctx.workflow ? 1 : 0),
     );
     expect(dto.includes('relationMutationSchema')).toBe(
       ctx.relations.length > 0,

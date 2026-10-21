@@ -196,6 +196,17 @@ export function pathsFor(ctx: ResourceContext): PathItems {
     );
   }
 
+  if (ctx.workflow) {
+    paths[`${base}/transition`] = mutation(
+      ctx,
+      'Transition',
+      `Move ${ctx.pluralCamelName} along a declared transition`,
+      `${name}TransitionRequest`,
+      ref(name),
+      true,
+    );
+  }
+
   for (const include of ownRouteIncludes(ctx)) {
     paths[`${base}/{id}/${include.relation}/search`] = childPath(ctx, include);
   }

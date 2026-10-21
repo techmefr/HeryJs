@@ -74,6 +74,10 @@ With `softDeletes: false`, there is no `deletedAt` column, no restore route, no 
 
 Off by default. `versioned: true` adds an integer `version` column that every update, delete and restore increments, exposes it on the record, and makes the update route refuse an entry that does not say which version it read, or that read a stale one (`409`, or `412` through `If-Match`). `version` is reserved on a versioned resource and the key is refused on a `routed: false` one. See [Optimistic concurrency](../guides/optimistic-concurrency/).
 
+## Workflow
+
+Off unless a `workflow` block is declared. It names a state machine for the resource: an `initial` state and the `transitions` between states, each with a `permission` preset (default `own`) and optional `requires` guards. The resource gains a state column, which no client can write, and `POST /<resource>/transition` is the only way it moves. See [Workflow](../guides/workflow/).
+
 ## Permissions
 
 One preset per action, each resolved through the same capabilities engine described in the capabilities guide.

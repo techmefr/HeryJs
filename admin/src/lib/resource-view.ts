@@ -22,9 +22,12 @@ import {
   describeResource,
   isAllowed,
   mutateIds,
+  mutateTransition,
+  pascalOf,
   resourcesOf,
   searchResource,
   summarize,
+  transitionsFrom,
 } from './resource';
 import type {
   ResourceDescription,
@@ -75,6 +78,17 @@ function buttonsOf(view: View, row: ResourceRow): RowButton[] {
     });
   }
 
+  if (!query.trashed) {
+    for (const transition of transitionsFrom(view.description, row)) {
+      buttons.push({
+        id: 'transition-' + transition.name,
+        label: pascalOf(transition.name),
+        isAllowed: isAllowed(row.capabilities, transition.name),
+        onClick: () => void runRowTransition(view, row, transition.name),
+      });
+    }
+  }
+
   if (query.trashed && view.description.softDeletes) {
     buttons.push({
       id: 'restore',
@@ -105,6 +119,29 @@ function buttonsOf(view: View, row: ResourceRow): RowButton[] {
   }
 
   return buttons;
+}
+
+async function runRowTransition(
+  view: View,
+  row: ResourceRow,
+  transition: string,
+): Promise<void> {
+  const label = pascalOf(transition);
+
+  if (!confirmed(view, label + ' this record?')) {
+    return;
+  }
+
+  const failure = summarize(
+    await mutateTransition(view.options.base, row.id, transition),
+  ).failed[0];
+
+  announce(
+    view,
+    failure ? failure.message : label + ' done.',
+    failure !== undefined,
+  );
+  await load(view);
 }
 
 async function runRowChange(

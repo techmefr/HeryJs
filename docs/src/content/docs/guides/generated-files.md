@@ -68,6 +68,7 @@ The HTTP surface: six routes, each behind `SessionGuard` and `CapabilitiesGuard`
 | `POST /tasks/create`  | `canCreateTask`                                                                             | —                                               |
 | `POST /tasks/update`  | `canUpdateAnyTask`                                                                          | `canUpdateTask` per entry, on the loaded record |
 | `POST /tasks/delete`  | `canDeleteAnyTask`, plus `canHardDeleteTask` once for the whole request when `mode: 'hard'` | `canDeleteTask` per entry                       |
+| `POST /tasks/transition` (with a `workflow`) | `canTransitionAnyTask` | `canPublishTask`-style, one per transition, per entry |
 | `POST /tasks/restore` | `canRestoreAnyTask`                                                                         | `canRestoreTask` per entry                      |
 
 Every mutating route takes an array and answers with one result per entry, each carrying its own `status`, so one refused record never blocks the others. The guard admits the caller to the route; the per-record function above is what decides each entry.

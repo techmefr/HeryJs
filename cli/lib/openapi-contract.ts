@@ -84,6 +84,7 @@ export function selectableFields(ctx: ResourceContext): string[] {
     'updatedAt',
     ...(ctx.softDeletes ? ['deletedAt'] : []),
     ...(ctx.versioned ? ['version'] : []),
+    ...(ctx.workflow ? [ctx.workflow.field] : []),
   ];
 }
 
@@ -118,6 +119,15 @@ export function recordProperties(ctx: ResourceContext): RecordProperty[] {
       : []),
     ...(ctx.versioned
       ? [{ name: 'version', type: 'int' as const, optional: false }]
+      : []),
+    ...(ctx.workflow
+      ? [
+          {
+            name: ctx.workflow.field,
+            type: 'string' as const,
+            optional: false,
+          },
+        ]
       : []),
   ];
 }
