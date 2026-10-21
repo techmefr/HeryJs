@@ -163,7 +163,7 @@ Everything it asks for is checked from the package alone, so a third-party autho
 
 Typechecking the runtime is deliberately not in that list: that is the author's own `tsc`, against their own `tsconfig`.
 
-The same checks run over the seventeen modules in this repository as `pnpm run lint:module-validity`, part of `lint:conventions` and so of CI — what is demanded of a community module is demanded of the official ones first.
+The same checks run over the official modules in this repository as `pnpm run lint:module-validity`, part of `lint:conventions` and so of CI — what is demanded of a community module is demanded of the official ones first.
 
 ## A module is its default export
 
@@ -188,7 +188,7 @@ It is deliberate. The contract used to be a `registerModule()` call into a modul
 
 ## The official modules are packages too
 
-The seventeen modules in this repository are published as `@heryjs/<name>`, versioned with the kernel:
+The official modules in this repository are published as `@heryjs/<name>`, versioned with the kernel:
 
 ```bash
 pnpm add @heryjs/storage
@@ -197,7 +197,7 @@ pnpm hery install storage
 
 The npm name is not what you install. `hery install` takes the name in the definition, so `@heryjs/storage` and a fork of it published under another id are both `storage` — which is also how a fork can replace the official one without the project's scripts changing.
 
-That does make one collision easy to reach. A project scaffolded by `hery new` already carries all seventeen as workspaces, so adding one from npm gives you two modules answering to one name, and the loader says so rather than picking quietly:
+That does make one collision easy to reach. A project scaffolded by `hery new` already carries every official module as a workspace, so adding one from npm gives you two modules answering to one name, and the loader says so rather than picking quietly:
 
 ```
 ! two modules are named "storage" — the official one wins, and the other is
@@ -260,7 +260,7 @@ One consequence of the unconditional dependency step: `pnpm add -w` runs on ever
 
 ## `install` never edits your app module
 
-This is deliberate and consistent across all seventeen. Every module that needs wiring ends its output with a numbered list telling you what to add, and where:
+This is deliberate and consistent across every official module. Every module that needs wiring ends its output with a numbered list telling you what to add, and where:
 
 ```
 Next steps:
