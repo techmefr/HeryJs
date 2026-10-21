@@ -3,7 +3,10 @@ import { ApiKeyController } from './api-key.controller';
 import { ApiKeyService } from './api-key.service';
 import { AuthController } from './auth.controller';
 import { BetterAuthController } from './better-auth.controller';
+import { AuthRecipientThrottle } from './auth-recipient-throttle';
 import { AuthMailerResolver } from './auth-mailer';
+import { AuthSmsResolver } from './auth-sms';
+import { RateLimitStore } from '#technical/rate-limit/rate-limit-store';
 import { AUTH_PROVIDER } from './auth.types';
 import { LoginThrottleShutdown } from './login-throttle';
 import { PasswordService } from './password.service';
@@ -25,6 +28,9 @@ import { SessionGuard } from './session.guard';
     PasswordService,
     SessionService,
     AuthMailerResolver,
+    AuthSmsResolver,
+    AuthRecipientThrottle,
+    RateLimitStore,
     { provide: AUTH_PROVIDER, useClass: SessionAuthProvider },
     SessionGuard,
   ],

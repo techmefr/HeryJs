@@ -22,6 +22,9 @@ model User {
   banReason        String?
   banExpires       DateTime?
   twoFactorEnabled Boolean   @default(false)
+  phoneNumber      String?   @unique
+  phoneNumberVerified Boolean @default(false)
+  isAnonymous      Boolean   @default(false)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -32,6 +35,7 @@ model User {
   memberships               TeamMember[]
   apiKeys                   ApiKey[]
   twoFactors                TwoFactor[]
+  passkeys                  Passkey[]
   pushTokens                PushToken[]
   twoFactorEnrolment        TwoFactorEnrolment?
   twoFactorRecoveryCodes    TwoFactorRecoveryCode[]
@@ -347,6 +351,25 @@ model TwoFactor {
 
   @@index([secret])
   @@index([userId])
+}
+
+model Passkey {
+  id           String    @id @default(cuid())
+  name         String?
+  publicKey    String
+  userId       String
+  credentialID String
+  counter      Int
+  deviceType   String
+  backedUp     Boolean
+  transports   String?
+  createdAt    DateTime? @default(now())
+  aaguid       String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([credentialID])
 }
 
 // Consent is recorded per number rather than per user: a number does not always
