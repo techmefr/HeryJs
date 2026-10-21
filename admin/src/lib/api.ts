@@ -13,8 +13,28 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly details: unknown = null,
+    readonly serverMessage: string | null = null,
   ) {
     super(message);
+  }
+}
+
+async function failureOf(
+  response: Response,
+): Promise<{ details: unknown; message: string | null }> {
+  try {
+    const body = (await response.json()) as {
+      error?: { message?: unknown; details?: unknown };
+    };
+    const message = body.error?.message;
+
+    return {
+      details: body.error?.details ?? null,
+      message: typeof message === 'string' ? message : null,
+    };
+  } catch {
+    return { details: null, message: null };
   }
 }
 
@@ -48,7 +68,14 @@ export async function api<T>(
   }
 
   if (!response.ok) {
-    throw new ApiError('Request to ' + route + ' failed', response.status);
+    const failure = await failureOf(response);
+
+    throw new ApiError(
+      'Request to ' + route + ' failed',
+      response.status,
+      failure.details,
+      failure.message,
+    );
   }
 
   return (await response.json()) as Envelope<T>;

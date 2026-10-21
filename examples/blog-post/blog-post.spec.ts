@@ -89,6 +89,8 @@ describe('BlogPost resource', () => {
         fields: Array<{ name: string }>;
         limits?: number[];
         paginated: boolean;
+        softDeletes: boolean;
+        relations: string[];
         rules: { create: { required?: string[] } };
       };
     };
@@ -97,6 +99,8 @@ describe('BlogPost resource', () => {
       'privateNote',
     ]);
     expect(body.data.paginated).toBe(true);
+    expect(body.data.softDeletes).toBe(true);
+    expect(body.data.relations).toEqual(['tags']);
     expect(body.data.limits).toEqual([10, 15, 20]);
     expect(body.data.rules.create.required).toEqual(['title']);
   });
@@ -168,20 +172,38 @@ describe('BlogPost resource', () => {
 
     const response = await request(app.getHttpServer())
       .post('/blog-posts/search')
-      .send({ capabilities: ['update'] })
+      .send({
+        capabilities: [
+          'update',
+          'delete',
+          'restore',
+          'attachTags',
+          'detachTags',
+        ],
+      })
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(200);
 
     const body = response.body as {
-      data: Array<{ capabilities: { update: { allowed: boolean } } }>;
+      data: Array<{ capabilities: Record<string, { allowed: boolean }> }>;
       meta: unknown;
     };
     expect(body.data.length).toBeGreaterThan(0);
-    expect(body.data[0]?.capabilities.update.allowed).toBe(true);
+    expect(body.data[0]?.capabilities.update?.allowed).toBe(true);
+    expect(Object.keys(body.data[0]?.capabilities ?? {}).sort()).toEqual([
+      'attachTags',
+      'delete',
+      'detachTags',
+      'restore',
+      'update',
+    ]);
     expect(body.meta).toMatchObject({
       capabilities: { create: { allowed: true, scope: 'own' } },
       channels: ['blogPost'],
     });
+    expect(
+      (body.meta as { capabilities: Record<string, unknown> }).capabilities,
+    ).toHaveProperty('listTrashed');
   });
 
   it('returns a real 403 when someone other than the owner tries to update it', async () => {
@@ -548,6 +570,25 @@ describe('BlogPost resource', () => {
       (attached.body as { data: { data: { tags: string[] } }[] }).data[0]!.data
         .tags,
     ).toEqual([childA.id]);
+
+    const members = await request(app.getHttpServer())
+      .post('/blog-posts/' + recordId + '/tags/members')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+
+    expect(
+      (members.body as { data: { id: string }[] }).data.map((row) => row.id),
+    ).toEqual([childA.id]);
+
+    const options = await request(app.getHttpServer())
+      .post('/blog-posts/' + recordId + '/tags/options')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({})
+      .expect(200);
+
+    expect(
+      (options.body as { data: { id: string }[] }).data.map((row) => row.id),
+    ).toEqual(expect.arrayContaining([childA.id, childB.id]));
 
     const synced = await request(app.getHttpServer())
       .post('/blog-posts/update')

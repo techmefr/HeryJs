@@ -1,0 +1,47 @@
+---
+import Shell from '../layouts/Shell.astro';
+---
+
+<Shell title="Resource">
+  <h1 id="heading">Resource</h1>
+  <p class="route" id="route"></p>
+
+  <div class="output" id="output"></div>
+</Shell>
+
+<script>
+  import { api, labelOf } from '../lib/api';
+  import type { DescribedController } from '../lib/api';
+  import { tintOf } from '../lib/icons';
+  import { extensionFor } from '../lib/extensions';
+  import { state } from '../lib/render';
+  import { mountResource } from '../lib/resource-view';
+  import extensions from '../extensions';
+
+  const heading = document.getElementById('heading')!;
+  const output = document.getElementById('output')!;
+  const params = new URLSearchParams(window.location.search);
+  const base = params.get('base');
+
+  if (!base) {
+    output.appendChild(
+      state('No resource selected', 'Pick one in the sidebar to manage it.'),
+    );
+  } else {
+    const label = extensionFor(extensions, base).label ?? labelOf(base);
+    heading.textContent = label;
+    document.title = label + ' — HeryJs admin';
+    document.body.classList.add(tintOf(base));
+    document.getElementById('crumb')!.textContent = label;
+    document.getElementById('route')!.textContent = base;
+
+    const { data } = await api<DescribedController[]>('/introspect');
+
+    await mountResource(output, {
+      base,
+      controllers: data,
+      extensions,
+      editId: params.get('edit'),
+    });
+  }
+</script>

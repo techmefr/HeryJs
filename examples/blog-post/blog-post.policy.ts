@@ -124,7 +124,10 @@ export class BlogPostPolicy {
   recordCapabilities(
     subject: CapabilitySubject,
     record: BlogPostRecordLike,
-  ): Record<'update' | 'delete', CapabilityDecision> {
+  ): Record<
+    'update' | 'delete' | 'restore' | 'attachTags' | 'detachTags',
+    CapabilityDecision
+  > {
     return {
       update: this.capabilities.resolve(
         BLOG_POST_PRESETS.update,
@@ -136,14 +139,19 @@ export class BlogPostPolicy {
         subject,
         record,
       ),
+      restore: canRestoreBlogPost(subject, record),
+      attachTags: canAttachTagsToBlogPost(subject, record),
+      detachTags: canDetachTagsFromBlogPost(subject, record),
     };
   }
 
   metaCapabilities(
     subject: CapabilitySubject,
-  ): Record<'create', CapabilityDecision> {
+  ): Record<'create' | 'hardDelete' | 'listTrashed', CapabilityDecision> {
     return {
       create: canCreateBlogPost(subject),
+      hardDelete: canHardDeleteBlogPost(subject),
+      listTrashed: canListTrashedBlogPost(subject),
     };
   }
 }
