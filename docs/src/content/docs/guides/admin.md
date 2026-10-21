@@ -7,7 +7,7 @@ The admin panel has no configuration file listing your resources. It asks the ru
 
 ## `GET /introspect`
 
-One route, guarded by `SessionGuard` and `DevOnlyGuard`. It returns every controller and every route the DI container actually has:
+One route, behind `@AdminStudio()` (see [Running the studio in production](#running-the-studio-in-production)). It returns every controller and every route the DI container actually has:
 
 ```ts
 export interface DescribedRoute {
@@ -66,7 +66,7 @@ pnpm --filter admin dev
 
 Astro on port 4322, in its own pnpm workspace. Statically built on purpose: every page authenticates from the browser with the session token, so there is nothing to render on a server and no adapter to deploy — the pages are files.
 
-Nine pages. An overview counting controllers, routes and how many sit behind a capability; a browse page rendering one plain route as a table; a resource page managing a generated resource; a login form; the [Pipeline](../guides/debugging/) page, one card per traced request with the blocked step outlined; a [Dev dashboard](../guides/dev-dashboard/) page, the persisted requests, slow queries, N+1 findings, jobs, messages and exceptions of your tenant, one tab per kind; a [Prune](../guides/prune/#the-admin-page) page, one row per configured model with a button that triggers a run; a [Backups](../guides/backups/#from-the-admin-panel) page to create, download and restore dumps and edit their schedule; and a [Feature flags](../guides/feature-flags/#editing-at-runtime) page to create a flag, set its rollout, edit its targeting rules and preview an evaluation. Sign in with any account of your API — it posts to the same `/auth/login` the rest of the world uses and keeps the token in the browser.
+Ten pages. An overview counting controllers, routes and how many sit behind a capability; a browse page rendering one plain route as a table; a resource page managing a generated resource; a login form; the [Pipeline](../guides/debugging/) page, one card per traced request with the blocked step outlined; a [Dev dashboard](../guides/dev-dashboard/) page, the persisted requests, slow queries, N+1 findings, jobs, messages and exceptions of your tenant, one tab per kind; a [Prune](../guides/prune/#the-admin-page) page, one row per configured model with a button that triggers a run; a [Backups](../guides/backups/#from-the-admin-panel) page to create, download and restore dumps and edit their schedule; and a [Feature flags](../guides/feature-flags/#editing-at-runtime) page to create a flag, set its rollout, edit its targeting rules and preview an evaluation. Sign in with any account of your API — it posts to the same `/auth/login` the rest of the world uses and keeps the token in the browser. A [Quotas](/guides/quotas/#managing-it-from-the-admin-panel) page shows every tenant's usage against its limit and edits limits and counters.
 
 ### Every argument-free GET, and every POST search route, becomes a section
 
@@ -157,6 +157,48 @@ The surface can relabel, hide, lock, format and add, and it can switch a feature
 
 Point it at another API with `PUBLIC_API_URL` if yours is not on `http://localhost:3000`.
 
+## Contributing a section and an action
+
+A feature contributes to the admin without a registry: it decorates the routes it already has, and introspection carries the declaration. `DescribedRoute` gains an `admin` field.
+
+```ts
+@Controller('mail')
+@AdminStudio()
+export class MailAdminController {
+  @AdminSection({
+    id: 'mail',
+    title: 'Outbox',
+    icon: 'mail',
+    group: 'Messaging',
+    columns: [{ key: 'subject', label: 'Subject' }, { key: 'sentAt', label: 'Sent', format: 'date' }],
+  })
+  @Get()
+  @Capability(canReadMail)
+  list() {}
+
+  @AdminAction({ id: 'mail-resend', title: 'Resend', icon: 'mail', section: 'mail', scope: 'row' })
+  @Post(':id/resend')
+  @Capability(canResendMail)
+  resend() {}
+}
+```
+
+- `@AdminSection` goes on a list route (an argument-free GET or a POST `/search`). `group` is the sidebar heading, `order` sorts inside it, `columns` order, rename and format the columns the payload carries (a declared key the payload lacks is ignored, an undeclared one is kept).
+- `@AdminAction` goes on a non-GET route. `scope` is `row` (needs `:id`; shown on each row, also on a generated resource page whose list route carries the section), `bulk` (sends `{ ids }`) or `global`. `fields` makes the admin collect a form (`text`, `textarea`, `number`, `boolean`, `select`, `password`) and send it as the JSON body; `confirm` or `danger` make it ask first. A dialog is only shown when one of those is present.
+- Every `@AdminAction` call is audited before it runs (model `AdminAction`, operation = the action id, the names of the fields sent and never their values). A failed audit write stops the request.
+- The route keeps its own `@Capability`; the admin never grants. The contract is checked by `pnpm run lint:conventions admin-contract`: ids are unique kebab-case literals, the icon is one of `ADMIN_ICONS`, titles are literal, an action names a declared section, and a contributing controller does not use `DevOnlyGuard` (it would vanish in production).
+
+## Running the studio in production
+
+`/introspect` and any controller decorated with `@AdminStudio()` use this chain: gate, session, second factor, capability.
+
+| Variable | Effect |
+| --- | --- |
+| `ADMIN_STUDIO_ENABLED` | Must be exactly `true` in production; otherwise the routes answer 404, signed in or not. Ignored outside production, where the studio opens to any signed-in developer as before. |
+| `ADMIN_STUDIO_ALLOWED_IPS` | Comma separated peer addresses; any other caller gets 404. It reads the address Express resolved, so set `trust proxy` deliberately behind a proxy. |
+| `ADMIN_STUDIO_REQUIRE_2FA` | `true` makes a platform admin without an enrolled second factor get 403. |
+
+The capability `canUseAdminStudio` is the platform admin role in production. No header, query parameter or client value can switch the checks off.
 ## Before you deploy any of this
 
 `/introspect` is a map of your application, and the protections on it are worth understanding precisely.

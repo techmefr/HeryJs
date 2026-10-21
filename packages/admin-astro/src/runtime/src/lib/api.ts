@@ -81,11 +81,53 @@ export async function api<T>(
   return (await response.json()) as Envelope<T>;
 }
 
+export type AdminColumnFormat =
+  'text' | 'number' | 'date' | 'boolean' | 'badge' | 'json';
+
+export interface AdminColumn {
+  key: string;
+  label: string;
+  format?: AdminColumnFormat;
+  hidden?: boolean;
+}
+
+export interface AdminField {
+  name: string;
+  label: string;
+  type: 'text' | 'textarea' | 'number' | 'boolean' | 'select' | 'password';
+  required?: boolean;
+  help?: string;
+  options?: string[];
+}
+
+export interface AdminSectionMeta {
+  kind: 'section';
+  id: string;
+  title: string;
+  icon: string;
+  group: string;
+  order?: number;
+  columns?: AdminColumn[];
+}
+
+export interface AdminActionMeta {
+  kind: 'action';
+  id: string;
+  title: string;
+  icon: string;
+  section?: string;
+  scope: 'row' | 'bulk' | 'global';
+  confirm?: string;
+  danger?: boolean;
+  fields?: AdminField[];
+}
+
 export interface DescribedRoute {
   method: string;
   path: string;
   handler: string;
   capability?: string;
+  admin?: AdminSectionMeta | AdminActionMeta;
 }
 
 export interface DescribedController {
@@ -94,10 +136,19 @@ export interface DescribedController {
   routes: DescribedRoute[];
 }
 
+export const DEFAULT_GROUP = 'Sections';
+
 export interface AdminSection {
   label: string;
   path: string;
   method: 'GET' | 'POST';
+  // What a feature declared with @AdminSection; absent for a route the admin
+  // only discovered, which keeps the title taken from its path.
+  id?: string;
+  icon?: string;
+  group: string;
+  order: number;
+  columns?: AdminColumn[];
 }
 
 // The overview already reports these, and /signal/stream never ends.
@@ -116,6 +167,9 @@ const HIDDEN_PATHS = [
   '/health/live',
   '/health/ready',
   '/metrics',
+  '/quotas',
+  '/quotas/defaults',
+  '/quotas/tenants',
   '/pipeline/traces',
   '/devtools/entries',
   '/devtools/summary',
@@ -143,6 +197,7 @@ export function sectionsOf(controllers: DescribedController[]): AdminSection[] {
           route.path === '/'
             ? controller.basePath
             : controller.basePath + route.path,
+        declared: route.admin?.kind === 'section' ? route.admin : undefined,
       }))
       .filter(
         (route) =>
@@ -150,15 +205,55 @@ export function sectionsOf(controllers: DescribedController[]): AdminSection[] {
           !route.path.endsWith('/describe'),
       )
       .map((route) => ({
-        label: labelOf(
-          route.method === 'POST'
-            ? route.path.slice(0, -'/search'.length)
-            : route.path,
-        ),
+        label:
+          route.declared?.title ??
+          labelOf(
+            route.method === 'POST'
+              ? route.path.slice(0, -'/search'.length)
+              : route.path,
+          ),
         path: route.path,
         method: route.method,
+        id: route.declared?.id,
+        icon: route.declared?.icon,
+        group: route.declared?.group ?? DEFAULT_GROUP,
+        order: route.declared?.order ?? DEFAULT_ORDER,
+        columns: route.declared?.columns,
       })),
   );
+}
+
+const DEFAULT_ORDER = 100;
+
+/**
+ * The sidebar's shape: contributed groups by name, the discovered sections
+ * last under their own heading, and inside a group the declared order first,
+ * then the title -- so two features never fight over a position.
+ */
+export function groupedSections(
+  sections: AdminSection[],
+): Array<{ group: string; sections: AdminSection[] }> {
+  const groups = new Map<string, AdminSection[]>();
+
+  for (const section of sections) {
+    groups.set(section.group, [...(groups.get(section.group) ?? []), section]);
+  }
+
+  return [...groups.entries()]
+    .sort(([left], [right]) =>
+      left === DEFAULT_GROUP
+        ? 1
+        : right === DEFAULT_GROUP
+          ? -1
+          : left.localeCompare(right),
+    )
+    .map(([group, members]) => ({
+      group,
+      sections: [...members].sort(
+        (left, right) =>
+          left.order - right.order || left.label.localeCompare(right.label),
+      ),
+    }));
 }
 
 export function labelOf(route: string): string {
