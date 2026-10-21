@@ -13,6 +13,9 @@ category is called out here explicitly.
 
 First public release.
 
+### Admin table editor: inline edit
+
+A generated resource's table edits a plain cell in place (text, number, checkbox, enum): an Edit button on the cell, Enter to save through the resource's `update` route with the form's validation and version check, Escape to cancel, and the server's refusal shown in the cell. It follows the row's `update` capability and is switched off by `disable: ['update']`.
 ### Feature flag rollout and targeting
 
 A flag now carries a rollout percentage (0-100, bucketed per user or per tenant with a hash of the flag key and the subject, so the same user always gets the same answer and raising the percentage only adds people) and an ordered list of targeting rules on tenant, user, plan or any custom attribute. The evaluation order is written once, in `feature-flag-evaluation.ts`: no flag is off, `enabled: false` is a kill switch, the first matching rule decides, then the percentage. `FeatureFlagsService.isEnabled` still takes a tenant id and now also a context (`userId`, `plan`, `attributes`); `evaluate` returns the decision with its reason. `PATCH /feature-flags/:key` takes the new fields, `POST /feature-flags/evaluate` previews a user or tenant and `DELETE /feature-flags/:key` removes a flag, all admin-only. The admin panel gets a Feature flags page to create a flag, set the percentage, edit the rules and preview an evaluation. A migration adds the three columns with defaults that keep every existing flag on for everyone. A `FeatureFlagDriver` provider now implements `evaluate` and `remove`, and `set` takes a patch object rather than a boolean.

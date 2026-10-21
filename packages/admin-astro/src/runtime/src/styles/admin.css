@@ -1049,6 +1049,22 @@ fieldset.relation > div {
   cursor: default;
 }
 
+button.inline-edit {
+  margin-left: 0.5rem;
+  padding: 0 0.375rem;
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+td:hover button.inline-edit,
+button.inline-edit:focus-visible {
+  opacity: 1;
+}
+
+.inline-error {
+  display: block;
+  color: var(--danger);
+  font-size: 0.75rem;
 .toolbar {
   display: flex;
   flex-wrap: wrap;
