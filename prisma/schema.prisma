@@ -378,6 +378,7 @@ model IdempotencyKey {
 
   @@unique([tenantId, key])
   @@index([tenantId])
+}
 
 model OauthIdentity {
   id             String   @id @default(cuid())
