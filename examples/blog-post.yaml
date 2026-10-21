@@ -13,6 +13,10 @@ fields:
     optional: true
     translatable: true
     personal: true
+  - name: body
+    type: richtext
+    optional: true
+    maxLength: 20000
   - name: privateNote
     type: encrypted
     optional: true

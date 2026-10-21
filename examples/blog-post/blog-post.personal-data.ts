@@ -25,6 +25,13 @@ export class BlogPostPersonalData implements OnModuleInit {
           personal: true,
         },
         {
+          name: 'body',
+          type: 'richtext',
+          optional: true,
+          translatable: false,
+          personal: false,
+        },
+        {
           name: 'privateNote',
           type: 'encrypted',
           optional: true,

@@ -109,6 +109,11 @@ async function promptFields(): Promise<BlueprintField[]> {
             'vector (an embedding of another string field, for similarity search)',
           value: 'vector',
         },
+        {
+          title:
+            'richtext (HTML sanitised by an allow-list on write and on read)',
+          value: 'richtext',
+        },
       ],
     })) as { type?: BlueprintField['type'] };
 

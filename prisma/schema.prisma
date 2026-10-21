@@ -219,6 +219,7 @@ model BlogPost {
   ownerId     String
   title       String
   summary     Json?
+  body        String?
   privateNote String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
