@@ -2,6 +2,7 @@ import '#technical/config/load-env';
 import { Command } from 'commander';
 import { registerConsoleCommand } from './commands/console';
 import { registerCreateBlueprintCommand } from './commands/create-blueprint';
+import { registerDbBackupCommands } from './commands/db-backup';
 import { registerDbBranchCommand } from './commands/db-branch';
 import { registerDbDiffCommand } from './commands/db-diff';
 import { registerDbSeedCommand } from './commands/db-seed';
@@ -43,6 +44,7 @@ program.name('hery').description('HeryJs conventions CLI');
 
 registerConsoleCommand(program);
 registerCreateBlueprintCommand(program);
+registerDbBackupCommands(program);
 registerDbBranchCommand(program);
 registerDbDiffCommand(program);
 registerDbSeedCommand(program);
