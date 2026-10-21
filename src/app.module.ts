@@ -26,6 +26,7 @@ import { MaintenanceMiddleware } from '#technical/maintenance/maintenance.middle
 import { MonitoringModule } from '#technical/monitoring/monitoring.module';
 import { OutboxModule } from '#technical/outbox/outbox.module';
 import { NotificationsModule } from '#technical/notifications/notifications.module';
+import { BackupModule } from '#technical/backup/backup.module';
 import { PruneModule } from '#technical/prune/prune.module';
 import { RateLimitModule } from '#technical/rate-limit/rate-limit.module';
 import { SchedulerModule } from '#technical/scheduler/scheduler.module';
@@ -122,6 +123,7 @@ const telemetryOptions = telemetryPinoOptions();
     NotificationsModule,
     OutboxModule,
     PipelineModule,
+    BackupModule,
     PruneModule,
     RateLimitModule,
     OAuthModule.forRoot(),
