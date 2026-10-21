@@ -102,6 +102,10 @@ Twelve packages, versioned together:
 - `hery down` puts every instance in maintenance mode, answering 503 with a
   `Retry-After` unless the request carries the bypass secret, and
   `hery up --lift` ends it. The health probes stay reachable throughout.
+- An error reporter contract (`errorReporter` in `hery.config.ts`) hands every
+  unexpected 500, with its `errorId`, tenant, caller and request path, to a
+  Sentry-style driver. The built-in `noop` driver is the default; a domain
+  exception or any other `HttpException` is never reported.
 - An architecture linter that fails CI on a domain missing a concern, plus
   fourteen convention checks covering capabilities, pagination, RLS, rate
   limiting, module drift and patched kernel files.

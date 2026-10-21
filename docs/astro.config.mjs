@@ -75,6 +75,7 @@ export default defineConfig({
                 { label: 'Secrets and encryption', slug: 'guides/secrets' },
                 { label: 'Health checks', slug: 'guides/health' },
                 { label: 'Maintenance mode', slug: 'guides/maintenance' },
+                { label: 'Error reporting', slug: 'guides/error-reporting' },
                 { label: 'Jobs', slug: 'guides/jobs' },
                 { label: 'Migrations', slug: 'guides/migrations' },
                 { label: 'Prune', slug: 'guides/prune' },
