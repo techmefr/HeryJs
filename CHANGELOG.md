@@ -13,6 +13,10 @@ category is called out here explicitly.
 
 First public release.
 
+### S3 storage selected by `STORAGE_DRIVER`
+
+`STORAGE_DRIVER=s3` now stores in S3 or any S3-compatible server with no wiring: the driver is bound by the storage module, the registry falls back to the variable when `hery.config.ts` declares no `storage` slice, and the S3 client is built on first use, so an app on local disk in production is no longer refused a boot over S3 credentials. Upload intents are tested against a real MinIO in CI. The bundled `docker-compose.storage.yml` now pins the Bitnami MinIO image, because `minio/minio` no longer pulls. The admin panel gains a Storage page, backed by `storage-admin` routes that report the driver and list, upload and delete the tenant's files. **Upgrade note:** `StorageDriver` has a new `list(prefix, limit)` method; a driver you wrote yourself has to implement it. In a project that already has the storage module, copy the new files by hand.
+
 ### Vector fields and similarity search
 
 A blueprint field `type: vector` (with `dimensions` and a `source` string field) becomes a pgvector column, filled through the outbox whenever the source changes, and the search route accepts `search: { q, mode: 'similar' }`. The new `embeddings` module holds the driver contract (a deterministic `fake` driver and an `openai-compatible` one over the built-in `fetch`). Tenant, capability scope and soft-delete are part of the ranking query, which runs under the tenant's row-level security. The docker-compose and CI Postgres images are now `pgvector/pgvector:pg17` and a migration enables the extension: **upgrade note:** a project created before this must switch its Postgres image to `pgvector/pgvector:pg17` (compose and CI) before migrating, because the new migration runs `CREATE EXTENSION vector`. `hery embeddings:backfill <name>` embeds rows that existed before the field; `hery create:blueprint` can now declare a vector field. `hery generate` no longer corrupts `TENANT_SCOPED_MODELS` when the list ends with a trailing comma.

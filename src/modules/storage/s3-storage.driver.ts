@@ -2,6 +2,7 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
   NotFound,
   PutObjectCommand,
   S3Client,
@@ -14,37 +15,59 @@ import type {
   StorageDriver,
   StoredObject,
   StoredObjectStat,
+  StoredObjectSummary,
 } from '#technical/storage/storage-driver';
 
 const DEFAULT_TTL_SECONDS = 900;
 const PRESIGN_PUT_TTL_SECONDS = 300;
 
+interface S3Connection {
+  bucket: string;
+  client: S3Client;
+}
+
 // Works against real S3 or any S3-compatible endpoint (self-hosted MinIO
 // included) -- only STORAGE_S3_ENDPOINT changes between the two.
+//
+// The client is built on first use, not when Nest instantiates the provider.
+// The module always provides this driver, so a constructor that read the
+// environment would refuse a production boot over S3 credentials on every app
+// that stores on local disk.
 @Injectable()
 export class S3StorageDriver implements StorageDriver {
-  private readonly env = s3StorageEnv();
+  private connection?: S3Connection;
 
-  private readonly bucket = this.env.STORAGE_S3_BUCKET;
+  private connect(): S3Connection {
+    if (!this.connection) {
+      const env = s3StorageEnv();
 
-  private readonly client = new S3Client({
-    region: this.env.STORAGE_S3_REGION,
-    endpoint: this.env.STORAGE_S3_ENDPOINT,
-    forcePathStyle: Boolean(this.env.STORAGE_S3_ENDPOINT),
-    credentials: {
-      accessKeyId: this.env.STORAGE_S3_ACCESS_KEY,
-      secretAccessKey: this.env.STORAGE_S3_SECRET_KEY,
-    },
-  });
+      this.connection = {
+        bucket: env.STORAGE_S3_BUCKET,
+        client: new S3Client({
+          region: env.STORAGE_S3_REGION,
+          endpoint: env.STORAGE_S3_ENDPOINT,
+          forcePathStyle: Boolean(env.STORAGE_S3_ENDPOINT),
+          credentials: {
+            accessKeyId: env.STORAGE_S3_ACCESS_KEY,
+            secretAccessKey: env.STORAGE_S3_SECRET_KEY,
+          },
+        }),
+      };
+    }
+
+    return this.connection;
+  }
 
   async put(
     key: string,
     body: Buffer,
     contentType: string,
   ): Promise<StoredObject> {
-    await this.client.send(
+    const { bucket, client } = this.connect();
+
+    await client.send(
       new PutObjectCommand({
-        Bucket: this.bucket,
+        Bucket: bucket,
         Key: key,
         Body: body,
         ContentType: contentType,
@@ -55,8 +78,10 @@ export class S3StorageDriver implements StorageDriver {
   }
 
   async get(key: string): Promise<Buffer> {
-    const { Body } = await this.client.send(
-      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+    const { bucket, client } = this.connect();
+
+    const { Body } = await client.send(
+      new GetObjectCommand({ Bucket: bucket, Key: key }),
     );
 
     if (!Body) {
@@ -67,8 +92,10 @@ export class S3StorageDriver implements StorageDriver {
   }
 
   async remove(key: string): Promise<void> {
-    await this.client.send(
-      new DeleteObjectCommand({ Bucket: this.bucket, Key: key }),
+    const { bucket, client } = this.connect();
+
+    await client.send(
+      new DeleteObjectCommand({ Bucket: bucket, Key: key }),
     );
   }
 
@@ -76,9 +103,11 @@ export class S3StorageDriver implements StorageDriver {
     key: string,
     expiresInSeconds = DEFAULT_TTL_SECONDS,
   ): Promise<string> {
+    const { bucket, client } = this.connect();
+
     return getSignedUrl(
-      this.client,
-      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+      client,
+      new GetObjectCommand({ Bucket: bucket, Key: key }),
       { expiresIn: expiresInSeconds },
     );
   }
@@ -88,10 +117,12 @@ export class S3StorageDriver implements StorageDriver {
     contentType: string,
     sizeBytes: number,
   ): Promise<PresignedUpload> {
+    const { bucket, client } = this.connect();
+
     const url = await getSignedUrl(
-      this.client,
+      client,
       new PutObjectCommand({
-        Bucket: this.bucket,
+        Bucket: bucket,
         Key: key,
         ContentType: contentType,
         ContentLength: sizeBytes,
@@ -106,9 +137,11 @@ export class S3StorageDriver implements StorageDriver {
   }
 
   async stat(key: string): Promise<StoredObjectStat | null> {
+    const { bucket, client } = this.connect();
+
     try {
-      const head = await this.client.send(
-        new HeadObjectCommand({ Bucket: this.bucket, Key: key }),
+      const head = await client.send(
+        new HeadObjectCommand({ Bucket: bucket, Key: key }),
       );
 
       return {
@@ -121,5 +154,21 @@ export class S3StorageDriver implements StorageDriver {
       }
       throw error;
     }
+  }
+
+  async list(prefix: string, limit: number): Promise<StoredObjectSummary[]> {
+    const { bucket, client } = this.connect();
+
+    const { Contents = [] } = await client.send(
+      new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: prefix,
+        MaxKeys: limit,
+      }),
+    );
+
+    return Contents.flatMap((object) =>
+      object.Key ? [{ key: object.Key, size: object.Size ?? 0 }] : [],
+    );
   }
 }

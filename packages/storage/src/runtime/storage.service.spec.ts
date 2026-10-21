@@ -6,6 +6,7 @@ import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
 import { LocalStorageDriver } from './local-storage.driver';
 import { StorageDriverRegistry } from './storage-driver.registry';
 import { StorageService } from './storage.service';
+import { StorageNotInTenantException } from './storage-not-in-tenant.exception';
 import { StorageUploadRejectedException } from './storage-upload-rejected.exception';
 
 function inTenant<T>(tenantId: string, run: () => Promise<T>): Promise<T> {
@@ -119,5 +120,68 @@ describe('StorageService uploads', () => {
         }),
       ),
     ).rejects.toThrow(StorageUploadRejectedException);
+  });
+});
+
+describe('StorageService admin operations', () => {
+  const driver = new LocalStorageDriver();
+  const registry = new StorageDriverRegistry(
+    {},
+    driver,
+    new DriverResolver({} as ModuleRef),
+  );
+  registry.onModuleInit();
+  const service = new StorageService(registry);
+  const written: string[] = [];
+
+  async function uploadAs(tenantId: string): Promise<string> {
+    const stored = await inTenant(tenantId, () =>
+      service.upload({
+        buffer: Buffer.from('bytes'),
+        mimetype: 'image/png',
+        size: 5,
+      }),
+    );
+    written.push(stored.key);
+
+    return stored.key;
+  }
+
+  afterAll(async () => {
+    await Promise.all(
+      ['admin-a', 'admin-b'].map((tenant) =>
+        rm(path.resolve(process.cwd(), 'storage', tenant), {
+          force: true,
+          recursive: true,
+        }),
+      ),
+    );
+  });
+
+  it('lists the current tenant files and never another tenant', async () => {
+    const own = await uploadAs('admin-a');
+    const other = await uploadAs('admin-b');
+
+    const listed = await inTenant('admin-a', () => service.list());
+
+    expect(listed.map((file) => file.key)).toEqual([own]);
+    expect(listed.map((file) => file.key)).not.toContain(other);
+    expect(listed[0]?.size).toBe(5);
+    expect(listed[0]?.url).toContain(encodeURIComponent(own));
+  });
+
+  it('deletes a file of the current tenant', async () => {
+    const key = await uploadAs('admin-a');
+
+    await inTenant('admin-a', () => service.removeOwn(key));
+
+    await expect(driver.stat(key)).resolves.toBeNull();
+  });
+
+  it('refuses to delete a key of another tenant, and leaves the file', async () => {
+    const key = await uploadAs('admin-b');
+
+    await expect(inTenant('admin-a', () => service.removeOwn(key))).rejects.toThrow(StorageNotInTenantException);
+    await expect(driver.stat(key)).resolves.not.toBeNull();
   });
 });

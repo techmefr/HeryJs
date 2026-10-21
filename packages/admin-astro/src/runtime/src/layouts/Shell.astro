@@ -38,6 +38,7 @@ const { title, bare = false } = Astro.props;
               <a class="item" href="/pipeline" id="pipeline-link" />
               <a class="item" href="/devtools" id="devtools-link" />
               <a class="item" href="/prune" id="prune-link" />
+              <a class="item" href="/storage" id="storage-link" hidden />
             </nav>
 
             <nav class="group scrolls" id="sections">
@@ -118,6 +119,7 @@ const { title, bare = false } = Astro.props;
         'Dev dashboard',
       );
       label(document.getElementById('prune-link'), ICONS.prune, 'Prune');
+      label(document.getElementById('storage-link'), ICONS.storage, 'Storage');
       label(document.getElementById('sign-out'), ICONS.signOut, 'Sign out');
 
       const apiUrl = document.getElementById('api-url');
@@ -138,6 +140,18 @@ const { title, bare = false } = Astro.props;
         const query = new URLSearchParams(window.location.search);
         const current = query.get('path') ?? query.get('base');
         const bases = resourcesOf(data).map((resource) => resource.base);
+
+        // Storage is an optional module, so its page only gets a link when the
+        // running app actually exposes the route it reads.
+        const wired = (path: string) =>
+          data.some((controller) =>
+            controller.routes.some(
+              (route) => controller.basePath + route.path === path,
+            ),
+          );
+        document.getElementById('storage-link')!.hidden = !wired(
+          '/storage-admin/files',
+        );
 
         for (const section of sectionsOf(data)) {
           const link = document.createElement('a');

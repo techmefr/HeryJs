@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   LockKeyhole,
   LogOut,
+  HardDrive,
   Mail,
   RefreshCw,
   ScrollText,
@@ -37,6 +38,7 @@ export const ICONS = {
   prune: Trash2,
   refresh: RefreshCw,
   signOut: LogOut,
+  storage: HardDrive,
   yes: Check,
 };
 

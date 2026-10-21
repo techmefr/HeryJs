@@ -112,6 +112,8 @@ const HIDDEN_PATHS = [
   '/introspect',
   '/expose',
   '/health',
+  '/storage-admin/files',
+  '/storage-admin/status',
   '/health/live',
   '/health/ready',
   '/metrics',

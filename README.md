@@ -115,7 +115,6 @@ Every module follows one convention: a module exposes one capability, a driver i
 HeryJs covers a common backend core and says plainly what it does not.
 
 - **Mail** ships a logging driver and a Resend driver. There is no SMTP driver, because choosing a transport carries deliverability and compliance consequences the framework has no opinion on.
-- **Storage** ships a local-disk driver. The S3 driver is in the tree but is not bound to a driver token yet, so using it takes one line of wiring you write.
 - **Not shipped yet:** outbound webhooks to your own customers, GDPR export and erasure tooling, database backups, SAML and SCIM, workflow engines and state machines, a circuit breaker on the HTTP client.
 - **API only.** There is no server-rendered view layer; the admin dashboard is the one UI.
 
