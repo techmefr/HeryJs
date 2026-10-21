@@ -942,6 +942,11 @@ dialog h2 {
   font-size: 0.8125rem;
 }
 
+.form-suggest {
+  align-self: flex-start;
+  font-size: 0.8125rem;
+}
+
 .form-row textarea {
   font: inherit;
   resize: vertical;

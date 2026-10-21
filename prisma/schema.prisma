@@ -245,6 +245,7 @@ model BlogPost {
   tenantId    String
   ownerId     String
   title       String
+  slug        String    @default(cuid())
   summary     Json?
   body        String?
   privateNote String?
@@ -257,6 +258,9 @@ model BlogPost {
   tags  BlogPostTag[]
 
   @@index([tenantId])
+  // Unique per tenant, trashed rows included: a slug stays reserved until
+  // prune frees the row.
+  @@unique([tenantId, slug])
 }
 
 // A belongsToMany relation, unlike BlogPostNote's hasMany: a tag does not

@@ -1,7 +1,14 @@
 export type PersonalDataErasure = 'delete' | 'anonymise';
 
 export type PersonalDataFieldType =
-  'string' | 'richtext' | 'int' | 'boolean' | 'datetime' | 'file' | 'encrypted';
+  | 'string'
+  | 'richtext'
+  | 'slug'
+  | 'int'
+  | 'boolean'
+  | 'datetime'
+  | 'file'
+  | 'encrypted';
 
 export interface PersonalDataField {
   name: string;

@@ -6,7 +6,12 @@ import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
-import { anonymisedData, PersonalDataRegistry } from './personal-data.registry';
+import {
+  anonymisedData,
+  erasedSlug,
+  PersonalDataRegistry,
+  personalSlugFields,
+} from './personal-data.registry';
 import type { PersonalDataDeclaration } from './personal-data.types';
 
 const TOMBSTONE_DOMAIN = 'erased.invalid';
@@ -266,6 +271,25 @@ export class PrivacyExecutor {
   ): Promise<number> {
     if (declaration.erase === 'delete') {
       return (await delegate.deleteMany({ where })).count;
+    }
+
+    const slugs = personalSlugFields(declaration);
+
+    if (slugs.length > 0) {
+      const rows = await delegate.findMany({ where, select: { id: true } });
+
+      for (const row of rows) {
+        const id = String(row.id);
+
+        // updateMany and not update: an update is audited against the row,
+        // and the entry would keep the erased slug next to the redacted ones.
+        await delegate.updateMany({
+          where: { id },
+          data: Object.fromEntries(
+            slugs.map((field) => [field.name, erasedSlug(id)]),
+          ),
+        });
+      }
     }
 
     return (

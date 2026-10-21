@@ -32,13 +32,40 @@ This is the one casing convention in the project, and it is deliberately the onl
 
 ## Fields
 
-Each field has a `type` (`string`, `int`, `boolean`, `datetime`, `file`, `encrypted`, `vector`, `richtext`), whether it's `optional`, and whether it's `hidden` — a hidden field is stripped from every API response by the generated `<name>.view.ts`, no matter which endpoint returns the record.
+Each field has a `type` (`string`, `int`, `boolean`, `datetime`, `file`, `encrypted`, `vector`, `slug`, `richtext`), whether it's `optional`, and whether it's `hidden` — a hidden field is stripped from every API response by the generated `<name>.view.ts`, no matter which endpoint returns the record.
 
 `file` is a plain string column underneath — the storage key `POST /storage/upload` already returned, not the bytes themselves. See [Storage](../guides/storage/) for the upload flow it pairs with.
 
 `encrypted` is a text column sealed with AES-256-GCM, hidden from responses unless the field says `reveal: true`, and refused in `filters` and `sorts`. See [Secrets](../guides/secrets/).
 
 `vector` is not data a client sends: it is the embedding of another string field, written by a queued job and read only by `search: { mode: 'similar' }`. It takes a `dimensions` and a `source`, and is never returned or writable. See [Vector search](../guides/vector-search/).
+
+### Slug fields
+
+`slug` is a URL-safe handle derived from another string field of the same resource:
+
+```yaml
+fields:
+  - name: title
+    type: string
+  - name: slug
+    type: slug
+    source: title
+    stable: false # the default: the slug follows title; true freezes it once created
+
+filters:
+  - slug
+```
+
+- **Generated, never required.** Left out of a create, the slug is made from `source`: accents folded, lowercase ASCII words joined by single dashes, at most 100 characters, and `item` when nothing usable is left. A client may send its own, which must match `^[a-z0-9]+(?:-[a-z0-9]+)*$`; OpenAPI, the typed client and `GET /describe` all say the field is optional on the way in and always present on the way out.
+- **Unique per tenant, collision-safe.** The column carries `@@unique([tenantId, slug])`. A derived slug that is taken becomes `base-2`, `base-3` and so on. Trashed rows keep their slug and still count, so a slug is never handed out twice before prune frees the row. Two concurrent writes that read the same neighbours are settled by the unique index: the loser retries once with a random suffix. A slug the caller chose that is already taken answers `409` with the key `slug.taken`. Inside an `atomic` batch a lost race has already aborted the transaction, so the conflict reaches the caller instead of retrying.
+- **Stable or following.** On update, a slug that is not `stable` is derived again when `source` changes and the request sends no slug; a `stable` one keeps the value it got at creation. Sending a slug always wins, on either kind, and an update that leaves `source` alone never touches it.
+- **A lookup key.** List it under `filters` and the read route finds a record by it: `POST /blog-posts/search` with `{ "filters": [{ "field": "slug", "value": "my-first-post" }] }`. The typed client types that filter like any other field.
+- **Rules.** `source` must name a required, visible, non-translatable `string` field of the same resource, the slug itself cannot be `optional`, `hidden` or `translatable`, and the resource must be routed. `hery generate` refuses anything else.
+- **Personal data.** A slug made from a `personal` field is personal too, without saying so, and declaring it `personal: false` is refused. An anonymising erasure rewrites it to `deleted-<id>`, never to anything derived from the erased source, so the row keeps a unique slug and holds nothing of what identified the person.
+- **Written past the service.** The column defaults to a generated id, so a seeder or a script that inserts without a slug still produces a valid, unique one; only the service derives readable ones.
+
+The admin shows a slug as a text input that suggests the slug of its source while you type it (as the placeholder, and a "Use suggestion" button that fills it in) and explains whether it follows the source. Leave it empty on create to let the API number it.
 
 ### Rich text fields
 

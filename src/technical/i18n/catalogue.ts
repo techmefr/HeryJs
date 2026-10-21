@@ -83,6 +83,10 @@ export const CATALOGUE: Catalogue = {
     fr: (details) =>
       `${String(details.resource)} n'est pas dans la corbeille, il ne peut donc pas être restauré.`,
   },
+  'slug.taken': {
+    fr: (details) =>
+      `"${String(details.slug)}" est déjà utilisé comme ${String(details.field)} dans ce tenant.`,
+  },
   'record.historyEntryNotFound': {
     fr: (details) =>
       `${String(details.resource)} n'a pas d'entrée d'historique ${String(details.entryId)}.`,

@@ -9,6 +9,11 @@ export const blogPostViewSchema = z.object({
   tenantId: z.string(),
   ownerId: z.string(),
   title: z.string().min(1).max(255),
+  slug: z
+    .string()
+    .min(1)
+    .max(100)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   summary: z.string().nullable(),
   summaryTranslations: z.record(z.string(), z.string()),
   body: z.string().nullable(),

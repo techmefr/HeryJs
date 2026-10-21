@@ -106,6 +106,7 @@ describe('BlogPost resource', () => {
     };
     expect(body.data.fields.map((field) => field.name)).toEqual([
       'title',
+      'slug',
       'summary',
       'body',
       'privateNote',
@@ -965,6 +966,167 @@ describe('BlogPost resource', () => {
     });
   });
 
+  describe('slug field slug', () => {
+    type CreateOutcome = {
+      status: string;
+      data: Record<string, unknown>;
+      error?: { status: number; key: string };
+    };
+
+    async function createWith(
+      overrides: Record<string, unknown>,
+    ): Promise<CreateOutcome> {
+      const response = await request(app.getHttpServer())
+        .post('/blog-posts/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ ...{ title: 'title-value' }, ...overrides }] })
+        .expect(201);
+
+      return (
+        response.body as {
+          data: {
+            status: string;
+            data: Record<string, unknown>;
+            error?: { status: number; key: string };
+          }[];
+        }
+      ).data[0]!;
+    }
+
+    it('publishes where the slug comes from and whether it stays put', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/blog-posts/describe')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      const body = response.body as {
+        data: {
+          fields: Array<{
+            name: string;
+            slug?: { source: string; stable: boolean };
+          }>;
+          rules: { create: { required?: string[] } };
+        };
+      };
+      expect(
+        body.data.fields.find((entry) => entry.name === 'slug')?.slug,
+      ).toEqual({
+        source: 'title',
+        stable: false,
+      });
+      expect(body.data.rules.create.required ?? []).not.toContain('slug');
+    });
+
+    it('derives the slug from title, folded to lowercase ascii words', async () => {
+      const marker = randomUUID();
+      const { data } = await createWith({ title: 'Hello Wörld ' + marker });
+
+      expect(data.slug).toBe('hello-world-' + marker);
+    });
+
+    it('numbers a slug another record of the tenant already holds', async () => {
+      const marker = randomUUID();
+      const first = await createWith({ title: 'Twin ' + marker });
+      const second = await createWith({ title: 'Twin ' + marker });
+      const third = await createWith({ title: 'Twin ' + marker });
+
+      expect(first.data.slug).toBe('twin-' + marker);
+      expect(second.data.slug).toBe('twin-' + marker + '-2');
+      expect(third.data.slug).toBe('twin-' + marker + '-3');
+    });
+
+    it('stays unique when the same source is created concurrently', async () => {
+      const marker = randomUUID();
+      const results = await Promise.all(
+        Array.from({ length: 4 }, () =>
+          createWith({ title: 'Race ' + marker }),
+        ),
+      );
+
+      const slugs = results.map((result) => result.data.slug);
+      expect(results.every((result) => result.status === 'ok')).toBe(true);
+      expect(new Set(slugs).size).toBe(4);
+      expect(
+        slugs.every((slug) => String(slug).startsWith('race-' + marker)),
+      ).toBe(true);
+    });
+
+    it('keeps a slug the caller sends and refuses to hand the same one out twice', async () => {
+      const marker = randomUUID();
+      const chosen = 'chosen-' + marker;
+      const first = await createWith({ slug: chosen });
+      const second = await createWith({ slug: chosen });
+
+      expect(first.data.slug).toBe(chosen);
+      expect(second.status).toBe('error');
+      expect(second.error).toMatchObject({ status: 409, key: 'slug.taken' });
+    });
+
+    it('refuses a slug that is not lowercase words joined by dashes', async () => {
+      for (const bad of [
+        'Not A Slug',
+        'under_score',
+        '-lead',
+        'trail-',
+        'a--b',
+        '<script>',
+      ]) {
+        await request(app.getHttpServer())
+          .post('/blog-posts/create')
+          .set('Authorization', `Bearer ${ownerToken}`)
+          .send({ data: [{ ...{ title: 'title-value' }, slug: bad }] })
+          .expect(400);
+      }
+    });
+
+    it('finds a record by its slug', async () => {
+      const marker = randomUUID();
+      const created = await createWith({ title: 'Lookup ' + marker });
+      await createWith({ title: 'Lookup other ' + marker });
+
+      const response = await request(app.getHttpServer())
+        .post('/blog-posts/search')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ filters: [{ field: 'slug', value: 'lookup-' + marker }] })
+        .expect(200);
+
+      const rows = (response.body as { data: { id: string }[] }).data;
+      expect(rows.map((row) => row.id)).toEqual([created.data.id]);
+    });
+
+    it('follows title when it changes', async () => {
+      const marker = randomUUID();
+      const { data: created } = await createWith({ title: 'Before ' + marker });
+
+      const response = await request(app.getHttpServer())
+        .post('/blog-posts/update')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ id: created.id, title: 'After ' + marker }] })
+        .expect(201);
+
+      const updated = (
+        response.body as { data: { data: Record<string, unknown> }[] }
+      ).data[0]!.data;
+      expect(updated.slug).toBe('after-' + marker);
+    });
+
+    it('moves to a slug the caller sends on update, even when it is stable', async () => {
+      const marker = randomUUID();
+      const { data: created } = await createWith({ title: 'Moving ' + marker });
+
+      const response = await request(app.getHttpServer())
+        .post('/blog-posts/update')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ id: created.id, slug: 'moved-' + marker }] })
+        .expect(201);
+
+      const updated = (
+        response.body as { data: { data: Record<string, unknown> }[] }
+      ).data[0]!.data;
+      expect(updated.slug).toBe('moved-' + marker);
+    });
+  });
+
   describe('richtext field body', () => {
     const XSS_PAYLOADS: string[] = [
       '<script>alert(1)</script><p>ok</p>',
@@ -1277,6 +1439,7 @@ describe('BlogPost resource', () => {
     it('erases a user, redacts what the audit trail held and keeps the request itself', async () => {
       const marker = 'erase-' + randomUUID();
       const ownId = await createAs(subject, { title: marker });
+      await createAs(subject, { title: marker });
       const keptId = await createAs(bystander, { title: 'title-value' });
 
       const id = await requestAs(
@@ -1299,6 +1462,12 @@ describe('BlogPost resource', () => {
           privateNote: null,
         });
       }
+      for (const row of rows) {
+        expect(row.slug).toBe('deleted-' + row.id);
+      }
+      expect(new Set(rows.map((row) => row.slug)).size).toBe(rows.length);
+
+      expect(JSON.stringify(rows)).not.toContain(marker);
       expect(
         await prisma.blogPost.findUnique({ where: { id: keptId } }),
       ).not.toBeNull();
@@ -1358,6 +1527,11 @@ describe('BlogPost resource', () => {
           privateNote: null,
         });
       }
+      for (const row of rows) {
+        expect(row.slug).toBe('deleted-' + row.id);
+      }
+      expect(new Set(rows.map((row) => row.slug)).size).toBe(rows.length);
+
       expect(
         await prisma.blogPost.findUnique({ where: { id: foreignId } }),
       ).not.toBeNull();

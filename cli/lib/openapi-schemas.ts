@@ -4,6 +4,7 @@ import type {
   ResolvedInclude,
 } from './blueprint';
 import type { ResourceContext } from './resource-context';
+import { isOptionalOnInput } from './field-types';
 import { richtextMaxLength } from './field-types';
 import {
   AGGREGATE_TYPES_NEEDING_FIELD,
@@ -18,6 +19,8 @@ import {
   MAX_SELECTS,
   MAX_SORTS,
   MAX_STRING_LENGTH,
+  SLUG_MAX_LENGTH,
+  SLUG_PATTERN,
   filterableFields,
   nestedIncludesOf,
   pascalOf,
@@ -92,6 +95,16 @@ function inputFieldSchema(field: ScalarBlueprintField): JsonSchema {
           additionalProperties: { anyOf: [text, { type: 'null' }] },
         },
       ],
+    };
+  }
+
+  if (field.type === 'slug') {
+    return {
+      type: 'string',
+      minLength: 1,
+      maxLength: SLUG_MAX_LENGTH,
+      pattern: SLUG_PATTERN,
+      description: `Optional: left out, it is derived from ${field.source ?? 'its source field'}.`,
     };
   }
 
@@ -405,7 +418,7 @@ function createItemSchema(ctx: ResourceContext): JsonSchema {
       ctx.fields.map((field) => [field.name, inputFieldSchema(field)]),
     ),
     required: ctx.fields
-      .filter((field) => !field.optional)
+      .filter((field) => !isOptionalOnInput(field))
       .map((field) => field.name),
     additionalProperties: false,
   };
@@ -912,6 +925,7 @@ export function describeSchema(ctx: ResourceContext): JsonSchema {
                 'datetime',
                 'file',
                 'richtext',
+                'slug',
               ],
             },
             optional: { type: 'boolean' },
@@ -934,6 +948,14 @@ export function describeSchema(ctx: ResourceContext): JsonSchema {
                 },
               },
               required: ['maxLength', 'allow'],
+            },
+            slug: {
+              type: 'object',
+              properties: {
+                source: { type: 'string' },
+                stable: { type: 'boolean' },
+              },
+              required: ['source', 'stable'],
             },
           },
           required: ['name', 'type', 'optional'],

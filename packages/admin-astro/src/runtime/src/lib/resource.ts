@@ -3,7 +3,12 @@ import type { DescribedController } from './api';
 import type { RichtextAllow } from './safe-html';
 
 export type FieldType =
-  'string' | 'int' | 'boolean' | 'datetime' | 'file' | 'richtext';
+  'string' | 'int' | 'boolean' | 'datetime' | 'file' | 'slug' | 'richtext';
+
+export interface DescribedSlug {
+  source: string;
+  stable: boolean;
+}
 
 export interface DescribedRichtext {
   maxLength: number;
@@ -14,6 +19,7 @@ export interface DescribedField {
   name: string;
   type: FieldType;
   optional: boolean;
+  slug?: DescribedSlug;
   richtext?: DescribedRichtext;
 }
 

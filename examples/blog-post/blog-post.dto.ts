@@ -12,6 +12,12 @@ export const RICHTEXT_FIELDS: readonly RichtextFieldSpec[] = [
 
 const blogPostFields = z.object({
   title: z.string().min(1).max(255),
+  slug: z
+    .string()
+    .min(1)
+    .max(100)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .optional(),
   summary: translatableInputSchema(z.string().min(1).max(255)).optional(),
   body: z.string().min(1).max(20000).optional(),
   privateNote: z.string().min(1).max(4096).optional(),

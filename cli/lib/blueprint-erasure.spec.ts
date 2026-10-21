@@ -87,4 +87,39 @@ fields:
 `),
     ).toThrow(/routed resource/);
   });
+
+  it('makes a slug personal when the field it comes from is', () => {
+    const blueprint = load(`
+name: Note
+erasure: anonymise
+fields:
+  - name: title
+    type: string
+    personal: true
+  - name: handle
+    type: slug
+    source: title
+`)();
+
+    expect(
+      blueprint.fields.find((field) => field.name === 'handle')?.personal,
+    ).toBe(true);
+  });
+
+  it('refuses a slug declared not personal when its source is', () => {
+    expect(
+      load(`
+name: Note
+erasure: anonymise
+fields:
+  - name: title
+    type: string
+    personal: true
+  - name: handle
+    type: slug
+    source: title
+    personal: false
+`),
+    ).toThrow(/cannot be declared personal: false/);
+  });
 });
