@@ -134,3 +134,29 @@ A dump nobody has restored is a hope. Rehearse it: restore the latest dump into
 a throwaway database on a regular basis and run `hery migrate:status --check`
 against it. The repository's own CI does the round trip against a real
 Postgres on every push, but that proves the mechanism, not your data.
+
+## From the admin panel
+
+Everything above is also in the [admin panel](../admin/), under **Backups**:
+the list of dumps with their size, date and status, a **Back up now** button,
+**Download** and **Restore** per dump, and a form for the schedule (on or off, the
+cron expression) and the retention count. Restore asks you to type the dump's name
+first. Saving the schedule replaces the running job, so it applies without a
+restart.
+
+The panel is built on routes you can call yourself, all gated by the
+`canManageBackups` capability (administrators only):
+
+| Route | Does |
+| --- | --- |
+| `GET /backups` | Lists the dumps (name, date, size, status). |
+| `POST /backups` | Creates one now. |
+| `GET /backups/schedule` | The schedule, retention and the last run. |
+| `PUT /backups/schedule` | Edits `{ enabled, cron, keep }`; a bad cron expression is a 400. |
+| `GET /backups/:name/download` | Streams a dump. Only names in the list resolve. |
+| `POST /backups/:name/restore` | Restores it. The body must be `{ "confirm": "<name>" }`, or it is a 400 and nothing happens. |
+
+The saved schedule lives in `settings.json` inside the backup directory, per
+machine, next to the dumps it governs; until someone saves, `BACKUP_ENABLED`,
+`BACKUP_CRON` and `BACKUP_KEEP` are the settings. On more than one instance each
+keeps its own directory and settings, so edit the schedule where the dumps live.

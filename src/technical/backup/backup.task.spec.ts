@@ -1,21 +1,46 @@
-import type { DriverResolver } from '#technical/drivers/driver-resolver';
+import type { SchedulerRegistry } from '@nestjs/schedule';
 import type { ScheduledTaskStore } from '#technical/scheduler/scheduled-task.store';
 import { BackupTask } from './backup.task';
+import type { BackupSettingsStore } from './backup-settings';
+import type { BackupService } from './backup.service';
 
 describe('BackupTask', () => {
-  const run = jest.fn(async (_name: string, task: () => Promise<void> | void) =>
-    task(),
+  const addCronJob = jest.fn();
+  const deleteCronJob = jest.fn();
+  const doesExist = jest.fn(() => false);
+  const registry = {
+    addCronJob,
+    deleteCronJob,
+    doesExist,
+  } as unknown as SchedulerRegistry;
+  const task = new BackupTask(
+    { run: jest.fn() } as unknown as ScheduledTaskStore,
+    { create: jest.fn() } as unknown as BackupService,
+    {} as BackupSettingsStore,
+    registry,
   );
-  const store = { run } as unknown as ScheduledTaskStore;
-  const drivers = { find: jest.fn() } as unknown as DriverResolver;
 
   beforeEach(() => {
-    run.mockClear();
+    jest.clearAllMocks();
   });
 
-  it('does nothing, and records nothing, while BACKUP_ENABLED is off', async () => {
-    await new BackupTask(store, drivers).run();
+  it('registers nothing while backups are off', () => {
+    task.apply({ enabled: false, cron: '0 3 * * *', keep: 7 });
 
-    expect(run).not.toHaveBeenCalled();
+    expect(addCronJob).not.toHaveBeenCalled();
+  });
+
+  it('registers one job from the cron expression, and replaces it when the schedule changes', () => {
+    task.apply({ enabled: true, cron: '0 3 * * *', keep: 7 });
+    expect(addCronJob).toHaveBeenCalledWith(
+      'database-backup',
+      expect.anything(),
+    );
+
+    doesExist.mockReturnValue(true);
+    task.apply({ enabled: false, cron: '0 3 * * *', keep: 7 });
+
+    expect(deleteCronJob).toHaveBeenCalledWith('database-backup');
+    expect(addCronJob).toHaveBeenCalledTimes(1);
   });
 });

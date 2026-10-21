@@ -80,6 +80,7 @@ export function buildServerSchema(nodeEnv: string | undefined) {
       .string()
       .default('false')
       .transform((value) => value === 'true'),
+    BACKUP_CRON: z.string().min(1).default('0 3 * * *'),
     BACKUP_DIR: z.string().min(1).default('backups'),
     BACKUP_KEEP: z.coerce.number().int().min(1).default(7),
     BACKUP_STORAGE_DRIVER: z.string().min(1).optional(),
