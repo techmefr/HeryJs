@@ -1,8 +1,15 @@
-import { Controller, Get, INestApplication, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  INestApplication,
+  Module,
+  UseGuards,
+} from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
+import { AuthModule } from '#technical/auth/auth.module';
 import { SessionGuard } from '#technical/auth/session.guard';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { PublicRoute } from '#technical/capabilities/public-route.decorator';
@@ -25,6 +32,12 @@ class ProbeController {
   }
 }
 
+@Module({
+  imports: [AuthModule, TwoFactorModule],
+  controllers: [ProbeController],
+})
+class ProbeModule {}
+
 const PASSWORD = 'correct-horse-battery-staple';
 const STEP_MS = 30_000;
 
@@ -33,8 +46,7 @@ describe('Two-factor authentication', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [AppModule, TwoFactorModule],
-      controllers: [ProbeController],
+      imports: [AppModule, TwoFactorModule, ProbeModule],
     }).compile();
     app = moduleRef.createNestApplication();
     await app.init();
