@@ -6,6 +6,7 @@ import { PrismaModule } from '#technical/prisma/prisma.module';
 import { PrivacyModule } from '#technical/privacy/privacy.module';
 import { SearchModule } from '#technical/search/search.module';
 import { SignalModule } from '#technical/signal/signal.module';
+import { SharingModule } from '#technical/sharing/sharing.module';
 import { SnippetChangeFeed } from './snippet.change-feed';
 import { SnippetController } from './snippet.controller';
 import { SnippetPersonalData } from './snippet.personal-data';
@@ -25,6 +26,7 @@ import {
     SearchModule,
     SignalModule,
     ChangeFeedModule,
+    SharingModule,
     PrivacyModule,
   ],
   controllers: [SnippetController],

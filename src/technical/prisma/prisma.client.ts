@@ -54,6 +54,7 @@ const TENANT_SCOPED_MODELS = new Set<string>([
   'PrivacyRequest',
   'QuotaOverride',
   'QuotaUsage',
+  'RecordShare',
 ]);
 
 /**
