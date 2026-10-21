@@ -3,6 +3,12 @@ import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { DiscoveryService, MetadataScanner } from '@nestjs/core';
 import { CAPABILITY_CHECK } from '#technical/capabilities/capability.decorator';
 import type { PolicyCheck } from '#technical/capabilities/capability-check';
+import {
+  ADMIN_ACTION,
+  ADMIN_SECTION,
+  type AdminActionOptions,
+  type AdminSectionOptions,
+} from '#technical/admin/admin-metadata';
 import { PUBLIC_ROUTE_REASON } from '#technical/capabilities/public-route.decorator';
 import {
   RATE_LIMIT_BUCKET,
@@ -17,7 +23,12 @@ export interface DescribedRoute {
   publicReason?: string;
   rateLimit?: string;
   rateLimitExemption?: string;
+  admin?: AdminContribution;
 }
+
+export type AdminContribution =
+  | ({ kind: 'section' } & AdminSectionOptions)
+  | ({ kind: 'action' } & AdminActionOptions);
 
 export interface DescribedController {
   name: string;
@@ -76,6 +87,8 @@ export class IntrospectionService {
     }
 
     const check = this.metadata<PolicyCheck>(CAPABILITY_CHECK, target);
+    const section = this.metadata<AdminSectionOptions>(ADMIN_SECTION, target);
+    const action = this.metadata<AdminActionOptions>(ADMIN_ACTION, target);
 
     return [
       {
@@ -98,6 +111,11 @@ export class IntrospectionService {
           target,
           controller,
         ),
+        admin: section
+          ? { kind: 'section', ...section }
+          : action
+            ? { kind: 'action', ...action }
+            : undefined,
       },
     ];
   }

@@ -53,7 +53,7 @@ function controlOf(
     return input;
   }
 
-  input.type = TEXT_INPUT_TYPES[field.kind];
+  input.type = field.secret ? 'password' : TEXT_INPUT_TYPES[field.kind];
   input.value = String(value);
 
   if (field.maxLength !== undefined) {
