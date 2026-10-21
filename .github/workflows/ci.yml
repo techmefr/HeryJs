@@ -72,6 +72,18 @@ jobs:
           node-version-file: '.nvmrc'
           cache: pnpm
 
+      # The backup spec shells out to pg_dump and pg_restore against the
+      # postgres service above. The runner image ships version 16 clients, and
+      # pg_dump refuses a server newer than itself, so the 17 clients come from
+      # the PostgreSQL apt repository and are put first on the PATH.
+      - name: Install the PostgreSQL 17 client tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-17
+          echo /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
+
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm run db:generate

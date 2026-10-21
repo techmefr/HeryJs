@@ -13,6 +13,10 @@ category is called out here explicitly.
 
 First public release.
 
+### Per-tenant quotas and usage metering
+
+`quotas` in `hery.config.ts` declares a named limit with a default and a period (`month`, `day` or `total`), and `QuotasService` gives resources `check`, `consume` and `usage`. A tenant's limit can be overridden in the database (`PUT /quotas/:name/override`, admin only), and `GET /quotas` lists each quota's limit and use behind a capability, so the admin panel shows it as a section with no wiring. The count is kept in Postgres in one conditional `UPDATE`, so racing requests cannot overshoot, and the two new tables (`QuotaOverride`, `QuotaUsage`) are tenant scoped under row-level security. A rate-limit bucket can also be retuned for one tenant with an override named `rate-limit:<bucket>`; per plan is not covered. It is independent of `billingQuotas`, and usage-based billing is the next step. **Upgrade note:** a project that already exists needs the two new migrations, and has to add `QuotasModule` to its `AppModule` by hand.
+
 ### SMTP mail driver
 
 A new `mail-smtp` package adds an SMTP driver beside the log and Resend ones. `hery install mail-smtp` lands it in `src/modules/mail`; import `SmtpMailModule`, declare `smtp: { driver: 'smtp' }` under `mail.drivers` in `hery.config.ts`, and set `MAIL_SMTP_HOST` and `MAIL_SMTP_FROM` (plus `MAIL_SMTP_PORT`, `MAIL_SMTP_TLS`, `MAIL_SMTP_USER` and `MAIL_SMTP_PASSWORD` as the server needs). `MAIL_DRIVER=smtp` switches to it. The driver sends through nodemailer, refuses a half-written credential and a refused recipient rather than recording the mail as sent, and its spec delivers over a real socket to an in-process SMTP server. That makes twenty-nine installable modules.
@@ -34,6 +38,10 @@ can now have its own handler: a kernel `WebhookHandler` contract that the
 webhook processor calls per event, inside the event's tenant. In a project
 that already has the webhooks module, copy
 `src/technical/webhooks/webhook-handler.ts` and the processor change by hand.
+
+### Database backup and restore
+
+`hery db:backup` writes a timestamped `pg_dump` (custom format) into `backups/` and keeps the newest `BACKUP_KEEP` (7), `hery db:backups` lists them, and `hery db:restore <file|latest>` restores one with `pg_restore`, refusing a target that already holds rows unless `--force` is passed. A `database-backup` scheduled task runs the same dump daily at 03:00 when `BACKUP_ENABLED="true"`, and uploads it through the storage driver named by `BACKUP_STORAGE_DRIVER`. It needs `pg_dump` and `pg_restore` (same major version as the server) on the machine; CI installs the 17 clients and restores a dump against a real Postgres. Point-in-time recovery is WAL archiving on your Postgres, which the new backups guide describes but does not provide. The admin panel gets a Backups page over capability-gated `/backups` routes (list, create, download, restore behind a typed confirmation, edit schedule and retention; the schedule is editable at runtime and saved next to the dumps). A new `/backups/` line in `.gitignore` keeps dumps out of the repository.
 
 ### Database workflow
 
