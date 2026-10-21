@@ -50,9 +50,10 @@ describe('what a module has to publish', () => {
   // notifier (the facade that composes mail, sms and push rather than adding
   // a fourth driver registry), and sse: a single-implementation module like
   // live, with no driver of its own to swap, plus oauth, likewise a
-  // single-implementation module whose providers are a contract, not drivers.
+  // single-implementation module whose providers are a contract, not drivers,
+  // and two-factor, the same shape with a second-factor guard and four tables.
   it('found the modules to check', () => {
-    expect(MODULES).toHaveLength(25);
+    expect(MODULES).toHaveLength(26);
   });
 
   it.each(MODULES.map((module) => [module.name, module] as const))(
