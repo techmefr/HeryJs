@@ -7,6 +7,10 @@ import type { PolicyCheck } from '#technical/capabilities/capability-check';
 // cut), so they stay with the operator until a project decides otherwise.
 export const canReadQuotas: PolicyCheck = adminAbility;
 
+export const canReadTenantQuotas: PolicyCheck = adminAbility;
+
+export const canResetQuota: PolicyCheck = adminAbility;
+
 // Setting an override names the tenant it applies to, so it reaches across the
 // tenant boundary exactly like feature-flags does, and asks the same of the
 // caller.

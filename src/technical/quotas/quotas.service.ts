@@ -6,6 +6,7 @@ import type {
   HeryConfigQuota,
   HeryConfigQuotaPeriod,
 } from '#technical/config/hery-config.types';
+import type { Page, PageQuery } from '#technical/http/page-query';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import { runInTenant } from '#technical/tenancy/run-in-tenant';
@@ -141,6 +142,56 @@ export class QuotasService {
         remaining: Math.max(0, limit - used),
         overridden: override !== undefined,
       };
+    });
+  }
+
+  /** What every tenant gets until an override says otherwise. */
+  defaults(): { name: string; limit: number; period: HeryConfigQuotaPeriod }[] {
+    return Object.entries(this.config.quotas ?? {}).map(([name, quota]) => ({
+      name,
+      limit: quota.limit,
+      period: quota.period ?? DEFAULT_PERIOD,
+    }));
+  }
+
+  /**
+   * Every tenant's figures, for the operator's view. Tenants are the distinct
+   * `tenantId`s of the users table, the one place the kernel records that a
+   * tenant exists, so a tenant with no user yet is not listed. Each tenant is
+   * read under its own context, so the row-level policy still applies.
+   */
+  async tenantsUsage(
+    page: PageQuery,
+  ): Promise<Page<{ tenantId: string; quotas: QuotaStatus[] }>> {
+    const [tenants, groups] = await Promise.all([
+      this.prisma.user.findMany({
+        distinct: ['tenantId'],
+        select: { tenantId: true },
+        orderBy: { tenantId: 'asc' },
+        skip: page.skip,
+        take: page.take,
+      }),
+      this.prisma.user.groupBy({ by: ['tenantId'] }),
+    ]);
+
+    const records = await Promise.all(
+      tenants.map(async ({ tenantId }) => ({
+        tenantId,
+        quotas: await runInTenant(tenantId, () => this.usage()),
+      })),
+    );
+
+    return { records, total: groups.length };
+  }
+
+  /** Zeroes a tenant's count for the quota's current period. */
+  async resetUsage(tenantId: string, name: string): Promise<void> {
+    const { period } = await runInTenant(tenantId, () => this.resolve(name));
+
+    await runInTenant(tenantId, async () => {
+      await this.prisma.quotaUsage.deleteMany({
+        where: { name, period: periodKey(period) },
+      });
     });
   }
 

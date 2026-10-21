@@ -66,7 +66,20 @@ The route is admin only, and names the tenant it applies to, so it reaches acros
 }
 ```
 
-It is behind a capability (`canReadQuotas`, admin by default: a limit reads as a price list to a tenant that is not meant to see how its plan was cut) and in the `read` rate-limit bucket. It is an argument-free `GET`, so the [admin panel](/guides/admin/) lists it as a **Quotas** section with no extra wiring.
+It is behind a capability (`canReadQuotas`, admin by default: a limit reads as a price list to a tenant that is not meant to see how its plan was cut) and in the `read` rate-limit bucket. It is an argument-free `GET`, which the [admin panel](/guides/admin/) would list on its own; the dedicated page below replaces that generic section.
+
+## Managing it from the admin panel
+
+Quotas have their own **Quotas** page in the [admin panel](/guides/admin/), because listing rows is not enough for editing them. It shows the declared defaults, then every tenant's usage against its limit for the current period. Per quota and tenant an operator can save a different limit, go back to the default, or reset the counter. The page is built on capability-gated routes, all admin only:
+
+| Route                          | Purpose                                                          |
+| ------------------------------ | ---------------------------------------------------------------- |
+| `GET /quotas/defaults`         | The declared defaults                                            |
+| `GET /quotas/tenants`          | Every tenant's usage and limits, paged                           |
+| `PUT /quotas/:name/override`   | Set a tenant's limit, or `null` for the default                  |
+| `POST /quotas/:name/reset`     | Zero a tenant's counter for the current period (`{ tenantId }`)  |
+
+Tenants are those with at least one user, since that is where the kernel records that a tenant exists.
 
 ## How the count stays correct
 

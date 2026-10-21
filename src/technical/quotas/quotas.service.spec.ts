@@ -93,6 +93,24 @@ describe('QuotasService against a real database', () => {
     expect(status.limit).toBe(5);
   });
 
+  it('resets one tenant counter and leaves the others alone', async () => {
+    await asTenant(tenantA, () => service.consume('seats', 2));
+    await service.resetUsage(tenantA, 'seats');
+
+    const a = await asTenant(tenantA, () => service.check('seats'));
+    const b = await asTenant(tenantB, () => service.check('seats'));
+
+    expect(a.used).toBe(0);
+    expect(b.used).toBe(1);
+  });
+
+  it('shows the declared defaults', () => {
+    expect(service.defaults()).toEqual([
+      { name: 'seats', limit: 5, period: 'total' },
+      { name: 'exports', limit: 2, period: 'month' },
+    ]);
+  });
+
   it('reads a rate-limit override set through the same table', async () => {
     await service.setOverride(tenantA, 'rate-limit:write', 77);
 

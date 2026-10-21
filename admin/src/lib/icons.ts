@@ -36,6 +36,7 @@ export const ICONS = {
   overview: LayoutDashboard,
   pipeline: Workflow,
   prune: Trash2,
+  quotas: Gauge,
   refresh: RefreshCw,
   signOut: LogOut,
   yes: Check,
