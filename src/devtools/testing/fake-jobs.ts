@@ -1,3 +1,4 @@
+import type { Job } from 'bullmq';
 import type { JobPolicy } from '#technical/jobs/job-policy';
 import { DEFAULT_QUEUE } from '#technical/jobs/jobs.constants';
 import { RecordingFake } from './recording-fake';
@@ -10,8 +11,14 @@ export interface RecordedJob {
   policy: JobPolicy | undefined;
 }
 
+export interface JobProcessor {
+  process(job: Job): Promise<unknown>;
+}
+
 export class FakeJobs extends RecordingFake<RecordedJob> {
   protected readonly label = 'a job to be dispatched';
+
+  private readonly drained = new Set<RecordedJob>();
 
   get dispatched(): readonly RecordedJob[] {
     return this.all;
@@ -34,6 +41,31 @@ export class FakeJobs extends RecordingFake<RecordedJob> {
     this.record({ queueName, name, data, policy });
 
     return Promise.resolve(undefined);
+  }
+
+  async drain(
+    processor: JobProcessor,
+    predicate?: RecordPredicate<RecordedJob>,
+  ): Promise<number> {
+    const pending = this.matching(predicate).filter(
+      (job) => !this.drained.has(job),
+    );
+
+    for (const job of pending) {
+      this.drained.add(job);
+      await processor.process({
+        name: job.name,
+        data: job.data,
+        queueName: job.queueName,
+      } as unknown as Job);
+    }
+
+    return pending.length;
+  }
+
+  override reset(): void {
+    super.reset();
+    this.drained.clear();
   }
 
   assertDispatched(

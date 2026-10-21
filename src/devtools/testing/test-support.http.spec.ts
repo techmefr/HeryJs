@@ -6,6 +6,7 @@ import { EventDispatcher } from '#technical/events/event-dispatcher.service';
 import { LockService } from '#technical/lock/lock.service';
 import { JobsService } from '#technical/jobs/jobs.service';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
+import { MailProcessor } from '#modules/mail/mail.processor';
 import { MailService } from '#modules/mail/mail.service';
 import { NotifierService } from '#modules/notifier/notifier.service';
 import { StorageService } from '#modules/storage/storage.service';
@@ -41,22 +42,6 @@ describe('test support: delivery fakes behind the real services', () => {
     testApp.fakes.storage.reset();
   });
 
-  it('delivers a mail through the real queue and worker into the fake driver', async () => {
-    const to = `${randomUUID()}@example.test`;
-
-    await inTenant(testApp, () =>
-      testApp.app.get(MailService).send({
-        to,
-        build: () => ({ to, subject: 'Welcome', html: '<p>Welcome</p>' }),
-      }),
-    );
-
-    await testApp.fakes.mail.waitForSent((message) => message.to === to);
-    testApp.fakes.mail.assertNotSent(
-      (message) => message.to === 'nobody@example.test',
-    );
-  });
-
   it('stores an upload in the fake storage driver', async () => {
     const stored = await inTenant(testApp, () =>
       testApp.app.get(StorageService).upload({
@@ -68,6 +53,44 @@ describe('test support: delivery fakes behind the real services', () => {
 
     testApp.fakes.storage.assertStored(stored.key);
     expect(stored.url).toContain(stored.key);
+  });
+});
+
+describe('test support: mail through a drained job queue', () => {
+  let testApp: TestApp;
+
+  beforeAll(async () => {
+    testApp = await bootTestApp({
+      fakes: ['mail', 'jobs'],
+      isolation: 'tenant',
+    });
+  });
+
+  afterAll(async () => {
+    await testApp.close();
+  });
+
+  it('delivers a queued mail into the fake driver once the job is drained', async () => {
+    const to = `${randomUUID()}@example.test`;
+
+    await inTenant(testApp, () =>
+      testApp.app.get(MailService).send({
+        to,
+        build: () => ({ to, subject: 'Welcome', html: '<p>Welcome</p>' }),
+      }),
+    );
+
+    testApp.fakes.mail.assertNotSent();
+
+    const drained = await inTenant(testApp, () =>
+      testApp.fakes.jobs.drain(testApp.app.get(MailProcessor)),
+    );
+
+    expect(drained).toBe(1);
+    testApp.fakes.mail.assertSent((message) => message.to === to, 1);
+    testApp.fakes.mail.assertNotSent(
+      (message) => message.to === 'nobody@example.test',
+    );
   });
 });
 

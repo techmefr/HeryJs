@@ -161,6 +161,31 @@ describe('FakeJobs', () => {
     jobs.assertNotDispatched('export.run');
   });
 
+  it('hands each recorded job to a processor once', async () => {
+    const jobs = new FakeJobs();
+    const process = jest.fn().mockResolvedValue(undefined);
+    await jobs.dispatch('mail.send', { to: 'a' });
+    await jobs.dispatch('export.run');
+
+    const first = await jobs.drain(
+      { process },
+      (job) => job.name === 'mail.send',
+    );
+    const again = await jobs.drain({ process });
+
+    expect(first).toBe(1);
+    expect(again).toBe(1);
+    expect(process).toHaveBeenCalledTimes(2);
+    expect(process).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'mail.send', data: { to: 'a' } }),
+    );
+
+    jobs.reset();
+    await jobs.dispatch('mail.send', { to: 'b' });
+
+    await expect(jobs.drain({ process })).resolves.toBe(1);
+  });
+
   it('fails assertNothingDispatched after a dispatch', async () => {
     const jobs = new FakeJobs();
 

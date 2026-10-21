@@ -105,7 +105,7 @@ await request(testApp.app.getHttpServer())
   .send({ data: [{ amount: 100 }] })
   .expect(201);
 
-await testApp.fakes.mail.waitForSent(message => message.subject === 'Invoice');
+testApp.fakes.mail.assertSent(message => message.subject === 'Invoice');
 ```
 
 ### The fakes
@@ -119,16 +119,27 @@ Each fake records what reached it and asserts in one line. A failed assertion li
 | `fakes.push` | the push driver | the same four, plus `outcome` to simulate an expired or failed token |
 | `fakes.storage` | the storage driver | `assertStored`, `assertNotStored`, `assertRemoved`; objects are held in memory |
 | `fakes.notifier` | the notifier's mail, sms and push channels | `assertSent`, `assertNotSent`, `assertNothingSent` |
-| `fakes.jobs` | `JobsService` | `assertDispatched(name, predicate?, times?)`, `assertNotDispatched`, `assertNothingDispatched` |
+| `fakes.jobs` | `JobsService` | `assertDispatched(name, predicate?, times?)`, `assertNotDispatched`, `assertNothingDispatched`, `drain(processor)` |
 | `fakes.events` | `EventDispatcher` | `assertDispatched(EventClass, predicate?, times?)`, `assertNotDispatched`; `callThrough()` runs the synchronous listeners |
 | `fakes.locks` | `LockService` | `assertAcquired`, `assertContended`, `assertReleased`; `hold(name)` simulates another instance holding it |
 | `fakes.clock` | `Date` | `freeze(at)`, `set(at)`, `travel(ms)`, `restore()` |
 
 By default `bootTestApp` fakes the four delivery drivers, so a test can never send a real mail or SMS by accident. Pass `fakes: ['mail', 'jobs']`, `'all'` or `'none'` to choose.
 
-The delivery fakes are real drivers registered through the same module-and-driver convention a package driver uses. The real `MailService`, the SMS consent and quiet-hours guard, the push token registry and the queue all still run; only the wire is replaced. That is also why mail arrives asynchronously: the worker is real, so use `await fakes.mail.waitForSent(...)` rather than a synchronous assertion.
+The delivery fakes are real drivers registered through the same module-and-driver convention a package driver uses. The real `MailService`, the SMS consent and quiet-hours guard, the push token registry and the queue all still run; only the wire is replaced.
 
-Fake the queue when you only care that work was scheduled. `fakes.jobs` stops every dispatch at the recorder, which means `mail.send` is recorded as a job and nothing reaches `fakes.mail`; assert on `fakes.jobs.assertDispatched('mail.send', ...)` in that mode. Faking events works the same way: listeners do not run unless you call `callThrough()`.
+Mail is the one that crosses a queue, and that is worth knowing before you rely on it. The suite shares one Redis, so a job your test enqueues can be picked up by the worker of a spec running in another process, which delivers it through _its_ driver. Fake the queue next to the mail and drain it yourself, which is deterministic:
+
+```ts
+const testApp = await bootTestApp({ fakes: ['mail', 'jobs'] });
+
+await mailService.send(new WelcomeMail(user));
+await testApp.fakes.jobs.drain(testApp.app.get(MailProcessor));
+
+testApp.fakes.mail.assertSent(message => message.to === user.email);
+```
+
+`fakes.jobs` stops every dispatch at the recorder; `drain(processor, predicate?)` then hands each recorded job to the processor exactly once, so the real worker code runs in your process and the fake driver sees the result. If you only care that work was scheduled, skip the drain and assert on `fakes.jobs.assertDispatched('mail.send', ...)`. Faking events works the same way: listeners do not run unless you call `callThrough()`.
 
 `fakes.clock` fakes `Date` only. Timers, `setImmediate` and `process.nextTick` stay real so the database driver and the queue keep working while time is frozen. Postgres `now()` and Redis expiry run on their own clocks and are not affected.
 
