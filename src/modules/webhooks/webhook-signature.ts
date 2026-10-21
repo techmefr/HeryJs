@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
-function computeSignature(
+export function computeSignature(
   secret: string,
   timestamp: string,
   rawBody: Buffer,

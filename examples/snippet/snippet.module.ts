@@ -2,11 +2,15 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '#technical/auth/auth.module';
 import { CapabilitiesService } from '#technical/capabilities/capabilities.service';
 import { ChangeFeedModule } from '#technical/change-feed/change-feed.module';
+import { HistoryModule } from '#technical/history/history.module';
 import { PrismaModule } from '#technical/prisma/prisma.module';
+import { PrivacyModule } from '#technical/privacy/privacy.module';
 import { SearchModule } from '#technical/search/search.module';
 import { SignalModule } from '#technical/signal/signal.module';
+import { SharingModule } from '#technical/sharing/sharing.module';
 import { SnippetChangeFeed } from './snippet.change-feed';
 import { SnippetController } from './snippet.controller';
+import { SnippetPersonalData } from './snippet.personal-data';
 import { SnippetPolicy } from './snippet.policy';
 import { SnippetService } from './snippet.service';
 import {
@@ -23,12 +27,16 @@ import {
     SearchModule,
     SignalModule,
     ChangeFeedModule,
+    SharingModule,
+    HistoryModule,
+    PrivacyModule,
   ],
   controllers: [SnippetController],
   providers: [
     SnippetService,
     SnippetPolicy,
     SnippetChangeFeed,
+    SnippetPersonalData,
     CapabilitiesService,
     { provide: SNIPPET_RECORD_LOADER, useClass: SnippetRecordLoader },
     {

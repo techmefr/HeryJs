@@ -1,12 +1,20 @@
 import { ApiError, api, labelOf } from './api';
 import type { DescribedController } from './api';
+import type { RichtextAllow } from './safe-html';
 
-export type FieldType = 'string' | 'int' | 'boolean' | 'datetime' | 'file';
+export type FieldType =
+  'string' | 'int' | 'boolean' | 'datetime' | 'file' | 'richtext';
+
+export interface DescribedRichtext {
+  maxLength: number;
+  allow: RichtextAllow;
+}
 
 export interface DescribedField {
   name: string;
   type: FieldType;
   optional: boolean;
+  richtext?: DescribedRichtext;
 }
 
 export interface JsonSchemaProperty {
@@ -36,6 +44,8 @@ export interface DescribedVersioning {
 export interface ResourceDescription {
   version: number;
   versioned?: DescribedVersioning;
+  history?: boolean;
+  sharing?: boolean;
   fields: DescribedField[];
   sorts: string[];
   filters: string[];
@@ -144,6 +154,14 @@ export function capabilityKeysOf(description: ResourceDescription): string[] {
 
   if (description.softDeletes) {
     keys.push('restore');
+  }
+
+  if (description.history) {
+    keys.push('history', 'revert');
+  }
+
+  if (description.sharing) {
+    keys.push('share');
   }
 
   for (const relation of description.relations) {

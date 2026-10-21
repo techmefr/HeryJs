@@ -24,4 +24,9 @@ export default function loadEnvBeforeTests(): void {
   process.env.RATE_LIMIT_DISABLED = 'true';
   process.env.OUTBOX_RELAY_ENABLED = 'false';
   process.env.AUDIT_STREAM_ENABLED = 'false';
+  // Every spec boots its own app, and each one runs a worker on the shared
+  // delivery queue, so a delivery may be sent by a process other than the spec
+  // that queued it. The outbound webhook spec therefore points subscriptions at a
+  // real local server, which only works if every process may reach loopback.
+  process.env.WEBHOOK_ALLOW_PRIVATE_URLS = 'true';
 }

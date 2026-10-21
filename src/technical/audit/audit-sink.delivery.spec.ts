@@ -43,6 +43,7 @@ function entry(sequence: number): AuditLog {
     hash: `h${sequence}`,
     previousHash: `h${sequence - 1}`,
     createdAt: new Date('2026-02-10T08:00:00.000Z'),
+    redactedAt: null,
   };
 }
 

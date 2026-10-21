@@ -157,11 +157,12 @@ export interface AdminSection {
 // the generic flat table, so it's hidden from the auto-discovered sidebar
 // sections the same way /introspect and /health are. /expose is the mine's
 // own catalog route (see prune.astro for a page built on top of it), not a
-// section in its own right.
+// section in its own right. /feature-flags has a page of its own (flags.astro).
 const HIDDEN_PATHS = [
   '/',
   '/introspect',
   '/expose',
+  '/feature-flags',
   '/health',
   '/health/live',
   '/health/ready',
@@ -190,7 +191,9 @@ export function sectionsOf(controllers: DescribedController[]): AdminSection[] {
       .filter(
         (route) =>
           (route.method === 'GET' && !route.path.includes(':')) ||
-          (route.method === 'POST' && route.path.endsWith('/search')),
+          (route.method === 'POST' &&
+            route.path.endsWith('/search') &&
+            !route.path.includes(':')),
       )
       .map((route) => ({
         method: route.method as 'GET' | 'POST',

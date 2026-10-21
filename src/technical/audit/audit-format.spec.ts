@@ -20,6 +20,7 @@ function entry(overrides: Partial<AuditLog> = {}): AuditLog {
     hash: 'h2',
     previousHash: 'h1',
     createdAt: new Date('2026-02-10T08:00:00.000Z'),
+    redactedAt: null,
     ...overrides,
   };
 }

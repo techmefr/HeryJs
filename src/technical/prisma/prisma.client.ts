@@ -8,6 +8,7 @@ import {
   writeAuditLogInTransaction,
 } from '../audit/audit-log';
 import { env } from '../config/env';
+import { recordHistoryOf } from '../history/history-recorder';
 import {
   modelChangeMessages,
   outboxEmitsFor,
@@ -51,8 +52,10 @@ const TENANT_SCOPED_MODELS = new Set<string>([
   'Snippet',
   'NotificationPreference',
   'NotificationSetting',
+  'PrivacyRequest',
   'QuotaOverride',
   'QuotaUsage',
+  'RecordShare',
 ]);
 
 /**
@@ -219,6 +222,10 @@ export const APP_ENFORCED_TENANT_MODELS = new Set<string>([
   // it, and written by the sink routes with the caller's tenantId passed
   // explicitly, the way AuditLog itself is.
   'AuditSink',
+  // Written by the same extension and for the same reason as AuditLog: the
+  // snapshot of a write must not be scoped away by the boundary it describes.
+  // HistoryService states the tenant in every read.
+  'RecordSnapshot',
   // Global rows are the point of a feature flag: tenantId is nullable, and the
   // extension would stamp the current tenant onto a flag meant for everyone.
   'FeatureFlag',
@@ -228,6 +235,12 @@ export const APP_ENFORCED_TENANT_MODELS = new Set<string>([
   'MailLog',
   'WebhookEndpoint',
   'WebhookEvent',
+  // Subscriptions are managed through the admin routes, but deliveries are
+  // written and updated by the outbox relay and a queue worker with no request
+  // behind them, and both read across tenants to fan a message out. Every
+  // query passes the tenantId explicitly.
+  'WebhookSubscription',
+  'WebhookDelivery',
   'IdempotencyKey',
   // Staged inside the transaction of the write it describes, and drained by a
   // relay with no request behind it, so it can be neither stamped nor filtered
@@ -242,6 +255,9 @@ export const APP_ENFORCED_TENANT_MODELS = new Set<string>([
   // request that produced an entry has ended, so there is no ambient tenant
   // to stamp: each entry carries the tenant it was recorded under.
   'DevtoolsEntry',
+  // Started from a request or from a worker, so a tenant cannot be stamped
+  // from the ambient context; every call names the tenant it acts for.
+  'JobFlow',
   'SsoConnection',
   'SsoDomain',
   'SsoIdentity',
@@ -343,6 +359,15 @@ export function createTenantScopedPrismaClient() {
               await writeAuditLog(rawClient, entry);
             }
           }
+
+          const ambient = AmbientTransactionStorage.current();
+
+          await recordHistoryOf(ambient ? ambient.tx : rawClient, {
+            model,
+            operation,
+            args,
+            result,
+          });
 
           return result;
         },
