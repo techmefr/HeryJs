@@ -75,6 +75,8 @@ describe('ImportProcessor', () => {
       get,
       remove: jest.fn(),
       signedUrl: jest.fn(),
+      presignPut: jest.fn(),
+      stat: jest.fn(),
     };
 
     const send = jest.fn().mockResolvedValue(undefined);

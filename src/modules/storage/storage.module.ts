@@ -9,6 +9,8 @@ import { StorageDriverRegistry } from './storage-driver.registry';
 import { storageEnv } from './storage.env';
 import { StorageSignatureGuard } from './storage-signature.guard';
 import { StorageUploadController } from './storage-upload.controller';
+import { StorageUploadIntentController } from './storage-upload-intent.controller';
+import { StorageUploadIntentService } from './storage-upload-intent.service';
 import { StorageService } from './storage.service';
 import { storageDriverToken } from '#technical/storage/storage-driver';
 
@@ -23,14 +25,19 @@ const S3_DRIVER_TOKEN = storageDriverToken('s3');
   imports: [AuthModule, HeryConfigModule, DriversModule],
   controllers:
     storageEnv.STORAGE_DRIVER === 'local'
-      ? [StorageController, StorageUploadController]
-      : [StorageUploadController],
+      ? [
+          StorageController,
+          StorageUploadController,
+          StorageUploadIntentController,
+        ]
+      : [StorageUploadController, StorageUploadIntentController],
   providers: [
     LocalStorageDriver,
     S3StorageDriver,
     StorageDriverRegistry,
     StorageSignatureGuard,
     StorageService,
+    StorageUploadIntentService,
     { provide: LOCAL_DRIVER_TOKEN, useExisting: LocalStorageDriver },
     // Bound here rather than shipped as its own package: the driver already
     // lives in this module and its SDK is already a dependency. Without the

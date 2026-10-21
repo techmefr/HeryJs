@@ -13,6 +13,14 @@ category is called out here explicitly.
 
 First public release.
 
+### OpenAPI and a typed client
+
+`hery openapi` emits an OpenAPI 3.1 document and `hery openapi:client` a typed
+TypeScript client, both read from the blueprints. What `/describe` does not
+publish (the resolved-capability block, capability-dependent shapes, morph
+targets, included-row types) is stated as absent, not guessed. Nothing in a
+generated file changes.
+
 ### Installing it
 
 Twelve packages, versioned together:
@@ -50,6 +58,10 @@ Twelve packages, versioned together:
 - Teams with the `own` / `team` / `all` / `none` presets.
 - A tenant-namespaced cache on the same Valkey the kernel already depends on,
   exported globally with no module to install.
+- `Idempotency-Key` on every mutating route: the first request's response is
+  stored per tenant and replayed on a retry, the same key with a different
+  body or route is a `422`, and records expire after 24 hours through the
+  existing prune sweep.
 - A rate limit on by default across every kernel and module route, with
   `read` / `write` / `auth` buckets a project can retune but never remove.
 - A `hasMany` include may itself carry a further `includes` — a relation of a

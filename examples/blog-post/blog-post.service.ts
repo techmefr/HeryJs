@@ -36,6 +36,7 @@ export interface BlogPostSearchOptions {
   onlyTrashed?: boolean;
   sorts?: { field: string; direction: 'asc' | 'desc' }[];
   where?: Record<string, unknown>;
+  cursorWhere?: Record<string, unknown>;
   include?: Record<string, unknown>;
   relationInstructions?: RelationInstruction[];
   search?: string;
@@ -159,7 +160,9 @@ export class BlogPostService {
 
     const [records, total] = await Promise.all([
       this.prisma.blogPost.findMany({
-        where,
+        where: options.cursorWhere
+          ? { AND: [where, options.cursorWhere] }
+          : where,
         orderBy:
           options.sorts && options.sorts.length > 0
             ? options.sorts.map((sort) => ({ [sort.field]: sort.direction }))
@@ -193,7 +196,7 @@ export class BlogPostService {
 
     const [records, total] = await Promise.all([
       this.prisma.blogPostNote.findMany({
-        where,
+        where: query.cursorWhere ? { AND: [where, query.cursorWhere] } : where,
         orderBy:
           query.sorts && query.sorts.length > 0
             ? query.sorts.map((sort) => ({ [sort.field]: sort.direction }))
