@@ -41,6 +41,8 @@ The defaults, applied when `hery.config.ts` does not override a bucket:
 | `write` | 30    | 60s    |
 | `auth`  | 5     | 300s   |
 
+A fourth, `auth-recipient` (3 per 600s), is not attached to a route by decorator: the Better Auth mount applies it by recipient on the routes that send a sign-in link or code, so one inbox or phone cannot be flooded from many addresses. See the [authentication guide](/guides/authentication/#rate-limits).
+
 Override any of them in `hery.config.ts`:
 
 ```ts

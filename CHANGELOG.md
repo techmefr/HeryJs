@@ -51,6 +51,13 @@ Twelve packages, versioned together:
 - Session management: list devices, revoke one, sign out everywhere, a password
   change that revokes the other sessions, and per-account lockout after
   repeated failed sign-ins.
+- Passwordless sign-in on better-auth, each method off until its env flag
+  turns it on: magic link and email OTP delivered through the mail module,
+  phone OTP through the sms module, and guest sessions whose work moves to
+  the account they later sign in to. Sends are capped per recipient on top of
+  the per-caller `auth` bucket. A new migration adds `phoneNumber`,
+  `phoneNumberVerified` and `isAnonymous` to `User`; an existing project
+  applies it with `hery migrate`.
 - Capabilities resolved server-side in memory and returned as decisions
   (`{ allowed, scope }`) — never as rules the frontend could reinterpret.
 - Multi-tenancy resolved once per request and enforced underneath permissions,
