@@ -1,9 +1,12 @@
 import { Module } from '@nestjs/common';
+import { AuthModule } from '#kernel/auth/auth.module';
 import { HeryConfigModule } from '#kernel/config/hery-config.module';
 import { DriversModule } from '#kernel/drivers/drivers.module';
 import { FakeHttpClientDriver } from './fake-http-client.driver';
 import { HttpClientDriverRegistry } from './http-client-driver.registry';
 import { HttpClientService } from './http-client.service';
+import { HttpResilienceController } from './http-resilience.controller';
+import { HttpResilienceService } from './http-resilience.service';
 
 /**
  * `FakeHttpClientDriver` is exported alongside the service, which is the one
@@ -12,9 +15,11 @@ import { HttpClientService } from './http-client.service';
  * get there would mean callers learning how driver resolution works.
  */
 @Module({
-  imports: [HeryConfigModule, DriversModule],
+  imports: [AuthModule, HeryConfigModule, DriversModule],
+  controllers: [HttpResilienceController],
   providers: [
     HttpClientService,
+    HttpResilienceService,
     HttpClientDriverRegistry,
     FakeHttpClientDriver,
   ],

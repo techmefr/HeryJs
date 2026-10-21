@@ -13,6 +13,10 @@ category is called out here explicitly.
 
 First public release.
 
+### Circuit breaker and bulkhead on the HTTP client
+
+`HttpClientService` now keeps a circuit per host: consecutive timeouts, transport errors, 429s and 5xx answers open it, calls then fail fast with a typed `HttpCircuitOpenException` (503), and after a cooldown a probe call decides whether it closes. A per-host concurrency limit refuses the excess with `HttpBulkheadFullException`. Thresholds come from `httpClient.resilience` in `hery.config.ts`, and the fake driver is held to the same rules. State shows in the readiness probe (`http-circuits`) and in metrics (`http_client_circuit_state`, `http_client_in_flight`, `http_client_rejected_calls`). Admin-only routes under `/http-client/circuits` list circuits and open, close or re-tune one, and an **HTTP circuits** admin page drives them. **Upgrade note:** a project that installed `http-client` copies the new runtime files and the `HttpResilienceController` registration by hand, and an open circuit now fails the readiness probe unless `resilience.healthCheck` is `false`.
+
 ### SMTP mail driver
 
 A new `mail-smtp` package adds an SMTP driver beside the log and Resend ones. `hery install mail-smtp` lands it in `src/modules/mail`; import `SmtpMailModule`, declare `smtp: { driver: 'smtp' }` under `mail.drivers` in `hery.config.ts`, and set `MAIL_SMTP_HOST` and `MAIL_SMTP_FROM` (plus `MAIL_SMTP_PORT`, `MAIL_SMTP_TLS`, `MAIL_SMTP_USER` and `MAIL_SMTP_PASSWORD` as the server needs). `MAIL_DRIVER=smtp` switches to it. The driver sends through nodemailer, refuses a half-written credential and a refused recipient rather than recording the mail as sent, and its spec delivers over a real socket to an in-process SMTP server. That makes twenty-nine installable modules.

@@ -4,6 +4,7 @@ import type {
   HttpResponse,
 } from '#kernel/http-client/http-client-driver';
 import { HttpClientDriverRegistry } from './http-client-driver.registry';
+import { HttpResilienceService } from './http-resilience.service';
 
 type BodylessOptions = Omit<HttpRequestOptions, 'method' | 'url'>;
 type BodyOptions = Omit<HttpRequestOptions, 'method' | 'url' | 'body'>;
@@ -17,13 +18,22 @@ type BodyOptions = Omit<HttpRequestOptions, 'method' | 'url' | 'body'>;
  * The verb methods are conveniences over the single contract method, not a
  * second API -- each one only fills in `method`, so a driver stays one
  * `request` to implement.
+ *
+ * Every call passes through the per-host circuit breaker and bulkhead before
+ * it reaches the active driver, so the fake driver is held to the same rules
+ * as the real one.
  */
 @Injectable()
 export class HttpClientService {
-  constructor(private readonly registry: HttpClientDriverRegistry) {}
+  constructor(
+    private readonly registry: HttpClientDriverRegistry,
+    private readonly resilience: HttpResilienceService,
+  ) {}
 
   request(options: HttpRequestOptions): Promise<HttpResponse> {
-    return this.registry.active.request(options);
+    return this.resilience.run(options.url, () =>
+      this.registry.active.request(options),
+    );
   }
 
   get(url: string, options: BodylessOptions = {}): Promise<HttpResponse> {

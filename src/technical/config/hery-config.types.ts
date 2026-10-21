@@ -1,3 +1,5 @@
+import type { HttpResilienceConfig } from '#technical/http-client/http-resilience';
+
 export interface HeryConfigSearchEngine {
   driver: string;
 }
@@ -109,7 +111,7 @@ export interface HeryConfig {
   export?: HeryConfigDrivers;
   import?: HeryConfigDrivers;
   storage?: HeryConfigDrivers;
-  httpClient?: HeryConfigDrivers;
+  httpClient?: HeryConfigDrivers & { resilience?: HttpResilienceConfig };
   featureFlags?: HeryConfigDrivers;
   errorReporter?: HeryConfigDrivers;
   sms?: HeryConfigDrivers;
