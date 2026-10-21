@@ -70,6 +70,12 @@ two-factor module wants `TWO_FACTOR_ENCRYPTION_KEY`, the stream module its
 LiveKit credentials, and the S3 storage driver its bucket and keys. Inject them
 from your platform's secret store, never into the image.
 
+## Before the first deploy
+
+A new project's `cors.config.ts` allows any origin, and production refuses that
+value at boot. List the origins that call the API, or empty the list to send no
+CORS header at all, before building the image.
+
 ## Probes
 
 | Route | Use it for |
