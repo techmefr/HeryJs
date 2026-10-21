@@ -723,6 +723,22 @@ model LogEntry {
   @@index([loggedAt])
 }
 
+model JobFlow {
+  id          String    @id @default(cuid())
+  tenantId    String
+  kind        String
+  name        String
+  queue       String
+  rootJobId   String
+  steps       Json
+  createdById String?
+  createdAt   DateTime  @default(now())
+  cancelledAt DateTime?
+
+  @@index([tenantId, createdAt])
+  @@index([createdAt])
+}
+
 // One row grants one user or one team read or write access to one record of a
 // sharing-enabled resource. resource is the Prisma model name, so the table is
 // shared by every such resource and carries no foreign key to any of them.

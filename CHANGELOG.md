@@ -13,6 +13,9 @@ category is called out here explicitly.
 
 First public release.
 
+### Job chains and batches with resume
+
+`JobFlowsService` runs a chain (step B after step A) or a batch (a set of jobs with a progress count and a completion callback) on BullMQ flows. A flow survives a worker restart, and a failed step is retried on its own: the steps that finished are not run again. Steps run on the new `heryjs-flows` queue through handlers registered with `JobFlowHandlers`, or on any existing queue, so exports and imports chain onto their own processors. Operators get capability-gated routes under `/job-flows` (list, detail, start a defined flow, retry, cancel) and a **Job flows** admin page. New `JobFlow` table (migration included). **Upgrade note:** an existing admin copies the page, the nav link and the icon by hand.
 ### Parallel test isolation
 
 Each jest worker now runs against a Postgres database and a Redis keyspace of its own. The migrations are applied once into a template database named after their hash, every worker's database is a `CREATE DATABASE ... TEMPLATE` copy of it, recreated on each run and dropped afterwards, so one worker's failure cannot corrupt another's data. The suite runs on four workers. `pnpm test:serial` (or `JEST_SHARED_DB=true`) is the way back to a single shared database. Test infrastructure only: nothing changes for a generated project.
