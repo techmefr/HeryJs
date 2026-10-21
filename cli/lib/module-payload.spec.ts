@@ -54,9 +54,10 @@ describe('what a module has to publish', () => {
   // two-factor, the same shape with a second-factor guard and four tables,
   // and sso, the same shape for a tenant's own identity provider, plus
   // embeddings, a module whose drivers turn text into vectors, plus mail-smtp,
-  // the second driver landing inside mail.
+  // the second driver landing inside mail, plus scim, the directory a tenant's
+  // identity provider provisions members and teams through.
   it('found the modules to check', () => {
-    expect(MODULES).toHaveLength(29);
+    expect(MODULES).toHaveLength(30);
   });
 
   it.each(MODULES.map((module) => [module.name, module] as const))(

@@ -131,6 +131,7 @@ export default defineConfig({
                 { label: 'Realtime change feed', slug: 'guides/change-feed' },
                 { label: 'Social sign-in', slug: 'guides/oauth' },
                 { label: 'Enterprise SSO', slug: 'guides/sso' },
+                { label: 'SCIM provisioning', slug: 'guides/scim' },
                 { label: 'Mail', slug: 'guides/mail' },
                 { label: 'Notifier', slug: 'guides/notifier' },
                 { label: 'Storage', slug: 'guides/storage' },

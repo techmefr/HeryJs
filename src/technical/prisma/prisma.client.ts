@@ -40,6 +40,7 @@ const TENANT_SCOPED_MODELS = new Set<string>([
   'TwoFactorVerifiedSession',
   'Team',
   'TeamMember',
+  'ScimIdentity',
   'BlogPost',
   'BlogPostNote',
   'BlogPostTag',
@@ -261,6 +262,10 @@ export const APP_ENFORCED_TENANT_MODELS = new Set<string>([
   'SsoConnection',
   'SsoDomain',
   'SsoIdentity',
+  // Looked up by the hash of the bearer token a directory sends, which is how
+  // the tenant is learned in the first place: there is no ambient tenant to
+  // scope the lookup by, and each row carries the one it belongs to.
+  'ScimToken',
 ]);
 
 type TenantHandling =
