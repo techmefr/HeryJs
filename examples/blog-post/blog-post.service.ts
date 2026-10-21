@@ -364,7 +364,7 @@ export class BlogPostService {
       data as Record<string, unknown>,
       SLUG_FIELDS,
       { taken: (field, base) => this.takenSlugs(field, base) },
-      previous as Record<string, unknown> | null,
+      previous,
       attempt,
     );
   }

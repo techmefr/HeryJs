@@ -113,7 +113,7 @@ function slugServiceMethods(ctx: ResourceContext): string {
       data as Record<string, unknown>,
       SLUG_FIELDS,
       { taken: (field, base) => this.takenSlugs(field, base) },
-      previous as Record<string, unknown> | null,
+      previous,
       attempt,
     );
   }
@@ -3492,9 +3492,15 @@ function slugSpecBlock(ctx: ResourceContext, createBody: string): string {
 
   return `
   describe('slug field ${name}', () => {
+    type CreateOutcome = {
+      status: string;
+      data: Record<string, unknown>;
+      error?: { status: number; key: string };
+    };
+
     async function createWith(
       overrides: Record<string, unknown>,
-    ): Promise<{ status: string; data: Record<string, unknown>; error?: { status: number; key: string } }> {
+    ): Promise<CreateOutcome> {
       const response = await request(app.getHttpServer())
         .post('/${route}/create')
         .set('Authorization', \`Bearer \${ownerToken}\`)

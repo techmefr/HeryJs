@@ -960,13 +960,15 @@ describe('BlogPost resource', () => {
   });
 
   describe('slug field slug', () => {
-    async function createWith(
-      overrides: Record<string, unknown>,
-    ): Promise<{
+    type CreateOutcome = {
       status: string;
       data: Record<string, unknown>;
       error?: { status: number; key: string };
-    }> {
+    };
+
+    async function createWith(
+      overrides: Record<string, unknown>,
+    ): Promise<CreateOutcome> {
       const response = await request(app.getHttpServer())
         .post('/blog-posts/create')
         .set('Authorization', `Bearer ${ownerToken}`)
