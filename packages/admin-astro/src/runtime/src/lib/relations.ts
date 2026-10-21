@@ -10,8 +10,11 @@ export function relationBody(
   relation: string,
   mode: RelationMode,
   ids: string[],
+  version: Record<string, number> = {},
 ): Record<string, unknown> {
-  return { data: [{ id, relations: { [relation]: { [mode]: ids } } }] };
+  return {
+    data: [{ id, ...version, relations: { [relation]: { [mode]: ids } } }],
+  };
 }
 
 export function childRelationsOf(

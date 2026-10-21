@@ -242,6 +242,14 @@ fields:
 # route, no bin, and nothing for prune to sweep.
 softDeletes: true
 
+# Off unless you say so. Turn it on and the model gets an integer version column
+# that every update, delete and restore increments, the record view exposes it,
+# and an update must say which version it read (an entry's "version", or an
+# If-Match header on a single-entry request): a save made against a stale
+# version is refused for that entry with a 409 (412 via If-Match) instead of
+# overwriting what someone else just wrote.
+versioned: false
+
 permissions:
   # preset: own (creator/owner only) | team (same team) | all (any authenticated user) | none (nobody)
   # view drives the detail route and the collection filter from the same preset,

@@ -10,6 +10,7 @@ import {
   mutateIds,
   resourcesOf,
   summarize,
+  versionPartOf,
 } from './resource';
 import type { BatchEntry } from './resource';
 import { mockControllers, mockDescription } from './resource.fixture';
@@ -205,5 +206,24 @@ describe('failure messages', () => {
     expect(failureMessages(new TypeError('offline'))).toEqual([
       'The request could not be sent.',
     ]);
+  });
+});
+
+describe('versionPartOf', () => {
+  const versioned = { versioned: { field: 'version', header: 'If-Match' } };
+
+  it('carries the version a row was read at when the resource is versioned', () => {
+    expect(versionPartOf(versioned, { id: 'a', version: 4 })).toEqual({
+      version: 4,
+    });
+  });
+
+  it('sends nothing for a resource that is not versioned', () => {
+    expect(versionPartOf({}, { id: 'a', version: 4 })).toEqual({});
+  });
+
+  it('sends nothing when the row does not carry a numeric version', () => {
+    expect(versionPartOf(versioned, { id: 'a' })).toEqual({});
+    expect(versionPartOf(versioned, null)).toEqual({});
   });
 });
