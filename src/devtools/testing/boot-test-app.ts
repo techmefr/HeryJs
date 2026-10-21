@@ -1,5 +1,7 @@
 import { DynamicModule, INestApplication, Module } from '@nestjs/common';
 import type { ModuleMetadata } from '@nestjs/common';
+import { WorkerHost } from '@nestjs/bullmq';
+import { DiscoveryService } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
@@ -110,6 +112,18 @@ function configWithFakeDrivers(selected: Set<TestFakeName>): HeryConfig {
   };
 }
 
+async function closeQueueWorkers(app: INestApplication<App>): Promise<void> {
+  const workerHosts = app
+    .get(DiscoveryService)
+    .getProviders()
+    .map((wrapper) => wrapper.instance as unknown)
+    .filter(
+      (instance): instance is WorkerHost => instance instanceof WorkerHost,
+    );
+
+  await Promise.all(workerHosts.map((host) => host.worker.close()));
+}
+
 export async function bootTestApp(
   options: BootTestAppOptions = {},
 ): Promise<TestApp> {
@@ -142,6 +156,10 @@ export async function bootTestApp(
   const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication<INestApplication<App>>();
   await app.init();
+
+  if (selected.has('jobs')) {
+    await closeQueueWorkers(app);
+  }
 
   if (selected.has('notifier')) {
     fakes.notifier.install();
