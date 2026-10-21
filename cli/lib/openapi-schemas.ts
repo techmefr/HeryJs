@@ -4,6 +4,7 @@ import type {
   ResolvedInclude,
 } from './blueprint';
 import type { ResourceContext } from './resource-context';
+import { richtextMaxLength } from './field-types';
 import {
   AGGREGATE_TYPES_NEEDING_FIELD,
   AGGREGATE_TYPES_WITHOUT_FIELD,
@@ -64,10 +65,15 @@ function fieldBaseSchema(type: RecordProperty['type']): JsonSchema {
       return DATE_TIME;
     case 'translations':
       return { type: 'object', additionalProperties: { type: 'string' } };
+    case 'richtext':
+      return { type: 'string', format: 'html', description: RICHTEXT_NOTE };
     default:
       return { type: 'string' };
   }
 }
+
+const RICHTEXT_NOTE =
+  'Sanitised HTML: tags and attributes outside the field allow-list (published by GET /describe) are stripped on write, and again on read. Never trust it without escaping on a surface the allow-list does not cover.';
 
 function inputFieldSchema(field: ScalarBlueprintField): JsonSchema {
   if (field.translatable) {
@@ -86,6 +92,16 @@ function inputFieldSchema(field: ScalarBlueprintField): JsonSchema {
           additionalProperties: { anyOf: [text, { type: 'null' }] },
         },
       ],
+    };
+  }
+
+  if (field.type === 'richtext') {
+    return {
+      type: 'string',
+      format: 'html',
+      minLength: 1,
+      maxLength: richtextMaxLength(field),
+      description: RICHTEXT_NOTE,
     };
   }
 
@@ -861,10 +877,36 @@ export function describeSchema(ctx: ResourceContext): JsonSchema {
             name: { type: 'string' },
             type: {
               type: 'string',
-              enum: ['string', 'int', 'boolean', 'datetime', 'file'],
+              enum: [
+                'string',
+                'int',
+                'boolean',
+                'datetime',
+                'file',
+                'richtext',
+              ],
             },
             optional: { type: 'boolean' },
             translatable: { type: 'boolean' },
+            richtext: {
+              type: 'object',
+              properties: {
+                maxLength: { type: 'integer' },
+                allow: {
+                  type: 'object',
+                  properties: {
+                    tags: strings,
+                    attributes: {
+                      type: 'object',
+                      additionalProperties: strings,
+                    },
+                    schemes: strings,
+                  },
+                  required: ['tags', 'attributes', 'schemes'],
+                },
+              },
+              required: ['maxLength', 'allow'],
+            },
           },
           required: ['name', 'type', 'optional'],
         },

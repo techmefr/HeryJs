@@ -35,6 +35,7 @@ export function erasedValue(field: PersonalDataField): unknown {
     case 'datetime':
       return EPOCH;
     case 'string':
+    case 'richtext':
     case 'file':
     case 'encrypted':
       return ERASED_TEXT;

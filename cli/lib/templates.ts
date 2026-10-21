@@ -17,6 +17,7 @@ import {
   fakerValueFor,
   graphqlTypeFor,
   prismaTypeFor,
+  richtextMaxLength,
   sampleValueFor,
   storedTsTypeFor,
   tsTypeFor,
@@ -92,6 +93,19 @@ function translatableFieldsLiteral(ctx: ResourceContext): string {
     .join(', ')}]`;
 }
 
+function richtextFields(ctx: ResourceContext): ResourceContext['fields'] {
+  return ctx.fields.filter((field) => field.type === 'richtext');
+}
+
+function richtextFieldsLiteral(ctx: ResourceContext): string {
+  return `[${richtextFields(ctx)
+    .map(
+      (field) =>
+        `{ name: '${field.name}', maxLength: ${richtextMaxLength(field)}${field.allow ? `, allow: ${JSON.stringify(field.allow)}` : ''} }`,
+    )
+    .join(', ')}]`;
+}
+
 function pascalRelationName(relation: { relation: string }): string {
   return relation.relation[0]!.toUpperCase() + relation.relation.slice(1);
 }
@@ -144,8 +158,17 @@ export function dtoFile(ctx: ResourceContext): string {
   const hasRelations = ctx.relations.length > 0;
 
   return `import { z } from 'zod';
-import { MAX_BATCH_ENTRIES } from '#technical/http/batch';${translatableFields(ctx).length > 0 ? `\nimport { translatableInputSchema } from '#technical/i18n/translatable';` : ''}
-
+import { MAX_BATCH_ENTRIES } from '#technical/http/batch';${translatableFields(ctx).length > 0 ? `\nimport { translatableInputSchema } from '#technical/i18n/translatable';` : ''}${richtextFields(ctx).length > 0 ? `\nimport type { RichtextFieldSpec } from '#technical/richtext/richtext';` : ''}
+${
+  richtextFields(ctx).length > 0
+    ? `
+// The size limit and the allow-list of each richtext field. The limit is
+// checked on what the client sends; the service sanitises on write and the
+// view sanitises again on read, both from this one list.
+export const RICHTEXT_FIELDS: readonly RichtextFieldSpec[] = ${richtextFieldsLiteral(ctx)};
+`
+    : ''
+}
 const ${ctx.camelName}Fields = z.object({
 ${fieldLines(ctx, '  ')}
 });
@@ -595,14 +618,14 @@ import {
 import type { TranslatableRow } from '#technical/i18n/translatable-query';
 `
       : ''
-  }import { resolveRelationInstructions } from '#technical/http/relation-resolver';
+  }${richtextFields(ctx).length > 0 ? `import { sanitizeRichtextWrite } from '#technical/richtext/richtext';\n` : ''}import { resolveRelationInstructions } from '#technical/http/relation-resolver';
 import type { PrismaRelationClient } from '#technical/http/relation-resolver';
 ${ctx.versioned ? `import { VersionConflictException } from '#technical/errors/version-conflict.exception';\nimport { assertVersionIsCurrent, isLostRaceError } from '#technical/http/record-version';\nimport type { ExpectedVersion } from '#technical/http/record-version';\n` : ''}import type { RelationInstruction${childIncludes.length > 0 ? ', ParsedListQuery' : ''} } from '#technical/http/list-query';${ctx.relations.length > 0 ? `\nimport { applyRelationMutation } from '#technical/http/relation-mutations';\nimport type { PivotDelegate, RelatedDelegate } from '#technical/http/relation-mutations';\nimport { MAX_BATCH_ENTRIES } from '#technical/http/batch';` : ''}
 import {
   Create${ctx.pascalName}Input,${ctx.relations.length > 0 ? `\n  RelationMutationInput,` : ''}
   Update${ctx.pascalName}Input,
 } from './${ctx.kebabName}.dto';
-import { ${ctx.screamingSnakeName}_PRESETS } from './${ctx.kebabName}.presets';
+import { ${ctx.screamingSnakeName}_PRESETS } from './${ctx.kebabName}.presets';${richtextFields(ctx).length > 0 ? `\nimport { RICHTEXT_FIELDS } from './${ctx.kebabName}.dto';` : ''}
 
 const SEARCHABLE_FIELDS = [${searchableFields.map((name) => `'${name}'`).join(', ')}] as const;
 const SEARCH_COLLECTION = '${ctx.kebabName}';${vectorServiceConstants(ctx)}${historyServiceConstants(ctx)}${
@@ -996,15 +1019,15 @@ ${ctx.relations
   }
 
   async create(subject: CapabilitySubject, data: Create${ctx.pascalName}Input) {
-${
-  ownedByTeam(ctx)
-    ? `    if (!subject.currentTeamId) {
+${richtextFields(ctx).length > 0 ? `    data = sanitizeRichtextWrite(data, RICHTEXT_FIELDS);\n` : ''}${
+    ownedByTeam(ctx)
+      ? `    if (!subject.currentTeamId) {
       throw new NoCurrentTeamException();
     }
 
 `
-    : ''
-}    const record = await this.prisma.${ctx.modelCamelName}.create({
+      : ''
+  }    const record = await this.prisma.${ctx.modelCamelName}.create({
       // tenantId is injected by the tenant-scoping Prisma extension, invisible to callers by design.
       data: {
         ...${hasTranslatable ? 'normalizeTranslatableWrite(data, TRANSLATABLE_FIELDS)' : 'data'},
@@ -1023,7 +1046,7 @@ ${
     data: Update${ctx.pascalName}Input,
     expected: ExpectedVersion,
   ) {
-    assertVersionIsCurrent('${ctx.kebabName}', expected, record.version);
+${richtextFields(ctx).length > 0 ? `    data = sanitizeRichtextWrite(data, RICHTEXT_FIELDS);\n` : ''}    assertVersionIsCurrent('${ctx.kebabName}', expected, record.version);
 
     try {
       const updated = await this.prisma.${ctx.modelCamelName}.update({
@@ -1042,7 +1065,7 @@ ${
     }
   }`
     : `  async update(record: ${ctx.modelPascalName}, data: Update${ctx.pascalName}Input) {
-    const updated = await this.prisma.${ctx.modelCamelName}.update({ where: { id: record.id }, data${hasTranslatable ? `: normalizeTranslatableWrite(data, TRANSLATABLE_FIELDS, record)` : ''} });
+${richtextFields(ctx).length > 0 ? `    data = sanitizeRichtextWrite(data, RICHTEXT_FIELDS);\n` : ''}    const updated = await this.prisma.${ctx.modelCamelName}.update({ where: { id: record.id }, data${hasTranslatable ? `: normalizeTranslatableWrite(data, TRANSLATABLE_FIELDS, record)` : ''} });
     this.notify();
     await this.syncSearchIndex(updated);
     return updated;
@@ -1092,7 +1115,7 @@ ${
   }
 
   async restore(record: ${ctx.modelPascalName}, patch?: Update${ctx.pascalName}Input) {
-    const updated = await this.prisma.${ctx.modelCamelName}.update({
+${richtextFields(ctx).length > 0 ? `    patch = patch && sanitizeRichtextWrite(patch, RICHTEXT_FIELDS);\n` : ''}    const updated = await this.prisma.${ctx.modelCamelName}.update({
       where: { id: record.id },
       data: { ...${hasTranslatable ? 'normalizeTranslatableWrite(patch ?? {}, TRANSLATABLE_FIELDS, record)' : 'patch'}, deletedAt: null${ctx.versioned ? ', version: { increment: 1 }' : ''} },
     });
@@ -1425,7 +1448,7 @@ import type {
   ListQueryContract,
   SearchRequestBody,
 } from '#technical/http/list-query';
-${hasTranslatable ? `import { describeLocales } from '#technical/i18n/translatable';\n` : ''}${historyControllerImports(ctx)}import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
+${hasTranslatable ? `import { describeLocales } from '#technical/i18n/translatable';\n` : ''}${richtextFields(ctx).length > 0 ? `import { describeRichtext } from '#technical/richtext/richtext';\nimport { RICHTEXT_FIELDS } from './${ctx.kebabName}.dto';\n` : ''}${historyControllerImports(ctx)}import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import {
   create${ctx.pascalName}RequestSchema,
   create${ctx.pascalName}Schema,
@@ -1498,7 +1521,7 @@ const ${ctx.screamingSnakeName}_DESCRIBE = {
   // inferring it from the path it happened to call.
   version: ${ctx.version},
   fields: [
-${ctx.fields.map((field) => `    { name: '${field.name}', type: '${field.type}', optional: ${field.optional}${field.translatable ? ', translatable: true' : ''} },`).join('\n')}
+${ctx.fields.map((field) => `    { name: '${field.name}', type: '${field.type}', optional: ${field.optional}${field.translatable ? ', translatable: true' : ''}${field.type === 'richtext' ? `, richtext: describeRichtext(RICHTEXT_FIELDS, '${field.name}')` : ''} },`).join('\n')}
   ],${hasTranslatable ? '\n  locales: describeLocales(),' : ''}
   ...${ctx.screamingSnakeName}_CONTRACT,
   // Stated rather than implied by the absence of limits: a client reading this
@@ -3606,6 +3629,162 @@ ${searchCheck}
     .join('');
 }
 
+const XSS_PAYLOADS = [
+  '<script>alert(1)</script><p>ok</p>',
+  '<img src=x onerror=alert(1)>',
+  '<a href="javascript:alert(1)">x</a>',
+  '<a href="JaVaScRiPt:alert(1)">x</a>',
+  '<a href="&#106;avascript:alert(1)">x</a>',
+  '<a href="data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==">x</a>',
+  '<p onclick="alert(1)">x</p>',
+  '<p style="background:url(javascript:alert(1))">x</p>',
+  '<svg onload=alert(1)>',
+  '<svg><script>alert(1)</script></svg>',
+  '<iframe src="javascript:alert(1)"></iframe>',
+  '<iframe srcdoc="<script>alert(1)</script>"></iframe>',
+  '<object data="data:text/html,<script>alert(1)</script>"></object>',
+  '<form action="javascript:alert(1)"><input type=submit></form>',
+  '<body onload=alert(1)>',
+  '<style>*{background:url(javascript:alert(1))}</style>',
+  '<scr<script>ipt>alert(1)</scr</script>ipt>',
+  '<math><mi xlink:href="javascript:alert(1)">x</mi></math>',
+];
+
+function richtextSpecBlock(ctx: ResourceContext, createBody: string): string {
+  const field = richtextFields(ctx)[0];
+
+  if (!field || ctx.permissions.create === 'none') {
+    return '';
+  }
+
+  const name = field.name;
+  const route = ctx.pluralKebabName;
+  const maxLength = richtextMaxLength(field);
+  const canUpdate = ctx.permissions.update !== 'none';
+  const canSearch = ctx.permissions.view !== 'none';
+  const versionPart = ctx.versioned ? ', version: created.version' : '';
+  const payloads = JSON.stringify(XSS_PAYLOADS);
+
+  return `
+  describe('richtext field ${name}', () => {
+    const XSS_PAYLOADS: string[] = ${payloads};
+    const DANGEROUS =
+      /<\\s*(script|iframe|svg|math|style|object|embed|form|input|link|meta|body)|javascript:|data:|\\son[a-z]+\\s*=|\\sstyle\\s*=|srcdoc/i;
+
+    async function createWith(html: string): Promise<Record<string, unknown>> {
+      const response = await request(app.getHttpServer())
+        .post('/${route}/create')
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .send({ data: [{ ...${createBody}, ${name}: html }] })
+        .expect(201);
+
+      return (
+        response.body as { data: { data: Record<string, unknown> }[] }
+      ).data[0]!.data;
+    }
+${
+  canSearch
+    ? `
+    async function readBack(id: unknown): Promise<Record<string, unknown>> {
+      const response = await request(app.getHttpServer())
+        .post('/${route}/search')
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .send({ filters: [{ field: 'id', value: id }] })
+        .expect(200);
+
+      return (response.body as { data: Record<string, unknown>[] }).data[0]!;
+    }
+`
+    : ''
+}
+    it('publishes the size limit and the allow-list', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/${route}/describe')
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .expect(200);
+
+      const body = response.body as {
+        data: {
+          fields: Array<{
+            name: string;
+            type: string;
+            richtext?: {
+              maxLength: number;
+              allow: { tags: string[]; attributes: Record<string, string[]>; schemes: string[] };
+            };
+          }>;
+        };
+      };
+      const described = body.data.fields.find((entry) => entry.name === '${name}');
+      expect(described?.type).toBe('richtext');
+      expect(described?.richtext?.maxLength).toBe(${maxLength});
+      expect(described?.richtext?.allow.tags).toContain('p');
+      expect(described?.richtext?.allow.tags).not.toContain('script');
+      expect(described?.richtext?.allow.schemes).not.toContain('javascript');
+    });
+
+    it('strips every XSS payload on write', async () => {
+      for (const payload of XSS_PAYLOADS) {
+        const created = await createWith(payload);
+
+        expect(String(created.${name})).not.toMatch(DANGEROUS);
+${canSearch ? `        expect(JSON.stringify(await readBack(created.id))).not.toMatch(DANGEROUS);\n` : ''}      }
+    });
+
+    it('keeps the formatting the allow-list names and hardens a link', async () => {
+      const created = await createWith(
+        '<h2>Title</h2><p>a <strong>b</strong> <a href="https://example.com/x">go</a></p>',
+      );
+
+      expect(created.${name}).toBe(
+        '<h2>Title</h2><p>a <strong>b</strong> <a href="https://example.com/x" rel="noopener noreferrer nofollow">go</a></p>',
+      );
+    });
+
+    it('refuses more than ${maxLength} characters of HTML, counted before sanitising', async () => {
+      await request(app.getHttpServer())
+        .post('/${route}/create')
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .send({ data: [{ ...${createBody}, ${name}: '<p>' + 'a'.repeat(${maxLength}) + '</p>' }] })
+        .expect(400);
+    });
+${
+  canUpdate
+    ? `
+    it('strips a payload sent on update as well', async () => {
+      const created = await createWith('<p>clean</p>');
+
+      const response = await request(app.getHttpServer())
+        .post('/${route}/update')
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .send({ data: [{ id: created.id${versionPart}, ${name}: '<img src=x onerror=alert(1)><p>after</p>' }] })
+        .expect(201);
+
+      const updated = (response.body as { data: { data: Record<string, unknown> }[] }).data[0]!.data;
+      expect(updated.${name}).toBe('<p>after</p>');
+    });
+`
+    : ''
+}${
+    canSearch
+      ? `
+    it('never trusts what the column holds: a row written past the service is sanitised on read', async () => {
+      const created = await createWith('<p>fine</p>');
+      await prisma.${ctx.modelCamelName}.update({
+        where: { id: created.id as string },
+        data: { ${name}: '<script>alert(1)</script><p onclick="alert(1)">stored</p>' },
+      });
+
+      const read = await readBack(created.id);
+
+      expect(read.${name}).toBe('<p>stored</p>');
+    });
+`
+      : ''
+  }  });
+`;
+}
+
 // Proves the three claims sharing makes -- a share opens a record to its
 // grantee (in the list as well as on the detail route) and no further than the
 // access it names, a revoke closes it again, and none of it crosses a tenant --
@@ -4136,7 +4315,10 @@ export function specFile(ctx: ResourceContext): string {
   const canDeleteAny = ctx.permissions.delete !== 'none';
   const hasRelations = ctx.relations.length > 0;
   const usesPrismaClient =
-    hasRelations || ctx.vector !== null || ctx.personalData !== null;
+    hasRelations ||
+    ctx.vector !== null ||
+    ctx.personalData !== null ||
+    richtextFields(ctx).length > 0;
 
   return `import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
@@ -4513,7 +4695,7 @@ ${
   });
 `
     : ''
-}${relationSpecBlock(ctx, createBody)}${translatableSpecBlock(ctx, createBody)}${privacySpecBlock(ctx, createBody)}});
+}${relationSpecBlock(ctx, createBody)}${translatableSpecBlock(ctx, createBody)}${richtextSpecBlock(ctx, createBody)}${privacySpecBlock(ctx, createBody)}});
 `;
 }
 
@@ -4528,10 +4710,20 @@ export function viewFile(ctx: ResourceContext): string {
       ? `import { withResolvedTranslations } from '#technical/i18n/translatable';\n`
       : '';
   const translatableNames = `[${visibleTranslatable.map((field) => `'${field.name}'`).join(', ')}]`;
-  const parseInput = (source: string): string =>
-    visibleTranslatable.length > 0
-      ? `withResolvedTranslations(${source}, ${translatableNames})`
-      : source;
+  const hasRichtext = richtextFields(ctx).some((field) => !field.hidden);
+  const richtextImport = hasRichtext
+    ? `import { sanitizeRichtextRead } from '#technical/richtext/richtext';\nimport { RICHTEXT_FIELDS } from './${ctx.kebabName}.dto';\n`
+    : '';
+  const parseInput = (source: string): string => {
+    const resolved =
+      visibleTranslatable.length > 0
+        ? `withResolvedTranslations(${source}, ${translatableNames})`
+        : source;
+
+    return hasRichtext
+      ? `sanitizeRichtextRead(${resolved}, RICHTEXT_FIELDS)`
+      : resolved;
+  };
 
   const visibleFieldLines = visibleFields
     .map((field) =>
@@ -4555,7 +4747,7 @@ export type ${ctx.pascalName}View = z.infer<typeof ${ctx.camelName}ViewSchema>;
   if (hiddenFields.length === 0) {
     return `import { z } from 'zod';
 import type { ${ctx.modelPascalName} } from '@prisma/client';
-${translatableImport}
+${translatableImport}${richtextImport}
 ${schema}
 export function to${ctx.pascalName}View(record: ${ctx.modelPascalName}): ${ctx.pascalName}View {
   return ${ctx.camelName}ViewSchema.parse(${parseInput('record')});
@@ -4567,7 +4759,7 @@ export function to${ctx.pascalName}View(record: ${ctx.modelPascalName}): ${ctx.p
 
   return `import { z } from 'zod';
 import type { ${ctx.modelPascalName} } from '@prisma/client';
-${translatableImport}
+${translatableImport}${richtextImport}
 ${schema}
 export function to${ctx.pascalName}View(record: ${ctx.modelPascalName}): ${ctx.pascalName}View {
   const { ${hiddenNames}, ...view } = record;
