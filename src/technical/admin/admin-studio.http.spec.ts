@@ -6,6 +6,7 @@ import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 import type { TestUser } from '#devtools/testing/register-and-login';
+import { env } from '#technical/config/env';
 import { AuthModule } from '#technical/auth/auth.module';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { Capability } from '#technical/capabilities/capability.decorator';
@@ -53,7 +54,20 @@ describe('the admin studio in production', () => {
   let app: INestApplication<App>;
   let admin: TestUser;
   let member: TestUser;
-  const saved = { ...process.env };
+  const originalNodeEnv = process.env.NODE_ENV;
+  const mutableEnv = env as unknown as Record<string, string | undefined>;
+  const names = [
+    'ADMIN_STUDIO_ENABLED',
+    'ADMIN_STUDIO_ALLOWED_IPS',
+    'ADMIN_STUDIO_REQUIRE_2FA',
+  ];
+  const savedEnv = Object.fromEntries(names.map((n) => [n, mutableEnv[n]]));
+  const restore = () => {
+    process.env.NODE_ENV = originalNodeEnv;
+    for (const name of names) {
+      mutableEnv[name] = savedEnv[name];
+    }
+  };
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -71,23 +85,18 @@ describe('the admin studio in production', () => {
   });
 
   afterAll(async () => {
-    process.env = { ...saved };
+    restore();
     await app.close();
   });
 
-  afterEach(() => {
-    process.env = { ...saved };
-  });
+  afterEach(restore);
 
   const production = (extra: Record<string, string> = {}) => {
-    process.env = {
-      ...saved,
-      NODE_ENV: 'production',
-      ADMIN_STUDIO_ENABLED: 'true',
-      ...extra,
-    };
+    restore();
+    process.env.NODE_ENV = 'production';
+    mutableEnv.ADMIN_STUDIO_ENABLED = 'true';
+    Object.assign(mutableEnv, extra);
   };
-
   const as = (user: TestUser, route: string) =>
     request(app.getHttpServer())
       .get(route)

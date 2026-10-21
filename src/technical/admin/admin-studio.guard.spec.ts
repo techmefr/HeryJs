@@ -1,4 +1,5 @@
 import { ExecutionContext } from '@nestjs/common';
+import { env } from '#technical/config/env';
 import { subjectOf } from '#technical/capabilities/subject';
 import type { AuthenticatedUser } from '#technical/auth/auth.types';
 import {
@@ -33,25 +34,34 @@ const contextOf = (request: object): ExecutionContext =>
   }) as unknown as ExecutionContext;
 
 describe('admin studio production access', () => {
-  const saved = { ...process.env };
+  const originalNodeEnv = process.env.NODE_ENV;
+  const mutableEnv = env as unknown as Record<string, string | undefined>;
+  const names = [
+    'ADMIN_STUDIO_ENABLED',
+    'ADMIN_STUDIO_ALLOWED_IPS',
+    'ADMIN_STUDIO_REQUIRE_2FA',
+  ];
+  const savedEnv = Object.fromEntries(names.map((n) => [n, mutableEnv[n]]));
 
   const configure = (settings: Record<string, string | undefined>) => {
-    process.env = { ...saved };
+    for (const name of names) {
+      mutableEnv[name] = savedEnv[name];
+    }
 
     for (const [key, value] of Object.entries(settings)) {
-      if (value === undefined) {
-        delete process.env[key];
+      if (key === 'NODE_ENV') {
+        process.env.NODE_ENV = value;
       } else {
-        process.env[key] = value;
+        mutableEnv[key] = value;
       }
     }
   };
 
   afterEach(() => {
-    process.env = { ...saved };
+    process.env.NODE_ENV = originalNodeEnv;
+    configure({});
     findUser.mockReset();
   });
-
   describe('gate', () => {
     const gate = new AdminStudioGateGuard();
 
@@ -98,8 +108,6 @@ describe('admin studio production access', () => {
         NODE_ENV: 'production',
         ADMIN_STUDIO_ENABLED: 'true',
         ADMIN_STUDIO_ALLOWED_IPS: '10.0.0.5',
-        DEV_TOKEN_ENABLED: 'true',
-        ALLOW_DEV: 'true',
       });
 
       const spoofed = {
