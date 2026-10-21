@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { createServer } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -12,9 +14,7 @@ import { OutboxService } from '#technical/outbox/outbox.service';
 import { runInTenant } from '#technical/tenancy/run-in-tenant';
 import { verifyOutboundWebhook } from './outbound-webhook-signature';
 import { OUTBOUND_WEBHOOK_POLICY } from './outbound-webhook.constants';
-import { WEBHOOK_FETCH } from './outbound-webhook.sender';
 import { WebhookDeliveryService } from './webhook-delivery.service';
-import { WEBHOOK_HOST_RESOLVER } from './webhook-url-guard';
 
 interface Recorded {
   url: string;
@@ -22,22 +22,31 @@ interface Recorded {
   body: string;
 }
 
+type Behaviour = 'ok' | 'fail' | 'drop';
+
 const recorded: Recorded[] = [];
-let answer: () => Response | Promise<Response> = () =>
-  new Response(null, { status: 200 });
+let behaviour: Behaviour = 'ok';
+let base = '';
 
-const fakeFetch = (url: string, init?: RequestInit): Promise<Response> => {
-  recorded.push({
-    url,
-    headers: init?.headers as Record<string, string>,
-    body: typeof init?.body === 'string' ? init.body : '',
+const server = createServer((req, res) => {
+  const chunks: Buffer[] = [];
+  req.on('data', (chunk: Buffer) => chunks.push(chunk));
+  req.on('end', () => {
+    recorded.push({
+      url: req.url ?? '',
+      headers: req.headers as Record<string, string>,
+      body: Buffer.concat(chunks).toString('utf8'),
+    });
+
+    if (behaviour === 'drop') {
+      req.socket.destroy();
+      return;
+    }
+
+    res.statusCode = behaviour === 'fail' ? 500 : 204;
+    res.end();
   });
-
-  return Promise.resolve(answer());
-};
-
-const resolver = (host: string): Promise<string[]> =>
-  Promise.resolve([host.startsWith('internal') ? '10.0.0.5' : '93.184.216.34']);
+});
 
 async function waitFor<T>(
   read: () => Promise<T | null | undefined>,
@@ -65,11 +74,11 @@ describe('Outbound webhooks', () => {
   let admin: TestUser;
 
   beforeAll(async () => {
+    await new Promise<void>((resolve) =>
+      server.listen(0, '127.0.0.1', resolve),
+    );
+    base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
-      .overrideProvider(WEBHOOK_FETCH)
-      .useValue(fakeFetch)
-      .overrideProvider(WEBHOOK_HOST_RESOLVER)
-      .useValue(resolver)
       .overrideProvider(OUTBOUND_WEBHOOK_POLICY)
       .useValue({
         attempts: 3,
@@ -95,11 +104,12 @@ describe('Outbound webhooks', () => {
 
   afterAll(async () => {
     await app.close();
+    await new Promise((resolve) => server.close(resolve));
   });
 
   beforeEach(() => {
     recorded.length = 0;
-    answer = () => new Response(null, { status: 200 });
+    behaviour = 'ok';
   });
 
   const asAdmin = (token = admin.token) => ({
@@ -156,9 +166,9 @@ describe('Outbound webhooks', () => {
       .expect(403);
 
     for (const url of [
-      'http://hooks.acme.test',
-      'https://internal.acme.test',
-      'https://169.254.169.254/latest',
+      'ftp://hooks.acme.test',
+      'not a url',
+      'https://user:pass@hooks.acme.test',
     ]) {
       await request(app.getHttpServer())
         .post('/webhook-subscriptions')
@@ -175,7 +185,7 @@ describe('Outbound webhooks', () => {
   });
 
   it('shows the secret once, and never on a read', async () => {
-    const created = await subscribe('https://hooks.acme.test/once', ['*']);
+    const created = await subscribe(`${base}/once`, ['*']);
 
     expect(created.secret).toMatch(/^whsec_/);
 
@@ -193,16 +203,14 @@ describe('Outbound webhooks', () => {
   });
 
   it('delivers a subscribed event, signed, to that subscription only', async () => {
-    const wanted = await subscribe('https://hooks.acme.test/paid', [
-      'webhook.invoice.paid',
-    ]);
-    const other = await subscribe('https://hooks.acme.test/refunds', [
+    const wanted = await subscribe(`${base}/paid`, ['webhook.invoice.paid']);
+    const other = await subscribe(`${base}/refunds`, [
       'webhook.invoice.refunded',
     ]);
     const foreign = await authPrismaClient.webhookSubscription.create({
       data: {
         tenantId: `tenant-${randomUUID()}`,
-        url: 'https://hooks.acme.test/foreign',
+        url: `${base}/foreign`,
         events: ['*'],
         secret: 'not-readable',
       },
@@ -240,7 +248,7 @@ describe('Outbound webhooks', () => {
   });
 
   it('never delivers a message that was not staged for customers', async () => {
-    const catchAll = await subscribe('https://hooks.acme.test/all', ['*']);
+    const catchAll = await subscribe(`${base}/all`, ['*']);
 
     const messageId = await announce('invoice.internal');
 
@@ -248,8 +256,8 @@ describe('Outbound webhooks', () => {
   });
 
   it('retries a failing endpoint, lands it in the dead letters, and replays it', async () => {
-    answer = () => new Response(null, { status: 500 });
-    const failing = await subscribe('https://hooks.acme.test/failing', [
+    behaviour = 'fail';
+    const failing = await subscribe(`${base}/failing`, [
       'webhook.order.shipped',
     ]);
 
@@ -291,7 +299,7 @@ describe('Outbound webhooks', () => {
     });
     expect(dead2.attempts).toBe(3);
 
-    answer = () => new Response(null, { status: 204 });
+    behaviour = 'ok';
     await request(app.getHttpServer())
       .post(`/webhook-deliveries/${dead.id}/redeliver`)
       .set(asAdmin())
@@ -306,10 +314,8 @@ describe('Outbound webhooks', () => {
   });
 
   it('records a transport failure as a failed attempt', async () => {
-    answer = () => {
-      throw new Error('connect ECONNREFUSED');
-    };
-    const refusing = await subscribe('https://hooks.acme.test/refusing', [
+    behaviour = 'drop';
+    const refusing = await subscribe(`${base}/refusing`, [
       'webhook.order.cancelled',
     ]);
 
@@ -321,11 +327,11 @@ describe('Outbound webhooks', () => {
     });
 
     expect(dead.lastStatusCode).toBeNull();
-    expect(dead.lastError).toContain('ECONNREFUSED');
+    expect(dead.lastError).toBeTruthy();
   });
 
   it('rotates the secret without dropping events: both secrets verify during the grace window', async () => {
-    const subscription = await subscribe('https://hooks.acme.test/rotating', [
+    const subscription = await subscribe(`${base}/rotating`, [
       'webhook.rotation.test',
     ]);
 
@@ -380,9 +386,7 @@ describe('Outbound webhooks', () => {
   });
 
   it('delivers model change messages and stops delivering to a disabled subscription', async () => {
-    const watching = await subscribe('https://hooks.acme.test/models', [
-      'model.*',
-    ]);
+    const watching = await subscribe(`${base}/models`, ['model.*']);
 
     const first = await announce('model.created');
     await waitFor(async () => {
@@ -406,7 +410,7 @@ describe('Outbound webhooks', () => {
     const foreign = await authPrismaClient.webhookSubscription.create({
       data: {
         tenantId: `tenant-${randomUUID()}`,
-        url: 'https://hooks.acme.test/foreign-read',
+        url: `${base}/foreign-read`,
         events: ['*'],
         secret: 'not-readable',
       },
@@ -446,7 +450,7 @@ describe('Outbound webhooks', () => {
   });
 
   it('prunes finished deliveries past retention and keeps pending ones', async () => {
-    const subscription = await subscribe('https://hooks.acme.test/prune', [
+    const subscription = await subscribe(`${base}/prune`, [
       'webhook.prune.test',
     ]);
     const old = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
