@@ -69,11 +69,11 @@ export const CATALOGUE: Catalogue = {
   },
   'record.versionConflict': {
     fr: (details) =>
-      `${String(details.resource)} a été modifié depuis votre lecture (version envoyée ${String(details.expected)}, version actuelle ${String(details.current ?? 'inconnue')}). Rechargez-le puis réappliquez votre modification.`,
+      `${String(details.resource)} a été modifié depuis votre lecture (version envoyée ${String(details.expected)}, version actuelle ${details.current === null ? 'inconnue' : String(details.current)}). Rechargez-le puis réappliquez votre modification.`,
   },
   'record.preconditionFailed': {
     fr: (details) =>
-      `${String(details.resource)} a été modifié depuis votre lecture (If-Match ${String(details.expected)}, version actuelle ${String(details.current ?? 'inconnue')}). Rechargez-le puis réappliquez votre modification.`,
+      `${String(details.resource)} a été modifié depuis votre lecture (If-Match ${String(details.expected)}, version actuelle ${details.current === null ? 'inconnue' : String(details.current)}). Rechargez-le puis réappliquez votre modification.`,
   },
   'record.versionRequired': {
     fr: (details) =>
