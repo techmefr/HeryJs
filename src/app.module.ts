@@ -31,6 +31,7 @@ import { PrivacyModule } from '#technical/privacy/privacy.module';
 import { BackupModule } from '#technical/backup/backup.module';
 import { PruneModule } from '#technical/prune/prune.module';
 import { QuotasModule } from '#technical/quotas/quotas.module';
+import { OutputCacheModule } from '#technical/output-cache/output-cache.module';
 import { RateLimitModule } from '#technical/rate-limit/rate-limit.module';
 import { SchedulerModule } from '#technical/scheduler/scheduler.module';
 import { SecretsModule } from '#technical/secrets/secrets.module';
@@ -127,6 +128,7 @@ const telemetryOptions = telemetryPinoOptions();
     MonitoringModule,
     NotificationsModule,
     OutboxModule,
+    OutputCacheModule,
     PipelineModule,
     PrivacyModule,
     BackupModule,
