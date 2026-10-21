@@ -74,7 +74,9 @@ describe('OAuthStateService', () => {
   it('refuses a tampered payload', () => {
     const started = start();
     const [body, signature] = started.cookieValue.split('.');
-    const payload = JSON.parse(Buffer.from(body ?? '', 'base64url').toString());
+    const payload = JSON.parse(
+      Buffer.from(body ?? '', 'base64url').toString(),
+    ) as Record<string, unknown>;
     const forged = Buffer.from(
       JSON.stringify({ ...payload, linkUserId: 'victim' }),
     ).toString('base64url');

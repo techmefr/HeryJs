@@ -97,7 +97,7 @@ describe('GoogleOAuthProvider', () => {
       email: 'ada@example.com',
       isEmailVerified: true,
     });
-    expect(String(calls[0]?.init?.body)).toContain('code_verifier=verifier');
+    expect(calls[0]?.init?.body as string).toContain('code_verifier=verifier');
   });
 
   it('treats a string "false" email_verified as unverified', async () => {
