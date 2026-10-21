@@ -17,6 +17,10 @@ export const TenantContextStorage = {
     return storage.run(context, callback);
   },
 
+  current(): TenantContext | null {
+    return storage.getStore() ?? null;
+  },
+
   getTenantId(): string {
     const context = storage.getStore();
 

@@ -24,6 +24,30 @@ export interface ResolvedError {
 
 const logger = new Logger('UnhandledError');
 
+export type UnhandledErrorListener = (error: Error, errorId: string) => void;
+
+let unhandledErrorListener: UnhandledErrorListener | null = null;
+
+export function onUnhandledError(
+  listener: UnhandledErrorListener | null,
+): void {
+  unhandledErrorListener = listener;
+}
+
+function notifyUnhandledErrorListener(error: Error, errorId: string): void {
+  if (unhandledErrorListener === null) {
+    return;
+  }
+
+  try {
+    unhandledErrorListener(error, errorId);
+  } catch (listenerError) {
+    logger.warn(
+      `[${errorId}] the unhandled error listener threw: ${String(listenerError)}`,
+    );
+  }
+}
+
 /**
  * An exception this framework does not recognise is the one case where the
  * client cannot be told what happened -- the message could name a table, a
@@ -44,6 +68,8 @@ function reportUnknownError(exception: unknown): ResolvedError {
     exception instanceof Error ? exception : new Error(String(exception));
 
   logger.error(`[${errorId}] ${error.name}: ${error.message}`, error.stack);
+
+  notifyUnhandledErrorListener(error, errorId);
 
   TraceContextStorage.pushStep({
     stage: 'controller',
