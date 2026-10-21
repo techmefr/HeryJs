@@ -87,6 +87,7 @@ export default defineConfig({
                 { label: 'Logging', slug: 'guides/logging' },
                 { label: 'Migrations', slug: 'guides/migrations' },
                 { label: 'Prune', slug: 'guides/prune' },
+                { label: 'GDPR export and erasure', slug: 'guides/gdpr' },
               ],
             },
             {

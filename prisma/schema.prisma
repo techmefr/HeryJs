@@ -171,6 +171,10 @@ model AuditLog {
   // looked like it forbade them.
   previousHash   String
   createdAt      DateTime @default(now())
+  // Set when an erasure request replaced `data` with a digest of it. The entry
+  // stays in the chain so its neighbours still link to it, but its content can
+  // no longer be recomputed, so the verifier checks its links, not its hash.
+  redactedAt     DateTime?
 
   // Two entries in the same tenant's chain can never claim the same
   // predecessor -- that is a fork, and the linear verifier can never accept
@@ -653,4 +657,24 @@ model LogEntry {
 
   @@index([tenantId, loggedAt])
   @@index([loggedAt])
+}
+
+// One export, user erasure or tenant erasure, run by a worker. `result` holds an
+// export's bundle until the requester reads it once; it is the only place the
+// bundle is kept, and reading it clears it.
+model PrivacyRequest {
+  id          String    @id @default(cuid())
+  tenantId    String
+  kind        String
+  status      String    @default("pending")
+  subjectId   String
+  requestedBy String?
+  summary     Json?
+  result      Json?
+  error       String?
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+  deliveredAt DateTime?
+
+  @@index([tenantId])
 }

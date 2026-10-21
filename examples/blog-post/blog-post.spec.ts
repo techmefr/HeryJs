@@ -13,7 +13,13 @@ import {
   resolveDefaultLocale,
   resolveSupportedLocales,
 } from '#technical/i18n/locale.config';
-import { actingAs, registerAndLogin } from '#devtools/test-support';
+import {
+  actingAs,
+  createTestTenantId,
+  purgeTenant,
+  registerAndLogin,
+} from '#devtools/test-support';
+import type { Actor } from '#devtools/test-support';
 
 const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -955,6 +961,267 @@ describe('BlogPost resource', () => {
         'b-' + marker,
         'a-' + marker,
       ]);
+    });
+  });
+
+  describe('privacy requests', () => {
+    const tenantId = createTestTenantId();
+    let admin: Actor;
+    let subject: Actor;
+    let bystander: Actor;
+
+    beforeAll(async () => {
+      admin = await actingAs(app, { tenantId, role: 'admin' });
+      subject = await actingAs(app, { tenantId });
+      bystander = await actingAs(app, { tenantId });
+    });
+
+    afterAll(async () => {
+      await purgeTenant(tenantId);
+    });
+
+    async function createAs(
+      actor: Actor,
+      body: Record<string, unknown>,
+    ): Promise<string> {
+      const response = await request(app.getHttpServer())
+        .post('/blog-posts/create')
+        .set('Authorization', actor.authorization)
+        .send({ data: [body] })
+        .expect(201);
+
+      return (response.body as { data: { data: { id: string } }[] }).data[0]!
+        .data.id;
+    }
+
+    async function requestAs(
+      actor: Actor,
+      path: string,
+      body: Record<string, unknown>,
+      status: number,
+    ): Promise<string> {
+      const response = await request(app.getHttpServer())
+        .post(path)
+        .set('Authorization', actor.authorization)
+        .send(body)
+        .expect(status);
+
+      return (response.body as { data?: { id: string } }).data?.id ?? '';
+    }
+
+    // An erasure ends the sessions of the user it erased, so the outcome of
+    // one is read from the request row; an export is collected over the API.
+    async function settled(id: string) {
+      for (let attempt = 0; attempt < 90; attempt += 1) {
+        const row = await prisma.privacyRequest.findUniqueOrThrow({
+          where: { id },
+        });
+
+        if (row.status === 'done' || row.status === 'failed') {
+          return row;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+
+      throw new Error('privacy request ' + id + ' did not settle');
+    }
+
+    async function collect(actor: Actor, id: string) {
+      for (let attempt = 0; attempt < 90; attempt += 1) {
+        const response = await request(app.getHttpServer())
+          .get('/privacy/requests/' + id)
+          .set('Authorization', actor.authorization)
+          .expect(200);
+        const view = (
+          response.body as {
+            data: { status: string; error: string | null; result?: unknown };
+          }
+        ).data;
+
+        if (view.status === 'done' || view.status === 'failed') {
+          return view;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+
+      throw new Error('privacy request ' + id + ' did not settle');
+    }
+
+    it('exports the rows a user owns, opened, and none of anyone else', async () => {
+      const marker = 'export-' + randomUUID();
+      const ownId = await createAs(subject, {
+        title: marker,
+        privateNote: 'privateNote-secret-value',
+      });
+      const otherId = await createAs(bystander, { title: 'title-value' });
+
+      const id = await requestAs(subject, '/privacy/exports', {}, 202);
+      const bundle = await collect(subject, id);
+
+      expect(bundle).toMatchObject({ status: 'done', error: null });
+
+      const exported = bundle.result as {
+        identity: { id: string };
+        resources: Record<string, Array<Record<string, unknown>>>;
+      };
+      const rows = exported.resources.BlogPost!;
+
+      expect(exported.identity.id).toBe(subject.id);
+      expect(rows.map((row) => row.id)).toEqual([ownId]);
+      expect(rows[0]).toMatchObject({
+        title: marker,
+        privateNote: 'privateNote-secret-value',
+      });
+      expect(JSON.stringify(bundle.result)).not.toContain(otherId);
+
+      const again = await request(app.getHttpServer())
+        .get('/privacy/requests/' + id)
+        .set('Authorization', subject.authorization)
+        .expect(200);
+      expect(
+        (again.body as { data: { result?: unknown } }).data.result,
+      ).toBeUndefined();
+    });
+
+    it('refuses a request about another user unless an admin makes it', async () => {
+      await requestAs(
+        bystander,
+        '/privacy/exports',
+        { userId: subject.id },
+        403,
+      );
+      await requestAs(
+        bystander,
+        '/privacy/erasures/user',
+        { userId: subject.id },
+        403,
+      );
+      await requestAs(
+        subject,
+        '/privacy/erasures/tenant',
+        { confirm: tenantId },
+        403,
+      );
+      await requestAs(
+        admin,
+        '/privacy/erasures/tenant',
+        { confirm: 'another-tenant' },
+        400,
+      );
+
+      const id = await requestAs(
+        admin,
+        '/privacy/exports',
+        { userId: subject.id },
+        202,
+      );
+
+      await request(app.getHttpServer())
+        .get('/privacy/requests/' + id)
+        .set('Authorization', bystander.authorization)
+        .expect(404);
+      expect(await collect(admin, id)).toMatchObject({ status: 'done' });
+    });
+
+    it('erases a user, redacts what the audit trail held and keeps the request itself', async () => {
+      const marker = 'erase-' + randomUUID();
+      const ownId = await createAs(subject, { title: marker });
+      const keptId = await createAs(bystander, { title: 'title-value' });
+
+      const id = await requestAs(
+        subject,
+        '/privacy/erasures/user',
+        { userId: subject.id },
+        202,
+      );
+
+      expect(await settled(id)).toMatchObject({ status: 'done', error: null });
+
+      const rows = await prisma.blogPost.findMany({
+        where: { ownerId: subject.id },
+      });
+      expect(rows.length).toBeGreaterThan(0);
+      for (const row of rows) {
+        expect(row).toMatchObject({
+          title: '[erased]',
+          summary: null,
+          privateNote: null,
+        });
+      }
+      expect(
+        await prisma.blogPost.findUnique({ where: { id: keptId } }),
+      ).not.toBeNull();
+
+      const held = await prisma.auditLog.findMany({
+        where: { tenantId, model: 'BlogPost', recordId: ownId },
+      });
+      expect(held.length).toBeGreaterThan(0);
+      expect(held.every((entry) => entry.redactedAt !== null)).toBe(true);
+      expect(JSON.stringify(held)).not.toContain(marker);
+
+      const trail = await prisma.auditLog.findMany({
+        where: { tenantId, model: 'PrivacyRequest', recordId: id },
+        orderBy: { sequence: 'asc' },
+      });
+      expect(trail.map((entry) => entry.operation)).toEqual([
+        'privacy.erase-user.requested',
+        'privacy.erase-user.completed',
+      ]);
+      expect(JSON.stringify(trail)).not.toContain(marker);
+
+      const identity = await prisma.user.findUniqueOrThrow({
+        where: { id: subject.id },
+      });
+      expect(identity.email).toMatch(/@erased\.invalid$/);
+      expect(identity.banned).toBe(true);
+
+      const verified = await request(app.getHttpServer())
+        .get('/audit-logs/verify')
+        .set('Authorization', admin.authorization)
+        .expect(200);
+      expect((verified.body as { data: { valid: boolean } }).data.valid).toBe(
+        true,
+      );
+    });
+
+    it('erases a whole tenant and leaves every other tenant alone', async () => {
+      await createAs(bystander, { title: 'title-value' });
+      const foreign = await actingAs(app);
+      const foreignId = await createAs(foreign, { title: 'title-value' });
+
+      const id = await requestAs(
+        admin,
+        '/privacy/erasures/tenant',
+        { confirm: tenantId },
+        202,
+      );
+      const outcome = await collect(admin, id);
+
+      expect(outcome).toMatchObject({ status: 'done', error: null });
+
+      const rows = await prisma.blogPost.findMany({ where: { tenantId } });
+      expect(rows.length).toBeGreaterThan(0);
+      for (const row of rows) {
+        expect(row).toMatchObject({
+          title: '[erased]',
+          summary: null,
+          privateNote: null,
+        });
+      }
+      expect(
+        await prisma.blogPost.findUnique({ where: { id: foreignId } }),
+      ).not.toBeNull();
+
+      const erased = await prisma.user.findUniqueOrThrow({
+        where: { id: bystander.id },
+      });
+      const requester = await prisma.user.findUniqueOrThrow({
+        where: { id: admin.id },
+      });
+      expect(erased.email).toMatch(/@erased\.invalid$/);
+      expect(requester.email).toBe(admin.email);
     });
   });
 });
