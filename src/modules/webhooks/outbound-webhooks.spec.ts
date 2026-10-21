@@ -224,7 +224,7 @@ describe('Outbound webhooks', () => {
     });
 
     expect(delivery.attempts).toBe(1);
-    expect(delivery.lastStatusCode).toBe(200);
+    expect(delivery.lastStatusCode).toBe(204);
     expect(await deliveryOf(other.id, messageId)).toBeNull();
     expect(await deliveryOf(foreign.id, messageId)).toBeNull();
 
