@@ -195,6 +195,15 @@ export class MailAdminController {
 - Every `@AdminAction` call is audited before it runs (model `AdminAction`, operation = the action id, the names of the fields sent and never their values). A failed audit write stops the request.
 - The route keeps its own `@Capability`; the admin never grants. The contract is checked by `pnpm run lint:conventions admin-contract`: ids are unique kebab-case literals, the icon is one of `ADMIN_ICONS`, titles are literal, an action names a declared section, and a contributing controller does not use `DevOnlyGuard` (it would vanish in production).
 
+## What the studio ships with
+
+The kernel contributes its own sections through the same contract, so an operator has them in production with nothing to wire:
+
+- **Users and access**: the users of the caller's tenant (role, verified email, 2FA, ban, active sessions and keys), every active session and every API key. Row actions sign a user out everywhere, revoke one session, or revoke one key. User, Session and ApiKey are not tenant-scoped models, so each query names the tenant itself; a row of another tenant answers 404, and tokens and key hashes are never listed. Impersonation stays on `POST /impersonation/:userId`, since it returns a bearer token.
+- **Operations**: every registered health check (liveness and readiness), the last run of each scheduled task, and an environment overview (`NODE_ENV`, Node.js version, uptime, tenant, the studio settings). No secret is read.
+
+Both sit behind `@AdminStudio()` and admin-only capabilities (`canManageTenantAccess`, `canReadStudioOverview`), and each action is audited. Other features add theirs the same way (mail, and soon storage, jobs, feature flags).
+
 ## Running the studio in production
 
 `/introspect` and any controller decorated with `@AdminStudio()` use this chain: gate, session, second factor, capability.
