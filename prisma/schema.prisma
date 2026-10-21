@@ -289,6 +289,43 @@ model WebhookEvent {
   @@index([endpointId])
 }
 
+// Written in the same transaction as the change it describes, then relayed to
+// handlers by a worker. tenantId is nullable because a message can be staged
+// outside any request, and the relay reads across tenants, so the table sits
+// outside the row-level policies the way MailLog does.
+model OutboxMessage {
+  id            String    @id @default(cuid())
+  tenantId      String?
+  name          String
+  payload       Json
+  status        String    @default("pending")
+  attempts      Int       @default(0)
+  nextAttemptAt DateTime  @default(now())
+  lastError     String?
+  createdAt     DateTime  @default(now())
+  deliveredAt   DateTime?
+  deadAt        DateTime?
+
+  receipts OutboxReceipt[]
+
+  @@index([status, nextAttemptAt])
+  @@index([status, deliveredAt])
+  @@index([status, deadAt])
+}
+
+// One row per handler that finished a message, so a retry after a partial
+// failure reruns only the handlers that did not.
+model OutboxReceipt {
+  id          String   @id @default(cuid())
+  messageId   String
+  handler     String
+  completedAt DateTime @default(now())
+
+  message OutboxMessage @relation(fields: [messageId], references: [id])
+
+  @@unique([messageId, handler])
+}
+
 // Shape taken from better-auth's own two-factor plugin schema, not invented
 // here: the adapter checks every field at boot and refuses the whole instance
 // on a mismatch, which turns a missing column into "every registration returns

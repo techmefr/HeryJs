@@ -49,6 +49,11 @@ export function buildServerSchema(nodeEnv: string | undefined) {
     // Elasticsearch, 20 for Meilisearch, unbounded for the Prisma driver --
     // and inheriting three different silent limits is what this replaces: one
     // declared limit, applied by every driver, reported when it is reached.
+    OUTBOX_RELAY_ENABLED: z
+      .string()
+      .default('true')
+      .transform((value) => value === 'true'),
+    OUTBOX_RELAY_INTERVAL_MS: z.coerce.number().int().positive().default(2000),
     SEARCH_MATCH_LIMIT: z.coerce.number().int().positive().default(1000),
     /**
      * Turning the global rate-limit guard off used to ride on NODE_ENV alone,

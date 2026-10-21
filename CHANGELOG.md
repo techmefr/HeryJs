@@ -76,6 +76,13 @@ Twelve packages, versioned together:
   when `hery.config.ts` declares more than one locale; `key` never changes.
   `capability.forbidden` is excluded on purpose, and a `key` with no catalogue
   entry for the caller's locale falls back to its hardcoded English message.
+- A transactional outbox: every create, update and delete of a tenant-scoped
+  model stages a `model.created` / `model.updated` / `model.deleted` message in
+  the same transaction as the write, and a relay on the `heryjs-outbox` queue
+  delivers it at-least-once to the events bus (as `ModelChanged`) and to any
+  registered handler, with per-handler receipts, exponential backoff, a
+  dead-letter state and a daily prune. New `OutboxMessage` and `OutboxReceipt`
+  tables, and `OUTBOX_RELAY_ENABLED` / `OUTBOX_RELAY_INTERVAL_MS`.
 - An architecture linter that fails CI on a domain missing a concern, plus
   fourteen convention checks covering capabilities, pagination, RLS, rate
   limiting, module drift and patched kernel files.

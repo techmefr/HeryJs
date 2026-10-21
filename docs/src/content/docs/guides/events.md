@@ -77,6 +77,6 @@ Dispatching outside a request is legitimate — a CLI backfill, a seeder — so 
 
 - **No decorator, no auto-discovery.** Listeners register by calling `listen()`, which means somewhere in your code a module explicitly subscribes. There is no `@OnEvent` scanning your tree, and no registry of subscriptions you did not write.
 - **No ordering guarantees between listeners.** They run in registration order today; nothing declares a dependency, and nothing should — two listeners that must happen in sequence are one listener.
-- **No delivery guarantee for synchronous listeners.** They run in the dispatching process. If it dies mid-dispatch, they are gone. Use `isQueued` for anything that must survive a crash.
+- **No delivery guarantee for synchronous listeners.** They run in the dispatching process. If it dies mid-dispatch, they are gone. Use `isQueued` for anything that must survive a crash, or stage the event through the [transactional outbox](../outbox/) when it also has to commit atomically with a write. Every create, update and delete of a tenant-scoped model already arrives that way as `ModelChanged`.
 - **No event log.** Nothing persists what was dispatched. [Audit](../guides/security/) records what a caller did; the bus records nothing.
 - **No cross-process fan-out for synchronous listeners.** A listener registered in a web process does not run for an event dispatched in a worker unless it is queued.

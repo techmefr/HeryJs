@@ -104,6 +104,29 @@ export class EventDispatcher {
   }
 
   /**
+   * For a caller that only holds the event's class name and its data, which
+   * is all an outbox row carries. An event nobody listens to has no entry in
+   * the name map and is a no-op, exactly as dispatching it would be.
+   */
+  async dispatchByName(
+    eventName: string,
+    payload: Record<string, unknown>,
+  ): Promise<void> {
+    const constructor = this.constructorsByName.get(eventName);
+
+    if (!constructor) {
+      return;
+    }
+
+    await this.dispatch(
+      Object.assign(
+        Object.create(constructor.prototype as object) as object,
+        payload,
+      ),
+    );
+  }
+
+  /**
    * Worker-side counterpart of listen(): rebuilds the event instance from the
    * job payload so the listener receives the same class it subscribed to,
    * `instanceof` included, rather than a bare object that happens to have the

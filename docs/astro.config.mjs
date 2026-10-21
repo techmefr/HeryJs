@@ -69,6 +69,7 @@ export default defineConfig({
                   slug: 'guides/exposing-actions',
                 },
                 { label: 'The events bus', slug: 'guides/events' },
+                { label: 'Transactional outbox', slug: 'guides/outbox' },
                 { label: 'Distributed lock', slug: 'guides/lock' },
                 { label: 'Idempotency keys', slug: 'guides/idempotency' },
                 { label: 'Jobs', slug: 'guides/jobs' },
