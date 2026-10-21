@@ -250,13 +250,30 @@ export function adminContractViolations(files: string[]): string[] {
   return violations;
 }
 
+/**
+ * A module installed in this repo exists twice, authored under
+ * packages/<name>/src/runtime and installed under src/modules/<name>, and
+ * lint:module-drift keeps them identical, so counting both would report every
+ * contribution as a duplicate of itself.
+ */
+function isInstalledRuntimeCopy(repoRoot: string, file: string): boolean {
+  const relative = path.relative(repoRoot, file).split(path.sep);
+
+  return (
+    relative[0] === 'packages' &&
+    relative[2] === 'src' &&
+    relative[3] === 'runtime' &&
+    existsSync(path.join(repoRoot, 'src', 'modules', relative[1] ?? ''))
+  );
+}
+
 export function checkAdminContract(): boolean {
   const repoRoot = path.resolve(__dirname, '..');
   const files = ROOTS.flatMap((root) => {
     const dir = path.join(repoRoot, root);
 
     return existsSync(dir) ? controllerFiles(dir) : [];
-  });
+  }).filter((file) => !isInstalledRuntimeCopy(repoRoot, file));
   const violations = adminContractViolations(files);
 
   if (violations.length > 0) {
