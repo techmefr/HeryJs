@@ -27,6 +27,10 @@ export const blueprintFieldSchema = z.strictObject({
   hidden: z.boolean().default(false),
   translatable: z.boolean().default(false),
   reveal: z.boolean().default(false),
+  // Marks the field as personal data: an anonymising erasure rewrites it, and
+  // leaves the resource's other fields as they were. Every field is exported
+  // either way.
+  personal: z.boolean().default(false),
   dimensions: z.number().int().positive().max(VECTOR_MAX_DIMENSIONS).optional(),
   source: z
     .string()
@@ -146,6 +150,14 @@ export const blueprintSchema = z.strictObject({
   // written down on purpose.
   softDeletes: z.boolean().optional(),
   versioned: z.boolean().default(false),
+  /**
+   * How the resource answers a privacy request, and the only way it opts in: a
+   * resource that does not declare it is never exported nor erased, and says
+   * nothing about its rows. `delete` removes every row a user owns;
+   * `anonymise` keeps the rows and rewrites the fields marked `personal`, for
+   * a resource other rows still point at.
+   */
+  erasure: z.enum(['delete', 'anonymise']).optional(),
   fields: z.array(blueprintFieldSchema).default([]),
   permissions: z
     .strictObject({
@@ -483,6 +495,63 @@ function assertTranslatableIsCoherent(
 }
 
 /**
+ * A privacy request finds a user's rows through the `ownerId` the generator
+ * adds, so only a routed resource can take part. Beyond that the two halves of
+ * the declaration have to agree: `personal` means nothing unless the rows are
+ * kept and rewritten, and an anonymising erasure with nothing marked personal
+ * would claim to erase while rewriting nothing.
+ */
+function assertErasureIsCoherent(
+  blueprint: RawBlueprint,
+  report: (message: string) => void,
+): void {
+  const personal = blueprint.fields.filter((field) => field.personal);
+
+  if (blueprint.erasure !== undefined && !blueprint.routed) {
+    report(
+      'erasure only applies to a routed resource: an unrouted one has no ownerId to find the rows of a user by',
+    );
+  }
+
+  if (blueprint.erasure === undefined && personal.length > 0) {
+    report(
+      `field ${personal.map((field) => `"${field.name}"`).join(', ')} is personal, which needs the blueprint to declare an erasure`,
+    );
+  }
+
+  if (blueprint.erasure === 'delete' && personal.length > 0) {
+    report(
+      'personal fields only apply to erasure: anonymise -- a delete removes the whole row, so there is nothing to single out',
+    );
+  }
+
+  if (blueprint.erasure === 'anonymise' && personal.length === 0) {
+    report(
+      'erasure: anonymise needs at least one personal field to rewrite, or use erasure: delete',
+    );
+  }
+
+  for (const field of blueprint.fields) {
+    if (field.personal && field.type === 'vector') {
+      report(
+        `vector field "${field.name}" cannot be personal: it is derived from its source, so mark the source`,
+      );
+    }
+  }
+
+  const vector = blueprint.fields.find((field) => field.type === 'vector');
+  const source = blueprint.fields.find(
+    (field) => field.name === vector?.source,
+  );
+
+  if (blueprint.erasure === 'anonymise' && source?.personal) {
+    report(
+      `field "${source.name}" is personal and feeds the embedding "${vector?.name}", which an anonymising erasure would leave behind -- use erasure: delete`,
+    );
+  }
+}
+
+/**
  * Soft deletes are on unless a routed blueprint says otherwise, so `undefined`
  * and `true` mean the same thing everywhere past `loadBlueprint`.
  */
@@ -798,6 +867,7 @@ export function loadBlueprint(filePath: string): Blueprint {
   assertTranslatableIsCoherent(blueprint, (message) => problems.push(message));
   assertVectorFieldsAreCoherent(blueprint, (message) => problems.push(message));
   assertVersionedIsCoherent(blueprint, (message) => problems.push(message));
+  assertErasureIsCoherent(blueprint, (message) => problems.push(message));
   assertRelationsAreUnique(blueprint, (message) => problems.push(message));
   assertOwnRouteOnlyOnIncludes(blueprint, (message) => problems.push(message));
 

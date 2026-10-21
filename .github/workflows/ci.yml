@@ -126,6 +126,63 @@ jobs:
 
       - run: pnpm --filter docs run build
 
+  # The getting-started path, run the way the README gives it. Everything above
+  # proves this repository; a generated project renames the root package and
+  # strips the demo, and twice that broke its first install or its first
+  # migrate behind a green build-and-test.
+  scaffold:
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: postgresql://heryjs:heryjs@localhost:5432/heryjs
+      REDIS_URL: redis://localhost:6479
+      BETTER_AUTH_URL: http://localhost:3000
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: heryjs
+          POSTGRES_PASSWORD: heryjs
+          POSTGRES_DB: heryjs
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Scaffold a project
+        run: |
+          mkdir -p "$RUNNER_TEMP/scaffold"
+          cd "$RUNNER_TEMP/scaffold"
+          NODE_OPTIONS=--conditions=development \
+            "$GITHUB_WORKSPACE/node_modules/.bin/ts-node" \
+            -P "$GITHUB_WORKSPACE/tsconfig.json" \
+            "$GITHUB_WORKSPACE/cli/heryjs.ts" new my-app
+
+      - name: Install, migrate, typecheck and build it
+        working-directory: ${{ runner.temp }}/scaffold/my-app
+        run: |
+          cp .env.example .env
+          pnpm install
+          pnpm hery migrate --name init
+          pnpm run typecheck
+          pnpm run build
+
   # The specs that boot a module for real: the two search drivers against
   # live engines, and the GraphQL module against a live HTTP server. They
   # live here rather than in build-and-test because they need services that

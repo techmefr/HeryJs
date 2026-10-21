@@ -1,4 +1,13 @@
-import { Controller, Get, Inject, Query, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Inject,
+  Post,
+  Query,
+  Req,
+  Res,
+} from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { PublicRoute } from '#technical/capabilities/public-route.decorator';
 import { UnpaginatedRoute } from '#technical/http/unpaginated-route.decorator';
@@ -8,8 +17,10 @@ import { SSO_LOGIN_HANDLER } from './sso-login.handler';
 import type { SsoLoginHandler } from './sso-login.handler';
 import { SsoLoginService } from './sso-login.service';
 import { SsoRouterService } from './sso-router.service';
+import { SsoSamlService } from './sso-saml.service';
 import { SSO_STATE_COOKIE, SsoStateService } from './sso-state.service';
-import { startSignInQuerySchema } from './sso.dto';
+import { samlResponseSchema, startSignInQuerySchema } from './sso.dto';
+import type { SamlResponseInput } from './sso.dto';
 
 @Controller('sso')
 export class SsoController {
@@ -17,6 +28,7 @@ export class SsoController {
     @Inject(SSO_LOGIN_HANDLER) private readonly handler: SsoLoginHandler,
     private readonly router: SsoRouterService,
     private readonly login: SsoLoginService,
+    private readonly saml: SsoSamlService,
     private readonly states: SsoStateService,
   ) {}
 
@@ -34,12 +46,15 @@ export class SsoController {
     @Res() res: Response,
   ): Promise<void> {
     const connection = await this.router.connectionFor(query.email);
-    const redirect = await this.login.begin(connection, query.returnTo);
+    const isSaml = connection.protocol === 'saml';
+    const redirect = isSaml
+      ? await this.saml.begin(connection, query.returnTo)
+      : await this.login.begin(connection, query.returnTo);
 
     res.cookie(
       SSO_STATE_COOKIE,
       redirect.cookieValue,
-      this.states.cookieOptions(),
+      this.states.cookieOptions(isSaml),
     );
     res.redirect(302, redirect.url);
   }
@@ -65,6 +80,29 @@ export class SsoController {
       code,
       state,
       providerError,
+      cookieValue,
+    });
+
+    await this.handler.handle(result, res);
+  }
+
+  @RateLimit('auth')
+  @Post('saml/acs')
+  @PublicRoute(
+    'The identity provider posts its assertion here: the signature, the state cookie and the id of the request it answers authenticate it',
+  )
+  async samlAcs(
+    @Body(new ZodValidationPipe(samlResponseSchema)) body: SamlResponseInput,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    const cookieValue = this.states.cookieFrom(req.headers.cookie);
+
+    res.clearCookie(SSO_STATE_COOKIE, this.states.cookieOptions(true));
+
+    const result = await this.saml.complete({
+      samlResponse: body.SAMLResponse,
+      relayState: body.RelayState,
       cookieValue,
     });
 

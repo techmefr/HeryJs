@@ -683,6 +683,23 @@ button.primary:hover {
   padding: 0.875rem 1.125rem;
 }
 
+/* Privacy */
+
+.privacy-form {
+  display: flex;
+  align-items: end;
+  gap: 0.625rem;
+  padding: 0.875rem 1.125rem;
+  margin-bottom: 0.75rem;
+}
+
+.privacy-form label {
+  display: grid;
+  gap: 0.25rem;
+  flex: 1;
+  font-size: 0.75rem;
+}
+
 /* Prune */
 
 .prune-row {
