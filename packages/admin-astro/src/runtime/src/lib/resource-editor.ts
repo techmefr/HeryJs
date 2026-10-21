@@ -1,3 +1,4 @@
+import { ApiError } from './api';
 import { buildForm } from './form';
 import { formFieldsOf, payloadOf, valuesOf, validate } from './form-schema';
 import type { FormMode } from './form-schema';
@@ -9,6 +10,7 @@ import {
   isAllowed,
   messagesOfDetails,
   mutate,
+  splitIssues,
 } from './resource';
 import type { BatchEntry, ResourceDescription, ResourceRow } from './resource';
 
@@ -136,7 +138,16 @@ function formFor(
         close();
         await context.onSaved(mode === 'create' ? 'Created.' : 'Saved.');
       } catch (error) {
-        handle.showFailure(failureMessages(error));
+        const split = splitIssues(
+          error instanceof ApiError ? error.details : null,
+          fields.map((field) => field.name),
+        );
+        handle.showErrors(split.fields);
+        handle.showFailure(
+          Object.keys(split.fields).length > 0
+            ? split.rest
+            : failureMessages(error),
+        );
       } finally {
         handle.setBusy(false);
       }

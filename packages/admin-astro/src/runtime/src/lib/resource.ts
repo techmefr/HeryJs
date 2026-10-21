@@ -297,3 +297,40 @@ export function messagesOfDetails(details: unknown): string[] {
 
   return messages;
 }
+
+export interface SplitIssues {
+  fields: Record<string, string>;
+  rest: string[];
+}
+
+export function splitIssues(
+  details: unknown,
+  fieldNames: string[],
+): SplitIssues {
+  const split: SplitIssues = { fields: {}, rest: [] };
+  const issues =
+    typeof details === 'object' && details !== null
+      ? (details as { issues?: unknown }).issues
+      : undefined;
+
+  if (!Array.isArray(issues)) {
+    return split;
+  }
+
+  for (const issue of issues as { path?: unknown; message?: unknown }[]) {
+    const message = typeof issue.message === 'string' ? issue.message : null;
+    const name = Array.isArray(issue.path) ? issue.path[2] : undefined;
+
+    if (message === null) {
+      continue;
+    }
+
+    if (typeof name === 'string' && fieldNames.includes(name)) {
+      split.fields[name] = split.fields[name] ?? message;
+    } else {
+      split.rest.push(message);
+    }
+  }
+
+  return split;
+}

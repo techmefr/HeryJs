@@ -1,27 +1,10 @@
 import type { DescribedController } from './api';
-import { MAX_BATCH_ENTRIES } from './resource';
+import { api } from './api';
+import type { ResourceRow } from './resource';
 
-export type RelationMode = 'attach' | 'detach' | 'sync';
+export type RelationMode = 'attach' | 'detach';
 
 const CHILD_SEARCH_PATH = /^\/:id\/([^/]+)\/search$/;
-const ID_SEPARATOR = /[\s,]+/;
-
-export function parseIds(text: string): string[] {
-  return [...new Set(text.split(ID_SEPARATOR).filter((part) => part !== ''))];
-}
-
-export function idsError(ids: string[], mode: RelationMode): string | null {
-  if (ids.length === 0 && mode !== 'sync') {
-    return 'Give at least one id';
-  }
-
-  if (ids.length > MAX_BATCH_ENTRIES) {
-    return 'At most ' + MAX_BATCH_ENTRIES + ' ids at once';
-  }
-
-  return null;
-}
-
 export function relationBody(
   id: string,
   relation: string,
@@ -86,8 +69,25 @@ export function childResourceBase(
   return bases.find((base) => candidates.includes(base)) ?? null;
 }
 
-export function idsOf(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === 'string')
-    : [];
+export async function fetchRelated(
+  base: string,
+  id: string,
+  relation: string,
+  kind: 'members' | 'options',
+  body: { q?: string },
+): Promise<ResourceRow[]> {
+  const { data } = await api<ResourceRow[]>(
+    base + '/' + encodeURIComponent(id) + '/' + relation + '/' + kind,
+    { method: 'POST', body: JSON.stringify(body) },
+  );
+
+  return data;
+}
+
+export function labelOfRelated(related: ResourceRow): string {
+  const text = Object.entries(related).find(
+    ([key, value]) => key !== 'id' && typeof value === 'string' && value !== '',
+  );
+
+  return text ? String(text[1]) + ' (' + related.id + ')' : related.id;
 }

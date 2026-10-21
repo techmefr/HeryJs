@@ -3,41 +3,21 @@ import {
   childRelationsOf,
   childResourceBase,
   childSearchPath,
-  idsError,
-  idsOf,
-  parseIds,
+  labelOfRelated,
   relationBody,
 } from './relations';
 import { mockControllers } from './resource.fixture';
 
-describe('ids typed by a person', () => {
-  it('splits on commas and whitespace and drops duplicates and blanks', () => {
-    expect(parseIds('a, b  c,,a\n d')).toEqual(['a', 'b', 'c', 'd']);
-    expect(parseIds('  ')).toEqual([]);
-  });
-
-  it('needs an id to attach or detach, but not to replace with nothing', () => {
-    expect(idsError([], 'attach')).toBe('Give at least one id');
-    expect(idsError([], 'detach')).toBe('Give at least one id');
-    expect(idsError([], 'sync')).toBeNull();
-    expect(idsError(['a'], 'attach')).toBeNull();
-  });
-
-  it('refuses more ids than one request may carry', () => {
-    const many = Array.from({ length: 101 }, (_, index) => 'id-' + index);
-
-    expect(idsError(many, 'sync')).toBe('At most 100 ids at once');
-  });
-
+describe('relation requests', () => {
   it('builds the update body the api documents', () => {
-    expect(relationBody('p1', 'tags', 'sync', ['t1'])).toEqual({
-      data: [{ id: 'p1', relations: { tags: { sync: ['t1'] } } }],
+    expect(relationBody('p1', 'tags', 'attach', ['t1'])).toEqual({
+      data: [{ id: 'p1', relations: { tags: { attach: ['t1'] } } }],
     });
   });
 
-  it('keeps only string ids from an answer', () => {
-    expect(idsOf(['a', 1, null, 'b'])).toEqual(['a', 'b']);
-    expect(idsOf('a')).toEqual([]);
+  it('labels a related row by its first text field and its id', () => {
+    expect(labelOfRelated({ id: 't1', name: 'Red' })).toBe('Red (t1)');
+    expect(labelOfRelated({ id: 't1', count: 3 })).toBe('t1');
   });
 });
 

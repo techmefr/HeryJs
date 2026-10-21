@@ -21,22 +21,55 @@ describe('relations', () => {
     return root;
   }
 
-  it('enables attach and not detach from the record capabilities', async () => {
-    const root = await openRelations();
-    const tags = root.querySelector('[data-relation="tags"]')!;
+  function serveTags(): void {
+    server.handlers['/blog-posts/a/tags/members'] = () =>
+      envelope([{ id: 't1', name: 'Red' }]);
+    server.handlers['/blog-posts/a/tags/options'] = () =>
+      envelope([
+        { id: 't1', name: 'Red' },
+        { id: 't2', name: 'Blue' },
+      ]);
+  }
 
+  async function openWithTags(): Promise<{
+    root: HTMLElement;
+    tags: () => Element;
+  }> {
+    serveTags();
+    const root = await openRelations();
+
+    return { root, tags: () => root.querySelector('[data-relation="tags"]')! };
+  }
+
+  it('lists who is attached, with detach gated by its own decision', async () => {
+    const { tags } = await openWithTags();
+
+    expect(tags().querySelector('.related-members')?.textContent).toContain(
+      'Red (t1)',
+    );
     expect(
-      tags.querySelector<HTMLButtonElement>('[data-mode="attach"]')!.disabled,
-    ).toBe(false);
-    expect(
-      tags.querySelector<HTMLButtonElement>('[data-mode="detach"]')!.disabled,
-    ).toBe(true);
-    expect(
-      tags.querySelector<HTMLButtonElement>('[data-mode="sync"]')!.disabled,
+      tags().querySelector<HTMLButtonElement>('[data-mode="detach"]')!.disabled,
     ).toBe(true);
   });
 
-  it('attaches the ids it was given and shows the resulting set', async () => {
+  it('searches the related resource and offers only what is not attached yet', async () => {
+    const { tags } = await openWithTags();
+
+    type(tags().querySelector<HTMLInputElement>('input')!, 'blu');
+    button(tags(), 'Search').click();
+    await settle();
+
+    const asked = server.calls.find(
+      (call) => call.route === '/blog-posts/a/tags/options',
+    );
+    expect(asked?.body).toEqual({ q: 'blu' });
+    const offered = [...tags().querySelectorAll('.related-options li')];
+    expect(offered).toHaveLength(1);
+    expect(offered[0]?.textContent).toContain('Blue (t2)');
+  });
+
+  it('attaches the picked record, then re-reads the members and the capabilities', async () => {
+    const { tags } = await openWithTags();
     server.handlers['/blog-posts/update'] = () =>
       envelope([
         {
@@ -46,76 +79,52 @@ describe('relations', () => {
           data: { id: 'a', tags: ['t1', 't2'] },
         },
       ]);
-    const root = await openRelations();
-    const tags = root.querySelector('[data-relation="tags"]')!;
-
-    type(tags.querySelector<HTMLInputElement>('input')!, 't1, t2 t1');
-    tags.querySelector<HTMLButtonElement>('[data-mode="attach"]')!.click();
-    await settle();
-
-    expect(
-      server.calls.find((call) => call.route === '/blog-posts/update')?.body,
-    ).toEqual({
-      data: [{ id: 'a', relations: { tags: { attach: ['t1', 't2'] } } }],
-    });
-    expect(root.querySelector('[data-relation="tags"]')?.textContent).toContain(
-      'Now attached: t1, t2',
-    );
-  });
-
-  it('refreshes the capabilities after a change instead of trusting the old ones', async () => {
-    server.handlers['/blog-posts/update'] = () =>
-      envelope([
-        { index: 0, id: 'a', status: 'ok', data: { id: 'a', tags: [] } },
-      ]);
-    const root = await openRelations();
     server.rows = [
       mockRow('a', 'First', {
         ...mockDecisions,
         attachTags: { allowed: false },
       }),
     ];
-    const tags = () => root.querySelector('[data-relation="tags"]')!;
 
-    type(tags().querySelector<HTMLInputElement>('input')!, 't1');
-    tags().querySelector<HTMLButtonElement>('[data-mode="attach"]')!.click();
+    button(tags(), 'Search').click();
+    await settle();
+    tags()
+      .querySelector<HTMLButtonElement>('.related-options [data-related="t2"]')!
+      .click();
     await settle();
 
     expect(
-      tags().querySelector<HTMLButtonElement>('[data-mode="attach"]')!.disabled,
-    ).toBe(true);
-  });
-
-  it('asks for at least one id before attaching', async () => {
-    const root = await openRelations();
-    const tags = root.querySelector('[data-relation="tags"]')!;
-    const before = server.calls.length;
-
-    tags.querySelector<HTMLButtonElement>('[data-mode="attach"]')!.click();
-    await settle();
-
-    expect(server.calls.length).toBe(before);
-    expect(tags.textContent).toContain('Give at least one id');
+      server.calls.find((call) => call.route === '/blog-posts/update')?.body,
+    ).toEqual({ data: [{ id: 'a', relations: { tags: { attach: ['t2'] } } }] });
+    const members = server.calls.filter(
+      (call) => call.route === '/blog-posts/a/tags/members',
+    );
+    expect(members).toHaveLength(2);
+    expect(tags().querySelector<HTMLInputElement>('input')!.disabled).toBe(
+      true,
+    );
   });
 
   it('shows the refusal the api gave for the relation change', async () => {
+    const { tags } = await openWithTags();
     server.handlers['/blog-posts/update'] = () =>
       envelope([
         {
           index: 0,
           id: 'a',
           status: 'error',
-          error: { status: 400, key: 'x', message: 'Unknown tag t9' },
+          error: { status: 400, key: 'x', message: 'Unknown tag t2' },
         },
       ]);
-    const root = await openRelations();
-    const tags = root.querySelector('[data-relation="tags"]')!;
 
-    type(tags.querySelector<HTMLInputElement>('input')!, 't9');
-    tags.querySelector<HTMLButtonElement>('[data-mode="attach"]')!.click();
+    button(tags(), 'Search').click();
+    await settle();
+    tags()
+      .querySelector<HTMLButtonElement>('.related-options [data-related="t2"]')!
+      .click();
     await settle();
 
-    expect(tags.textContent).toContain('Unknown tag t9');
+    expect(tags().textContent).toContain('Unknown tag t2');
   });
 
   it('lists the rows of an own-route child and links to its resource when it has one', async () => {

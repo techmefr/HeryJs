@@ -184,6 +184,43 @@ describe('creating a record', () => {
     expect(searches().length).toBe(searchesBefore);
   });
 
+  it('pins a server issue to the field it names', async () => {
+    const root = await mount();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        respond(400, {
+          error: {
+            message: 'Bad Request Exception',
+            details: {
+              formErrors: [],
+              fieldErrors: { data: ['Too small'] },
+              issues: [
+                { path: ['data', 0, 'title'], message: 'Too small' },
+                { path: ['data', 0], message: 'Check the whole record' },
+              ],
+            },
+          },
+        }),
+      ),
+    );
+
+    button(root, 'New').click();
+    await settle();
+    type(root.querySelector<HTMLInputElement>('input[name="title"]')!, 'x');
+    root
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle();
+
+    expect(root.querySelector('#field-0-title-error')?.textContent).toBe(
+      'Too small',
+    );
+    expect(root.querySelector('.form-failure')?.textContent).toBe(
+      'Check the whole record',
+    );
+  });
+
   it('shows the validation report of a 400 on the form', async () => {
     const root = await mount();
     vi.stubGlobal(
