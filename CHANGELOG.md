@@ -110,6 +110,12 @@ Twelve packages, versioned together:
   stored per tenant and replayed on a retry, the same key with a different
   body or route is a `422`, and records expire after 24 hours through the
   existing prune sweep.
+- Logging behind the driver contract: `stdout` (the default, unchanged),
+  size-rotated `file`, a Loki-style `http` sink over `fetch`, and a `database`
+  store, every declared driver receiving every line and a failing one never
+  blocking the others. Lines carry their tenant, and an admin-only `GET /logs`
+  reads the store back for the caller's tenant, bounded by a retention window
+  and a per-tenant cap. Adds the `LogEntry` table.
 - A persisted dev dashboard, on in development only: requests, slow queries,
   N+1 findings, job history, mail / SMS / push sent and exceptions, bounded
   by a retention window and a per-tenant cap, tenant-scoped on every read,
