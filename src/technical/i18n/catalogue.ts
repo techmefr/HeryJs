@@ -75,6 +75,10 @@ export const CATALOGUE: Catalogue = {
     fr: (details) =>
       `${String(details.resource)} n'est pas dans la corbeille, il ne peut donc pas être restauré.`,
   },
+  'record.historyEntryNotFound': {
+    fr: (details) =>
+      `${String(details.resource)} n'a pas d'entrée d'historique ${String(details.entryId)}.`,
+  },
   'translatable.empty': {
     fr: (details) =>
       `"${String(details.field)}" est obligatoire et resterait sans aucune traduction.`,
@@ -94,6 +98,10 @@ export const CATALOGUE: Catalogue = {
   'query.invalid.param': {
     fr: (details) =>
       `Valeur invalide pour "${String(details.param)}". Autorisées : ${(details.allowed as unknown[]).join(', ')}.`,
+  },
+  'audit.sink.refused': {
+    fr: (details) =>
+      `Cette destination d'audit est refusée : ${String(details.reason)}`,
   },
   'query.invalid.value': {
     fr: "Une des valeurs de cette requête ne correspond pas au type du champ sur lequel elle est utilisée. Vérifiez chaque valeur de filtre, d'agrégat et de mutation par rapport aux types indiqués par le point de terminaison describe.",

@@ -1,10 +1,19 @@
 import { z } from 'zod';
 import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
 import { translatableInputSchema } from '#technical/i18n/translatable';
+import type { RichtextFieldSpec } from '#technical/richtext/richtext';
+
+// The size limit and the allow-list of each richtext field. The limit is
+// checked on what the client sends; the service sanitises on write and the
+// view sanitises again on read, both from this one list.
+export const RICHTEXT_FIELDS: readonly RichtextFieldSpec[] = [
+  { name: 'body', maxLength: 20000 },
+];
 
 const blogPostFields = z.object({
   title: z.string().min(1).max(255),
   summary: translatableInputSchema(z.string().min(1).max(255)).optional(),
+  body: z.string().min(1).max(20000).optional(),
   privateNote: z.string().min(1).max(4096).optional(),
 });
 

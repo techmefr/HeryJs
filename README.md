@@ -103,7 +103,7 @@ A kernel that is always there, and modules you install only when you need them (
 - **Communication** — mail, SMS, push, and a notifier that composes them with per-user preferences, quiet hours and digests
 - **Real time** — WebSocket, server-sent events, WebRTC signalling, LiveKit streaming
 - **Search** — Prisma, Elasticsearch and Meilisearch drivers, plus vector search on pgvector with an embeddings module
-- **APIs** — GraphQL, an MCP gateway for agents, inbound webhooks with HMAC verification, an outbound HTTP client with a fake driver for tests
+- **APIs** — GraphQL, an MCP gateway for agents, inbound and outbound webhooks (HMAC-signed, retried, dead-lettered), an outbound HTTP client with a fake driver for tests
 - **Data in and out** — file storage with presigned uploads, CSV, XLSX and PDF export, import
 - **Money** — billing that mirrors a provider's subscription state and guards a quota (Stripe driver)
 - **Admin** — a dashboard that every module contributes a section to, with no registry to maintain
@@ -116,7 +116,7 @@ HeryJs covers a common backend core and says plainly what it does not.
 
 - **Storage** ships a local-disk driver. The S3 driver is in the tree but is not bound to a driver token yet, so using it takes one line of wiring you write.
 - **Metering** ships per-tenant limits and usage counts, in the database, readable in the admin. Pricing that usage, meaning usage-based billing, is not shipped.
-- **Not shipped yet:** outbound webhooks to your own customers, GDPR export and erasure tooling, SCIM, workflow engines and state machines.
+- **Not shipped yet:** SCIM, workflow engines and state machines.
 - **API only.** There is no server-rendered view layer; the admin dashboard is the one UI.
 
 For anything outside that core, you write ordinary NestJS in a clean, conventional project. HeryJs never gets in the way, and it does not pretend to replace judgment.
