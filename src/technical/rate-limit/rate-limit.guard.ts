@@ -3,9 +3,11 @@ import {
   ExecutionContext,
   Injectable,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request, Response } from 'express';
+import { RateLimitOverrides } from '#technical/quotas/rate-limit-overrides';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import {
   AUTH_BUCKET,
@@ -31,6 +33,7 @@ export class RateLimitGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly store: RateLimitStore,
+    @Optional() private readonly overrides?: RateLimitOverrides,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -53,7 +56,13 @@ export class RateLimitGuard implements CanActivate {
         context.getClass(),
       ]) ?? DEFAULT_BUCKET;
 
-    const bucket = resolveRateLimitBucket(bucketName);
+    const configured = resolveRateLimitBucket(bucketName);
+    // A tenant's own ceiling for this bucket, when an operator set one: the
+    // window stays the bucket's, only the number of hits in it changes.
+    const bucket = {
+      ...configured,
+      limit: (await this.overrides?.limitFor(bucketName)) ?? configured.limit,
+    };
     const request = context.switchToHttp().getRequest<Request>();
     const response = context.switchToHttp().getResponse<Response>();
     const key = this.keyFor(bucketName, request);
