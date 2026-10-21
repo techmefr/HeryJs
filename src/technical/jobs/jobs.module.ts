@@ -8,6 +8,7 @@ import {
   EVENTS_QUEUE,
   EXPORT_QUEUE,
   IMPORT_QUEUE,
+  OUTBOX_QUEUE,
   WEBHOOK_QUEUE,
 } from './jobs.constants';
 import { JobsService } from './jobs.service';
@@ -36,6 +37,7 @@ import { JobsService } from './jobs.service';
     BullModule.registerQueue({ name: IMPORT_QUEUE }),
     BullModule.registerQueue({ name: EVENTS_QUEUE }),
     BullModule.registerQueue({ name: BILLING_QUEUE }),
+    BullModule.registerQueue({ name: OUTBOX_QUEUE }),
   ],
   providers: [JobsService],
   exports: [BullModule, JobsService],

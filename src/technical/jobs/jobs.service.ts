@@ -9,6 +9,7 @@ import {
   EVENTS_QUEUE,
   EXPORT_QUEUE,
   IMPORT_QUEUE,
+  OUTBOX_QUEUE,
 } from './jobs.constants';
 
 @Injectable()
@@ -21,6 +22,7 @@ export class JobsService {
     @InjectQueue(IMPORT_QUEUE) imports: Queue,
     @InjectQueue(EVENTS_QUEUE) events: Queue,
     @InjectQueue(BILLING_QUEUE) billing: Queue,
+    @InjectQueue(OUTBOX_QUEUE) outbox: Queue,
   ) {
     this.queues = {
       [DEFAULT_QUEUE]: queue,
@@ -28,6 +30,7 @@ export class JobsService {
       [IMPORT_QUEUE]: imports,
       [EVENTS_QUEUE]: events,
       [BILLING_QUEUE]: billing,
+      [OUTBOX_QUEUE]: outbox,
     };
   }
 

@@ -18,6 +18,7 @@ import { JobsModule } from '#technical/jobs/jobs.module';
 import { ExportModule } from '#modules/export/export.module';
 import { MailModule } from '#modules/mail/mail.module';
 import { MonitoringModule } from '#technical/monitoring/monitoring.module';
+import { OutboxModule } from '#technical/outbox/outbox.module';
 import { NotificationsModule } from '#technical/notifications/notifications.module';
 import { PruneModule } from '#technical/prune/prune.module';
 import { RateLimitModule } from '#technical/rate-limit/rate-limit.module';
@@ -90,6 +91,7 @@ import { redactedRequestSerializer } from '#technical/logging/redacted-request-s
     MailModule,
     MonitoringModule,
     NotificationsModule,
+    OutboxModule,
     PipelineModule,
     PruneModule,
     RateLimitModule,
