@@ -9,7 +9,7 @@ import { AppModule } from '#app.module';
 import { BlogPostModule } from './blog-post.module';
 import { env } from '#technical/config/env';
 import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
-import { registerAndLogin } from '#devtools/testing/register-and-login';
+import { actingAs, registerAndLogin } from '#devtools/test-support';
 
 const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -89,6 +89,8 @@ describe('BlogPost resource', () => {
         fields: Array<{ name: string }>;
         limits?: number[];
         paginated: boolean;
+        softDeletes: boolean;
+        relations: string[];
         rules: { create: { required?: string[] } };
       };
     };
@@ -97,6 +99,8 @@ describe('BlogPost resource', () => {
       'privateNote',
     ]);
     expect(body.data.paginated).toBe(true);
+    expect(body.data.softDeletes).toBe(true);
+    expect(body.data.relations).toEqual(['tags']);
     expect(body.data.limits).toEqual([10, 15, 20]);
     expect(body.data.rules.create.required).toEqual(['title']);
   });
@@ -168,20 +172,38 @@ describe('BlogPost resource', () => {
 
     const response = await request(app.getHttpServer())
       .post('/blog-posts/search')
-      .send({ capabilities: ['update'] })
+      .send({
+        capabilities: [
+          'update',
+          'delete',
+          'restore',
+          'attachTags',
+          'detachTags',
+        ],
+      })
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(200);
 
     const body = response.body as {
-      data: Array<{ capabilities: { update: { allowed: boolean } } }>;
+      data: Array<{ capabilities: Record<string, { allowed: boolean }> }>;
       meta: unknown;
     };
     expect(body.data.length).toBeGreaterThan(0);
-    expect(body.data[0]?.capabilities.update.allowed).toBe(true);
+    expect(body.data[0]?.capabilities.update?.allowed).toBe(true);
+    expect(Object.keys(body.data[0]?.capabilities ?? {}).sort()).toEqual([
+      'attachTags',
+      'delete',
+      'detachTags',
+      'restore',
+      'update',
+    ]);
     expect(body.meta).toMatchObject({
       capabilities: { create: { allowed: true, scope: 'own' } },
       channels: ['blogPost'],
     });
+    expect(
+      (body.meta as { capabilities: Record<string, unknown> }).capabilities,
+    ).toHaveProperty('listTrashed');
   });
 
   it('returns a real 403 when someone other than the owner tries to update it', async () => {
@@ -211,6 +233,112 @@ describe('BlogPost resource', () => {
       status: 'error',
       error: { status: 403 },
     });
+  });
+
+  async function createOne(): Promise<string> {
+    const created = await request(app.getHttpServer())
+      .post('/blog-posts/create')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ data: [{ title: 'title-value' }] })
+      .expect(201);
+
+    return (created.body as { data: { data: { id: string } }[] }).data[0]!.data
+      .id;
+  }
+
+  async function readOne(id: string): Promise<Record<string, unknown>> {
+    const found = await request(app.getHttpServer())
+      .post('/blog-posts/search')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ filters: [{ field: 'id', value: id }] })
+      .expect(200);
+
+    return (found.body as { data: Record<string, unknown>[] }).data[0]!;
+  }
+
+  it('reports how many entries of a batch succeeded and failed', async () => {
+    const recordId = await createOne();
+
+    const response = await request(app.getHttpServer())
+      .post('/blog-posts/update')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({
+        data: [
+          { id: recordId, ...{ title: 'title-value' } },
+          { id: 'missing-record', ...{ title: 'title-value' } },
+        ],
+      })
+      .expect(201);
+
+    const body = response.body as {
+      data: { status: string; error?: { status: number } }[];
+      meta: { total: number; succeeded: number; failed: number };
+    };
+    expect(body.meta).toEqual({ total: 2, succeeded: 1, failed: 1 });
+    expect(body.data.map((result) => result.status)).toEqual(['ok', 'error']);
+    expect(body.data[1]!.error!.status).toBe(404);
+  });
+
+  it('creates every entry of an atomic batch together', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/blog-posts/create')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({
+        atomic: true,
+        data: [{ title: 'title-value' }, { title: 'title-value' }],
+      })
+      .expect(201);
+
+    const body = response.body as {
+      data: { status: string; data: { id: string } }[];
+      meta: { total: number; succeeded: number; failed: number };
+    };
+    expect(body.meta).toEqual({ total: 2, succeeded: 2, failed: 0 });
+
+    for (const result of body.data) {
+      expect(result.status).toBe('ok');
+      expect((await readOne(result.data.id)).id).toBe(result.data.id);
+    }
+  });
+
+  it('writes nothing when an entry of an atomic batch cannot be applied', async () => {
+    const recordId = await createOne();
+    const before = await readOne(recordId);
+
+    const response = await request(app.getHttpServer())
+      .post('/blog-posts/update')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({
+        atomic: true,
+        data: [
+          { id: recordId, ...{ title: 'title-value' } },
+          { id: 'missing-record', ...{ title: 'title-value' } },
+        ],
+      })
+      .expect(422);
+
+    const error = (
+      response.body as {
+        error: {
+          key: string;
+          details: {
+            results: { status: string }[];
+            summary: { total: number; succeeded: number; failed: number };
+          };
+        };
+      }
+    ).error;
+    expect(error.key).toBe('batch.atomicFailed');
+    expect(error.details.results.map((result) => result.status)).toEqual([
+      'notApplied',
+      'error',
+    ]);
+    expect(error.details.summary).toEqual({
+      total: 2,
+      succeeded: 0,
+      failed: 1,
+    });
+    expect(await readOne(recordId)).toEqual(before);
   });
 
   it('hides a soft-deleted record from every default read, and only from those', async () => {
@@ -368,10 +496,8 @@ describe('BlogPost resource', () => {
   });
 
   it('never lets a different tenant see this tenant records', async () => {
-    const outsider = await registerAndLogin(app);
-    await prisma.user.update({
-      where: { email: outsider.email },
-      data: { tenantId: `tenant-${randomUUID()}` },
+    const outsider = await actingAs(app, {
+      tenantId: `tenant-${randomUUID()}`,
     });
 
     const response = await request(app.getHttpServer())
@@ -548,6 +674,25 @@ describe('BlogPost resource', () => {
       (attached.body as { data: { data: { tags: string[] } }[] }).data[0]!.data
         .tags,
     ).toEqual([childA.id]);
+
+    const members = await request(app.getHttpServer())
+      .post('/blog-posts/' + recordId + '/tags/members')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+
+    expect(
+      (members.body as { data: { id: string }[] }).data.map((row) => row.id),
+    ).toEqual([childA.id]);
+
+    const options = await request(app.getHttpServer())
+      .post('/blog-posts/' + recordId + '/tags/options')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({})
+      .expect(200);
+
+    expect(
+      (options.body as { data: { id: string }[] }).data.map((row) => row.id),
+    ).toEqual(expect.arrayContaining([childA.id, childB.id]));
 
     const synced = await request(app.getHttpServer())
       .post('/blog-posts/update')

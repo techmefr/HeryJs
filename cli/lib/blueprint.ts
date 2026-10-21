@@ -144,6 +144,7 @@ export const blueprintSchema = z.strictObject({
   // Turning it off makes DELETE remove the row, which is why it has to be
   // written down on purpose.
   softDeletes: z.boolean().optional(),
+  versioned: z.boolean().default(false),
   fields: z.array(blueprintFieldSchema).default([]),
   permissions: z
     .strictObject({
@@ -217,6 +218,8 @@ export interface ResolvedMutableRelation extends BlueprintMutableRelation {
   // The referenced resource's required fields, so a generated spec can seed a
   // row to attach without knowing anything about that resource beyond its name.
   childRequiredFields: ScalarBlueprintField[];
+  childFields: string[];
+  childSearchFields: string[];
 }
 
 export type PermissionPreset = z.infer<typeof permissionPresetSchema>;
@@ -325,7 +328,10 @@ function assertSortsAndFiltersAreKnownFields(
       .map((field) => field.name),
   );
   const knownTargets = blueprint.routed
-    ? KNOWN_NON_FIELD_SORT_FILTER_TARGETS
+    ? new Set([
+        ...KNOWN_NON_FIELD_SORT_FILTER_TARGETS,
+        ...(blueprint.versioned ? ['version'] : []),
+      ])
     : new Set(['id']);
 
   for (const [kind, entries] of [
@@ -485,6 +491,26 @@ function assertSoftDeletesIsCoherent(
         `${kind} "deletedAt" needs softDeletes, which this blueprint turns off`,
       );
     }
+  }
+}
+
+function assertVersionedIsCoherent(
+  blueprint: RawBlueprint,
+  report: (message: string) => void,
+): void {
+  if (blueprint.versioned && !blueprint.routed) {
+    report(
+      'versioned only applies to a routed resource: an unrouted one has no update route to check a version on',
+    );
+  }
+
+  if (
+    blueprint.versioned &&
+    blueprint.fields.some((field) => field.name === 'version')
+  ) {
+    report(
+      'field "version" is the column versioned: true adds, so it cannot also be declared as a field',
+    );
   }
 }
 
@@ -714,6 +740,12 @@ function resolveMutableRelations(
       childRequiredFields: referenced.fields
         .filter(isScalarField)
         .filter((field) => !field.optional),
+      childFields: referenced.fields
+        .filter((field) => !field.hidden)
+        .map((field) => field.name),
+      childSearchFields: referenced.fields
+        .filter((field) => field.type === 'string' && !field.hidden)
+        .map((field) => field.name),
     });
   }
 
@@ -734,6 +766,7 @@ export function loadBlueprint(filePath: string): Blueprint {
   );
   assertSoftDeletesIsCoherent(blueprint, (message) => problems.push(message));
   assertVectorFieldsAreCoherent(blueprint, (message) => problems.push(message));
+  assertVersionedIsCoherent(blueprint, (message) => problems.push(message));
   assertRelationsAreUnique(blueprint, (message) => problems.push(message));
   assertOwnRouteOnlyOnIncludes(blueprint, (message) => problems.push(message));
 

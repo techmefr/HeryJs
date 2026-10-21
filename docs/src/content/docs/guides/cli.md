@@ -11,6 +11,12 @@ The `hery` CLI is the only thing in this project that reads a blueprint. It is a
 | `create:blueprint <Name>`    | Writes a blueprint from prompts or defaults.                                            |
 | `generate <Name>`            | Writes a full resource from that blueprint.                                             |
 | `migrate --name <name>`      | Runs `prisma migrate dev`, then emits and applies any missing row-level policy.         |
+| `migrate:status`             | Lists every migration as applied, pending, failed or missing.                           |
+| `migrate:down`               | Prints the SQL that reverts the last migration.                                         |
+| `migrate:fresh`              | Drops everything and replays the history. Refuses in production.                        |
+| `db:seed`                    | Runs `prisma/seed.ts`; `--fresh` resets first.                                          |
+| `db:diff`                    | Prints the SQL that would bring the database to `schema.prisma`.                        |
+| `db:branch <action> [name]`  | Creates, drops or lists throwaway copies of the database.                               |
 | `install [modules...]`       | Installs optional modules.                                                              |
 | `uninstall <module>`         | Removes a module and reverses what installing it did.                                   |
 | `make:mail <Name>`           | Writes a `Mailable` into `src/functional/<domain>`.                                     |
@@ -35,6 +41,40 @@ The `hery` CLI is the only thing in this project that reads a blueprint. It is a
 | `console`                    | Boots the app into a REPL.                                                              |
 | `hosts`                      | Adds the local hostname to your hosts file.                                             |
 | `mcp:serve`                  | A read-only MCP server over stdio.                                                      |
+| Command                       | What it does                                                                            |
+| ----------------------------- | --------------------------------------------------------------------------------------- |
+| `new <name>`                  | Scaffolds a fresh HeryJs project in its own directory.                                  |
+| `create:blueprint <Name>`     | Writes a blueprint from prompts or defaults.                                            |
+| `generate <Name>`             | Writes a full resource from that blueprint.                                             |
+| `migrate --name <name>`       | Runs `prisma migrate dev`, then emits and applies any missing row-level policy.         |
+| `install [modules...]`        | Installs optional modules.                                                              |
+| `uninstall <module>`          | Removes a module and reverses what installing it did.                                   |
+| `make:mail <Name>`            | Writes a `Mailable` into `src/functional/<domain>`.                                     |
+| `make:export <Name>`          | Writes an `Exportable` into `src/functional/<domain>`.                                  |
+| `make:job <Name>`             | Writes a queued job, its name and its retry policy.                                     |
+| `make:listener <Name>`        | Writes an event listener.                                                               |
+| `make:scheduled-task <Name>`  | Writes a cron task that records its runs.                                               |
+| `make:policy <Name>`          | Writes a capability policy, admin only until you say otherwise.                         |
+| `make:seeder <Name>`          | Writes a seeder exposed to `expose:run` and the mine, dev and test only.                |
+| `make:driver <module> <Name>` | Writes a driver and its token module from the module's own contract.                    |
+| `make:notification <Name>`    | Writes a notification with one method per channel.                                      |
+| `make:webhook-handler <Name>` | Writes a handler for one webhook source.                                                |
+| `routes`                      | Prints every route with its capability and rate-limit bucket.                           |
+| `module:list`                 | Lists the modules available to install.                                                 |
+| `module:monitoring`           | Scaffolds Prometheus, Grafana and Loki.                                                 |
+| `search:reindex <Name>`       | Rebuilds a resource's search index from Postgres.                                       |
+| `openapi`                     | Emits an OpenAPI 3.1 document from every routed blueprint.                              |
+| `openapi:client`              | Emits a typed TypeScript client from the same blueprints.                               |
+| `expose:list`                 | Prints the catalog of `@ExposeAction`s.                                                 |
+| `expose:run <action>`         | Runs one exposed action, `--param name=value` per field.                                |
+| `up`                          | Checks that local dependencies are ready.                                               |
+| `doctor`                      | One command for environment, config and infra together.                                 |
+| `env pull`                    | Writes the resolved variables into `.env`.                                              |
+| `env run -- <command>`        | Runs a command with the resolved variables injected.                                    |
+| `lint`                        | Scores the project against conventions eslint and the architecture linter do not reach. |
+| `console`                     | Boots the app into a REPL.                                                              |
+| `hosts`                       | Adds the local hostname to your hosts file.                                             |
+| `mcp:serve`                   | A read-only MCP server over stdio.                                                      |
 
 ## `hery new <name>`
 
@@ -143,7 +183,72 @@ Each also prints what is left to do — the payload, the event class, the cron
 expression, and the module to register it in. Generated code is yours from the
 moment it lands; these fill in the decisions, not the work.
 
+## `make:policy`, `make:seeder`, `make:driver`, `make:notification`, `make:webhook-handler`
+
+Five more scaffolds on the same pattern: one file next to the code that uses it, `--force` to overwrite, next steps printed.
+
+```bash
+pnpm hery make:policy ManageInvoices            # src/functional/manage-invoices/manage-invoices.policy.ts
+pnpm hery make:seeder InvoiceSeeder             # an @ExposeAction, so `expose:run invoice.seed` works
+pnpm hery make:driver mail postmark             # src/modules/mail/postmark-mail.driver.ts and .module.ts
+pnpm hery make:notification OrderShipped        # toMail, toSms, toPush
+pnpm hery make:webhook-handler StripeWebhookHandler
+```
+
+- a **policy** is `adminAbility` under a name, so a route cannot be guarded by a rule nobody wrote down.
+- a **seeder** is bounded (`max: 500`) and restricted to `development` and `test`, the same two rules `agency.seed` carries.
+- a **driver** is read from `src/technical/<module>/<module>-driver.ts` rather than from a table in the CLI: every method of the contract becomes a stub that rejects with "not implemented", so an unfinished driver fails loudly instead of pretending to send. It also writes the `@Global()` module that provides the `driverToken(<module>, <name>)` the registry resolves.
+- a **notification** declares what it says per channel; delete the channels it has nothing to say on.
+- a **webhook handler** names its `source` and registers itself with the webhook processor, which hands it every event for that source inside the event's tenant, before the admin notification goes out. A handler that throws fails the job, so the event is retried rather than marked processed.
+
+## `hery routes`
+
+Boots the application and prints what Nest's router actually has wired:
+
+```
+METHOD  PATH           CAPABILITY      RATE LIMIT
+GET     /blog-posts    canViewAnyPost  read
+POST    /webhooks/:id  public (signed by its sender)  exempt (sender is trusted)
+```
+
+`--unguarded` keeps only the routes with no capability or no rate-limit bucket, `--json` prints the rows. A route that is deliberately public or unthrottled shows its stated reason instead of a blank.
+
 There is deliberately no `module:add`: `hery install` already does that.
+
+## The database workflow
+
+`migrate` and `migrate:down` were the whole of it. The rest of what Laravel's
+`migrate:*` and `db:*` commands do now exists under the same names:
+
+```bash
+pnpm hery migrate:status            # applied / pending / failed / missing, per migration
+pnpm hery migrate:fresh --seed      # drop everything, replay, seed
+pnpm hery db:seed --fresh           # the same reset, seeding always
+pnpm hery db:diff                   # SQL from the live database to schema.prisma
+pnpm hery db:branch create risky    # a copy of the database to try a migration on
+```
+
+`migrate:status` reads `_prisma_migrations` rather than guessing from the disk,
+which is how it can say **missing** for a migration that was applied and then
+deleted from the repository, and **failed** for one that stopped halfway. `--check`
+exits 1 unless everything is applied, for CI.
+
+`migrate:fresh` and `db:seed --fresh` refuse when `NODE_ENV` is `production`, and
+`--force` does not change that. They also refuse a database that is not on this
+machine unless you pass `--force`: a command that deletes a database has to be
+harder to run by accident than on purpose.
+
+`db:diff` is read-only. It prints what the next `migrate` would do; `--check` exits
+1 when the database and the schema differ.
+
+`db:branch` is Supabase branching for a local database. `create <name>` runs
+`CREATE DATABASE ... TEMPLATE`, so the copy has the schema and the rows, and
+prints the `DATABASE_URL` to export. Postgres cannot copy a database somebody is
+connected to, so a source with open connections is reported as that, not as a raw
+Postgres error. `drop <name>` can only drop a database this command made: the name
+is always `<database>_branch_<name>`, and a branch name is limited to lowercase
+letters, digits and underscores because it ends up in DDL, where parameters are not
+allowed.
 
 ## `hery uninstall <module>`
 
@@ -188,6 +293,10 @@ Reachable here means the service answered as itself, not that a socket opened: P
 ```
 
 `--start` brings the compose services up first and then does something more interesting: it reads back the **ports Docker actually assigned** and writes them into `.env`. The compose files publish container ports without fixing a host port, so several projects can run side by side without colliding, and `hery up --start` is what reconciles that with your configuration. It resolves `DATABASE_URL` and `REDIS_URL`, plus `ELASTICSEARCH_URL` or `MEILISEARCH_URL` if the matching search module is installed.
+
+## `hery down` and `hery up --lift`
+
+`hery down` puts the running application in [maintenance mode](/HeryJs/guides/maintenance): every request answers `503` with a `Retry-After` until `hery up --lift` ends it. `--secret` lets requests carrying a secret through, `--retry <seconds>` sets the `Retry-After`, and `--message <text>` sets what the 503 says. The switch lives in Redis, so it reaches every instance at once.
 
 ## `hery doctor`
 

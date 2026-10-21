@@ -1,6 +1,6 @@
 ---
 title: Notifier
-description: One notification class rendered once per channel, dispatched independently over mail, sms and push, with a per-channel result instead of one verdict.
+description: One notification class rendered once per channel over mail, sms, push and in-app, honouring each user's preferences, quiet hours and digests, with a per-channel result instead of one verdict.
 ---
 
 Mail, SMS and push each answer "how do I send on this one channel" correctly on their own. Together they leave the question every app actually asks unanswered: notify this user, by whatever channel they have agreed to. `notifier` is that facade — it composes the three existing modules rather than adding a fourth driver registry.
@@ -61,14 +61,52 @@ A method a notification does not implement is a channel it has nothing to say on
 - **sms** is skipped when `recipient.phone` is absent, and skipped again when no consent is recorded for that number — reusing `SmsConsentService` from the sms module, so consent stays one concept rather than something only the SMS module enforces. It is checked unconditionally, because a notification is neither the sms guard's `transactional` nor its `marketing`: the notifier answers "is this recipient reachable here" itself instead of asking the sms module to guess which kind this is.
 - **push** is attempted whenever `recipient.userId` is present; a user with no registered device comes back `skipped`, not `failed` — the same distinction `PushService.sendToUser` already makes internally.
 
+## What the recipient wants, not only what they can receive
+
+A notification carries a `type` and, optionally, `isMandatory`:
+
+```ts
+class OrderShipped implements Notification {
+  readonly type = 'order.shipped';
+}
+
+class PasswordReset implements Notification {
+  readonly type = 'password.reset';
+  readonly isMandatory = true;
+}
+```
+
+`type` is what preferences are keyed on (it falls back to the class name). `toInApp` returns `{ payload }` and stores an `AppNotification` for the recipient, so the in-app bell can be opted out of like any other channel. Pass `tenantId` on the recipient when sending from a queue worker; inside a request the ambient tenant is used.
+
+A user keeps **rules**: one row per channel and type, `enabled` or not, with `type: '*'` meaning every notification on that channel. The most specific rule wins, so "no push at all, except order updates" is two rows. With no rules, a user receives everything.
+
+- **Quiet hours** are a `HH:mm` window in the user's own IANA timezone and may cross midnight. While one is open, `sms` and `push` come back `skipped`; `mail` and `in-app` do not interrupt anyone and still go out.
+- **Digests** apply to `mail` only. A rule with `digest: true` makes the notifier store the subject instead of sending, and report `queued`. An hourly scheduled task, taken under the same cluster lock as every other task, sends one summary per user at their `digestHour` in their timezone, and deletes the batch only after the mail was accepted, so a failed send is retried the next day.
+- **Mandatory** notifications skip all of it: the preferences are not even read. Consent and missing addresses still apply, since those are not preferences.
+
+Every skip says why in the result, for example `Recipient opted out of order.shipped on sms.` or `Recipient is in quiet hours.`
+
+### Routes
+
+All of them act on the caller's own preferences, resolved from the session, and a body naming a `userId` is rejected.
+
+| Route | Does |
+| --- | --- |
+| `GET /notification-preferences` | the caller's rules and settings |
+| `PUT /notification-preferences/rules` | upsert up to 50 rules, `{ rules: [{ channel, type?, enabled, digest? }] }` |
+| `DELETE /notification-preferences/rules/:channel/:type` | forget a rule, back to the default |
+| `PUT /notification-preferences/settings` | `{ timezone, quietHoursStart, quietHoursEnd, digestHour }` |
+
+Rules and settings live in tenant-scoped tables with row-level security. Held digest entries are written by workers as well as requests and read across tenants by the sweep, so that one table carries an explicit `tenantId` instead.
+
 ## Partial failure is not total failure
 
 `send()` never throws because one channel failed. Every channel the notification implements is attempted independently, and the result is one entry per channel:
 
 ```ts
 type NotifierChannelResult = {
-  channel: 'mail' | 'sms' | 'push';
-  status: 'delivered' | 'failed' | 'skipped';
+  channel: 'mail' | 'sms' | 'push' | 'in-app';
+  status: 'delivered' | 'failed' | 'skipped' | 'queued';
   reason?: string;
 };
 ```

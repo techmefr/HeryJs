@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Prisma, BlogPost } from '@prisma/client';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
+import { AmbientTransactionStorage } from '#technical/prisma/transaction-context';
 import { CapabilitySubject } from '#technical/capabilities/capabilities.types';
 import { scopeWhereFor } from '#technical/capabilities/scope-where';
 import { env } from '#technical/config/env';
@@ -21,6 +22,7 @@ import type {
   PivotDelegate,
   RelatedDelegate,
 } from '#technical/http/relation-mutations';
+import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
 import {
   CreateBlogPostInput,
   RelationMutationInput,
@@ -59,9 +61,11 @@ export class BlogPostService {
   ) {}
 
   private notify() {
-    void this.signal.publish(
-      `${TenantContextStorage.getTenantId()}:${BLOG_POST_SIGNAL_CHANNEL}`,
-    );
+    const channel = `${TenantContextStorage.getTenantId()}:${BLOG_POST_SIGNAL_CHANNEL}`;
+
+    void AmbientTransactionStorage.afterCommit(() => {
+      void this.signal.publish(channel);
+    });
   }
 
   // A search engine that is down must not turn into a failed write: the
@@ -73,6 +77,10 @@ export class BlogPostService {
   // them, so a write has to reach all of them, and one engine being down
   // must not stop the others from getting the update.
   private async syncSearchIndex(record: BlogPost) {
+    await AmbientTransactionStorage.afterCommit(() => this.indexRecord(record));
+  }
+
+  private async indexRecord(record: BlogPost) {
     if (record.deletedAt) {
       await this.removeFromSearchIndex(record.id, record.tenantId);
       return;
@@ -101,6 +109,12 @@ export class BlogPostService {
   // hard-deleted row has no updated record to read deletedAt off, only the
   // id and tenant it used to have.
   private async removeFromSearchIndex(id: string, tenantId: string) {
+    await AmbientTransactionStorage.afterCommit(() =>
+      this.dropFromIndex(id, tenantId),
+    );
+  }
+
+  private async dropFromIndex(id: string, tenantId: string) {
     for (const driver of this.searchEngines.externalDrivers) {
       try {
         await driver.remove(SEARCH_COLLECTION, id, tenantId);
@@ -209,6 +223,42 @@ export class BlogPostService {
     ]);
 
     return { records, total };
+  }
+
+  async membersTags(parentId: string) {
+    const pivots = await (
+      this.prisma.blogPostTag as unknown as PivotDelegate
+    ).findMany({
+      where: { blogPostId: parentId },
+      select: { tagId: true },
+      take: MAX_BATCH_ENTRIES,
+    });
+    const ids = pivots.map((row) => row.tagId as string);
+
+    if (ids.length === 0) {
+      return [];
+    }
+
+    return (this.prisma.tag as unknown as RelatedDelegate).findMany({
+      where: { id: { in: ids } },
+      select: { id: true, name: true, createdAt: true },
+    });
+  }
+
+  async optionsTags(term?: string) {
+    return (this.prisma.tag as unknown as RelatedDelegate).findMany({
+      where: term
+        ? {
+            OR: [{ name: { contains: term, mode: 'insensitive' } }],
+          }
+        : {},
+      select: { id: true, name: true, createdAt: true },
+      take: MAX_BATCH_ENTRIES,
+    });
+  }
+
+  atomically<T>(callback: () => Promise<T>): Promise<T> {
+    return this.prisma.$atomic(callback);
   }
 
   async create(subject: CapabilitySubject, data: CreateBlogPostInput) {

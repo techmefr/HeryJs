@@ -69,6 +69,19 @@ A channel is only attempted when the recipient can actually be reached on it:
   registered device is a skip, not a failure -- the same way `PushService`
   itself treats zero devices.
 
+## Preferences, quiet hours, digests
+
+`Notification` also carries `type` (what a user opts in or out of) and
+`isMandatory` (transactional: nothing can suppress it, preferences are not even
+read). `toInApp` stores an `AppNotification`, making in-app a fourth channel.
+
+Users manage their own rules under `/notification-preferences`: per channel and
+per type with `type: '*'` as the channel-wide rule and the most specific rule
+winning, quiet hours in their timezone (`sms` and `push` are skipped inside the
+window, `mail` and `in-app` still flow), and `digest: true` on `mail` to have it
+collected and sent as one summary by an hourly scheduled task at the user's
+chosen local hour. A skipped channel reports why. See the guide for the routes.
+
 ## Partial failure is not total failure
 
 `send()` never throws because one channel failed. It attempts every channel
@@ -76,8 +89,8 @@ the notification implements independently and returns one result per channel:
 
 ```ts
 type NotifierChannelResult = {
-  channel: 'mail' | 'sms' | 'push';
-  status: 'delivered' | 'failed' | 'skipped';
+  channel: 'mail' | 'sms' | 'push' | 'in-app';
+  status: 'delivered' | 'failed' | 'skipped' | 'queued';
   reason?: string;
 };
 ```

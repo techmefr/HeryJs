@@ -1,0 +1,158 @@
+---
+import Shell from '../layouts/Shell.astro';
+---
+
+<Shell title="Dev dashboard">
+  <h1>Dev dashboard</h1>
+  <p class="lede">
+    What the app did, kept past a restart: requests, slow queries, N+1 findings,
+    jobs, mail, SMS, push and exceptions for your tenant. Statement values and
+    request bodies are never stored.
+  </p>
+
+  <div class="kinds" id="kinds"></div>
+  <div class="output" id="output"></div>
+  <div class="pager" id="pager"></div>
+</Shell>
+
+<script>
+  import { ApiError, api } from '../lib/api';
+  import {
+    DEVTOOLS_KINDS,
+    entriesPath,
+    entryRow,
+    kindLabel,
+  } from '../lib/devtools';
+  import type {
+    DevtoolsEntry,
+    DevtoolsKind,
+    DevtoolsPageMeta,
+  } from '../lib/devtools';
+  import { icon, ICONS } from '../lib/icons';
+  import { pill, skeleton, state, table } from '../lib/render';
+
+  const kinds = document.getElementById('kinds')!;
+  const output = document.getElementById('output')!;
+  const pager = document.getElementById('pager')!;
+
+  let current: DevtoolsKind = 'request';
+  let page = 1;
+
+  function unavailable(error: unknown): HTMLElement {
+    if (error instanceof ApiError && error.status === 404) {
+      return state(
+        'Not available',
+        'The dev dashboard records in development only. Set devDashboard.enabled in hery.config.ts to turn it on elsewhere.',
+        'denied',
+      );
+    }
+
+    if (error instanceof ApiError && error.status === 403) {
+      return state(
+        'Not available',
+        'In production the dev dashboard is an admin-only page.',
+        'denied',
+      );
+    }
+
+    return state(
+      'Could not load the dashboard',
+      'The request to /devtools failed.',
+      'denied',
+    );
+  }
+
+  function tab(kind: DevtoolsKind, count: number): HTMLElement {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'kind';
+    button.setAttribute('aria-pressed', String(kind === current));
+    button.append(
+      document.createTextNode(kindLabel(kind)),
+      pill(String(count), 'neutral'),
+    );
+    button.addEventListener('click', () => {
+      current = kind;
+      page = 1;
+      void render();
+    });
+
+    return button;
+  }
+
+  function pageButton(
+    text: string,
+    isDisabled: boolean,
+    target: number,
+  ): HTMLElement {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = text;
+    button.disabled = isDisabled;
+    button.addEventListener('click', () => {
+      page = target;
+      void render();
+    });
+
+    return button;
+  }
+
+  function clearButton(): HTMLElement {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'primary';
+    button.append(icon(ICONS.prune, 14), document.createTextNode('Clear all'));
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+
+      try {
+        await api('/devtools/entries', { method: 'DELETE' });
+        page = 1;
+        await render();
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    return button;
+  }
+
+  async function render(): Promise<void> {
+    output.replaceChildren(skeleton(4));
+
+    try {
+      const summary =
+        await api<Record<DevtoolsKind, number>>('/devtools/summary');
+      kinds.replaceChildren(
+        ...DEVTOOLS_KINDS.map((kind) => tab(kind, summary.data[kind] ?? 0)),
+        clearButton(),
+      );
+
+      const { data, meta } = await api<DevtoolsEntry[]>(
+        entriesPath(current, page),
+      );
+      const paging = meta as DevtoolsPageMeta | undefined;
+
+      output.replaceChildren(
+        data.length === 0
+          ? state(
+              'Nothing recorded',
+              'No ' + kindLabel(current).toLowerCase() + ' recorded yet.',
+            )
+          : table(data.map(entryRow)),
+      );
+
+      pager.replaceChildren(
+        pageButton('Previous', page <= 1, page - 1),
+        pill('Page ' + page + ' of ' + (paging?.last_page ?? 1), 'neutral'),
+        pageButton('Next', page >= (paging?.last_page ?? 1), page + 1),
+      );
+    } catch (error) {
+      kinds.replaceChildren();
+      pager.replaceChildren();
+      output.replaceChildren(unavailable(error));
+    }
+  }
+
+  await render();
+</script>

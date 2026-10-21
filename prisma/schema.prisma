@@ -31,12 +31,16 @@ model User {
   sessions                  Session[]
   accounts                  Account[]
   blogPosts                 BlogPost[]
+  snippets                  Snippet[]
   notifications             AppNotification[]
   memberships               TeamMember[]
   apiKeys                   ApiKey[]
   twoFactors                TwoFactor[]
   passkeys                  Passkey[]
   pushTokens                PushToken[]
+  notificationPreferences   NotificationPreference[]
+  notificationSetting       NotificationSetting?
+  notificationDigestEntries NotificationDigestEntry[]
   twoFactorEnrolment        TwoFactorEnrolment?
   twoFactorRecoveryCodes    TwoFactorRecoveryCode[]
   twoFactorVerifiedSessions TwoFactorVerifiedSession[]
@@ -506,4 +510,146 @@ model TwoFactorVerifiedSession {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, userId])
+}
+
+model Snippet {
+  id        String    @id @default(cuid())
+  tenantId  String
+  ownerId   String
+  title     String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  version   Int       @default(1)
+
+  owner User @relation(fields: [ownerId], references: [id])
+
+  @@index([tenantId])
+  // Every default read filters on these two together, so the composite keeps
+  // the "not deleted" clause from scanning the whole tenant.
+  @@index([tenantId, deletedAt])
+}
+
+model NotificationPreference {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  channel   String
+  type      String
+  enabled   Boolean  @default(true)
+  digest    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, channel, type])
+  @@index([tenantId])
+}
+
+model NotificationSetting {
+  id              String   @id @default(cuid())
+  tenantId        String
+  userId          String   @unique
+  timezone        String   @default("UTC")
+  quietHoursStart String?
+  quietHoursEnd   String?
+  digestHour      Int      @default(8)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+model NotificationDigestEntry {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  email     String
+  type      String
+  subject   String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([userId])
+}
+
+model DevtoolsEntry {
+  id         String   @id @default(cuid())
+  tenantId   String
+  kind       String
+  label      String
+  status     String?
+  durationMs Float?
+  requestId  String?
+  detail     Json?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, kind, createdAt])
+  @@index([createdAt])
+}
+
+model SsoConnection {
+  id           String   @id @default(cuid())
+  tenantId     String
+  name         String
+  issuer       String
+  clientId     String
+  clientSecret String
+  linkPolicy   String   @default("refuse")
+  isEnabled    Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  domains    SsoDomain[]
+  identities SsoIdentity[]
+
+  @@index([tenantId])
+}
+
+model SsoDomain {
+  id                String    @id @default(cuid())
+  tenantId          String
+  connectionId      String
+  domain            String
+  verificationToken String
+  verifiedAt        DateTime?
+  createdAt         DateTime  @default(now())
+
+  connection SsoConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, domain])
+  @@index([tenantId])
+  @@index([domain])
+}
+
+model SsoIdentity {
+  id           String   @id @default(cuid())
+  tenantId     String
+  connectionId String
+  subject      String
+  userId       String
+  createdAt    DateTime @default(now())
+
+  connection SsoConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, subject])
+  @@index([tenantId])
+  @@index([userId])
+}
+
+model LogEntry {
+  id       String   @id @default(cuid())
+  tenantId String
+  level    String
+  message  String
+  fields   Json?
+  loggedAt DateTime @default(now())
+
+  @@index([tenantId, loggedAt])
+  @@index([loggedAt])
 }

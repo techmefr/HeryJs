@@ -79,6 +79,7 @@ export function selectableFields(ctx: ResourceContext): string[] {
     'createdAt',
     'updatedAt',
     ...(ctx.softDeletes ? ['deletedAt'] : []),
+    ...(ctx.versioned ? ['version'] : []),
   ];
 }
 
@@ -103,6 +104,9 @@ export function recordProperties(ctx: ResourceContext): RecordProperty[] {
     { name: 'updatedAt', type: 'timestamp', optional: false },
     ...(ctx.softDeletes
       ? [{ name: 'deletedAt', type: 'timestamp' as const, optional: true }]
+      : []),
+    ...(ctx.versioned
+      ? [{ name: 'version', type: 'int' as const, optional: false }]
       : []),
   ];
 }

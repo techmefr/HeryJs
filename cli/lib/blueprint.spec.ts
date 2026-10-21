@@ -449,6 +449,96 @@ sorts: []
     );
   });
 
+  it('leaves versioning off for a blueprint that says nothing about it', () => {
+    writeBlueprint(
+      dir,
+      'note',
+      `
+name: Note
+fields:
+  - name: body
+    type: string
+sorts: []
+`,
+    );
+
+    expect(loadBlueprint(path.join(dir, 'note.yaml')).versioned).toBe(false);
+  });
+
+  it('carries versioned: true through to the resolved blueprint', () => {
+    writeBlueprint(
+      dir,
+      'note',
+      `
+name: Note
+versioned: true
+fields:
+  - name: body
+    type: string
+sorts: [version]
+`,
+    );
+
+    expect(loadBlueprint(path.join(dir, 'note.yaml')).versioned).toBe(true);
+  });
+
+  it('refuses versioned on an unrouted resource', () => {
+    writeBlueprint(
+      dir,
+      'note',
+      `
+name: Note
+routed: false
+versioned: true
+fields:
+  - name: body
+    type: string
+sorts: []
+`,
+    );
+
+    expect(() => loadBlueprint(path.join(dir, 'note.yaml'))).toThrow(
+      /versioned only applies to a routed resource/,
+    );
+  });
+
+  it('refuses a field named version on a versioned resource', () => {
+    writeBlueprint(
+      dir,
+      'note',
+      `
+name: Note
+versioned: true
+fields:
+  - name: version
+    type: int
+sorts: []
+`,
+    );
+
+    expect(() => loadBlueprint(path.join(dir, 'note.yaml'))).toThrow(
+      /field "version" is the column versioned: true adds/,
+    );
+  });
+
+  it('refuses sorting by version when the resource is not versioned', () => {
+    writeBlueprint(
+      dir,
+      'note',
+      `
+name: Note
+fields:
+  - name: body
+    type: string
+sorts: [version]
+`,
+    );
+
+    expect(() => loadBlueprint(path.join(dir, 'note.yaml'))).toThrow(
+      /sort "version" names no declared field/,
+    );
+  });
+
   it('refuses a filter on deletedAt when soft deletes are turned off', () => {
     writeBlueprint(
       dir,

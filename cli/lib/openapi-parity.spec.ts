@@ -58,6 +58,7 @@ const SERVER_HTTP = path.join(
 const EXAMPLES = path.join(__dirname, '..', '..', 'examples');
 const contexts: ResourceContext[] = [
   buildResourceContext(loadBlueprint(path.join(EXAMPLES, 'blog-post.yaml'))),
+  buildResourceContext(loadBlueprint(path.join(EXAMPLES, 'snippet.yaml'))),
   ...discoverResourceContexts(
     path.join(__dirname, 'fixtures', 'openapi', 'blueprints'),
   ),
@@ -220,8 +221,27 @@ describe('what the generators claim against what the controller publishes', () =
     expect(dto.includes(`Restore${ctx.pascalName}RequestBody`)).toBe(
       ctx.softDeletes,
     );
+    expect(dto.match(/atomic: z\.boolean\(\)\.default\(false\)/g)).toHaveLength(
+      ctx.softDeletes ? 4 : 3,
+    );
     expect(dto.includes('relationMutationSchema')).toBe(
       ctx.relations.length > 0,
     );
+    expect(
+      dto.includes('version: z.number().int().positive().optional()'),
+    ).toBe(ctx.versioned);
   });
+
+  it.each(
+    contexts.map((ctx) => [`${ctx.pascalName}@${ctx.version}`, ctx] as const),
+  )(
+    'matches the %s versioned flag with what describe publishes',
+    (_name, ctx) => {
+      expect(
+        controllerFile(ctx).includes(
+          "versioned: { field: 'version', header: 'If-Match' }",
+        ),
+      ).toBe(ctx.versioned);
+    },
+  );
 });

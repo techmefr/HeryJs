@@ -36,6 +36,14 @@ class GreetingFixture {
     return 'never';
   }
 
+  @ExposeAction('fixture.cronOnly', {
+    capability: allowEveryone,
+    triggers: { http: false },
+  })
+  cronOnly(): string {
+    return 'clock only';
+  }
+
   @ExposeAction('fixture.prodOnly', {
     capability: allowEveryone,
     environments: ['production'],
@@ -78,6 +86,7 @@ describe('exposition', () => {
       name: 'fixture.greet',
       capability: 'allowEveryone',
       environments: undefined,
+      triggers: { http: true, cron: null, webhook: false },
       params: [
         {
           name: 'fixture.greet.times',
@@ -144,6 +153,14 @@ describe('exposition', () => {
       .set('Authorization', `Bearer ${user.token}`)
       .send({})
       .expect(403);
+  });
+
+  it('404s an action that declared itself off the HTTP route', async () => {
+    await request(app.getHttpServer())
+      .post('/expose/fixture.cronOnly')
+      .set('Authorization', `Bearer ${user.token}`)
+      .send({})
+      .expect(404);
   });
 
   it('404s an unknown action', async () => {

@@ -35,7 +35,7 @@ export function statusTone(status: number): string {
   return status >= 300 ? 'neutral' : 'ok';
 }
 
-function writeCell(
+export function writeCell(
   target: HTMLTableCellElement,
   column: string,
   value: unknown,

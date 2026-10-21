@@ -42,7 +42,7 @@ async function copiedFromPackageRoot(
  * way, and nothing in the manifest says so.
  */
 describe('what a module has to publish', () => {
-  // Fourteen more than the original eleven: the module-and-driver convention
+  // Fifteen more than the original eleven: the module-and-driver convention
   // added export, import and http-client, plus the driver packages that land
   // inside the module they extend (mail-resend, export-xlsx, export-pdf,
   // billing-stripe landing inside billing), plus sms, push and billing, plus
@@ -51,7 +51,8 @@ describe('what a module has to publish', () => {
   // a fourth driver registry), and sse: a single-implementation module like
   // live, with no driver of its own to swap, plus oauth, likewise a
   // single-implementation module whose providers are a contract, not drivers,
-  // and two-factor, the same shape with a second-factor guard and four tables.
+  // two-factor, the same shape with a second-factor guard and four tables,
+  // and sso, the same shape for a tenant's own identity provider.
   it('found the modules to check', () => {
     expect(MODULES).toHaveLength(27);
   });
