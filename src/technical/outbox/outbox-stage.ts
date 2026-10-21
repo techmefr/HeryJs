@@ -88,6 +88,16 @@ function kindFor(operation: string, args: unknown): ModelChangeKind | null {
   return kind;
 }
 
+function stringFieldOf(record: unknown, field: string): string | null {
+  if (!isRecord(record)) {
+    return null;
+  }
+
+  const value = record[field];
+
+  return typeof value === 'string' ? value : null;
+}
+
 function recordIdOf(record: unknown): string | null {
   if (!isRecord(record)) {
     return null;
@@ -121,6 +131,8 @@ export function modelChangeMessages(input: {
       recordId: recordIdOf(record),
       tenantId: input.tenantId,
       changedFields,
+      ownerId: stringFieldOf(record, 'ownerId'),
+      teamId: stringFieldOf(record, 'teamId'),
       userId,
       impersonatedBy,
     };

@@ -1506,13 +1506,51 @@ ${
 `;
 }
 
+export function changeFeedFile(ctx: ResourceContext): string {
+  return `import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { ChangeFeedRegistry } from '#technical/change-feed/change-feed.registry';
+import {
+  canUpdateAny${ctx.pascalName},
+  canView${ctx.pascalName},
+  canViewAny${ctx.pascalName},
+} from './${ctx.kebabName}.policy';
+import { ${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER } from './${ctx.kebabName}-record.loader';
+import type { ${ctx.pascalName}RecordLoader } from './${ctx.kebabName}-record.loader';
+import { ${ctx.screamingSnakeName}_SIGNAL_CHANNEL } from './${ctx.kebabName}.service';
+import { to${ctx.pascalName}View } from './${ctx.kebabName}.view';
+
+@Injectable()
+export class ${ctx.pascalName}ChangeFeed implements OnModuleInit {
+  constructor(
+    private readonly feed: ChangeFeedRegistry,
+    @Inject(${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER)
+    private readonly loader: ${ctx.pascalName}RecordLoader,
+  ) {}
+
+  onModuleInit(): void {
+    this.feed.register({
+      model: '${ctx.modelPascalName}',
+      channel: ${ctx.screamingSnakeName}_SIGNAL_CHANNEL,
+      canViewAny: canViewAny${ctx.pascalName},
+      canView: canView${ctx.pascalName},
+      canBroadcast: canUpdateAny${ctx.pascalName},
+      load: (id) => this.loader.load(id),
+      toView: to${ctx.pascalName}View,
+    });
+  }
+}
+`;
+}
+
 export function moduleFile(ctx: ResourceContext): string {
   return `import { Module } from '@nestjs/common';
 import { AuthModule } from '#technical/auth/auth.module';
 import { CapabilitiesService } from '#technical/capabilities/capabilities.service';
+import { ChangeFeedModule } from '#technical/change-feed/change-feed.module';
 import { PrismaModule } from '#technical/prisma/prisma.module';
 import { SearchModule } from '#technical/search/search.module';
 import { SignalModule } from '#technical/signal/signal.module';
+import { ${ctx.pascalName}ChangeFeed } from './${ctx.kebabName}.change-feed';
 import { ${ctx.pascalName}Controller } from './${ctx.kebabName}.controller';
 import { ${ctx.pascalName}Policy } from './${ctx.kebabName}.policy';
 import { ${ctx.pascalName}Service } from './${ctx.kebabName}.service';
@@ -1524,11 +1562,18 @@ import {
 } from './${ctx.kebabName}-record.loader';
 
 @Module({
-  imports: [PrismaModule, AuthModule, SearchModule, SignalModule],
+  imports: [
+    PrismaModule,
+    AuthModule,
+    SearchModule,
+    SignalModule,
+    ChangeFeedModule,
+  ],
   controllers: [${ctx.pascalName}Controller],
   providers: [
     ${ctx.pascalName}Service,
     ${ctx.pascalName}Policy,
+    ${ctx.pascalName}ChangeFeed,
     CapabilitiesService,
     { provide: ${ctx.screamingSnakeName}_RECORD_LOADER, useClass: ${ctx.pascalName}RecordLoader },
     {

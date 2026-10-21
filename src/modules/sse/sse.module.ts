@@ -1,13 +1,15 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '#technical/auth/auth.module';
+import { ChangeFeedModule } from '#technical/change-feed/change-feed.module';
+import { SseChangesController } from './sse-changes.controller';
 import { SseController } from './sse.controller';
 import { SseStreamService } from './sse-stream.service';
 import { SseTokenGuard } from './sse-token.guard';
 import { SseTokenService } from './sse-token.service';
 
 @Module({
-  imports: [AuthModule],
-  controllers: [SseController],
+  imports: [AuthModule, ChangeFeedModule],
+  controllers: [SseController, SseChangesController],
   providers: [SseStreamService, SseTokenService, SseTokenGuard],
   exports: [SseStreamService],
 })

@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { AuditModule } from '#technical/audit/audit.module';
 import { AuthModule } from '#technical/auth/auth.module';
 import { CacheModule } from '#technical/cache/cache.module';
+import { ChangeFeedModule } from '#technical/change-feed/change-feed.module';
 import { EventsModule } from '#technical/events/events.module';
 import { ExpositionModule } from '#technical/exposition/exposition.module';
 import { IntrospectionModule } from '#technical/introspection/introspection.module';
@@ -79,6 +80,7 @@ import { redactedRequestSerializer } from '#technical/logging/redacted-request-s
     AuditModule,
     AuthModule,
     CacheModule,
+    ChangeFeedModule,
     EtagModule,
     EventsModule,
     ExportModule,

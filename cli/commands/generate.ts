@@ -6,6 +6,7 @@ import { loadBlueprint, resolveBlueprintPath } from '../lib/blueprint';
 import { buildResourceContext } from '../lib/resource-context';
 import { patchModelSet, patchPrismaSchema } from '../lib/schema-patch';
 import {
+  changeFeedFile,
   controllerFile,
   dtoFile,
   factoryFile,
@@ -101,6 +102,7 @@ export function registerGenerateCommand(program: Command): void {
           [`${ctx.kebabName}-record.loader.ts`]: recordLoaderFile(ctx),
           [`${ctx.kebabName}.service.ts`]: serviceFile(ctx),
           [`${ctx.kebabName}.controller.ts`]: controllerFile(ctx),
+          [`${ctx.kebabName}.change-feed.ts`]: changeFeedFile(ctx),
           [`${ctx.kebabName}.module.ts`]: moduleFile(ctx),
           [`${ctx.kebabName}.spec.ts`]: specFile(ctx),
         };

@@ -17,7 +17,7 @@ Every `create`, `update`, `upsert` and `delete` of a model in `TENANT_SCOPED_MOD
 | `update`, `updateManyAndReturn`, `upsert` | `model.updated` |
 | `update` that stamps `deletedAt`, `delete` | `model.deleted` |
 
-The payload carries `model`, `kind`, `recordId`, `tenantId`, `changedFields`, `userId` and `impersonatedBy`. **It never carries the row's values**: a message outlives the request, sits in a table, and may reach handlers that must not see a field. A consumer that needs the row reads it, under its own capabilities.
+The payload carries `model`, `kind`, `recordId`, `tenantId`, `changedFields`, `ownerId`, `teamId`, `userId` and `impersonatedBy`. `ownerId` and `teamId` are the two keys capabilities are decided on, so a handler can route a message by who may see the row without loading it. **It never carries the row's other values**: a message outlives the request, sits in a table, and may reach handlers that must not see a field. A consumer that needs the row reads it, under its own capabilities.
 
 Not announced, deliberately: `createMany`, `updateMany` and `deleteMany`, whose result is a count with no ids to name; writes through the unscoped client (a purge writes its own audit entry and goes around the extension on purpose); and `AppNotification`, which is itself the product of a side effect.
 
