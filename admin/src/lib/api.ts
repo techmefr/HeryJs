@@ -164,6 +164,8 @@ const HIDDEN_PATHS = [
   '/expose',
   '/feature-flags',
   '/health',
+  '/storage-admin/files',
+  '/storage-admin/status',
   '/health/live',
   '/health/ready',
   '/metrics',

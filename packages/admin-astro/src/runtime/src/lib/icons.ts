@@ -19,6 +19,7 @@ import {
   ListChecks,
   LockKeyhole,
   LogOut,
+  HardDrive,
   Mail,
   Network,
   RefreshCw,
@@ -59,6 +60,7 @@ export const ICONS = {
   quotas: Gauge,
   refresh: RefreshCw,
   signOut: LogOut,
+  storage: HardDrive,
   webhooks: Webhook,
   yes: Check,
 };

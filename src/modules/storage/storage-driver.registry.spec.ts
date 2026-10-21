@@ -7,6 +7,7 @@ import { DriverResolver } from '#technical/drivers/driver-resolver';
 import { driverToken } from '#technical/drivers/driver-token';
 import { LocalStorageDriver } from './local-storage.driver';
 import { StorageDriverRegistry } from './storage-driver.registry';
+import { storageEnv } from './storage.env';
 import type { StorageDriver } from '#technical/storage/storage-driver';
 
 const localDriver = new LocalStorageDriver();
@@ -112,5 +113,40 @@ describe('StorageDriverRegistry', () => {
         storage: { default: 's3', drivers: { local: { driver: 'local' } } },
       }),
     ).toThrow(/is not declared in storage.drivers/);
+  });
+
+  /**
+   * `STORAGE_DRIVER=s3` is the whole switch when the project declared no
+   * slice: the registry reads it, binds the S3 driver the module provides, and
+   * asks for no hery.config.ts edit.
+   */
+  describe('with STORAGE_DRIVER=s3 and no storage slice', () => {
+    beforeEach(() => {
+      jest.replaceProperty(storageEnv, 'STORAGE_DRIVER', 's3');
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('selects the S3 driver', () => {
+      const s3Driver = {} as StorageDriver;
+
+      expect(buildRegistry({}, { s3: s3Driver }).active).toBe(s3Driver);
+    });
+
+    it('still refuses to boot when no S3 driver is bound', () => {
+      expect(() => buildRegistry({})).toThrow(
+        /no module is installed to provide it/,
+      );
+    });
+
+    it('lets a declared slice win over the variable', () => {
+      const registry = buildRegistry({
+        storage: { default: 'local', drivers: { local: { driver: 'local' } } },
+      });
+
+      expect(registry.active).toBe(localDriver);
+    });
   });
 });

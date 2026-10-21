@@ -3,6 +3,7 @@ import type {
   StorageDriver,
   StoredObject,
   StoredObjectStat,
+  StoredObjectSummary,
 } from '#technical/storage/storage-driver';
 import { FakeAssertionError } from './fake-assertion.error';
 import { FakeStorageObjectNotFoundException } from './fake-storage-object-not-found.exception';
@@ -75,6 +76,15 @@ export class FakeStorageDriver
 
     return Promise.resolve(
       held ? { size: held.body.length, contentType: held.contentType } : null,
+    );
+  }
+
+  list(prefix: string, limit: number): Promise<StoredObjectSummary[]> {
+    return Promise.resolve(
+      [...this.objects.entries()]
+        .filter(([key]) => key.startsWith(prefix))
+        .slice(0, limit)
+        .map(([key, held]) => ({ key, size: held.body.length })),
     );
   }
 
