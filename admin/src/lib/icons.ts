@@ -30,6 +30,7 @@ export const ICONS = {
   crumb: ChevronRight,
   devtools: Bug,
   empty: Inbox,
+  flags: ToggleRight,
   lock: LockKeyhole,
   no: X,
   overview: LayoutDashboard,
