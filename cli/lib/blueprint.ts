@@ -182,6 +182,35 @@ export type BlueprintMutableRelation = z.infer<
  * costs an author one corrected line; accepting it costs them an afternoon
  * wondering why the generated resource ignores what they declared.
  */
+const stateNameSchema = z.string().regex(/^[a-z][a-zA-Z0-9]*$/);
+
+/**
+ * A declarative state machine over one string column the generator adds. A
+ * client never writes that column: it asks for a transition by name, and the
+ * generated route checks the current state, the transition's guard and the
+ * transition's own capability before moving the row.
+ */
+export const blueprintWorkflowSchema = z.strictObject({
+  field: fieldNameSchema.default('status'),
+  initial: stateNameSchema,
+  transitions: z
+    .array(
+      z.strictObject({
+        name: fieldNameSchema,
+        from: z.array(stateNameSchema).min(1),
+        to: stateNameSchema,
+        // Who may fire this transition, resolved per record like the four
+        // resource presets.
+        permission: permissionPresetSchema.default('own'),
+        // The guard: fields that must hold a value before the row may move.
+        requires: z.array(fieldNameSchema).default([]),
+      }),
+    )
+    .min(1),
+});
+
+export type BlueprintWorkflow = z.infer<typeof blueprintWorkflowSchema>;
+
 export const blueprintSchema = z.strictObject({
   name: z.string().regex(/^[A-Z][a-zA-Z0-9]*$/),
   // A resource the generator never routes: no controller, no service, no
@@ -226,6 +255,7 @@ export const blueprintSchema = z.strictObject({
   // written down on purpose.
   softDeletes: z.boolean().optional(),
   versioned: z.boolean().default(false),
+  workflow: blueprintWorkflowSchema.optional(),
   // Off unless written: every write to the resource stores a snapshot, and the
   // generated resource gains routes to read, diff and restore them.
   history: z.boolean().default(false),
@@ -426,6 +456,7 @@ function assertSortsAndFiltersAreKnownFields(
     ? new Set([
         ...KNOWN_NON_FIELD_SORT_FILTER_TARGETS,
         ...(blueprint.versioned ? ['version'] : []),
+        ...(blueprint.workflow ? [blueprint.workflow.field] : []),
       ])
     : new Set(['id']);
 
@@ -727,6 +758,68 @@ function assertSoftDeletesIsCoherent(
       report(
         `${kind} "deletedAt" needs softDeletes, which this blueprint turns off`,
       );
+    }
+  }
+}
+
+const RESERVED_TRANSITION_NAMES = new Set([
+  'create',
+  'update',
+  'delete',
+  'restore',
+  'history',
+  'revert',
+]);
+
+function assertWorkflowIsCoherent(
+  blueprint: RawBlueprint,
+  report: (message: string) => void,
+): void {
+  const workflow = blueprint.workflow;
+
+  if (!workflow) {
+    return;
+  }
+
+  if (!blueprint.routed) {
+    report(
+      'workflow only applies to a routed resource: an unrouted one has no transition route',
+    );
+  }
+
+  const fieldNames = new Set(blueprint.fields.map((field) => field.name));
+
+  if (
+    fieldNames.has(workflow.field) ||
+    RESERVED_FIELDS.has(workflow.field) ||
+    workflow.field === 'version'
+  ) {
+    report(
+      `workflow field "${workflow.field}" is the column the workflow adds, so it cannot also be declared as a field or collide with a generated column`,
+    );
+  }
+
+  const seen = new Set<string>();
+
+  for (const transition of workflow.transitions) {
+    if (seen.has(transition.name)) {
+      report(`transition "${transition.name}" is declared twice`);
+    }
+
+    seen.add(transition.name);
+
+    if (RESERVED_TRANSITION_NAMES.has(transition.name)) {
+      report(
+        `transition "${transition.name}" is the name of a route or capability the resource already has`,
+      );
+    }
+
+    for (const required of transition.requires) {
+      if (!fieldNames.has(required)) {
+        report(
+          `transition "${transition.name}" requires "${required}", which is not a declared field`,
+        );
+      }
     }
   }
 }
@@ -1053,6 +1146,7 @@ export function loadBlueprint(filePath: string): Blueprint {
   assertRichtextIsCoherent(blueprint, (message) => problems.push(message));
   assertVectorFieldsAreCoherent(blueprint, (message) => problems.push(message));
   assertVersionedIsCoherent(blueprint, (message) => problems.push(message));
+  assertWorkflowIsCoherent(blueprint, (message) => problems.push(message));
   assertHistoryIsCoherent(blueprint, (message) => problems.push(message));
   assertSharingIsCoherent(blueprint, (message) => problems.push(message));
   assertErasureIsCoherent(blueprint, (message) => problems.push(message));

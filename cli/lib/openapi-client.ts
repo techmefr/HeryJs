@@ -199,6 +199,11 @@ function mutationDeclarations(ctx: ResourceContext): string {
     `export interface ${name}Patch {\n${patchFields.join('\n')}\n}`,
     `export interface ${name}UpdateItem extends ${name}Patch {\n  id: string;${ctx.versioned ? '\n  version: number;' : ''}${relations}\n}`,
     `export type ${name}UpdateData = ${updateData};`,
+    ...(ctx.workflow
+      ? [
+          `export type ${name}Transition = ${ctx.workflow.transitions.map((transition) => `'${transition.name}'`).join(' | ')};\n\nexport interface ${name}TransitionItem {\n  id: string;\n  transition: ${name}Transition;\n}`,
+        ]
+      : []),
   ].join('\n\n');
 }
 
@@ -221,7 +226,7 @@ function describeDeclaration(ctx: ResourceContext): string {
   const pagination = ctx.pagination
     ? `  limits: number[];\n  defaultLimit: number;\n  paginated: true;`
     : '  paginated: false;';
-  const versioned = `${ctx.versioned ? `\n  versioned: { field: 'version'; header: 'If-Match' };` : ''}${ctx.history ? '\n  history: true;' : ''}`;
+  const versioned = `${ctx.versioned ? `\n  versioned: { field: 'version'; header: 'If-Match' };` : ''}${ctx.history ? '\n  history: true;' : ''}${ctx.workflow ? `\n  workflow: { field: '${ctx.workflow.field}'; initial: '${ctx.workflow.initial}'; states: string[]; transitions: Array<{ name: ${name}Transition; from: string[]; to: string; requires: string[] }> };` : ''}`;
 
   return `export interface ${name}Describe {
   version: ${ctx.version};
@@ -287,6 +292,11 @@ function clientFunction(ctx: ResourceContext): string {
   if (ctx.softDeletes) {
     members.push(`    restore: (ids: string[], patch?: ${name}Patch, options: BatchOptions = {}) =>
       request<Envelope<Array<IdentifiedOutcome<${name}>>, BatchMeta>>('POST', '${route}/restore', { ids, patch, ...options }),`);
+  }
+
+  if (ctx.workflow) {
+    members.push(`    transition: (data: ${name}TransitionItem[], options: BatchOptions = {}) =>
+      request<Envelope<Array<IdentifiedOutcome<${name}>>, BatchMeta>>('POST', '${route}/transition', { data, ...options }),`);
   }
 
   for (const include of ownRouteIncludes(ctx)) {

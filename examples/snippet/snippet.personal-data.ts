@@ -17,6 +17,13 @@ export class SnippetPersonalData implements OnModuleInit {
           translatable: false,
           personal: false,
         },
+        {
+          name: 'summary',
+          type: 'string',
+          optional: true,
+          translatable: false,
+          personal: false,
+        },
       ],
     });
   }

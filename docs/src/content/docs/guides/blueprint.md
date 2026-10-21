@@ -106,6 +106,10 @@ Off by default. `sharing: true` lets the owner grant a user or a team read or wr
 
 Off by default. `history: true` stores a snapshot of the record after every write and adds three routes to read, diff and restore them. Hidden and encrypted fields are never stored. See [Row history](../guides/row-history/).
 
+## Workflow
+
+Off unless a `workflow` block is declared. It names a state machine for the resource: an `initial` state and the `transitions` between states, each with a `permission` preset (default `own`) and optional `requires` guards. The resource gains a state column, which no client can write, and `POST /<resource>/transition` is the only way it moves. See [Workflow](../guides/workflow/).
+
 ## Permissions
 
 One preset per action, each resolved through the same capabilities engine described in the capabilities guide.

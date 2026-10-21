@@ -77,7 +77,10 @@ describe('Snippet resource', () => {
         rules: { create: { required?: string[] } };
       };
     };
-    expect(body.data.fields.map((field) => field.name)).toEqual(['title']);
+    expect(body.data.fields.map((field) => field.name)).toEqual([
+      'title',
+      'summary',
+    ]);
     expect(body.data.paginated).toBe(true);
     expect(body.data.softDeletes).toBe(true);
     expect(body.data).toMatchObject({
@@ -348,6 +351,9 @@ describe('Snippet resource', () => {
           'delete',
           'share',
           'restore',
+          'publish',
+          'archive',
+          'reopen',
           'history',
           'revert',
         ],
@@ -362,8 +368,11 @@ describe('Snippet resource', () => {
     expect(body.data.length).toBeGreaterThan(0);
     expect(body.data[0]?.capabilities.update?.allowed).toBe(true);
     expect(Object.keys(body.data[0]?.capabilities ?? {}).sort()).toEqual([
+      'archive',
       'delete',
       'history',
+      'publish',
+      'reopen',
       'restore',
       'revert',
       'share',
@@ -1258,6 +1267,223 @@ describe('Snippet resource', () => {
       .send({ search: { q: 'anything', engine: 'nonexistent' } })
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(400);
+  });
+  describe('workflow', () => {
+    it('starts in the initial state and publishes the machine in describe', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/snippets/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ title: 'title-value' }] })
+        .expect(201);
+
+      const recordId = (
+        created.body as {
+          data: { status: string; data: { id: string; status: string } }[];
+        }
+      ).data[0]!.data.id;
+
+      expect(created.body).toMatchObject({
+        data: [{ data: { status: 'draft' } }],
+      });
+
+      const described = await request(app.getHttpServer())
+        .get('/snippets/describe')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      expect(
+        (
+          described.body as {
+            data: { workflow: { transitions: { name: string }[] } };
+          }
+        ).data.workflow.transitions.map((item) => item.name),
+      ).toEqual(['publish', 'archive', 'reopen']);
+      expect(recordId).toBeTruthy();
+    });
+
+    it('ignores a client that writes the state column directly', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/snippets/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ title: 'title-value' }] })
+        .expect(201);
+
+      const recordId = (
+        created.body as {
+          data: { status: string; data: { id: string; status: string } }[];
+        }
+      ).data[0]!.data.id;
+
+      const response = await request(app.getHttpServer())
+        .post('/snippets/update')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ id: recordId, version: 1, status: 'archived' }] })
+        .expect(201);
+
+      expect(
+        (response.body as { data: { data: Record<string, unknown> }[] })
+          .data[0]!.data.status,
+      ).toBe('draft');
+    });
+
+    it('refuses a transition nobody declared', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/snippets/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ title: 'title-value' }] })
+        .expect(201);
+
+      const recordId = (
+        created.body as {
+          data: { status: string; data: { id: string; status: string } }[];
+        }
+      ).data[0]!.data.id;
+
+      await request(app.getHttpServer())
+        .post('/snippets/transition')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ id: recordId, transition: 'not-a-transition' }] })
+        .expect(400);
+    });
+
+    it('moves along a declared edge and stores the new state', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/snippets/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ title: 'title-value', summary: 'summary-value' }] })
+        .expect(201);
+
+      const recordId = (
+        created.body as {
+          data: { status: string; data: { id: string; status: string } }[];
+        }
+      ).data[0]!.data.id;
+
+      const response = await request(app.getHttpServer())
+        .post('/snippets/transition')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ id: recordId, transition: 'publish' }] })
+        .expect(201);
+
+      expect(
+        (
+          response.body as {
+            data: {
+              status: string;
+              data?: Record<string, unknown>;
+              error?: { status: number; key: string };
+            }[];
+          }
+        ).data[0]!,
+      ).toMatchObject({ status: 'ok', data: { status: 'published' } });
+    });
+
+    it('refuses the transition to someone the capability does not cover', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/snippets/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ title: 'title-value', summary: 'summary-value' }] })
+        .expect(201);
+
+      const recordId = (
+        created.body as {
+          data: { status: string; data: { id: string; status: string } }[];
+        }
+      ).data[0]!.data.id;
+
+      const response = await request(app.getHttpServer())
+        .post('/snippets/transition')
+        .set('Authorization', `Bearer ${strangerToken}`)
+        .send({ data: [{ id: recordId, transition: 'publish' }] })
+        .expect(201);
+
+      expect(
+        (
+          response.body as {
+            data: {
+              status: string;
+              data?: Record<string, unknown>;
+              error?: { status: number; key: string };
+            }[];
+          }
+        ).data[0]!,
+      ).toMatchObject({ status: 'error', error: { status: 403 } });
+    });
+
+    it('refuses an illegal transition with a typed error', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/snippets/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ title: 'title-value', summary: 'summary-value' }] })
+        .expect(201);
+
+      const recordId = (
+        created.body as {
+          data: { status: string; data: { id: string; status: string } }[];
+        }
+      ).data[0]!.data.id;
+
+      await request(app.getHttpServer())
+        .post('/snippets/transition')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ id: recordId, transition: 'publish' }] })
+        .expect(201);
+      const response = await request(app.getHttpServer())
+        .post('/snippets/transition')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ id: recordId, transition: 'publish' }] })
+        .expect(201);
+
+      expect(
+        (
+          response.body as {
+            data: {
+              status: string;
+              data?: Record<string, unknown>;
+              error?: { status: number; key: string };
+            }[];
+          }
+        ).data[0]!,
+      ).toMatchObject({
+        status: 'error',
+        error: { status: 409, key: 'snippet.illegalTransition' },
+      });
+    });
+
+    it('refuses a transition whose guard is not met', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/snippets/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ title: 'title-value' }] })
+        .expect(201);
+
+      const recordId = (
+        created.body as {
+          data: { status: string; data: { id: string; status: string } }[];
+        }
+      ).data[0]!.data.id;
+
+      const response = await request(app.getHttpServer())
+        .post('/snippets/transition')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ id: recordId, transition: 'publish' }] })
+        .expect(201);
+
+      expect(
+        (
+          response.body as {
+            data: {
+              status: string;
+              data?: Record<string, unknown>;
+              error?: { status: number; key: string };
+            }[];
+          }
+        ).data[0]!,
+      ).toMatchObject({
+        status: 'error',
+        error: { status: 422, key: 'snippet.transitionGuard' },
+      });
+    });
   });
 
   describe('privacy requests', () => {
