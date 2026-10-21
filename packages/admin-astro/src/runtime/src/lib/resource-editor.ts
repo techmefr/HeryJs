@@ -29,7 +29,7 @@ export interface EditorContext {
 
 const NOTHING_CHANGED = 'Nothing changed.';
 
-function dialogOf(title: string): {
+export function dialogOf(title: string): {
   dialog: HTMLDialogElement;
   body: HTMLElement;
   close: () => void;
@@ -58,7 +58,7 @@ function dialogOf(title: string): {
   return { dialog, body, close };
 }
 
-function present(root: HTMLElement, dialog: HTMLDialogElement): void {
+export function present(root: HTMLElement, dialog: HTMLDialogElement): void {
   root.querySelector('dialog')?.remove();
   root.appendChild(dialog);
 
@@ -69,7 +69,7 @@ function present(root: HTMLElement, dialog: HTMLDialogElement): void {
   }
 }
 
-function failureOfEntry(entry: BatchEntry | undefined): string[] {
+export function failureOfEntry(entry: BatchEntry | undefined): string[] {
   if (!entry) {
     return ['The API gave no answer for this record.'];
   }

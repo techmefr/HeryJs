@@ -100,6 +100,12 @@ With `softDeletes: false`, there is no `deletedAt` column, no restore route, no 
 
 Off by default. `versioned: true` adds an integer `version` column that every update, delete and restore increments, exposes it on the record, and makes the update route refuse an entry that does not say which version it read, or that read a stale one (`409`, or `412` through `If-Match`). `version` is reserved on a versioned resource and the key is refused on a `routed: false` one. See [Optimistic concurrency](../guides/optimistic-concurrency/).
 
+Off by default. `sharing: true` lets the owner grant a user or a team read or write access to one record, on top of the permission presets: it adds the `shares` routes and a `share` capability, and folds the shares into the search scope without a query per row. It is refused on a `routed: false` resource and on one with a vector field. See [Capabilities](../guides/capabilities/#sharing-one-record).
+
+### History
+
+Off by default. `history: true` stores a snapshot of the record after every write and adds three routes to read, diff and restore them. Hidden and encrypted fields are never stored. See [Row history](../guides/row-history/).
+
 ## Permissions
 
 One preset per action, each resolved through the same capabilities engine described in the capabilities guide.
@@ -262,3 +268,7 @@ Each entry generates an `attach`/`detach`/`sync` block on the update route, gate
 ## Why YAML, not decorators
 
 The blueprint is consumed once, at generation time — never read by the running application. Decorators like `@Capability` exist for behavior that genuinely needs to run per request; a static contract like pagination limits doesn't need that, and giving it decorator-based runtime metadata would just be indirection for something a YAML file already expresses clearly and diffs cleanly in review.
+
+## Erasure
+
+`erasure: delete | anonymise` opts a routed resource into privacy requests, and `personal: true` marks the fields an anonymising erasure rewrites. See [GDPR export and erasure](../gdpr/).

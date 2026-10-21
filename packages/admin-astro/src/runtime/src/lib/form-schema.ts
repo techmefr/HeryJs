@@ -18,6 +18,8 @@ export interface FormField {
   required: boolean;
   integer: boolean;
   readonly: boolean;
+  // Rendered as a password input: a value the operator types and nobody reads.
+  secret?: boolean;
   help?: string;
   placeholder?: string;
   options?: string[];

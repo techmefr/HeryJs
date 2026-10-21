@@ -7,8 +7,10 @@ describe('FeatureFlagsService', () => {
     const list = jest.fn().mockResolvedValue([]);
     const listAll = jest.fn().mockResolvedValue({ records: [], total: 0 });
     const set = jest.fn().mockResolvedValue({});
+    const evaluate = jest.fn().mockResolvedValue({});
+    const remove = jest.fn().mockResolvedValue(true);
     const registry = {
-      active: { isEnabled, list, listAll, set },
+      active: { isEnabled, evaluate, list, listAll, set, remove },
     } as unknown as FeatureFlagsDriverRegistry;
     const service = new FeatureFlagsService(registry);
 
@@ -16,10 +18,14 @@ describe('FeatureFlagsService', () => {
     await service.list('tenant-1');
     await service.listAll({ skip: 0, take: 10 } as never);
     await service.set('beta', true, 'tenant-1');
+    await service.evaluate('beta', { userId: 'u1' });
+    await service.remove('beta', 'tenant-1');
 
-    expect(isEnabled).toHaveBeenCalledWith('beta', 'tenant-1');
+    expect(isEnabled).toHaveBeenCalledWith('beta', { tenantId: 'tenant-1' });
+    expect(evaluate).toHaveBeenCalledWith('beta', { userId: 'u1' });
+    expect(remove).toHaveBeenCalledWith('beta', 'tenant-1');
     expect(list).toHaveBeenCalledWith('tenant-1');
     expect(listAll).toHaveBeenCalledWith({ skip: 0, take: 10 });
-    expect(set).toHaveBeenCalledWith('beta', true, 'tenant-1');
+    expect(set).toHaveBeenCalledWith('beta', { enabled: true }, 'tenant-1');
   });
 });
