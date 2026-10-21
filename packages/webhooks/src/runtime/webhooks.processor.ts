@@ -12,6 +12,7 @@ import type { NotificationProvider } from '#kernel/notifications/notification.ty
 import { SignalService } from '#kernel/signal/signal.service';
 import { runInTenant } from '#kernel/tenancy/run-in-tenant';
 import { exposedActionOf } from './exposed-webhook-source';
+import { webhookHandlersFor } from '#kernel/webhooks/webhook-handler';
 
 interface WebhookProcessJobData {
   eventId: string;
@@ -60,16 +61,25 @@ export class WebhooksProcessor extends WorkerHost {
 
     // A notification is a tenant-scoped row and this runs on a worker, with no
     // request behind it: the tenant comes from the event being processed.
-    await runInTenant(event.tenantId, () =>
-      Promise.all(
+    await runInTenant(event.tenantId, async () => {
+      for (const handler of webhookHandlersFor(event.source)) {
+        await handler.handle({
+          id: event.id,
+          tenantId: event.tenantId,
+          source: event.source,
+          payload: event.payload,
+        });
+      }
+
+      await Promise.all(
         admins.map((admin) =>
           this.notifications.send(admin.id, 'webhook.received', {
             eventId: event.id,
             source: event.source,
           }),
         ),
-      ),
-    );
+      );
+    });
 
     await writeAuditLog(authPrismaClient, {
       tenantId: event.tenantId,

@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import type { Command } from 'commander';
 import pc from 'picocolors';
 import { exportableFile } from '../lib/makeable-templates';
-import { kebabCase, kebabToPascalCase } from '../lib/naming';
+import { camelCase, kebabCase, kebabToPascalCase } from '../lib/naming';
 import { printNextSteps } from '../lib/next-steps';
 
 export interface MakeableFile {
@@ -20,7 +20,11 @@ export function buildExportable(name: string, domain?: string): MakeableFile {
   return {
     domain: domain ? kebabCase(domain) : kebabName.replace(/-?export$/, ''),
     fileName: `${kebabName}.ts`,
-    source: exportableFile({ pascalName, kebabName }),
+    source: exportableFile({
+      pascalName,
+      kebabName,
+      camelName: camelCase(pascalName),
+    }),
     pascalName,
   };
 }
