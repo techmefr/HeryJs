@@ -5,10 +5,15 @@ const LAST_CONTROL = 0x1f;
 const DELETE = 0x7f;
 
 function hasUnsafeCharacter(value: string): boolean {
-  return [...value].some((character) => {
-    const code = character.charCodeAt(0);
-    return code === BACKSLASH || code <= LAST_CONTROL || code === DELETE;
-  });
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+
+    if (code === BACKSLASH || code <= LAST_CONTROL || code === DELETE) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 export function sanitizeReturnTo(value: string | undefined): string | null {
