@@ -32,13 +32,39 @@ This is the one casing convention in the project, and it is deliberately the onl
 
 ## Fields
 
-Each field has a `type` (`string`, `int`, `boolean`, `datetime`, `file`, `encrypted`, `vector`), whether it's `optional`, and whether it's `hidden` — a hidden field is stripped from every API response by the generated `<name>.view.ts`, no matter which endpoint returns the record.
+Each field has a `type` (`string`, `int`, `boolean`, `datetime`, `file`, `encrypted`, `vector`, `richtext`), whether it's `optional`, and whether it's `hidden` — a hidden field is stripped from every API response by the generated `<name>.view.ts`, no matter which endpoint returns the record.
 
 `file` is a plain string column underneath — the storage key `POST /storage/upload` already returned, not the bytes themselves. See [Storage](../guides/storage/) for the upload flow it pairs with.
 
 `encrypted` is a text column sealed with AES-256-GCM, hidden from responses unless the field says `reveal: true`, and refused in `filters` and `sorts`. See [Secrets](../guides/secrets/).
 
 `vector` is not data a client sends: it is the embedding of another string field, written by a queued job and read only by `search: { mode: 'similar' }`. It takes a `dimensions` and a `source`, and is never returned or writable. See [Vector search](../guides/vector-search/).
+
+### Rich text fields
+
+`richtext` stores HTML a person wrote, sanitised by an allow-list:
+
+```yaml
+fields:
+  - name: body
+    type: richtext
+    optional: true
+    maxLength: 20000 # characters of HTML a client may send, 20000 by default
+    allow: # optional, each key replaces its default
+      tags: [p, strong, em, ul, ol, li, a]
+      attributes:
+        a: [href, title]
+      schemes: [https, mailto]
+```
+
+- **Sanitised on write, never trusted on read.** The service sanitises every create, update and restore, and the view sanitises again on every read, so a row that reached the table another way (an import, a script, a column that was text before, an allow-list narrowed since) still comes out clean. A tag outside the list is dropped but its text stays, except script, style and the like, whose content goes with them. A link whose scheme is not listed loses its `href`, and every link gets `rel="noopener noreferrer nofollow"`.
+- **The allow-list.** Left out, it keeps `p br hr strong b em i u s code pre blockquote ul ol li h1 h2 h3 h4 a`, `href` and `title` on links, and the schemes `http https mailto`. A key you set replaces its default. Some things can never be allowed, and `hery generate` refuses a blueprint that names one: the tags `script style iframe frame object embed applet form input button textarea select svg math link meta base template noscript`, any `on*` attribute, `style` and `srcdoc`, and the schemes `javascript data vbscript file`. The sanitiser enforces the same list even for a spec edited by hand.
+- **Size limit.** `maxLength` is checked on the HTML as sent, before sanitising, and refused with a 400. The sanitised value is what is stored.
+- **A column, not a search target.** The value is plain text in a `String` column. It cannot be listed in `filters` or `sorts`, cannot be `translatable`, and is not part of `search.q`.
+- **Contract.** OpenAPI and the typed client expose a `string` with `format: html` and the limit; `GET /describe` publishes `richtext: { maxLength, allow }` for the field with the allow-list resolved.
+- **Proven.** The generated suite sends eighteen XSS payloads (script tags, event handlers, `javascript:` and `data:` links in several spellings, SVG, math, iframes, forms, split tags) on create and on update and checks none survives in the response or on a later read, checks the formatting the list names is kept, that the limit is enforced, and that a row written past the service is cleaned on read.
+
+The admin shows the field as a textarea with a live preview of what the API will keep, drawn from the published allow-list, and a count against the limit. The preview is rebuilt from DOM nodes in an inert document, never from the markup, so it cannot run script in the admin; the API stays the authority.
 
 ### Reserved fields
 
@@ -73,6 +99,16 @@ With `softDeletes: false`, there is no `deletedAt` column, no restore route, no 
 ## Versioned resources
 
 Off by default. `versioned: true` adds an integer `version` column that every update, delete and restore increments, exposes it on the record, and makes the update route refuse an entry that does not say which version it read, or that read a stale one (`409`, or `412` through `If-Match`). `version` is reserved on a versioned resource and the key is refused on a `routed: false` one. See [Optimistic concurrency](../guides/optimistic-concurrency/).
+
+Off by default. `sharing: true` lets the owner grant a user or a team read or write access to one record, on top of the permission presets: it adds the `shares` routes and a `share` capability, and folds the shares into the search scope without a query per row. It is refused on a `routed: false` resource and on one with a vector field. See [Capabilities](../guides/capabilities/#sharing-one-record).
+
+### History
+
+Off by default. `history: true` stores a snapshot of the record after every write and adds three routes to read, diff and restore them. Hidden and encrypted fields are never stored. See [Row history](../guides/row-history/).
+
+## Workflow
+
+Off unless a `workflow` block is declared. It names a state machine for the resource: an `initial` state and the `transitions` between states, each with a `permission` preset (default `own`) and optional `requires` guards. The resource gains a state column, which no client can write, and `POST /<resource>/transition` is the only way it moves. See [Workflow](../guides/workflow/).
 
 ## Permissions
 
@@ -236,3 +272,7 @@ Each entry generates an `attach`/`detach`/`sync` block on the update route, gate
 ## Why YAML, not decorators
 
 The blueprint is consumed once, at generation time — never read by the running application. Decorators like `@Capability` exist for behavior that genuinely needs to run per request; a static contract like pagination limits doesn't need that, and giving it decorator-based runtime metadata would just be indirection for something a YAML file already expresses clearly and diffs cleanly in review.
+
+## Erasure
+
+`erasure: delete | anonymise` opts a routed resource into privacy requests, and `personal: true` marks the fields an anonymising erasure rewrites. See [GDPR export and erasure](../gdpr/).

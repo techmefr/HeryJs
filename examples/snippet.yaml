@@ -1,9 +1,35 @@
 name: Snippet
 versioned: true
+history: true
+sharing: true
+
+# Nothing else points at a snippet, so erasing its author removes the rows.
+erasure: delete
 
 fields:
   - name: title
     type: string
+  - name: summary
+    type: string
+    optional: true
+
+# The lifecycle of a snippet. The status column is the machine's, not yours: it
+# starts at "initial", clients cannot write it, and the only way it moves is
+# POST /snippets/transition naming one of these. "requires" is a guard: the
+# fields that must hold a value before the transition may run.
+workflow:
+  initial: draft
+  transitions:
+    - name: publish
+      from: [draft]
+      to: published
+      requires: [summary]
+    - name: archive
+      from: [draft, published]
+      to: archived
+    - name: reopen
+      from: [archived]
+      to: draft
 
 permissions:
   view: own

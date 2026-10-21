@@ -37,9 +37,16 @@ const { title, bare = false } = Astro.props;
               <a class="item" href="/" id="overview-link" />
               <a class="item" href="/pipeline" id="pipeline-link" />
               <a class="item" href="/devtools" id="devtools-link" />
+              <a class="item" href="/http-circuits" id="circuits-link" />
               <a class="item" href="/prune" id="prune-link" />
+              <a class="item" href="/storage" id="storage-link" hidden />
+              <a class="item" href="/audit" id="audit-link" />
+              <a class="item" href="/job-flows" id="job-flows-link" />
+              <a class="item" href="/flags" id="flags-link" />
+              <a class="item" href="/privacy" id="privacy-link" />
               <a class="item" href="/quotas" id="quotas-link" />
               <a class="item" href="/backups" id="backups-link" />
+              <a class="item" href="/webhooks" id="webhooks-link" />
             </nav>
 
             <nav class="group scrolls" id="sections" aria-label="Sections" />
@@ -113,9 +120,32 @@ const { title, bare = false } = Astro.props;
         ICONS.devtools,
         'Dev dashboard',
       );
+      label(
+        document.getElementById('circuits-link'),
+        ICONS.circuits,
+        'HTTP circuits',
+      );
       label(document.getElementById('prune-link'), ICONS.prune, 'Prune');
+      label(document.getElementById('storage-link'), ICONS.storage, 'Storage');
+      label(document.getElementById('audit-link'), ICONS.audit, 'Audit');
+      label(
+        document.getElementById('job-flows-link'),
+        ICONS.jobFlows,
+        'Job flows',
+      );
+      label(
+        document.getElementById('flags-link'),
+        ICONS.flags,
+        'Feature flags',
+      );
+      label(document.getElementById('privacy-link'), ICONS.privacy, 'Privacy');
       label(document.getElementById('quotas-link'), ICONS.quotas, 'Quotas');
       label(document.getElementById('backups-link'), ICONS.backups, 'Backups');
+      label(
+        document.getElementById('webhooks-link'),
+        ICONS.webhooks,
+        'Webhooks',
+      );
       label(document.getElementById('sign-out'), ICONS.signOut, 'Sign out');
 
       const apiUrl = document.getElementById('api-url');
@@ -136,6 +166,18 @@ const { title, bare = false } = Astro.props;
         const query = new URLSearchParams(window.location.search);
         const current = query.get('path') ?? query.get('base');
         const bases = resourcesOf(data).map((resource) => resource.base);
+
+        // Storage is an optional module, so its page only gets a link when the
+        // running app actually exposes the route it reads.
+        const wired = (path: string) =>
+          data.some((controller) =>
+            controller.routes.some(
+              (route) => controller.basePath + route.path === path,
+            ),
+          );
+        document.getElementById('storage-link')!.hidden = !wired(
+          '/storage-admin/files',
+        );
 
         for (const { group, sections } of groupedSections(sectionsOf(data))) {
           const heading = document.createElement('h2');

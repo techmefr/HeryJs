@@ -1,6 +1,6 @@
 # @heryjs/webhooks
 
-Receive inbound webhooks with HMAC-SHA256 signature verification (constant-time, timestamp-tolerant against replay) and run each accepted payload through Event, Job, Notification, Audit and Signal.
+Receive inbound webhooks with HMAC-SHA256 signature verification (constant-time, timestamp-tolerant against replay) and run each accepted payload through Event, Job, Notification, Audit and Signal, and deliver signed outbound webhooks to your tenants' own URLs with retry, a dead-letter state and secret rotation.
 
 An [official HeryJs module](https://techmefr.github.io/HeryJs/guides/modules/). It is
 already installable from any HeryJs project, so there is nothing to add to your

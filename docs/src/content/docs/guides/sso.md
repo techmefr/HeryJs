@@ -124,5 +124,5 @@ Two rules hold whatever the policy says. An account in **another tenant** is nev
 
 ## Not covered
 
-- **SCIM.** Users are provisioned at sign-in; there is no directory sync and no deprovisioning when someone leaves the IdP. Disabling a connection stops new sign-ins, it does not end existing sessions.
+- **Directory sync.** Users are provisioned at sign-in. Deprovisioning when someone leaves the IdP is the [`scim`](../scim/) module. Disabling a connection stops new sign-ins, it does not end existing sessions.
 - **Secret key rotation.** There is one `SSO_SECRET_KEY`; rotating it means re-saving each connection's secret.

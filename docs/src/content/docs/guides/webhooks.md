@@ -1,6 +1,6 @@
 ---
 title: Webhooks
-description: Receive inbound webhooks with HMAC-SHA256 signature verification, and run every accepted payload through the same Event, Job, Notification, Audit and Signal chain.
+description: Receive inbound webhooks with HMAC-SHA256 signature verification, and send signed outbound webhooks to your tenants' URLs with retries, a dead letter and secret rotation.
 ---
 
 ```bash
@@ -85,3 +85,72 @@ Next steps after that are the usual ones: import `WebhooksModule` into `src/app.
 ## Running an exposed action
 
 An endpoint minted with `source: "expose:<action>"` runs that [exposed action](../exposing-actions/#triggers-beyond-the-route) instead of notifying admins, with the payload as its params. See that guide for what it checks.
+
+## Outbound webhooks: sending events to your customers
+
+The same module delivers in the other direction. A tenant admin subscribes a URL to named events, and every matching event is POSTed to it, signed, with retries and a dead letter you can see and replay.
+
+```ts
+POST   /webhook-subscriptions            // { url, events: ['webhook.invoice.paid', 'model.*'], description? }
+GET    /webhook-subscriptions
+PATCH  /webhook-subscriptions/:id        // url, events, description, active
+DELETE /webhook-subscriptions/:id
+POST   /webhook-subscriptions/:id/rotate-secret   // { graceSeconds? }
+GET    /webhook-deliveries               // ?status=pending|delivered|dead&subscriptionId=&page=&limit=
+GET    /webhook-deliveries/:id
+POST   /webhook-deliveries/:id/redeliver          // a dead delivery, with a fresh attempt budget
+```
+
+Every route is admin-only (`canManageWebhooks`) and tenant-scoped. The secret (`whsec_...`) is returned once, when it is created or rotated, and is stored sealed with the [secrets keyring](../secrets/), so set `SECRETS_KEYS` in production.
+
+### Why it lives in this module, on the outbox and the jobs queue
+
+It is a module rather than the kernel because it is optional, it is the only thing here that calls out to a tenant-chosen URL, and the kernel already has the seam: an [outbox](../outbox/) handler. `OutboundWebhookFanout` registers on `webhook.*` and `model.*`, and for each committed message writes one `WebhookDelivery` row per matching subscription and queues one job on its own BullMQ queue (`heryjs-webhook-deliveries`). The outbox gives the transactional guarantee, so an event announced in a transaction that rolls back is never sent. The queue gives each subscription its own retries, so one customer's dead endpoint never delays the others or makes the relay retry a message that already reached everyone else.
+
+### What can be subscribed to
+
+Only messages staged for customers: any name starting `webhook.`, and the `model.created|updated|deleted` messages every tenant-scoped write already stages (ids and field names, never row values). An `event:` message carries a whole event object that was never written with a third party in mind, so it cannot be subscribed to. Announce your own:
+
+```ts
+await prisma.$transaction(async (tx) => {
+  const invoice = await tx.invoice.update({ where: { id }, data: { paidAt: new Date() } });
+  await this.outbox.stage(tx, 'webhook.invoice.paid', { invoiceId: invoice.id });
+});
+```
+
+Patterns follow the outbox grammar: an exact name, a trailing `*`, or `*` for every deliverable event.
+
+### The request your customer receives
+
+```
+POST <url>
+x-webhook-id: <delivery id, stable across retries: deduplicate on it>
+x-webhook-event: webhook.invoice.paid
+x-webhook-attempt: 1
+x-webhook-timestamp: <ms since epoch>
+x-webhook-signature: v1=<hex>[,v1=<hex>]
+
+{ "id": "<outbox message id>", "event": "webhook.invoice.paid", "createdAt": "...", "data": { ... } }
+```
+
+The signature is the one described above, `HMAC-SHA256(secret, timestamp + '.' + rawBody)`, as one `v1=` entry per currently valid secret. A 2xx answer is a delivery; anything else, a timeout or a refused connection is a failed attempt. Redirects are not followed. Delivery is at-least-once.
+
+### Retries and the dead letter
+
+Ten attempts, the delay doubling from 10 seconds (the last retry lands about 85 minutes after the first). After the last one the delivery becomes `dead` and stays in the log with its last status code and error. `POST /webhook-deliveries/:id/redeliver` puts a dead delivery back with a fresh budget. Finished deliveries are pruned after `WEBHOOK_DELIVERY_RETENTION_DAYS` (default 30).
+
+### Rotating the secret without dropping events
+
+`rotate-secret` mints a new secret and keeps the old one for `graceSeconds` (default `WEBHOOK_SECRET_ROTATION_GRACE_SECONDS`, 24 hours). During that window every delivery carries two signatures, so a receiver can switch over whenever it likes and a delivery that was queued before the rotation still verifies. Secrets are read when a delivery is sent, not when it is queued. Rotating twice inside one window drops the oldest secret.
+
+### The URL is checked, because the server makes the request
+
+A subscription URL must be `https`, carry no credentials and resolve only to public addresses. It is checked when written and again before every attempt. DNS can still change between the check and the connection (rebinding), which is why redirects are refused. `WEBHOOK_ALLOW_PRIVATE_URLS=true` lifts the check for local development and is refused in production. The check is a copy of the SSO module's, because a module cannot import another module.
+
+### In the admin panel
+
+The admin lists `/webhook-subscriptions` and `/webhook-deliveries` on its own, since they are argument-free GET routes. The **Webhooks** page adds what introspection cannot: create, edit, enable or disable and delete a subscription, rotate its secret (shown once), browse the delivery log with status and attempts, and a Dead letters tab with a Replay button per delivery. Everything it calls is gated by the same capability as the API.
+
+### Installing it on a project that already has the module
+
+Add the two models (`WebhookSubscription`, `WebhookDelivery`) and a migration, copy the runtime files, and add `WEBHOOK_DELIVERY_QUEUE` to the kernel's jobs constants, module and service. Reinstalling adds the models without touching the inbound ones.

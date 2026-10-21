@@ -60,6 +60,12 @@ function tenantTables(): string[] {
 }
 
 export async function purgeTenant(tenantId: string): Promise<void> {
+  // Receipts are tenant-free and hold a key to their message, so the messages
+  // cannot go while one still names them.
+  await authPrismaClient.$executeRawUnsafe(
+    'DELETE FROM "OutboxReceipt" WHERE "messageId" IN (SELECT "id" FROM "OutboxMessage" WHERE "tenantId" = $1)',
+    tenantId,
+  );
   let pending = tenantTables();
 
   while (pending.length > 0) {

@@ -4,6 +4,7 @@ export interface SnippetFactoryOverrides {
   ownerId: string;
   tenantId?: string;
   title?: string;
+  summary?: string;
   trashed?: boolean;
 }
 
@@ -14,6 +15,7 @@ export interface SnippetFactoryOptions {
 function buildSnippet(overrides: SnippetFactoryOverrides) {
   return {
     title: overrides.title ?? faker.lorem.words(3),
+    summary: overrides.summary ?? faker.lorem.words(3),
     ownerId: overrides.ownerId,
     ...(overrides.tenantId ? { tenantId: overrides.tenantId } : {}),
     deletedAt: overrides.trashed ? new Date() : null,

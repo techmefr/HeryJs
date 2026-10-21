@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
-import { afterEveryMigration } from './rls';
+import { afterEveryMigration, rlsMigrationSuffix } from './rls';
 
 function migrationsWith(...names: string[]): string {
   const dir = path.join(
@@ -59,5 +59,27 @@ describe('the timestamp a policy migration takes', () => {
     );
 
     expect(afterEveryMigration(dir, '20260908164840')).toBe('20260908164840');
+  });
+});
+
+/**
+ * A fresh project locks every kernel table down in its first migrate, and the
+ * joined names made a directory name past the filesystem limit.
+ */
+describe('the name a policy migration takes', () => {
+  const model = (name: string) => ({ name, optional: false });
+
+  it('names the tables while they fit', () => {
+    expect(rlsMigrationSuffix([model('Team'), model('TeamMember')])).toBe(
+      'enable_rls_team_teammember',
+    );
+  });
+
+  it('counts them once the names would not fit a directory', () => {
+    const models = Array.from({ length: 30 }, (_, index) =>
+      model(`NotificationPreference${index}`),
+    );
+
+    expect(rlsMigrationSuffix(models)).toBe('enable_rls_30_tables');
   });
 });

@@ -39,6 +39,8 @@ import type {
   SearchRequestBody,
 } from '#technical/http/list-query';
 import { describeLocales } from '#technical/i18n/translatable';
+import { describeRichtext } from '#technical/richtext/richtext';
+import { RICHTEXT_FIELDS } from './blog-post.dto';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import {
   createBlogPostRequestSchema,
@@ -93,6 +95,7 @@ const BLOG_POST_CONTRACT = {
     'title',
     'summary',
     'summaryTranslations',
+    'body',
     'createdAt',
     'updatedAt',
     'deletedAt',
@@ -151,6 +154,12 @@ const BLOG_POST_DESCRIBE = {
   fields: [
     { name: 'title', type: 'string', optional: false },
     { name: 'summary', type: 'string', optional: true, translatable: true },
+    {
+      name: 'body',
+      type: 'richtext',
+      optional: true,
+      richtext: describeRichtext(RICHTEXT_FIELDS, 'body'),
+    },
     { name: 'privateNote', type: 'encrypted', optional: true },
   ],
   locales: describeLocales(),

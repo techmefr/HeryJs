@@ -3,6 +3,7 @@ import { ApiError } from './api';
 import {
   MAX_BATCH_ENTRIES,
   capabilityKeysOf,
+  transitionsFrom,
   chunked,
   failureMessages,
   isAllowed,
@@ -55,6 +56,21 @@ describe('resource discovery', () => {
   });
 });
 
+const workflowDescription = {
+  field: 'status',
+  initial: 'draft',
+  states: ['draft', 'published', 'archived'],
+  transitions: [
+    { name: 'publish', from: ['draft'], to: 'published', requires: [] },
+    {
+      name: 'archive',
+      from: ['draft', 'published'],
+      to: 'archived',
+      requires: [],
+    },
+  ],
+};
+
 describe('the capabilities to ask for', () => {
   it('asks for update and delete, restore under a bin, and a pair per relation', () => {
     expect(capabilityKeysOf(mockDescription)).toEqual([
@@ -74,6 +90,32 @@ describe('the capabilities to ask for', () => {
         relations: [],
       }),
     ).toEqual(['update', 'delete']);
+  });
+
+  it('asks for one capability per transition the workflow declares', () => {
+    expect(
+      capabilityKeysOf({
+        ...mockDescription,
+        softDeletes: false,
+        relations: [],
+        workflow: workflowDescription,
+      }),
+    ).toEqual(['update', 'delete', 'publish', 'archive']);
+  });
+
+  it('offers only the transitions that leave from the state the row is in', () => {
+    const description = { workflow: workflowDescription };
+
+    expect(
+      transitionsFrom(description, { id: 'a', status: 'draft' }).map(
+        (transition) => transition.name,
+      ),
+    ).toEqual(['publish', 'archive']);
+    expect(
+      transitionsFrom(description, { id: 'a', status: 'archived' }),
+    ).toEqual([]);
+    expect(transitionsFrom(description, { id: 'a' })).toEqual([]);
+    expect(transitionsFrom({}, { id: 'a', status: 'draft' })).toEqual([]);
   });
 
   it('treats a missing decision as a refusal', () => {

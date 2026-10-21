@@ -16,6 +16,7 @@ import {
   DEFAULT_QUEUE,
   EVENTS_QUEUE,
   EXPORT_QUEUE,
+  FLOW_QUEUE,
   IMPORT_QUEUE,
   WEBHOOK_QUEUE,
 } from '#technical/jobs/jobs.constants';
@@ -30,6 +31,7 @@ const WATCHED_QUEUES = [
   IMPORT_QUEUE,
   EVENTS_QUEUE,
   BILLING_QUEUE,
+  FLOW_QUEUE,
 ];
 
 type JobOutcome = 'completed' | 'failed';
