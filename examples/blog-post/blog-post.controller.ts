@@ -23,6 +23,8 @@ import { RecordNotFoundException } from '#technical/errors/record-not-found.exce
 import { AlreadyRestoredException } from '#technical/errors/already-restored.exception';
 import { resolveDomainError } from '#technical/errors/domain-exception.filter';
 import type { ResolvedError } from '#technical/errors/domain-exception.filter';
+import { executeBatch } from '#technical/http/batch-execution';
+import type { BatchEntry } from '#technical/http/batch-execution';
 import { ok } from '#technical/http/envelope';
 import { CacheableRead } from '#technical/http/etag.decorator';
 import {
@@ -74,6 +76,7 @@ import {
 } from './blog-post-record.loader';
 import type { BlogPostRecordLoader } from './blog-post-record.loader';
 import { toBlogPostView } from './blog-post.view';
+import type { BlogPostView } from './blog-post.view';
 
 // What the search route accepts, declared once. parseSearchRequest validates
 // against this object and GET /describe publishes it, so the endpoint cannot
@@ -185,6 +188,13 @@ export class BlogPostController {
     @Inject(BLOG_POST_RECORD_LOADER)
     private readonly loader: BlogPostRecordLoader,
   ) {}
+
+  private runBatch<T>(entries: BatchEntry<T>[], atomic: boolean) {
+    return executeBatch(entries, {
+      atomic,
+      runAtomically: (callback) => this.blogPosts.atomically(callback),
+    });
+  }
 
   // Reused by update/delete/restore: each id is loaded and checked on its
   // own, and a missing record or a denied one becomes that id's entry in the
@@ -393,26 +403,15 @@ export class BlogPostController {
     body: CreateBlogPostRequestBody,
   ) {
     const subject = subjectOf(req.user);
-    const results = [];
+    const entries = body.data.map((item, index): BatchEntry<BlogPostView> => ({
+      index,
+      run: async () =>
+        toBlogPostView(await this.blogPosts.create(subject, item)),
+    }));
 
-    for (const [index, item] of body.data.entries()) {
-      try {
-        const created = await this.blogPosts.create(subject, item);
-        results.push({
-          index,
-          status: 'ok' as const,
-          data: toBlogPostView(created),
-        });
-      } catch (error) {
-        results.push({
-          index,
-          status: 'error' as const,
-          error: resolveDomainError(error),
-        });
-      }
-    }
+    const { results, meta } = await this.runBatch(entries, body.atomic);
 
-    return ok(results);
+    return ok(results, meta);
   }
 
   @Post('update')
@@ -429,65 +428,51 @@ export class BlogPostController {
       (s, record) => canUpdateBlogPost(s, record as never),
     );
 
-    const results = [];
-
-    for (const [index, entry] of loaded.entries()) {
+    const entries = loaded.map((entry, index): BatchEntry<unknown> => {
       if (!entry.ok) {
-        results.push({
-          index,
-          id: entry.id,
-          status: 'error' as const,
-          error: entry.error,
-        });
-        continue;
+        return { index, id: entry.id, failure: entry.error };
       }
 
       const { id: _id, relations, ...data } = body.data[index]!;
 
-      try {
-        const updated = await this.blogPosts.update(entry.record, data);
-        const relationResults: Record<string, string[]> = {};
+      return {
+        index,
+        id: entry.id,
+        run: async () => {
+          const updated = await this.blogPosts.update(entry.record, data);
+          const relationResults: Record<string, string[]> = {};
 
-        if (relations?.tags) {
-          const { attach, detach, sync } = relations.tags;
+          if (relations?.tags) {
+            const { attach, detach, sync } = relations.tags;
 
-          if ((attach && attach.length > 0) || sync) {
-            const decision = canAttachTagsToBlogPost(subject, entry.record);
-            if (!decision.allowed) {
-              throw new CapabilityForbiddenException(decision);
+            if ((attach && attach.length > 0) || sync) {
+              const decision = canAttachTagsToBlogPost(subject, entry.record);
+              if (!decision.allowed) {
+                throw new CapabilityForbiddenException(decision);
+              }
             }
+
+            if ((detach && detach.length > 0) || sync) {
+              const decision = canDetachTagsFromBlogPost(subject, entry.record);
+              if (!decision.allowed) {
+                throw new CapabilityForbiddenException(decision);
+              }
+            }
+
+            relationResults.tags = await this.blogPosts.syncTags(
+              entry.record,
+              relations.tags,
+            );
           }
 
-          if ((detach && detach.length > 0) || sync) {
-            const decision = canDetachTagsFromBlogPost(subject, entry.record);
-            if (!decision.allowed) {
-              throw new CapabilityForbiddenException(decision);
-            }
-          }
+          return { ...toBlogPostView(updated), ...relationResults };
+        },
+      };
+    });
 
-          relationResults.tags = await this.blogPosts.syncTags(
-            entry.record,
-            relations.tags,
-          );
-        }
+    const { results, meta } = await this.runBatch(entries, body.atomic);
 
-        results.push({
-          index,
-          id: entry.id,
-          status: 'ok' as const,
-          data: { ...toBlogPostView(updated), ...relationResults },
-        });
-      } catch (error) {
-        results.push({
-          index,
-          id: entry.id,
-          status: 'error' as const,
-          error: resolveDomainError(error),
-        });
-      }
-    }
-
-    return ok(results);
+    return ok(results, meta);
   }
 
   @Post('delete')
@@ -510,48 +495,32 @@ export class BlogPostController {
       }
     }
 
-    const results = [];
-
-    for (const [index, entry] of loaded.entries()) {
-      if (!entry.ok) {
-        results.push({
-          index,
-          id: entry.id,
-          status: 'error' as const,
-          error: entry.error,
-        });
-        continue;
-      }
-
-      try {
-        if (body.mode === 'hard') {
-          await this.blogPosts.hardDelete(entry.record);
-          results.push({
-            index,
-            id: entry.id,
-            status: 'ok' as const,
-            data: null,
-          });
-        } else {
-          const removed = await this.blogPosts.softDelete(entry.record);
-          results.push({
-            index,
-            id: entry.id,
-            status: 'ok' as const,
-            data: toBlogPostView(removed),
-          });
+    const entries = loaded.map(
+      (entry, index): BatchEntry<BlogPostView | null> => {
+        if (!entry.ok) {
+          return { index, id: entry.id, failure: entry.error };
         }
-      } catch (error) {
-        results.push({
+
+        return {
           index,
           id: entry.id,
-          status: 'error' as const,
-          error: resolveDomainError(error),
-        });
-      }
-    }
+          run: async () => {
+            if (body.mode === 'hard') {
+              await this.blogPosts.hardDelete(entry.record);
+              return null;
+            }
 
-    return ok(results);
+            return toBlogPostView(
+              await this.blogPosts.softDelete(entry.record),
+            );
+          },
+        };
+      },
+    );
+
+    const { results, meta } = await this.runBatch(entries, body.atomic);
+
+    return ok(results, meta);
   }
 
   // A route rather than a service method alone: restore is the only way back
@@ -570,41 +539,28 @@ export class BlogPostController {
       canRestoreBlogPost(s, record as never),
     );
 
-    const results = [];
-
-    for (const [index, entry] of loaded.entries()) {
+    const entries = loaded.map((entry, index): BatchEntry<BlogPostView> => {
       if (!entry.ok) {
-        results.push({
-          index,
-          id: entry.id,
-          status: 'error' as const,
-          error: entry.error,
-        });
-        continue;
+        return { index, id: entry.id, failure: entry.error };
       }
 
-      try {
-        if (!entry.record.deletedAt) {
-          throw new AlreadyRestoredException('blog-post');
-        }
+      return {
+        index,
+        id: entry.id,
+        run: async () => {
+          if (!entry.record.deletedAt) {
+            throw new AlreadyRestoredException('blog-post');
+          }
 
-        const restored = await this.blogPosts.restore(entry.record, body.patch);
-        results.push({
-          index,
-          id: entry.id,
-          status: 'ok' as const,
-          data: toBlogPostView(restored),
-        });
-      } catch (error) {
-        results.push({
-          index,
-          id: entry.id,
-          status: 'error' as const,
-          error: resolveDomainError(error),
-        });
-      }
-    }
+          return toBlogPostView(
+            await this.blogPosts.restore(entry.record, body.patch),
+          );
+        },
+      };
+    });
 
-    return ok(results);
+    const { results, meta } = await this.runBatch(entries, body.atomic);
+
+    return ok(results, meta);
   }
 }

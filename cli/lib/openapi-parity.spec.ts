@@ -221,6 +221,9 @@ describe('what the generators claim against what the controller publishes', () =
     expect(dto.includes(`Restore${ctx.pascalName}RequestBody`)).toBe(
       ctx.softDeletes,
     );
+    expect(dto.match(/atomic: z\.boolean\(\)\.default\(false\)/g)).toHaveLength(
+      ctx.softDeletes ? 4 : 3,
+    );
     expect(dto.includes('relationMutationSchema')).toBe(
       ctx.relations.length > 0,
     );

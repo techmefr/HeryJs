@@ -57,6 +57,7 @@ export type UpdateSnippetInput = z.infer<typeof updateSnippetSchema>;
 // record, so the response shape never has to differ between one and many.
 export const createSnippetRequestSchema = z.object({
   data: z.array(createSnippetSchema).max(MAX_BATCH_ENTRIES),
+  atomic: z.boolean().default(false),
 });
 export type CreateSnippetRequestBody = z.infer<
   typeof createSnippetRequestSchema
@@ -73,6 +74,7 @@ export const updateSnippetRequestSchema = z.object({
         .superRefine(checkSnippet),
     )
     .max(MAX_BATCH_ENTRIES),
+  atomic: z.boolean().default(false),
 });
 export type UpdateSnippetRequestBody = z.infer<
   typeof updateSnippetRequestSchema
@@ -84,6 +86,7 @@ export type DeleteSnippetMode = (typeof DELETE_MODES)[number];
 export const deleteSnippetRequestSchema = z.object({
   ids: z.array(z.string()).max(MAX_BATCH_ENTRIES),
   mode: z.enum(DELETE_MODES).default('soft'),
+  atomic: z.boolean().default(false),
 });
 export type DeleteSnippetRequestBody = z.infer<
   typeof deleteSnippetRequestSchema
@@ -95,6 +98,7 @@ export const restoreSnippetRequestSchema = z.object({
   // it reuses the update schema's own field whitelist rather than inventing
   // a narrower one.
   patch: updateSnippetSchema.optional(),
+  atomic: z.boolean().default(false),
 });
 export type RestoreSnippetRequestBody = z.infer<
   typeof restoreSnippetRequestSchema
