@@ -158,6 +158,7 @@ describe('BlogPost change feed (real database, real outbox, real redis)', () => 
       'deletedAt',
       'id',
       'ownerId',
+      'slug',
       'summary',
       'summaryTranslations',
       'tenantId',
