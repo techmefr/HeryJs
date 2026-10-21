@@ -7,6 +7,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { AdminAction, AdminSection } from '#technical/admin/admin-metadata';
 import { SessionGuard } from '#technical/auth/session.guard';
 import type { RequestWithUser } from '#technical/auth/session.guard';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
@@ -27,6 +28,18 @@ export class ScimAdminController {
     private readonly activity: ScimActivityService,
   ) {}
 
+  @AdminSection({
+    id: 'scim-token',
+    title: 'SCIM token',
+    icon: 'key',
+    group: 'Identity',
+    columns: [
+      { key: 'isConfigured', label: 'Configured', format: 'boolean' },
+      { key: 'prefix', label: 'Prefix' },
+      { key: 'rotatedAt', label: 'Rotated', format: 'date' },
+      { key: 'lastUsedAt', label: 'Last used', format: 'date' },
+    ],
+  })
   @UnpaginatedRoute('one token status per tenant')
   @RateLimit('read')
   @Get('token')
@@ -35,6 +48,15 @@ export class ScimAdminController {
     return ok(await this.tokens.status(req.user.tenantId));
   }
 
+  @AdminAction({
+    id: 'scim-token-issue',
+    title: 'Issue or rotate token',
+    icon: 'key',
+    section: 'scim-token',
+    scope: 'global',
+    confirm:
+      'Issue a new SCIM token? The previous one stops working and the new one is shown once.',
+  })
   @RateLimit('write')
   @Post('token')
   @Capability(canManageScim)
@@ -52,6 +74,15 @@ export class ScimAdminController {
     ]);
   }
 
+  @AdminAction({
+    id: 'scim-token-revoke',
+    title: 'Revoke token',
+    icon: 'key',
+    section: 'scim-token',
+    scope: 'global',
+    danger: true,
+    confirm: 'Revoke the SCIM token? The directory stops provisioning.',
+  })
   @RateLimit('write')
   @Delete('token')
   @Capability(canManageScim)
@@ -71,6 +102,18 @@ export class ScimAdminController {
     ]);
   }
 
+  @AdminSection({
+    id: 'scim-activity',
+    title: 'SCIM activity',
+    icon: 'activity',
+    group: 'Identity',
+    columns: [
+      { key: 'at', label: 'When', format: 'date' },
+      { key: 'resource', label: 'Resource', format: 'badge' },
+      { key: 'action', label: 'Action', format: 'badge' },
+      { key: 'detail', label: 'Detail' },
+    ],
+  })
   @RateLimit('read')
   @Get('activity')
   @Capability(canManageScim)

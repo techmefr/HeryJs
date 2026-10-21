@@ -45,7 +45,7 @@ Each provisioning call is appended to the tenant's audit hash chain: `ScimUser` 
 
 ## In the admin panel
 
-The [admin](../admin/) builds itself from introspection, so these appear without any admin code, behind `canManageScim` (an admin):
+The routes declare themselves to the [admin](../admin/) with `@AdminSection` and `@AdminAction`, so two sections ("SCIM token" and "SCIM activity", under Identity) and the issue, rotate and revoke buttons appear without any admin code, behind `canManageScim` (an admin):
 
 ```
 GET    /scim/token       whether a token is set, its prefix, when it was rotated and last used
