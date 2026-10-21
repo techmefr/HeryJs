@@ -484,7 +484,7 @@ import { writeAuditLog } from '#technical/audit/audit-log';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { resolveRelationInstructions } from '#technical/http/relation-resolver';
 import type { PrismaRelationClient } from '#technical/http/relation-resolver';
-import type { RelationInstruction${childIncludes.length > 0 ? ', ParsedListQuery' : ''} } from '#technical/http/list-query';${ctx.relations.length > 0 ? `\nimport { applyRelationMutation } from '#technical/http/relation-mutations';\nimport type { PivotDelegate, RelatedDelegate } from '#technical/http/relation-mutations';` : ''}
+import type { RelationInstruction${childIncludes.length > 0 ? ', ParsedListQuery' : ''} } from '#technical/http/list-query';${ctx.relations.length > 0 ? `\nimport { applyRelationMutation } from '#technical/http/relation-mutations';\nimport type { PivotDelegate, RelatedDelegate } from '#technical/http/relation-mutations';\nimport { MAX_BATCH_ENTRIES } from '#technical/http/batch';` : ''}
 import {
   Create${ctx.pascalName}Input,${ctx.relations.length > 0 ? `\n  RelationMutationInput,` : ''}
   Update${ctx.pascalName}Input,
@@ -687,6 +687,48 @@ ${childIncludes
     ]);
 
     return { records, total };
+  }
+`;
+  })
+  .join('')}
+${ctx.relations
+  .map((relation) => {
+    const pascalRelation = pascalRelationName(relation);
+    const select = `{ ${['id', ...relation.childFields.filter((name) => name !== 'id')].map((name) => `${name}: true`).join(', ')} }`;
+    const where =
+      relation.childSearchFields.length > 0
+        ? `term
+        ? {
+            OR: [${relation.childSearchFields.map((name) => `{ ${name}: { contains: term, mode: 'insensitive' } }`).join(', ')}],
+          }
+        : {}`
+        : '{}';
+
+    return `
+  async members${pascalRelation}(parentId: string) {
+    const pivots = await (this.prisma.${relation.pivotDelegate} as unknown as PivotDelegate).findMany({
+      where: { ${relation.foreignKey}: parentId },
+      select: { ${relation.relatedKey}: true },
+      take: MAX_BATCH_ENTRIES,
+    });
+    const ids = pivots.map((row) => row.${relation.relatedKey} as string);
+
+    if (ids.length === 0) {
+      return [];
+    }
+
+    return (this.prisma.${relation.childDelegate} as unknown as RelatedDelegate).findMany({
+      where: { id: { in: ids } },
+      select: ${select},
+    });
+  }
+
+  async options${pascalRelation}(term?: string) {
+    return (this.prisma.${relation.childDelegate} as unknown as RelatedDelegate).findMany({
+      where: ${where},
+      select: ${select},
+      take: MAX_BATCH_ENTRIES,
+    });
   }
 `;
   })
@@ -1043,6 +1085,7 @@ export function controllerFile(ctx: ResourceContext): string {
     ...(ctx.softDeletes ? ['deletedAt'] : []),
   ];
   const childIncludes = ownRouteIncludes(ctx);
+  const hasParentRoutes = childIncludes.length > 0 || ctx.relations.length > 0;
   // The child route loads its parent through the loader that refuses a trashed
   // row: without it, soft-deleting a parent would leave its children listable
   // through POST /<parent>/:id/<relation>/search, which is the record coming
@@ -1059,7 +1102,7 @@ import type { RequestWithUser } from '#technical/auth/session.guard';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { subjectOf } from '#technical/capabilities/subject';
 import {
-  Capability,${childIncludes.length > 0 ? '\n  LoadRecordWith,' : ''}
+  Capability,${hasParentRoutes ? '\n  LoadRecordWith,' : ''}
 } from '#technical/capabilities/capability.decorator';
 import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
 import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
@@ -1111,7 +1154,7 @@ ${
 `
     : ''
 }  canUpdate${ctx.pascalName},
-  canUpdateAny${ctx.pascalName},${childIncludes.length > 0 ? `\n  canView${ctx.pascalName},` : ''}
+  canUpdateAny${ctx.pascalName},${hasParentRoutes ? `\n  canView${ctx.pascalName},` : ''}
   canViewAny${ctx.pascalName},
   ${ctx.pascalName}Policy,
 } from './${ctx.kebabName}.policy';
@@ -1120,7 +1163,7 @@ import {
   ${ctx.pascalName}Service,
 } from './${ctx.kebabName}.service';
 import {
-  ${ctx.screamingSnakeName}_RECORD_LOADER,${childIncludes.length > 0 && ctx.softDeletes ? `\n  ${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER,` : ''}
+  ${ctx.screamingSnakeName}_RECORD_LOADER,${hasParentRoutes && ctx.softDeletes ? `\n  ${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER,` : ''}
 } from './${ctx.kebabName}-record.loader';
 import type { ${ctx.pascalName}RecordLoader } from './${ctx.kebabName}-record.loader';
 import { to${ctx.pascalName}View } from './${ctx.kebabName}.view';
@@ -1169,7 +1212,7 @@ ${ctx.fields.map((field) => `    { name: '${field.name}', type: '${field.type}',
   },
 };
 ${
-  childIncludes.length > 0
+  hasParentRoutes
     ? `\ntype RequestWith${ctx.pascalName} = RequestWithUser & { record: ${ctx.modelPascalName} };
 `
     : ''
@@ -1183,6 +1226,11 @@ const ${ctx.screamingSnakeName}_${screamingSnakeCase(include.relation)}_CONTRACT
 `,
     )
     .join('')}
+${
+  ctx.relations.length > 0
+    ? `\n// The picker for a relation asks for candidates by a free-text term; the\n// related resource has no search route of its own, so this is the whole contract.\nconst relationOptionsSchema = z.object({ q: z.string().max(255).optional() });\n`
+    : ''
+}
 @Controller('${ctx.routePath}')
 @UseGuards(SessionGuard, CapabilitiesGuard)
 export class ${ctx.pascalName}Controller {
@@ -1359,7 +1407,35 @@ ${paginationMetaLines(include.pagination)}      total,
   }
 `;
   })
-  .join('')}
+  .join('')}${ctx.relations
+    .map((relation) => {
+      const pascalRelation = pascalRelationName(relation);
+
+      return `
+  // Reading who is attached is reading the ${ctx.kebabName}, so the view
+  // capability gates it; the related resource has no route or capability of
+  // its own to ask instead.
+  @Post(':id/${relation.relation}/members')
+  @HttpCode(200)
+  @Capability(canView${ctx.pascalName})
+  @LoadRecordWith(${childRouteLoader}, '${ctx.kebabName}')
+  async members${pascalRelation}(@Req() req: RequestWith${ctx.pascalName}) {
+    return ok(await this.${ctx.camelName}s.members${pascalRelation}(req.record.id));
+  }
+
+  // Candidates to attach are offered only to a caller who may attach.
+  @Post(':id/${relation.relation}/options')
+  @HttpCode(200)
+  @Capability(canAttach${pascalRelation}To${ctx.pascalName})
+  @LoadRecordWith(${childRouteLoader}, '${ctx.kebabName}')
+  async options${pascalRelation}(
+    @Body(new ZodValidationPipe(relationOptionsSchema)) body: { q?: string },
+  ) {
+    return ok(await this.${ctx.camelName}s.options${pascalRelation}(body.q));
+  }
+`;
+    })
+    .join('')}
   @Post('create')
   @Capability(canCreate${ctx.pascalName})
   async create(
@@ -2502,6 +2578,25 @@ function relationSpecBlock(ctx: ResourceContext, createBody: string): string {
       (attached.body as { data: { data: { ${relation.relation}: string[] } }[] })
         .data[0]!.data.${relation.relation},
     ).toEqual([childA.id]);
+
+    const members = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/' + recordId + '/${relation.relation}/members')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .expect(200);
+
+    expect(
+      (members.body as { data: { id: string }[] }).data.map((row) => row.id),
+    ).toEqual([childA.id]);
+
+    const options = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/' + recordId + '/${relation.relation}/options')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({})
+      .expect(200);
+
+    expect(
+      (options.body as { data: { id: string }[] }).data.map((row) => row.id),
+    ).toEqual(expect.arrayContaining([childA.id, childB.id]));
 
     const synced = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}/update')

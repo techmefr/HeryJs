@@ -21,6 +21,7 @@ import type {
   PivotDelegate,
   RelatedDelegate,
 } from '#technical/http/relation-mutations';
+import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
 import {
   CreateBlogPostInput,
   RelationMutationInput,
@@ -206,6 +207,38 @@ export class BlogPostService {
     ]);
 
     return { records, total };
+  }
+
+  async membersTags(parentId: string) {
+    const pivots = await (
+      this.prisma.blogPostTag as unknown as PivotDelegate
+    ).findMany({
+      where: { blogPostId: parentId },
+      select: { tagId: true },
+      take: MAX_BATCH_ENTRIES,
+    });
+    const ids = pivots.map((row) => row.tagId as string);
+
+    if (ids.length === 0) {
+      return [];
+    }
+
+    return (this.prisma.tag as unknown as RelatedDelegate).findMany({
+      where: { id: { in: ids } },
+      select: { id: true, name: true, createdAt: true },
+    });
+  }
+
+  async optionsTags(term?: string) {
+    return (this.prisma.tag as unknown as RelatedDelegate).findMany({
+      where: term
+        ? {
+            OR: [{ name: { contains: term, mode: 'insensitive' } }],
+          }
+        : {},
+      select: { id: true, name: true, createdAt: true },
+      take: MAX_BATCH_ENTRIES,
+    });
   }
 
   async create(subject: CapabilitySubject, data: CreateBlogPostInput) {

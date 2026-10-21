@@ -167,6 +167,10 @@ const BLOG_POST_NOTES_CONTRACT = {
   defaultLimit: 5,
 } as const satisfies ListQueryContract;
 
+// The picker for a relation asks for candidates by a free-text term; the
+// related resource has no search route of its own, so this is the whole contract.
+const relationOptionsSchema = z.object({ q: z.string().max(255).optional() });
+
 @Controller('blog-posts')
 @UseGuards(SessionGuard, CapabilitiesGuard)
 export class BlogPostController {
@@ -347,6 +351,28 @@ export class BlogPostController {
     };
 
     return ok(records, meta);
+  }
+
+  // Reading who is attached is reading the blog-post, so the view
+  // capability gates it; the related resource has no route or capability of
+  // its own to ask instead.
+  @Post(':id/tags/members')
+  @HttpCode(200)
+  @Capability(canViewBlogPost)
+  @LoadRecordWith(BLOG_POST_VISIBLE_RECORD_LOADER, 'blog-post')
+  async membersTags(@Req() req: RequestWithBlogPost) {
+    return ok(await this.blogPosts.membersTags(req.record.id));
+  }
+
+  // Candidates to attach are offered only to a caller who may attach.
+  @Post(':id/tags/options')
+  @HttpCode(200)
+  @Capability(canAttachTagsToBlogPost)
+  @LoadRecordWith(BLOG_POST_VISIBLE_RECORD_LOADER, 'blog-post')
+  async optionsTags(
+    @Body(new ZodValidationPipe(relationOptionsSchema)) body: { q?: string },
+  ) {
+    return ok(await this.blogPosts.optionsTags(body.q));
   }
 
   @Post('create')

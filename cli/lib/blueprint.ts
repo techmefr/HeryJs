@@ -197,6 +197,8 @@ export interface ResolvedMutableRelation extends BlueprintMutableRelation {
   // The referenced resource's required fields, so a generated spec can seed a
   // row to attach without knowing anything about that resource beyond its name.
   childRequiredFields: BlueprintField[];
+  childFields: string[];
+  childSearchFields: string[];
 }
 
 export type PermissionPreset = z.infer<typeof permissionPresetSchema>;
@@ -554,6 +556,12 @@ function resolveMutableRelations(
       childDelegate: camelCase(link.resource),
       pivotDelegate: camelCase(link.pivotTable),
       childRequiredFields: referenced.fields.filter((field) => !field.optional),
+      childFields: referenced.fields
+        .filter((field) => !field.hidden)
+        .map((field) => field.name),
+      childSearchFields: referenced.fields
+        .filter((field) => field.type === 'string' && !field.hidden)
+        .map((field) => field.name),
     });
   }
 

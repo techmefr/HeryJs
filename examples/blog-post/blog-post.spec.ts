@@ -541,6 +541,25 @@ describe('BlogPost resource', () => {
         .tags,
     ).toEqual([childA.id]);
 
+    const members = await request(app.getHttpServer())
+      .post('/blog-posts/' + recordId + '/tags/members')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+
+    expect(
+      (members.body as { data: { id: string }[] }).data.map((row) => row.id),
+    ).toEqual([childA.id]);
+
+    const options = await request(app.getHttpServer())
+      .post('/blog-posts/' + recordId + '/tags/options')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({})
+      .expect(200);
+
+    expect(
+      (options.body as { data: { id: string }[] }).data.map((row) => row.id),
+    ).toEqual(expect.arrayContaining([childA.id, childB.id]));
+
     const synced = await request(app.getHttpServer())
       .post('/blog-posts/update')
       .set('Authorization', `Bearer ${ownerToken}`)
