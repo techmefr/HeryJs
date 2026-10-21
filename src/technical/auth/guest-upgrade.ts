@@ -1,6 +1,60 @@
-import type { PrismaClient } from '@prisma/client';
+import { Prisma, type PrismaClient } from '@prisma/client';
 
 type Transaction = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
+
+interface OwnedRowsDelegate {
+  updateMany(args: {
+    where: Record<string, string>;
+    data: Record<string, string>;
+  }): Promise<unknown>;
+  deleteMany(args: { where: Record<string, string> }): Promise<unknown>;
+}
+
+interface UserReference {
+  delegate: string;
+  column: string;
+}
+
+/**
+ * Every column that points at a user without cascading, read off Prisma's own
+ * DMMF. A cascading reference goes with the guest on its own; one that does
+ * not makes the guest's delete fail, so it is the set this upgrade has to
+ * move or drop. Read rather than listed, so a generated resource with an
+ * owner is covered the moment it exists, and a project without the demo does
+ * not compile against a model it never had.
+ */
+export function userReferencesWithoutCascade(): UserReference[] {
+  return Prisma.dmmf.datamodel.models.flatMap((model) =>
+    model.fields
+      .filter(
+        (field) =>
+          field.kind === 'object' &&
+          field.type === 'User' &&
+          field.relationOnDelete !== 'Cascade',
+      )
+      .flatMap((field) =>
+        (field.relationFromFields ?? []).map((column) => ({
+          delegate: model.name.charAt(0).toLowerCase() + model.name.slice(1),
+          column,
+        })),
+      ),
+  );
+}
+
+function delegateOf(
+  transaction: Transaction,
+  reference: UserReference,
+): OwnedRowsDelegate {
+  const delegate = (
+    transaction as unknown as Record<string, OwnedRowsDelegate | undefined>
+  )[reference.delegate];
+
+  if (!delegate) {
+    throw new Error(`The Prisma client has no ${reference.delegate} delegate.`);
+  }
+
+  return delegate;
+}
 
 async function scopeToTenant(
   transaction: Transaction,
@@ -14,10 +68,12 @@ async function moveRows(
   guestId: string,
   accountId: string,
 ): Promise<void> {
-  await transaction.blogPost.updateMany({
-    where: { ownerId: guestId },
-    data: { ownerId: accountId },
-  });
+  for (const reference of userReferencesWithoutCascade()) {
+    await delegateOf(transaction, reference).updateMany({
+      where: { [reference.column]: guestId },
+      data: { [reference.column]: accountId },
+    });
+  }
   await transaction.appNotification.updateMany({
     where: { userId: guestId },
     data: { userId: accountId },
@@ -45,7 +101,11 @@ async function dropRows(
   transaction: Transaction,
   guestId: string,
 ): Promise<void> {
-  await transaction.blogPost.deleteMany({ where: { ownerId: guestId } });
+  for (const reference of userReferencesWithoutCascade()) {
+    await delegateOf(transaction, reference).deleteMany({
+      where: { [reference.column]: guestId },
+    });
+  }
 }
 
 /**

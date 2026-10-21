@@ -13,6 +13,10 @@ category is called out here explicitly.
 
 First public release.
 
+### A fresh project installs, migrates and builds
+
+`hery new` produced a project whose first `pnpm install` failed: every module package depended on `heryjs@workspace:*`, and the scaffold renames the root package. That dependency only carried the `ModuleDefinition` type, already mapped by path in each package's tsconfig, so `hery new` now drops it from the copied manifests. The project then failed `nest build` because the guest upgrade named the demo's `blogPost`; it now reads every non-cascading reference to a user off Prisma's DMMF, which also covers `Snippet` and any generated resource with an owner. Its first `hery migrate` failed too: the row-level policy migration was named after every table it covers, past the filesystem's limit on a directory name, and is now named by a count once the names would not fit. A new `scaffold` CI job runs `hery new`, install, `hery migrate`, typecheck and build on every push.
+
 ### Admin studio contract and production access
 
 A kernel feature or module contributes to the admin by decorating its own routes: `@AdminSection({ id, title, icon, group, columns })` on a list route and `@AdminAction({ id, title, icon, section, scope, confirm, danger, fields })` on a mutating one. Introspection reports them (`admin` on each route), the sidebar groups by `group`, tables take their columns, and row, bulk and global actions get a button and a generated confirmation or form. `@AdminAction` audits every call itself (field names, never values) and `lint:conventions admin-contract` fails a contribution with no `@Capability`, an unknown icon, a duplicate id, a GET action, a row action without `:id` or an unknown section. `/introspect` now sits behind `@AdminStudio()` instead of `DevOnlyGuard`: development is unchanged, production is a 404 until `ADMIN_STUDIO_ENABLED=true`, then reachable by a platform admin (`canUseAdminStudio`), optionally restricted by `ADMIN_STUDIO_ALLOWED_IPS` and `ADMIN_STUDIO_REQUIRE_2FA`. Nothing a request carries can bypass it.

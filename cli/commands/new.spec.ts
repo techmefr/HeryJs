@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
-import { projectManifest } from './new';
+import { projectManifest, withoutKernelDependency } from './new';
 
 const REPO_MANIFEST = JSON.parse(
   readFileSync(path.join(__dirname, '..', '..', 'package.json'), 'utf8'),
@@ -114,5 +114,30 @@ describe('the manifest a generated project starts from', () => {
     projectManifest(REPO_MANIFEST, 'my-app');
 
     expect(JSON.stringify(REPO_MANIFEST)).toBe(before);
+  });
+});
+
+/**
+ * Read from a real module's manifest: a project renames the root package, and
+ * `heryjs@workspace:*` then names a member pnpm cannot find.
+ */
+describe('a module manifest inside a generated project', () => {
+  const MAIL_MANIFEST = JSON.parse(
+    readFileSync(
+      path.join(__dirname, '..', '..', 'packages', 'mail', 'package.json'),
+      'utf8',
+    ),
+  ) as Record<string, Record<string, string>>;
+
+  it('no longer depends on the kernel by workspace name', () => {
+    expect(MAIL_MANIFEST.devDependencies?.heryjs).toBe('workspace:*');
+
+    const rewritten = withoutKernelDependency(MAIL_MANIFEST) as Record<
+      string,
+      Record<string, string>
+    >;
+
+    expect(rewritten.devDependencies?.heryjs).toBeUndefined();
+    expect(rewritten.devDependencies?.typescript).toBeDefined();
   });
 });
