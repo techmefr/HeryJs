@@ -4,10 +4,14 @@ import type { Job } from 'bullmq';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { writeAuditLog } from '#technical/audit/audit-log';
 import { WEBHOOK_QUEUE } from '#technical/jobs/jobs.constants';
+import { ExpositionRegistry } from '#technical/exposition/exposition.registry';
+import { ExpositionRunner } from '#technical/exposition/exposition-runner.service';
+import { InvalidQueryException } from '#technical/errors/invalid-query.exception';
 import { NOTIFICATION_PROVIDER } from '#technical/notifications/notification.types';
 import type { NotificationProvider } from '#technical/notifications/notification.types';
 import { SignalService } from '#technical/signal/signal.service';
 import { runInTenant } from '#technical/tenancy/run-in-tenant';
+import { exposedActionOf } from './exposed-webhook-source';
 
 interface WebhookProcessJobData {
   eventId: string;
@@ -21,6 +25,8 @@ export class WebhooksProcessor extends WorkerHost {
     @Inject(NOTIFICATION_PROVIDER)
     private readonly notifications: NotificationProvider,
     private readonly signal: SignalService,
+    private readonly actions: ExpositionRegistry,
+    private readonly runner: ExpositionRunner,
   ) {
     super();
   }
@@ -37,6 +43,13 @@ export class WebhooksProcessor extends WorkerHost {
     });
 
     if (!event) {
+      return;
+    }
+
+    const actionName = exposedActionOf(event.source);
+
+    if (actionName !== null) {
+      await this.runExposedAction(actionName, event);
       return;
     }
 
@@ -89,5 +102,58 @@ export class WebhooksProcessor extends WorkerHost {
         }`,
       );
     }
+  }
+
+  // The signature already authenticated the sender, and the endpoint could only
+  // be minted for an action that opted in. The action is re-checked here anyway,
+  // because the registry is code and the endpoint is a row: a redeploy that drops
+  // the opt-in must stop the door working, not leave a stale row running it. The
+  // event is marked processed only once the action has run, so a failed run is
+  // retried by the queue instead of being recorded as done. A payload the
+  // action's bounds refuse is the exception: it would fail identically on every
+  // retry, so it is logged and closed.
+  private async runExposedAction(
+    actionName: string,
+    event: { id: string; tenantId: string; payload: unknown },
+  ): Promise<void> {
+    const action = this.actions.get(actionName);
+
+    if (!action || action.triggers?.webhook !== true) {
+      this.logger.warn(
+        `Webhook event ${event.id} names "${actionName}", which is no longer exposed to webhooks.`,
+      );
+      await this.markProcessed(event.id);
+      return;
+    }
+
+    const params =
+      event.payload !== null &&
+      typeof event.payload === 'object' &&
+      !Array.isArray(event.payload)
+        ? (event.payload as Record<string, unknown>)
+        : {};
+
+    try {
+      await runInTenant(event.tenantId, () =>
+        this.runner.runTrusted(actionName, params),
+      );
+    } catch (error) {
+      if (!(error instanceof InvalidQueryException)) {
+        throw error;
+      }
+
+      this.logger.warn(
+        `Webhook event ${event.id} carries params "${actionName}" refuses: ${error.message}`,
+      );
+    }
+
+    await this.markProcessed(event.id);
+  }
+
+  private async markProcessed(eventId: string): Promise<void> {
+    await authPrismaClient.webhookEvent.update({
+      where: { id: eventId },
+      data: { processedAt: new Date() },
+    });
   }
 }

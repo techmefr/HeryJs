@@ -40,10 +40,7 @@ export class WebhooksController {
     @Body(new ZodValidationPipe(createEndpointSchema))
     body: { source: string },
   ) {
-    const endpoint = await this.webhooks.createEndpoint(
-      req.user.tenantId,
-      body.source,
-    );
+    const endpoint = await this.webhooks.createEndpoint(req.user, body.source);
 
     return ok(endpoint, ['Webhook endpoint created.']);
   }

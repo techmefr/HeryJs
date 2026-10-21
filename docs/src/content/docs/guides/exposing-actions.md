@@ -63,6 +63,27 @@ The CLI has no signed-in user to check a capability against, so `ExpositionRunne
 
 `hery expose:list` prints the catalog for a quick look without touching HTTP at all.
 
+## Triggers beyond the route
+
+`ExposeAction` takes an optional `triggers` block. With none, an action is reachable only over HTTP, the CLI and the mine, as above.
+
+```ts
+@ExposeAction('report.nightly', {
+  capability: canRunReports,
+  triggers: {
+    http: false,
+    cron: { expression: '0 3 * * *', tenantId: 'acme' },
+    webhook: true,
+  },
+})
+```
+
+- `http: false` takes the action off `POST /expose/:action` (it answers 404, as for an unknown name). Use it for something only a clock or a signed callback should start. The catalog's `triggers` field says what each action accepts.
+- `cron` schedules the action at boot through the scheduler, so it takes the cluster lock and appears in the scheduler status under `expose:<action>`. It runs trusted, like the CLI, with every param at its declared default. `tenantId` is required: a clock has no request to resolve a tenant from, and the framework has no ambient default. An invalid expression fails the boot; an action whose `environments` excludes the current one is not scheduled.
+- `webhook` lets a [signed webhook endpoint](../webhooks) run the action. Mint it with `POST /webhooks/endpoints` and `source: "expose:<action>"`. That is refused unless the action opted in, and refused again unless the admin minting it could run the action themselves, so an endpoint is never a way around the action's capability. When an event for it is processed, the JSON payload supplies the params (validated by the same schemas as over HTTP), the action runs trusted in the endpoint's tenant, and the audit entry is written as for any other run. A payload the bounds refuse is logged and closed; any other failure fails the job and the queue retries it.
+
+User-defined code stored at runtime and run without a redeploy is deliberately not supported: `node:vm` is not a security boundary, and an isolate or a confined worker is a sandbox the project would have to own the security of. A deploy is the unit of change for code.
+
 ## Two worked examples
 
 [Prune](../guides/prune/#exposed-to-the-mine-not-routed-by-hand) exposes `prune.status` and `prune.run`, gated by `canManagePrune`. Its `model` field is a closed `enum` built from `prunableModels()`, so the mine renders it as a menu rather than free text.
