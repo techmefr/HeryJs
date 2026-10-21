@@ -4,6 +4,7 @@ import type { PageQuery } from '#technical/http/page-query';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import { auditEntryPayload, GENESIS_PREVIOUS_HASH } from './audit-log';
+import { isRedactedAuditData } from './audit-redaction';
 import { canonicalJson } from './canonical-json';
 
 // How many entries verifyChain holds at once. The chain has to be walked whole
@@ -49,28 +50,39 @@ export class AuditService {
       }
 
       for (const entry of entries) {
-        const expectedHash: string = createHash('sha256')
-          .update(previousHash)
-          .update(
-            canonicalJson(
-              auditEntryPayload({
-                tenantId: entry.tenantId,
-                model: entry.model,
-                operation: entry.operation,
-                recordId: entry.recordId,
-                data: entry.data,
-                userId: entry.userId,
-                impersonatedBy: entry.impersonatedBy,
-              }),
-            ),
-          )
-          .digest('hex');
-
-        if (
-          entry.previousHash !== previousHash ||
-          entry.hash !== expectedHash
-        ) {
+        if (entry.previousHash !== previousHash) {
           return false;
+        }
+
+        // An entry an erasure request redacted no longer holds what its hash
+        // was computed over, so its own hash cannot be recomputed. Its links
+        // still hold the chain together: the next entry names this hash as its
+        // predecessor, and this one names the previous entry's.
+        if (entry.redactedAt !== null) {
+          if (!isRedactedAuditData(entry.data)) {
+            return false;
+          }
+        } else {
+          const expectedHash: string = createHash('sha256')
+            .update(previousHash)
+            .update(
+              canonicalJson(
+                auditEntryPayload({
+                  tenantId: entry.tenantId,
+                  model: entry.model,
+                  operation: entry.operation,
+                  recordId: entry.recordId,
+                  data: entry.data,
+                  userId: entry.userId,
+                  impersonatedBy: entry.impersonatedBy,
+                }),
+              ),
+            )
+            .digest('hex');
+
+          if (entry.hash !== expectedHash) {
+            return false;
+          }
         }
 
         previousHash = entry.hash;

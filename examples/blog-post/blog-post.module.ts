@@ -3,10 +3,12 @@ import { AuthModule } from '#technical/auth/auth.module';
 import { CapabilitiesService } from '#technical/capabilities/capabilities.service';
 import { ChangeFeedModule } from '#technical/change-feed/change-feed.module';
 import { PrismaModule } from '#technical/prisma/prisma.module';
+import { PrivacyModule } from '#technical/privacy/privacy.module';
 import { SearchModule } from '#technical/search/search.module';
 import { SignalModule } from '#technical/signal/signal.module';
 import { BlogPostChangeFeed } from './blog-post.change-feed';
 import { BlogPostController } from './blog-post.controller';
+import { BlogPostPersonalData } from './blog-post.personal-data';
 import { BlogPostPolicy } from './blog-post.policy';
 import { BlogPostService } from './blog-post.service';
 import {
@@ -23,12 +25,14 @@ import {
     SearchModule,
     SignalModule,
     ChangeFeedModule,
+    PrivacyModule,
   ],
   controllers: [BlogPostController],
   providers: [
     BlogPostService,
     BlogPostPolicy,
     BlogPostChangeFeed,
+    BlogPostPersonalData,
     CapabilitiesService,
     { provide: BLOG_POST_RECORD_LOADER, useClass: BlogPostRecordLoader },
     {

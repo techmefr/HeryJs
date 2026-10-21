@@ -6,3 +6,5 @@ export const EVENTS_QUEUE = 'heryjs-events';
 export const BILLING_QUEUE = 'heryjs-billing';
 export const OUTBOX_QUEUE = 'heryjs-outbox';
 export const WEBHOOK_DELIVERY_QUEUE = 'heryjs-webhook-deliveries';
+export const FLOW_QUEUE = 'heryjs-flows';
+export const PRIVACY_QUEUE = 'heryjs-privacy';

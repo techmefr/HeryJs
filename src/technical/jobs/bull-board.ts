@@ -5,13 +5,13 @@ import type { INestApplication } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 import { env } from '#technical/config/env';
-import { DEFAULT_QUEUE, WEBHOOK_QUEUE } from './jobs.constants';
+import { DEFAULT_QUEUE, FLOW_QUEUE, WEBHOOK_QUEUE } from './jobs.constants';
 
 export const BULL_BOARD_BASE_PATH = '/jobs';
 
 export function mountBullBoard(app: INestApplication) {
   const connection = new IORedis(env.REDIS_URL, { maxRetriesPerRequest: null });
-  const queues = [DEFAULT_QUEUE, WEBHOOK_QUEUE].map(
+  const queues = [DEFAULT_QUEUE, WEBHOOK_QUEUE, FLOW_QUEUE].map(
     (name) => new Queue(name, { connection }),
   );
 

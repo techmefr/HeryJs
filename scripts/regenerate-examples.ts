@@ -20,6 +20,7 @@ import {
   dtoFile,
   factoryFile,
   moduleFile,
+  personalDataFiles,
   policyFile,
   presetsFile,
   recordLoaderFile,
@@ -56,6 +57,7 @@ function generatedFiles(ctx: ResourceContext): Record<string, string> {
     [`${ctx.kebabName}.controller.ts`]: controllerFile(ctx),
     [`${ctx.kebabName}.module.ts`]: moduleFile(ctx),
     [`${ctx.kebabName}.spec.ts`]: specFile(ctx),
+    ...personalDataFiles(ctx),
   };
 }
 
