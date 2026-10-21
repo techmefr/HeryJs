@@ -39,6 +39,7 @@ const { title, bare = false } = Astro.props;
               <a class="item" href="/devtools" id="devtools-link" />
               <a class="item" href="/prune" id="prune-link" />
               <a class="item" href="/privacy" id="privacy-link" />
+              <a class="item" href="/backups" id="backups-link" />
             </nav>
 
             <nav class="group scrolls" id="sections">
@@ -120,6 +121,7 @@ const { title, bare = false } = Astro.props;
       );
       label(document.getElementById('prune-link'), ICONS.prune, 'Prune');
       label(document.getElementById('privacy-link'), ICONS.privacy, 'Privacy');
+      label(document.getElementById('backups-link'), ICONS.backups, 'Backups');
       label(document.getElementById('sign-out'), ICONS.signOut, 'Sign out');
 
       const apiUrl = document.getElementById('api-url');
