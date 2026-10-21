@@ -1779,8 +1779,7 @@ import {
     AuthModule,
     SearchModule,
     SignalModule,
-    ChangeFeedModule${ctx.vector ? ',
-    VectorModule' : ''},
+    ChangeFeedModule${ctx.vector ? ', VectorModule' : ''},
   ],
   controllers: [${ctx.pascalName}Controller],
   providers: [
