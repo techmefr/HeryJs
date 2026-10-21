@@ -93,6 +93,11 @@ Twelve packages, versioned together:
 `mcp`, `search-elasticsearch`, `search-meilisearch` and `admin-astro`, each
 installable with `hery install` and removable with `hery uninstall`.
 
+- `two-factor` (`@heryjs/two-factor`) adds TOTP enrolment that only counts once a
+  first code is verified, a `TwoFactorGuard` that holds a session until it has
+  passed its second factor, hashed single-use recovery codes, and a per-role
+  requirement an admin sets. Its verification routes sit in the `auth`
+  rate-limit bucket and lock after repeated wrong codes.
 - `storage` gained `POST /storage/upload`: a driver-agnostic multipart route
   behind a session, gating on a content-type allowlist and a size cap before
   handing back a tenant-prefixed key the caller never names. A blueprint

@@ -10,30 +10,33 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  emailVerified Boolean   @default(false)
-  name          String?
-  image         String?
-  tenantId      String    @default("default")
-  currentTeamId String?
-  role          String?
-  banned        Boolean   @default(false)
-  banReason     String?
-  banExpires    DateTime?
-  twoFactorEnabled Boolean @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  email            String    @unique
+  emailVerified    Boolean   @default(false)
+  name             String?
+  image            String?
+  tenantId         String    @default("default")
+  currentTeamId    String?
+  role             String?
+  banned           Boolean   @default(false)
+  banReason        String?
+  banExpires       DateTime?
+  twoFactorEnabled Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  sessions      Session[]
-  accounts      Account[]
-  blogPosts     BlogPost[]
-  notifications AppNotification[]
-  memberships   TeamMember[]
-  apiKeys       ApiKey[]
-  twoFactors    TwoFactor[]
-  pushTokens    PushToken[]
-  currentTeam   Team?             @relation("CurrentTeam", fields: [currentTeamId], references: [id], onDelete: SetNull)
+  sessions                  Session[]
+  accounts                  Account[]
+  blogPosts                 BlogPost[]
+  notifications             AppNotification[]
+  memberships               TeamMember[]
+  apiKeys                   ApiKey[]
+  twoFactors                TwoFactor[]
+  pushTokens                PushToken[]
+  twoFactorEnrolment        TwoFactorEnrolment?
+  twoFactorRecoveryCodes    TwoFactorRecoveryCode[]
+  twoFactorVerifiedSessions TwoFactorVerifiedSession[]
+  currentTeam               Team?                      @relation("CurrentTeam", fields: [currentTeamId], references: [id], onDelete: SetNull)
 }
 
 model ApiKey {
@@ -139,7 +142,7 @@ model AppNotification {
 }
 
 model AuditLog {
-  id String @id @default(cuid())
+  id             String   @id @default(cuid())
   // createdAt is a millisecond timestamp, so two entries written in the same
   // millisecond -- routine under load -- have no order at all. Reading the
   // chain by it can hand the verifier a legitimate chain in the wrong order,
@@ -161,12 +164,12 @@ model AuditLog {
   previousHash   String
   createdAt      DateTime @default(now())
 
-  @@index([tenantId, sequence])
   // Two entries in the same tenant's chain can never claim the same
   // predecessor -- that is a fork, and the linear verifier can never accept
   // one. With previousHash non-null this also caps a tenant at exactly one
   // genesis entry.
   @@unique([tenantId, previousHash])
+  @@index([tenantId, sequence])
 }
 
 model BlogPost {
@@ -401,17 +404,17 @@ model BillingSubscription {
 }
 
 model IdempotencyKey {
-  id           String    @id @default(cuid())
-  tenantId     String
-  key          String
-  route        String
-  bodyHash     String
-  status       String    @default("pending")
-  statusCode   Int?
-  responseBody Json?
+  id              String    @id @default(cuid())
+  tenantId        String
+  key             String
+  route           String
+  bodyHash        String
+  status          String    @default("pending")
+  statusCode      Int?
+  responseBody    Json?
   responseHeaders Json?
-  createdAt    DateTime  @default(now())
-  deletedAt    DateTime?
+  createdAt       DateTime  @default(now())
+  deletedAt       DateTime?
 
   @@unique([tenantId, key])
   @@index([tenantId])
@@ -427,4 +430,56 @@ model OauthIdentity {
 
   @@unique([provider, providerUserId])
   @@index([userId])
+}
+
+model TwoFactorEnrolment {
+  id             String    @id @default(cuid())
+  tenantId       String
+  userId         String    @unique
+  secret         String
+  confirmedAt    DateTime?
+  lastUsedStep   Int?
+  failedAttempts Int       @default(0)
+  lockedUntil    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+model TwoFactorRecoveryCode {
+  id        String    @id @default(cuid())
+  tenantId  String
+  userId    String
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId])
+}
+
+model TwoFactorRoleRequirement {
+  id        String   @id @default(cuid())
+  tenantId  String
+  role      String
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, role])
+}
+
+model TwoFactorVerifiedSession {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId])
 }
