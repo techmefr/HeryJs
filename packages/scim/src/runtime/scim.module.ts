@@ -1,6 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { json } from 'express';
 import { AuthModule } from '#kernel/auth/auth.module';
+import { PrismaModule } from '#kernel/prisma/prisma.module';
 import { PrismaScimDirectoryStore } from './prisma-scim-directory.store';
 import { PrismaScimTokenStore } from './prisma-scim-token.store';
 import { ScimActivityService } from './scim-activity.service';
@@ -20,7 +21,7 @@ import {
 const SCIM_BODY_LIMIT = '1mb';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, PrismaModule],
   controllers: [ScimController, ScimAdminController],
   providers: [
     { provide: SCIM_TOKEN_STORE, useClass: PrismaScimTokenStore },
