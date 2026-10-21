@@ -134,7 +134,10 @@ const BLOG_POST_DESCRIBE = {
   // Published so a client can tell which contract it is holding without
   // inferring it from the path it happened to call.
   version: 1,
-  fields: [{ name: 'title', type: 'string', optional: false }],
+  fields: [
+    { name: 'title', type: 'string', optional: false },
+    { name: 'privateNote', type: 'encrypted', optional: true },
+  ],
   ...BLOG_POST_CONTRACT,
   // Stated rather than implied by the absence of limits: a client reading this
   // knows the search route returns every match, and that asking for a page is

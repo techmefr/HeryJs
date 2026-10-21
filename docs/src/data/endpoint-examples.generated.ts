@@ -50,7 +50,7 @@ export const searchScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'SELECT "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt" FROM "public"."BlogPost" WHERE ("public"."BlogPost"."ownerId" = $1 AND "public"."BlogPost"."deletedAt" IS NULL AND "public"."BlogPost"."title"::text LIKE (\'%\' || $2 || \'%\') AND "public"."BlogPost"."tenantId" = $3) ORDER BY "public"."BlogPost"."createdAt" DESC LIMIT $4 OFFSET $5',
+          sql: 'SELECT "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."privateNote", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt" FROM "public"."BlogPost" WHERE ("public"."BlogPost"."ownerId" = $1 AND "public"."BlogPost"."deletedAt" IS NULL AND "public"."BlogPost"."title"::text LIKE (\'%\' || $2 || \'%\') AND "public"."BlogPost"."tenantId" = $3) ORDER BY "public"."BlogPost"."createdAt" DESC LIMIT $4 OFFSET $5',
           params: '["cxmpl00000000000000000001","hello","default","15","0"]',
         },
       },
@@ -110,7 +110,7 @@ export const searchScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'SELECT "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt" FROM "public"."BlogPost" WHERE ("public"."BlogPost"."ownerId" = $1 AND "public"."BlogPost"."deletedAt" IS NULL AND "public"."BlogPost"."tenantId" = $2) ORDER BY "public"."BlogPost"."createdAt" DESC LIMIT $3 OFFSET $4',
+          sql: 'SELECT "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."privateNote", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt" FROM "public"."BlogPost" WHERE ("public"."BlogPost"."ownerId" = $1 AND "public"."BlogPost"."deletedAt" IS NULL AND "public"."BlogPost"."tenantId" = $2) ORDER BY "public"."BlogPost"."createdAt" DESC LIMIT $3 OFFSET $4',
           params: '["cxmpl00000000000000000001","default","10","0"]',
         },
       },
@@ -171,7 +171,7 @@ export const searchScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'SELECT "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt" FROM "public"."BlogPost" WHERE ("public"."BlogPost"."ownerId" = $1 AND "public"."BlogPost"."deletedAt" IS NULL AND "public"."BlogPost"."id" = $2 AND "public"."BlogPost"."tenantId" = $3) ORDER BY "public"."BlogPost"."createdAt" DESC LIMIT $4 OFFSET $5',
+          sql: 'SELECT "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."privateNote", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt" FROM "public"."BlogPost" WHERE ("public"."BlogPost"."ownerId" = $1 AND "public"."BlogPost"."deletedAt" IS NULL AND "public"."BlogPost"."id" = $2 AND "public"."BlogPost"."tenantId" = $3) ORDER BY "public"."BlogPost"."createdAt" DESC LIMIT $4 OFFSET $5',
           params:
             '["cxmpl00000000000000000001","cxmpl00000000000000000005","default","15","0"]',
         },
@@ -237,7 +237,7 @@ export const createScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'INSERT INTO "public"."AuditLog" ("id","tenantId","model","operation","recordId","data","userId","impersonatedBy","hash","previousHash","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING "public"."AuditLog"."id", "public"."AuditLog"."sequence", "public"."AuditLog"."tenantId", "public"."AuditLog"."model", "public"."AuditLog"."operation", "public"."AuditLog"."recordId", "public"."AuditLog"."data", "public"."AuditLog"."userId", "public"."AuditLog"."impersonatedBy", "public"."AuditLog"."hash", "public"."AuditLog"."previousHash", "public"."AuditLog"."createdAt"',
           params:
-            '["cxmpl00000000000000000007","default","BlogPost","create","cxmpl00000000000000000006","{\\"id\\":\\"cxmpl00000000000000000006\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Hello world\\",\\"createdAt\\":\\"2026-01-15T09:00:04.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:04.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000001","0000000000000000000000000000000000000000000000000000000000000002","2026-01-15T09:00:05.000Z"]',
+            '["cxmpl00000000000000000007","default","BlogPost","create","cxmpl00000000000000000006","{\\"id\\":\\"cxmpl00000000000000000006\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Hello world\\",\\"privateNote\\":null,\\"createdAt\\":\\"2026-01-15T09:00:04.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:04.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000001","0000000000000000000000000000000000000000000000000000000000000002","2026-01-15T09:00:05.000Z"]',
         },
       },
       {
@@ -245,7 +245,7 @@ export const createScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'INSERT INTO "public"."BlogPost" ("id","tenantId","ownerId","title","createdAt","updatedAt") VALUES ($1,$2,$3,$4,$5,$6) RETURNING "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt"',
+          sql: 'INSERT INTO "public"."BlogPost" ("id","tenantId","ownerId","title","createdAt","updatedAt") VALUES ($1,$2,$3,$4,$5,$6) RETURNING "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."privateNote", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt"',
           params:
             '["cxmpl00000000000000000006","default","cxmpl00000000000000000001","Hello world","2026-01-15T09:00:04.000Z","2026-01-15T09:00:04.000Z"]',
         },
@@ -374,7 +374,7 @@ export const updateScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'INSERT INTO "public"."AuditLog" ("id","tenantId","model","operation","recordId","data","userId","impersonatedBy","hash","previousHash","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING "public"."AuditLog"."id", "public"."AuditLog"."sequence", "public"."AuditLog"."tenantId", "public"."AuditLog"."model", "public"."AuditLog"."operation", "public"."AuditLog"."recordId", "public"."AuditLog"."data", "public"."AuditLog"."userId", "public"."AuditLog"."impersonatedBy", "public"."AuditLog"."hash", "public"."AuditLog"."previousHash", "public"."AuditLog"."createdAt"',
           params:
-            '["cxmpl00000000000000000009","default","BlogPost","update","cxmpl00000000000000000008","{\\"id\\":\\"cxmpl00000000000000000008\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Hello world (v2)\\",\\"createdAt\\":\\"2026-01-15T09:00:06.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:07.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000003","0000000000000000000000000000000000000000000000000000000000000004","2026-01-15T09:00:08.000Z"]',
+            '["cxmpl00000000000000000009","default","BlogPost","update","cxmpl00000000000000000008","{\\"id\\":\\"cxmpl00000000000000000008\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Hello world (v2)\\",\\"privateNote\\":null,\\"createdAt\\":\\"2026-01-15T09:00:06.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:07.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000003","0000000000000000000000000000000000000000000000000000000000000004","2026-01-15T09:00:08.000Z"]',
         },
       },
       {
@@ -391,7 +391,7 @@ export const updateScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'SELECT "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt" FROM "public"."BlogPost" WHERE ("public"."BlogPost"."id" = $1 AND "public"."BlogPost"."tenantId" = $2) LIMIT $3 OFFSET $4',
+          sql: 'SELECT "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."privateNote", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt" FROM "public"."BlogPost" WHERE ("public"."BlogPost"."id" = $1 AND "public"."BlogPost"."tenantId" = $2) LIMIT $3 OFFSET $4',
           params: '["cxmpl00000000000000000008","default","1","0"]',
         },
       },
@@ -409,7 +409,7 @@ export const updateScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'UPDATE "public"."BlogPost" SET "title" = $1, "updatedAt" = $2 WHERE ("public"."BlogPost"."id" = $3 AND "public"."BlogPost"."tenantId" = $4) RETURNING "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt"',
+          sql: 'UPDATE "public"."BlogPost" SET "title" = $1, "updatedAt" = $2 WHERE ("public"."BlogPost"."id" = $3 AND "public"."BlogPost"."tenantId" = $4) RETURNING "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."privateNote", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt"',
           params:
             '["Hello world (v2)","2026-01-15T09:00:07.000Z","cxmpl00000000000000000008","default"]',
         },
@@ -472,7 +472,7 @@ export const updateScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'INSERT INTO "public"."AuditLog" ("id","tenantId","model","operation","recordId","data","userId","impersonatedBy","hash","previousHash","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING "public"."AuditLog"."id", "public"."AuditLog"."sequence", "public"."AuditLog"."tenantId", "public"."AuditLog"."model", "public"."AuditLog"."operation", "public"."AuditLog"."recordId", "public"."AuditLog"."data", "public"."AuditLog"."userId", "public"."AuditLog"."impersonatedBy", "public"."AuditLog"."hash", "public"."AuditLog"."previousHash", "public"."AuditLog"."createdAt"',
           params:
-            '["cxmpl00000000000000000012","default","BlogPost","update","cxmpl00000000000000000010","{\\"id\\":\\"cxmpl00000000000000000010\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Tagged article\\",\\"createdAt\\":\\"2026-01-15T09:00:09.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:09.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000005","0000000000000000000000000000000000000000000000000000000000000006","2026-01-15T09:00:10.000Z"]',
+            '["cxmpl00000000000000000012","default","BlogPost","update","cxmpl00000000000000000010","{\\"id\\":\\"cxmpl00000000000000000010\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Tagged article\\",\\"privateNote\\":null,\\"createdAt\\":\\"2026-01-15T09:00:09.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:09.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000005","0000000000000000000000000000000000000000000000000000000000000006","2026-01-15T09:00:10.000Z"]',
         },
       },
       {
@@ -508,7 +508,7 @@ export const updateScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'SELECT "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt" FROM "public"."BlogPost" WHERE ("public"."BlogPost"."id" = $1 AND "public"."BlogPost"."tenantId" = $2) LIMIT $3 OFFSET $4',
+          sql: 'SELECT "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."privateNote", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt" FROM "public"."BlogPost" WHERE ("public"."BlogPost"."id" = $1 AND "public"."BlogPost"."tenantId" = $2) LIMIT $3 OFFSET $4',
           params: '["cxmpl00000000000000000010","default","1","0"]',
         },
       },
@@ -517,7 +517,7 @@ export const updateScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'SELECT "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt" FROM "public"."BlogPost" WHERE ("public"."BlogPost"."id" = $1 AND "public"."BlogPost"."tenantId" = $2) LIMIT $3 OFFSET $4',
+          sql: 'SELECT "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."privateNote", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt" FROM "public"."BlogPost" WHERE ("public"."BlogPost"."id" = $1 AND "public"."BlogPost"."tenantId" = $2) LIMIT $3 OFFSET $4',
           params: '["cxmpl00000000000000000010","default","1","0"]',
         },
       },
@@ -600,7 +600,7 @@ export const deleteScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'INSERT INTO "public"."AuditLog" ("id","tenantId","model","operation","recordId","data","userId","impersonatedBy","hash","previousHash","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING "public"."AuditLog"."id", "public"."AuditLog"."sequence", "public"."AuditLog"."tenantId", "public"."AuditLog"."model", "public"."AuditLog"."operation", "public"."AuditLog"."recordId", "public"."AuditLog"."data", "public"."AuditLog"."userId", "public"."AuditLog"."impersonatedBy", "public"."AuditLog"."hash", "public"."AuditLog"."previousHash", "public"."AuditLog"."createdAt"',
           params:
-            '["cxmpl00000000000000000014","default","BlogPost","update","cxmpl00000000000000000013","{\\"id\\":\\"cxmpl00000000000000000013\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Hello world\\",\\"createdAt\\":\\"2026-01-15T09:00:12.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:14.000Z\\",\\"deletedAt\\":\\"2026-01-15T09:00:13.000Z\\"}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000007","0000000000000000000000000000000000000000000000000000000000000008","2026-01-15T09:00:15.000Z"]',
+            '["cxmpl00000000000000000014","default","BlogPost","update","cxmpl00000000000000000013","{\\"id\\":\\"cxmpl00000000000000000013\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Hello world\\",\\"privateNote\\":null,\\"createdAt\\":\\"2026-01-15T09:00:12.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:14.000Z\\",\\"deletedAt\\":\\"2026-01-15T09:00:13.000Z\\"}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000007","0000000000000000000000000000000000000000000000000000000000000008","2026-01-15T09:00:15.000Z"]',
         },
       },
       {
@@ -617,7 +617,7 @@ export const deleteScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'SELECT "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt" FROM "public"."BlogPost" WHERE ("public"."BlogPost"."id" = $1 AND "public"."BlogPost"."tenantId" = $2) LIMIT $3 OFFSET $4',
+          sql: 'SELECT "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."privateNote", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt" FROM "public"."BlogPost" WHERE ("public"."BlogPost"."id" = $1 AND "public"."BlogPost"."tenantId" = $2) LIMIT $3 OFFSET $4',
           params: '["cxmpl00000000000000000013","default","1","0"]',
         },
       },
@@ -635,7 +635,7 @@ export const deleteScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'UPDATE "public"."BlogPost" SET "deletedAt" = $1, "updatedAt" = $2 WHERE ("public"."BlogPost"."id" = $3 AND "public"."BlogPost"."tenantId" = $4) RETURNING "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt"',
+          sql: 'UPDATE "public"."BlogPost" SET "deletedAt" = $1, "updatedAt" = $2 WHERE ("public"."BlogPost"."id" = $3 AND "public"."BlogPost"."tenantId" = $4) RETURNING "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."privateNote", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt"',
           params:
             '["2026-01-15T09:00:13.000Z","2026-01-15T09:00:14.000Z","cxmpl00000000000000000013","default"]',
         },
@@ -696,7 +696,7 @@ export const deleteScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'DELETE FROM "public"."BlogPost" WHERE ("public"."BlogPost"."id" = $1 AND "public"."BlogPost"."tenantId" = $2) RETURNING "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt"',
+          sql: 'DELETE FROM "public"."BlogPost" WHERE ("public"."BlogPost"."id" = $1 AND "public"."BlogPost"."tenantId" = $2) RETURNING "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."privateNote", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt"',
           params: '["cxmpl00000000000000000015","default"]',
         },
       },
@@ -707,7 +707,7 @@ export const deleteScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'INSERT INTO "public"."AuditLog" ("id","tenantId","model","operation","recordId","data","userId","impersonatedBy","hash","previousHash","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING "public"."AuditLog"."id", "public"."AuditLog"."sequence", "public"."AuditLog"."tenantId", "public"."AuditLog"."model", "public"."AuditLog"."operation", "public"."AuditLog"."recordId", "public"."AuditLog"."data", "public"."AuditLog"."userId", "public"."AuditLog"."impersonatedBy", "public"."AuditLog"."hash", "public"."AuditLog"."previousHash", "public"."AuditLog"."createdAt"',
           params:
-            '["cxmpl00000000000000000017","default","BlogPost","delete","cxmpl00000000000000000015","{\\"id\\":\\"cxmpl00000000000000000015\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000016\\",\\"title\\":\\"Gone for good\\",\\"createdAt\\":\\"2026-01-15T09:00:16.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:16.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000016",null,"0000000000000000000000000000000000000000000000000000000000000009","0000000000000000000000000000000000000000000000000000000000000010","2026-01-15T09:00:17.000Z"]',
+            '["cxmpl00000000000000000017","default","BlogPost","delete","cxmpl00000000000000000015","{\\"id\\":\\"cxmpl00000000000000000015\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000016\\",\\"title\\":\\"Gone for good\\",\\"privateNote\\":null,\\"createdAt\\":\\"2026-01-15T09:00:16.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:16.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000016",null,"0000000000000000000000000000000000000000000000000000000000000009","0000000000000000000000000000000000000000000000000000000000000010","2026-01-15T09:00:17.000Z"]',
         },
       },
       {
@@ -724,7 +724,7 @@ export const deleteScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'SELECT "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt" FROM "public"."BlogPost" WHERE ("public"."BlogPost"."id" = $1 AND "public"."BlogPost"."tenantId" = $2) LIMIT $3 OFFSET $4',
+          sql: 'SELECT "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."privateNote", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt" FROM "public"."BlogPost" WHERE ("public"."BlogPost"."id" = $1 AND "public"."BlogPost"."tenantId" = $2) LIMIT $3 OFFSET $4',
           params: '["cxmpl00000000000000000015","default","1","0"]',
         },
       },
@@ -798,7 +798,7 @@ export const restoreScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'INSERT INTO "public"."AuditLog" ("id","tenantId","model","operation","recordId","data","userId","impersonatedBy","hash","previousHash","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING "public"."AuditLog"."id", "public"."AuditLog"."sequence", "public"."AuditLog"."tenantId", "public"."AuditLog"."model", "public"."AuditLog"."operation", "public"."AuditLog"."recordId", "public"."AuditLog"."data", "public"."AuditLog"."userId", "public"."AuditLog"."impersonatedBy", "public"."AuditLog"."hash", "public"."AuditLog"."previousHash", "public"."AuditLog"."createdAt"',
           params:
-            '["cxmpl00000000000000000019","default","BlogPost","update","cxmpl00000000000000000018","{\\"id\\":\\"cxmpl00000000000000000018\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Hello world\\",\\"createdAt\\":\\"2026-01-15T09:00:18.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:19.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000011","0000000000000000000000000000000000000000000000000000000000000012","2026-01-15T09:00:20.000Z"]',
+            '["cxmpl00000000000000000019","default","BlogPost","update","cxmpl00000000000000000018","{\\"id\\":\\"cxmpl00000000000000000018\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Hello world\\",\\"privateNote\\":null,\\"createdAt\\":\\"2026-01-15T09:00:18.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:19.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000011","0000000000000000000000000000000000000000000000000000000000000012","2026-01-15T09:00:20.000Z"]',
         },
       },
       {
@@ -815,7 +815,7 @@ export const restoreScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'SELECT "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt" FROM "public"."BlogPost" WHERE ("public"."BlogPost"."id" = $1 AND "public"."BlogPost"."tenantId" = $2) LIMIT $3 OFFSET $4',
+          sql: 'SELECT "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."privateNote", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt" FROM "public"."BlogPost" WHERE ("public"."BlogPost"."id" = $1 AND "public"."BlogPost"."tenantId" = $2) LIMIT $3 OFFSET $4',
           params: '["cxmpl00000000000000000018","default","1","0"]',
         },
       },
@@ -833,7 +833,7 @@ export const restoreScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'UPDATE "public"."BlogPost" SET "deletedAt" = $1, "updatedAt" = $2 WHERE ("public"."BlogPost"."id" = $3 AND "public"."BlogPost"."tenantId" = $4) RETURNING "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt"',
+          sql: 'UPDATE "public"."BlogPost" SET "deletedAt" = $1, "updatedAt" = $2 WHERE ("public"."BlogPost"."id" = $3 AND "public"."BlogPost"."tenantId" = $4) RETURNING "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."privateNote", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt"',
           params:
             '[null,"2026-01-15T09:00:19.000Z","cxmpl00000000000000000018","default"]',
         },
@@ -896,7 +896,7 @@ export const restoreScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'INSERT INTO "public"."AuditLog" ("id","tenantId","model","operation","recordId","data","userId","impersonatedBy","hash","previousHash","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING "public"."AuditLog"."id", "public"."AuditLog"."sequence", "public"."AuditLog"."tenantId", "public"."AuditLog"."model", "public"."AuditLog"."operation", "public"."AuditLog"."recordId", "public"."AuditLog"."data", "public"."AuditLog"."userId", "public"."AuditLog"."impersonatedBy", "public"."AuditLog"."hash", "public"."AuditLog"."previousHash", "public"."AuditLog"."createdAt"',
           params:
-            '["cxmpl00000000000000000021","default","BlogPost","update","cxmpl00000000000000000020","{\\"id\\":\\"cxmpl00000000000000000020\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Hello world (restored)\\",\\"createdAt\\":\\"2026-01-15T09:00:21.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:22.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000013","0000000000000000000000000000000000000000000000000000000000000014","2026-01-15T09:00:23.000Z"]',
+            '["cxmpl00000000000000000021","default","BlogPost","update","cxmpl00000000000000000020","{\\"id\\":\\"cxmpl00000000000000000020\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Hello world (restored)\\",\\"privateNote\\":null,\\"createdAt\\":\\"2026-01-15T09:00:21.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:22.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000013","0000000000000000000000000000000000000000000000000000000000000014","2026-01-15T09:00:23.000Z"]',
         },
       },
       {
@@ -913,7 +913,7 @@ export const restoreScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'SELECT "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt" FROM "public"."BlogPost" WHERE ("public"."BlogPost"."id" = $1 AND "public"."BlogPost"."tenantId" = $2) LIMIT $3 OFFSET $4',
+          sql: 'SELECT "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."privateNote", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt" FROM "public"."BlogPost" WHERE ("public"."BlogPost"."id" = $1 AND "public"."BlogPost"."tenantId" = $2) LIMIT $3 OFFSET $4',
           params: '["cxmpl00000000000000000020","default","1","0"]',
         },
       },
@@ -931,7 +931,7 @@ export const restoreScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'UPDATE "public"."BlogPost" SET "title" = $1, "deletedAt" = $2, "updatedAt" = $3 WHERE ("public"."BlogPost"."id" = $4 AND "public"."BlogPost"."tenantId" = $5) RETURNING "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt"',
+          sql: 'UPDATE "public"."BlogPost" SET "title" = $1, "deletedAt" = $2, "updatedAt" = $3 WHERE ("public"."BlogPost"."id" = $4 AND "public"."BlogPost"."tenantId" = $5) RETURNING "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."privateNote", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt"',
           params:
             '["Hello world (restored)",null,"2026-01-15T09:00:22.000Z","cxmpl00000000000000000020","default"]',
         },
@@ -996,7 +996,7 @@ export const detailsScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'SELECT "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt" FROM "public"."BlogPost" WHERE ("public"."BlogPost"."ownerId" = $1 AND "public"."BlogPost"."deletedAt" IS NULL AND "public"."BlogPost"."id" = $2 AND "public"."BlogPost"."tenantId" = $3) ORDER BY "public"."BlogPost"."createdAt" DESC LIMIT $4 OFFSET $5',
+          sql: 'SELECT "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."privateNote", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt" FROM "public"."BlogPost" WHERE ("public"."BlogPost"."ownerId" = $1 AND "public"."BlogPost"."deletedAt" IS NULL AND "public"."BlogPost"."id" = $2 AND "public"."BlogPost"."tenantId" = $3) ORDER BY "public"."BlogPost"."createdAt" DESC LIMIT $4 OFFSET $5',
           params:
             '["cxmpl00000000000000000001","cxmpl00000000000000000022","default","15","0"]',
         },
@@ -1015,7 +1015,7 @@ export const detailsScenarios: PlaygroundScenario[] = [
     path: '/blog-posts/describe',
     request: 'GET /blog-posts/describe\nAuthorization: Bearer <token>',
     response:
-      '{\n  "data": {\n    "version": 1,\n    "fields": [\n      {\n        "name": "title",\n        "type": "string",\n        "optional": false\n      }\n    ],\n    "sorts": [\n      "createdAt"\n    ],\n    "filters": [\n      "id",\n      "title"\n    ],\n    "selects": [\n      "id",\n      "ownerId",\n      "title",\n      "createdAt",\n      "updatedAt",\n      "deletedAt"\n    ],\n    "includes": {\n      "notes": {\n        "type": "hasMany",\n        "foreignKey": "blogPostId",\n        "childDelegate": "blogPostNote",\n        "filters": [\n          "body"\n        ],\n        "sorts": [\n          "createdAt"\n        ],\n        "selects": [\n          "id",\n          "body",\n          "rating",\n          "createdAt"\n        ]\n      },\n      "comments": {\n        "type": "morphMany",\n        "foreignKey": "commentableId",\n        "discriminator": "commentableType",\n        "discriminatorValue": "BlogPost",\n        "childDelegate": "comment",\n        "filters": [\n          "body"\n        ],\n        "sorts": [\n          "createdAt"\n        ],\n        "selects": [\n          "id",\n          "body",\n          "createdAt"\n        ]\n      }\n    },\n    "aggregates": {\n      "notes": {\n        "type": "hasMany",\n        "foreignKey": "blogPostId",\n        "childDelegate": "blogPostNote",\n        "filters": [\n          "body"\n        ],\n        "fields": [\n          "rating"\n        ]\n      },\n      "comments": {\n        "type": "morphMany",\n        "foreignKey": "commentableId",\n        "discriminator": "commentableType",\n        "discriminatorValue": "BlogPost",\n        "childDelegate": "comment",\n        "filters": [\n          "body"\n        ],\n        "fields": []\n      }\n    },\n    "limits": [\n      10,\n      15,\n      20\n    ],\n    "defaultLimit": 15,\n    "paginated": true,\n    "rules": {\n      "create": {\n        "$schema": "https://json-schema.org/draft/2020-12/schema",\n        "type": "object",\n        "properties": {\n          "title": {\n            "type": "string",\n            "minLength": 1,\n            "maxLength": 255\n          }\n        },\n        "required": [\n          "title"\n        ],\n        "additionalProperties": false\n      },\n      "update": {\n        "$schema": "https://json-schema.org/draft/2020-12/schema",\n        "type": "object",\n        "properties": {\n          "title": {\n            "type": "string",\n            "minLength": 1,\n            "maxLength": 255\n          }\n        },\n        "additionalProperties": false\n      }\n    }\n  },\n  "messages": []\n}',
+      '{\n  "data": {\n    "version": 1,\n    "fields": [\n      {\n        "name": "title",\n        "type": "string",\n        "optional": false\n      },\n      {\n        "name": "privateNote",\n        "type": "encrypted",\n        "optional": true\n      }\n    ],\n    "sorts": [\n      "createdAt"\n    ],\n    "filters": [\n      "id",\n      "title"\n    ],\n    "selects": [\n      "id",\n      "ownerId",\n      "title",\n      "createdAt",\n      "updatedAt",\n      "deletedAt"\n    ],\n    "includes": {\n      "notes": {\n        "type": "hasMany",\n        "foreignKey": "blogPostId",\n        "childDelegate": "blogPostNote",\n        "filters": [\n          "body"\n        ],\n        "sorts": [\n          "createdAt"\n        ],\n        "selects": [\n          "id",\n          "body",\n          "rating",\n          "createdAt"\n        ]\n      },\n      "comments": {\n        "type": "morphMany",\n        "foreignKey": "commentableId",\n        "discriminator": "commentableType",\n        "discriminatorValue": "BlogPost",\n        "childDelegate": "comment",\n        "filters": [\n          "body"\n        ],\n        "sorts": [\n          "createdAt"\n        ],\n        "selects": [\n          "id",\n          "body",\n          "createdAt"\n        ]\n      }\n    },\n    "aggregates": {\n      "notes": {\n        "type": "hasMany",\n        "foreignKey": "blogPostId",\n        "childDelegate": "blogPostNote",\n        "filters": [\n          "body"\n        ],\n        "fields": [\n          "rating"\n        ]\n      },\n      "comments": {\n        "type": "morphMany",\n        "foreignKey": "commentableId",\n        "discriminator": "commentableType",\n        "discriminatorValue": "BlogPost",\n        "childDelegate": "comment",\n        "filters": [\n          "body"\n        ],\n        "fields": []\n      }\n    },\n    "limits": [\n      10,\n      15,\n      20\n    ],\n    "defaultLimit": 15,\n    "paginated": true,\n    "rules": {\n      "create": {\n        "$schema": "https://json-schema.org/draft/2020-12/schema",\n        "type": "object",\n        "properties": {\n          "title": {\n            "type": "string",\n            "minLength": 1,\n            "maxLength": 255\n          },\n          "privateNote": {\n            "type": "string",\n            "minLength": 1,\n            "maxLength": 4096\n          }\n        },\n        "required": [\n          "title"\n        ],\n        "additionalProperties": false\n      },\n      "update": {\n        "$schema": "https://json-schema.org/draft/2020-12/schema",\n        "type": "object",\n        "properties": {\n          "title": {\n            "type": "string",\n            "minLength": 1,\n            "maxLength": 255\n          },\n          "privateNote": {\n            "type": "string",\n            "minLength": 1,\n            "maxLength": 4096\n          }\n        },\n        "additionalProperties": false\n      }\n    }\n  },\n  "messages": []\n}',
     flow: [
       {
         stage: 'middleware',

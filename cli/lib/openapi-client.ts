@@ -25,6 +25,7 @@ const FIELD_TS_TYPES: Record<RecordProperty['type'], string> = {
   boolean: 'boolean',
   datetime: 'string',
   file: 'string',
+  encrypted: 'string',
   id: 'string',
   timestamp: 'string',
 };

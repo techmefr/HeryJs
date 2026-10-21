@@ -11,6 +11,9 @@ import {
   outboxEmitsFor,
   stageOutboxMessages,
 } from '../outbox/outbox-stage';
+import { defaultKeyring } from '../secrets/default-keyring';
+import { redactEncryptedColumns } from '../secrets/encrypted-columns';
+import { encryptedFieldsExtension } from '../secrets/encrypted-fields.extension';
 import { TenantContextStorage } from '../tenancy/tenant-context';
 import { TraceContextStorage } from '../tracing/trace-context';
 
@@ -271,7 +274,10 @@ export function createTenantScopedPrismaClient() {
   // rather than proceeding down the chain), and only a layer that wraps
   // *around* that call still observes its result. An audit extension applied
   // second would sit inside the tenant layer and never run on that branch.
-  const auditedClient = rawClient.$extends({
+  const encryptedClient = rawClient.$extends(
+    encryptedFieldsExtension(defaultKeyring),
+  );
+  const auditedClient = encryptedClient.$extends({
     query: {
       $allModels: {
         async $allOperations({ model, operation, args, query }) {
@@ -285,7 +291,7 @@ export function createTenantScopedPrismaClient() {
               model,
               operation,
               recordId: record?.id ?? null,
-              data: result,
+              data: redactEncryptedColumns(model, result),
               userId: TenantContextStorage.getUserId(),
               impersonatedBy: TenantContextStorage.getImpersonatedBy(),
             });

@@ -44,3 +44,33 @@ describe('secrets that must not reach production', () => {
     );
   });
 });
+
+describe('SECRETS_KEYS', () => {
+  const key = Buffer.alloc(32, 7).toString('base64');
+
+  it('falls back to a development key so a project boots without configuring one', () => {
+    expect(parseEnv({ ...BASE, NODE_ENV: 'development' }).SECRETS_KEYS).toMatch(
+      /^dev:/,
+    );
+  });
+
+  it('accepts a list of versioned keys and an active id', () => {
+    const env = parseEnv({
+      ...BASE,
+      SECRETS_KEYS: `1:${key},2:${key}`,
+      SECRETS_ACTIVE_KEY_ID: '2',
+    });
+
+    expect(env.SECRETS_KEYS).toBe(`1:${key},2:${key}`);
+    expect(env.SECRETS_ACTIVE_KEY_ID).toBe('2');
+  });
+
+  it.each(['not-a-key', '1:c2hvcnQ=', `a b:${key}`, ''])(
+    'rejects %j',
+    (value) => {
+      expect(() => parseEnv({ ...BASE, SECRETS_KEYS: value })).toThrow(
+        /SECRETS_KEYS/,
+      );
+    },
+  );
+});
