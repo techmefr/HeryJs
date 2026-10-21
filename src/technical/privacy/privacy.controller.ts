@@ -9,6 +9,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { AdminAction, AdminSection } from '#technical/admin/admin-metadata';
 import { SessionGuard } from '#technical/auth/session.guard';
 import type { RequestWithUser } from '#technical/auth/session.guard';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
@@ -43,6 +44,20 @@ export class PrivacyController {
 
   @RateLimit('write')
   @HttpCode(ACCEPTED)
+  @AdminAction({
+    id: 'privacy-export',
+    title: 'Export data',
+    icon: 'archive',
+    section: 'privacy-requests',
+    scope: 'global',
+    fields: [
+      {
+        name: 'userId',
+        label: 'User id (empty for the whole tenant)',
+        type: 'text',
+      },
+    ],
+  })
   @Post('exports')
   @Capability(canRequestPrivacyAction)
   async requestExport(
@@ -56,6 +71,18 @@ export class PrivacyController {
 
   @RateLimit('write')
   @HttpCode(ACCEPTED)
+  @AdminAction({
+    id: 'privacy-erase-user',
+    title: 'Erase a user',
+    icon: 'shield',
+    section: 'privacy-requests',
+    scope: 'global',
+    confirm: 'Erase this user and their personal data. This cannot be undone.',
+    danger: true,
+    fields: [
+      { name: 'userId', label: 'User id', type: 'text', required: true },
+    ],
+  })
   @Post('erasures/user')
   @Capability(canRequestPrivacyAction)
   async requestUserErasure(
@@ -70,6 +97,24 @@ export class PrivacyController {
 
   @RateLimit('write')
   @HttpCode(ACCEPTED)
+  @AdminAction({
+    id: 'privacy-erase-tenant',
+    title: 'Erase the tenant',
+    icon: 'shield',
+    section: 'privacy-requests',
+    scope: 'global',
+    confirm:
+      'Erase the personal data of the whole tenant. This cannot be undone.',
+    danger: true,
+    fields: [
+      {
+        name: 'confirm',
+        label: 'Type the tenant id to confirm',
+        type: 'text',
+        required: true,
+      },
+    ],
+  })
   @Post('erasures/tenant')
   @Capability(canEraseTenant)
   async requestTenantErasure(
@@ -83,6 +128,20 @@ export class PrivacyController {
   }
 
   @RateLimit('read')
+  @AdminSection({
+    id: 'privacy-requests',
+    title: 'Privacy requests',
+    icon: 'shield',
+    group: 'Compliance',
+    columns: [
+      { key: 'kind', label: 'Kind', format: 'badge' },
+      { key: 'status', label: 'Status', format: 'badge' },
+      { key: 'subjectId', label: 'Subject' },
+      { key: 'createdAt', label: 'Requested', format: 'date' },
+      { key: 'completedAt', label: 'Completed', format: 'date' },
+      { key: 'error', label: 'Error' },
+    ],
+  })
   @Get('requests')
   @Capability(canRequestPrivacyAction)
   async list(@Req() req: RequestWithUser, @Query() query: unknown) {
