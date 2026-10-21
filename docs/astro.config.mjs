@@ -76,6 +76,7 @@ export default defineConfig({
                 { label: 'Health checks', slug: 'guides/health' },
                 { label: 'Maintenance mode', slug: 'guides/maintenance' },
                 { label: 'Error reporting', slug: 'guides/error-reporting' },
+                { label: 'OpenTelemetry', slug: 'guides/opentelemetry' },
                 { label: 'Jobs', slug: 'guides/jobs' },
                 { label: 'Migrations', slug: 'guides/migrations' },
                 { label: 'Prune', slug: 'guides/prune' },

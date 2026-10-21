@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { catchError, tap, throwError } from 'rxjs';
+import { recordRequestDuration } from '#technical/telemetry/telemetry-metrics';
 import { httpRequestDuration, httpRequestsTotal } from './metrics.registry';
 
 @Injectable()
@@ -37,6 +38,12 @@ export class MetricsInterceptor implements NestInterceptor {
 
       httpRequestsTotal.inc(labels);
       httpRequestDuration.observe(labels, durationSeconds);
+      recordRequestDuration(
+        labels.method,
+        labels.route,
+        status,
+        durationSeconds,
+      );
     };
 
     // tap()'s next callback never runs on the error path, so a request that

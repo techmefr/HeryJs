@@ -106,6 +106,12 @@ Twelve packages, versioned together:
   unexpected 500, with its `errorId`, tenant, caller and request path, to a
   Sentry-style driver. The built-in `noop` driver is the default; a domain
   exception or any other `HttpException` is never reported.
+- OpenTelemetry export of traces, metrics and logs over OTLP, configured by the
+  standard `OTEL_*` variables and off until `OTEL_EXPORTER_OTLP_ENDPOINT` is
+  set. Spans carry the request inspector's pipeline steps, `/metrics` is
+  unchanged, and every log line carries `trace_id` and `span_id`. New
+  dependencies: `@opentelemetry/api`, `@opentelemetry/api-logs` and
+  `@opentelemetry/sdk-node`.
 - An architecture linter that fails CI on a domain missing a concern, plus
   fourteen convention checks covering capabilities, pagination, RLS, rate
   limiting, module drift and patched kernel files.

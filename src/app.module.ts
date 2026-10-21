@@ -41,12 +41,16 @@ import { OAuthModule } from '#modules/oauth/oauth.module';
 import { LocaleMiddleware } from '#technical/i18n/locale.middleware';
 import { TenantMiddleware } from '#technical/tenancy/tenant.middleware';
 import { DomainExceptionFilter } from '#technical/errors/domain-exception.filter';
+import { TelemetryModule } from '#technical/telemetry/telemetry.module';
+import { TelemetryMiddleware } from '#technical/telemetry/telemetry.middleware';
+import { telemetryPinoOptions } from '#technical/telemetry/telemetry-logs';
 import { redactedRequestSerializer } from '#technical/logging/redacted-request-serializer';
 
 @Module({
   imports: [
     LoggerModule.forRoot({
       pinoHttp: {
+        ...telemetryPinoOptions(),
         level:
           process.env.NODE_ENV === 'test'
             ? 'silent'
@@ -109,6 +113,7 @@ import { redactedRequestSerializer } from '#technical/logging/redacted-request-s
     SseModule,
     StorageModule,
     TeamsModule,
+    TelemetryModule,
     WebhooksModule,
   ],
   controllers: [AppController],
@@ -124,6 +129,7 @@ export class AppModule implements NestModule {
     // everything else, so every guard, interceptor, handler, and Prisma call
     // downstream (tenant resolution included) can attach a step to the same
     // request-scoped context.
+    consumer.apply(TelemetryMiddleware).forRoutes('*');
     consumer.apply(SecurityHeadersMiddleware).forRoutes('*');
     consumer.apply(MaintenanceMiddleware).forRoutes('*');
     consumer.apply(LocaleMiddleware).forRoutes('*');
