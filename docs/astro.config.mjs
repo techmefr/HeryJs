@@ -70,6 +70,7 @@ export default defineConfig({
                 },
                 { label: 'The events bus', slug: 'guides/events' },
                 { label: 'Distributed lock', slug: 'guides/lock' },
+                { label: 'Idempotency keys', slug: 'guides/idempotency' },
                 { label: 'Jobs', slug: 'guides/jobs' },
                 { label: 'Migrations', slug: 'guides/migrations' },
                 { label: 'Prune', slug: 'guides/prune' },
@@ -85,6 +86,7 @@ export default defineConfig({
                   slug: 'guides/generated-files',
                 },
                 { label: 'Testing conventions', slug: 'guides/testing' },
+                { label: 'OpenAPI and typed client', slug: 'guides/openapi' },
               ],
             },
             {
