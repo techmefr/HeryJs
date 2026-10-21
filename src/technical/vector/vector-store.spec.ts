@@ -256,6 +256,29 @@ describe('VectorStore (real database, pgvector)', () => {
     expect(await ids({ tenantId: tenantB, vector: [1, 0, 0] })).toEqual([]);
   });
 
+  it('lists only live rows with text and no vector yet, per tenant, by id', async () => {
+    await insert('a-ready', tenantA, [1, 0, 0]);
+    await insert('b-pending', tenantA, null);
+    await insert('c-pending', tenantA, null);
+    await insert('d-trashed', tenantA, null, { deleted: true });
+    await insert('e-theirs', tenantB, null);
+    await adminClient.$executeRawUnsafe(
+      `INSERT INTO "${table}" ("id", "tenantId", "ownerId", "body") VALUES ('f-blank', $1, 'o', '  ')`,
+      tenantA,
+    );
+
+    expect(await store.missingEmbeddings(target, tenantA, null, 10)).toEqual([
+      'b-pending',
+      'c-pending',
+    ]);
+    expect(
+      await store.missingEmbeddings(target, tenantA, 'b-pending', 10),
+    ).toEqual(['c-pending']);
+    expect(await store.missingEmbeddings(target, tenantA, null, 1)).toEqual([
+      'b-pending',
+    ]);
+  });
+
   describe('under row-level security as a role that cannot bypass it', () => {
     const restricted = () =>
       new VectorStore(restrictedClient as unknown as TenantScopedPrismaClient);

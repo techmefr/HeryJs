@@ -2,6 +2,7 @@ import { EmbeddingDimensionMismatchException } from '#technical/embeddings/embed
 import type { OutboxDelivery } from '#technical/outbox/outbox.types';
 import { OutboxRegistry } from '#technical/outbox/outbox.registry';
 import { VectorEmbeddingHandler } from './vector-embedding.handler';
+import { VectorIndexer } from './vector-indexer';
 import type { VectorStore } from './vector-store';
 import type { VectorTarget } from './vector-target';
 import { VectorTargetRegistry } from './vector-target.registry';
@@ -47,8 +48,7 @@ function build(source: string | null = 'squat rack', vector = [1, 0, 0]) {
   const handler = new VectorEmbeddingHandler(
     outbox,
     targets,
-    store as unknown as VectorStore,
-    embedder,
+    new VectorIndexer(store as unknown as VectorStore, embedder),
   );
 
   return { handler, store, embedder, outbox };

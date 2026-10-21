@@ -9,6 +9,10 @@ A query for "cheap flights" never finds a post titled "budget airfares" through 
 pnpm hery install embeddings
 ```
 
+:::caution[Upgrading an existing project]
+Switch your Postgres image to `pgvector/pgvector:pg17` (in `docker-compose.yml` and in CI) **before** running `pnpm hery migrate`. The new kernel migration runs `CREATE EXTENSION vector`, which fails on a stock `postgres` image. On managed Postgres, enable the `vector` extension from the provider's console first (Supabase, Neon, RDS and Cloud SQL all offer it).
+:::
+
 ## Declaring it
 
 ```yaml
@@ -86,4 +90,13 @@ embeddings: {
 
 No index is created. Without one every similarity query scans the tenant's embedded rows, which is exact and fine into the tens of thousands. Past that, add an HNSW index in a hand-written migration (`CREATE INDEX ... USING hnsw ("embedding" vector_cosine_ops)`); Prisma does not model it. Be aware that an approximate index combined with the tenant filter can return fewer rows than asked, which pgvector 0.8's iterative scans address.
 
-There is no backfill command: rows written before the field was added are embedded the next time their source changes.
+## Backfilling existing rows
+
+Rows written before the field existed have no vector, and similarity search skips them. Embed them with:
+
+```bash
+pnpm hery embeddings:backfill note --dry-run
+pnpm hery embeddings:backfill note
+```
+
+It reads the blueprint, walks every tenant (or one, with `--tenant <id>`) in id order, `--batch` rows per query (default 100), and embeds the live rows that have source text and no vector. It is idempotent: a rerun only touches rows still missing one, so an interrupted run resumes by running it again. `--dry-run` counts and changes nothing. A row that fails is reported and skipped, and the command exits non-zero.

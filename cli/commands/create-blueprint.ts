@@ -5,6 +5,7 @@ import * as yaml from 'js-yaml';
 import pc from 'picocolors';
 import prompts from 'prompts';
 import { blueprintJsonSchema } from '../lib/blueprint-schema';
+import { VECTOR_MAX_DIMENSIONS } from '../lib/blueprint';
 import { kebabCase } from '../lib/naming';
 import type {
   Blueprint,
@@ -19,6 +20,52 @@ const DEFAULT_PAGINATION: NonNullable<Blueprint['pagination']> = {
   limits: [10, 15, 20],
   default: 15,
 };
+
+async function promptVector(
+  name: string,
+  fields: BlueprintField[],
+): Promise<BlueprintField | null> {
+  const sources = fields.filter((field) => field.type === 'string');
+
+  if (sources.length === 0) {
+    console.log(
+      pc.yellow(
+        `"${name}" needs a string field to embed: add one first, then declare the vector.`,
+      ),
+    );
+    return null;
+  }
+
+  const sourceResponse = (await prompts({
+    type: 'select',
+    name: 'source',
+    message: `String field "${name}" embeds`,
+    choices: sources.map((field) => ({ title: field.name, value: field.name })),
+  })) as { source?: string };
+
+  const dimensionsResponse = (await prompts({
+    type: 'number',
+    name: 'dimensions',
+    message: 'Dimensions (the width of the embedding model, e.g. 1536)',
+    initial: 1536,
+    min: 1,
+    max: VECTOR_MAX_DIMENSIONS,
+  })) as { dimensions?: number };
+
+  if (!sourceResponse.source || !dimensionsResponse.dimensions) {
+    return null;
+  }
+
+  return {
+    name,
+    type: 'vector',
+    optional: false,
+    hidden: false,
+    reveal: false,
+    dimensions: dimensionsResponse.dimensions,
+    source: sourceResponse.source,
+  };
+}
 
 async function promptFields(): Promise<BlueprintField[]> {
   const fields: BlueprintField[] = [];
@@ -55,8 +102,23 @@ async function promptFields(): Promise<BlueprintField[]> {
           title: 'encrypted (AES-256-GCM at rest, hidden from responses)',
           value: 'encrypted',
         },
+        {
+          title:
+            'vector (an embedding of another string field, for similarity search)',
+          value: 'vector',
+        },
       ],
     })) as { type?: BlueprintField['type'] };
+
+    if (typeResponse.type === 'vector') {
+      const vector = await promptVector(nameResponse.name, fields);
+
+      if (vector) {
+        fields.push(vector);
+      }
+
+      continue;
+    }
 
     const optionalResponse = (await prompts({
       type: 'confirm',

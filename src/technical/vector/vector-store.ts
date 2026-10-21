@@ -93,6 +93,48 @@ export class VectorStore {
     );
   }
 
+  async missingEmbeddings(
+    target: VectorTarget,
+    tenantId: string,
+    afterId: string | null,
+    limit: number,
+  ): Promise<string[]> {
+    const table = identifier(target.table);
+    const column = identifier(target.column);
+    const source = identifier(target.sourceColumn);
+    const trash = target.softDeletes
+      ? Prisma.sql`AND "deletedAt" IS NULL`
+      : Prisma.empty;
+    const after =
+      afterId === null ? Prisma.empty : Prisma.sql`AND "id" > ${afterId}`;
+
+    const rows = await this.inTenant(
+      tenantId,
+      (tx) =>
+        tx.$queryRaw<{ id: string }[]>`
+        SELECT "id" FROM ${table}
+        WHERE "tenantId" = ${tenantId}
+          AND ${column} IS NULL
+          AND ${source} IS NOT NULL
+          AND btrim(${source}) <> ''
+          ${trash}
+          ${after}
+        ORDER BY "id" ASC
+        LIMIT ${limit}
+      `,
+    );
+
+    return rows.map((row) => row.id);
+  }
+
+  async tenantIds(): Promise<string[]> {
+    const rows = await this.prisma.$queryRaw<{ tenantId: string }[]>`
+      SELECT DISTINCT "tenantId" FROM "User" ORDER BY "tenantId"
+    `;
+
+    return rows.map((row) => row.tenantId);
+  }
+
   async readSource(
     target: VectorTarget,
     id: string,

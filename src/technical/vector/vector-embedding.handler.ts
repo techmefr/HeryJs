@@ -1,14 +1,11 @@
-import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { EmbeddingDimensionMismatchException } from '#technical/embeddings/embedding-dimension-mismatch.exception';
-import { EMBEDDER } from '#technical/embeddings/embedding-driver';
-import type { Embedder } from '#technical/embeddings/embedding-driver';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { OUTBOX_MODEL_NAME_PREFIX } from '#technical/outbox/outbox.constants';
 import { OutboxRegistry } from '#technical/outbox/outbox.registry';
 import type {
   OutboxDelivery,
   OutboxHandler,
 } from '#technical/outbox/outbox.types';
-import { VectorStore } from './vector-store';
+import { VectorIndexer } from './vector-indexer';
 import { VectorTargetRegistry } from './vector-target.registry';
 
 const HANDLER_NAME = 'vector-embedding';
@@ -30,8 +27,7 @@ export class VectorEmbeddingHandler implements OutboxHandler, OnModuleInit {
   constructor(
     private readonly outbox: OutboxRegistry,
     private readonly targets: VectorTargetRegistry,
-    private readonly store: VectorStore,
-    @Inject(EMBEDDER) private readonly embedder: Embedder,
+    private readonly indexer: VectorIndexer,
   ) {}
 
   onModuleInit(): void {
@@ -61,22 +57,6 @@ export class VectorEmbeddingHandler implements OutboxHandler, OnModuleInit {
       return;
     }
 
-    const text = await this.store.readSource(target, id, tenantId);
-
-    if (text === null || text.trim() === '') {
-      await this.store.write(target, id, tenantId, null);
-      return;
-    }
-
-    const vector = await this.embedder.embedOne(text);
-
-    if (vector.length !== target.dimensions) {
-      throw new EmbeddingDimensionMismatchException(
-        target.dimensions,
-        vector.length,
-      );
-    }
-
-    await this.store.write(target, id, tenantId, vector);
+    await this.indexer.embedRecord(target, id, tenantId);
   }
 }
