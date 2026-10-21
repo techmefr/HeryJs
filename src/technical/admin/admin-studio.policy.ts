@@ -1,4 +1,5 @@
 import { ability } from '#technical/capabilities/ability';
+import type { PolicyCheck } from '#technical/capabilities/capability-check';
 import { adminStudioSettings } from './admin-settings';
 
 /**
@@ -9,6 +10,10 @@ import { adminStudioSettings } from './admin-settings';
  * cannot contain. The environment is read per decision, never cached, so
  * there is no boot-time state to be left permissive.
  */
-export const canUseAdminStudio = ability(
+const studioAbility = ability(
   (subject) => !adminStudioSettings().production || subject.role === 'admin',
 );
+
+// A named binding, so introspection reports which decision guards the route.
+export const canUseAdminStudio: PolicyCheck = (subject) =>
+  studioAbility(subject);
