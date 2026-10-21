@@ -23,10 +23,7 @@ export class ScimExceptionFilter implements ExceptionFilter {
     const response = host.switchToHttp().getResponse<Response>();
     const body = this.bodyOf(exception);
 
-    response
-      .status(Number(body.status))
-      .type(SCIM_CONTENT_TYPE)
-      .json(body);
+    response.status(Number(body.status)).type(SCIM_CONTENT_TYPE).json(body);
   }
 
   private bodyOf(exception: unknown): ScimErrorBody {

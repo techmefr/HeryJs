@@ -17,7 +17,10 @@ import type {
  * `uniqueness` conflict; a resource that is not in the tenant is `null`.
  */
 export interface ScimDirectoryStore {
-  listUsers(tenantId: string, query: ScimListQuery): Promise<ScimPage<ScimUserRow>>;
+  listUsers(
+    tenantId: string,
+    query: ScimListQuery,
+  ): Promise<ScimPage<ScimUserRow>>;
   findUser(tenantId: string, id: string): Promise<ScimUserRow | null>;
   createUser(tenantId: string, input: ScimUserInput): Promise<ScimUserRow>;
   updateUser(

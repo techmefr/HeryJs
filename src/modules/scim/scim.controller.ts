@@ -134,7 +134,10 @@ export class ScimController {
     @Param('id') id: string,
     @Body() body: unknown,
   ) {
-    return this.writeUser(req, await this.users.replace(req.scim.tenantId, id, body));
+    return this.writeUser(
+      req,
+      await this.users.replace(req.scim.tenantId, id, body),
+    );
   }
 
   @PublicRoute(PUBLIC_REASON)
@@ -145,7 +148,10 @@ export class ScimController {
     @Param('id') id: string,
     @Body() body: unknown,
   ) {
-    return this.writeUser(req, await this.users.patch(req.scim.tenantId, id, body));
+    return this.writeUser(
+      req,
+      await this.users.patch(req.scim.tenantId, id, body),
+    );
   }
 
   @PublicRoute(PUBLIC_REASON)
@@ -236,7 +242,10 @@ export class ScimController {
   @Delete('Groups/:id')
   @HttpCode(204)
   async deleteGroup(@Req() req: ScimRequest, @Param('id') id: string) {
-    await this.recordGroup(req, await this.groups.remove(req.scim.tenantId, id));
+    await this.recordGroup(
+      req,
+      await this.groups.remove(req.scim.tenantId, id),
+    );
   }
 
   private async writeUser(

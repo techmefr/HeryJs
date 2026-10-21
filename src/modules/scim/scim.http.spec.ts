@@ -40,12 +40,15 @@ describe('SCIM provisioning', () => {
   afterAll(async () => {
     await authPrismaClient.user.deleteMany({ where: { email: EMAIL } });
     await authPrismaClient.scimToken.deleteMany({
-      where: { tenantId: "default" },
+      where: { tenantId: 'default' },
     });
     await app.close();
   });
 
-  const scim = (method: 'get' | 'post' | 'put' | 'patch' | 'delete', path: string) =>
+  const scim = (
+    method: 'get' | 'post' | 'put' | 'patch' | 'delete',
+    path: string,
+  ) =>
     request(app.getHttpServer())
       [method](`/scim/v2${path}`)
       .set('Authorization', `Bearer ${token}`)
@@ -102,7 +105,10 @@ describe('SCIM provisioning', () => {
 
     await scim('post', '/Users').send({ userName: EMAIL }).expect(409);
 
-    const found = await scim('get', `/Users?filter=${encodeURIComponent(`userName eq "${EMAIL}"`)}`).expect(200);
+    const found = await scim(
+      'get',
+      `/Users?filter=${encodeURIComponent(`userName eq "${EMAIL}"`)}`,
+    ).expect(200);
 
     expect(found.body.totalResults).toBe(1);
 
@@ -138,7 +144,10 @@ describe('SCIM provisioning', () => {
       .expect(201);
 
     const group = await scim('post', '/Groups')
-      .send({ displayName: 'Scim Spec Team', members: [{ value: user.body.id }] })
+      .send({
+        displayName: 'Scim Spec Team',
+        members: [{ value: user.body.id }],
+      })
       .expect(201);
 
     expect(group.body.members).toHaveLength(1);

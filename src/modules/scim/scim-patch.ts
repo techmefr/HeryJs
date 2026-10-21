@@ -32,7 +32,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export function parsePatchRequest(body: unknown): ScimPatchOperation[] {
   if (!isRecord(body)) {
-    throw ScimException.badRequest('A PatchOp body is required.', 'invalidSyntax');
+    throw ScimException.badRequest(
+      'A PatchOp body is required.',
+      'invalidSyntax',
+    );
   }
 
   const schemas = body.schemas;
@@ -54,18 +57,25 @@ export function parsePatchRequest(body: unknown): ScimPatchOperation[] {
 
   return operations.map((entry: unknown) => {
     if (!isRecord(entry) || typeof entry.op !== 'string') {
-      throw ScimException.badRequest('Every operation needs an op.', 'invalidSyntax');
+      throw ScimException.badRequest(
+        'Every operation needs an op.',
+        'invalidSyntax',
+      );
     }
 
     const op = entry.op.toLowerCase();
 
     if (op !== 'add' && op !== 'remove' && op !== 'replace') {
-      throw ScimException.badRequest(`Unknown op "${entry.op}".`, 'invalidSyntax');
+      throw ScimException.badRequest(
+        `Unknown op "${entry.op}".`,
+        'invalidSyntax',
+      );
     }
 
     return {
       op,
-      path: typeof entry.path === 'string' && entry.path !== '' ? entry.path : null,
+      path:
+        typeof entry.path === 'string' && entry.path !== '' ? entry.path : null,
       value: entry.value,
     };
   });
@@ -107,7 +117,10 @@ function setUserAttribute(
   path: string,
   value: unknown,
 ): void {
-  if (path.startsWith('urn:') && !path.toLowerCase().startsWith(CORE_USER_PREFIX)) {
+  if (
+    path.startsWith('urn:') &&
+    !path.toLowerCase().startsWith(CORE_USER_PREFIX)
+  ) {
     return;
   }
 
@@ -177,7 +190,10 @@ export function applyUserPatch(
         setUserAttribute(state, key, value);
       }
     } else {
-      throw ScimException.badRequest('An operation without a path needs an object value.', 'invalidValue');
+      throw ScimException.badRequest(
+        'An operation without a path needs an object value.',
+        'invalidValue',
+      );
     }
   }
 
@@ -204,7 +220,10 @@ function setGroupAttribute(
   path: string,
   value: unknown,
 ): void {
-  if (path.startsWith('urn:') && !path.toLowerCase().startsWith(CORE_GROUP_PREFIX)) {
+  if (
+    path.startsWith('urn:') &&
+    !path.toLowerCase().startsWith(CORE_GROUP_PREFIX)
+  ) {
     return;
   }
 
@@ -219,7 +238,9 @@ function setGroupAttribute(
       const ids = memberIdsOf(value);
 
       state.memberIds =
-        op === 'replace' ? [...new Set(ids)] : [...new Set([...state.memberIds, ...ids])];
+        op === 'replace'
+          ? [...new Set(ids)]
+          : [...new Set([...state.memberIds, ...ids])];
       break;
     }
     default:
@@ -247,13 +268,18 @@ export function applyGroupPatch(
         state.memberIds = state.memberIds.filter((id) => id !== single[1]);
       } else if (path.toLowerCase() === 'members') {
         const removed =
-          operation.value === undefined ? null : new Set(memberIdsOf(operation.value));
+          operation.value === undefined
+            ? null
+            : new Set(memberIdsOf(operation.value));
 
         state.memberIds = removed
           ? state.memberIds.filter((id) => !removed.has(id))
           : [];
       } else {
-        throw ScimException.badRequest(`${path} cannot be removed.`, 'mutability');
+        throw ScimException.badRequest(
+          `${path} cannot be removed.`,
+          'mutability',
+        );
       }
 
       continue;
@@ -266,7 +292,10 @@ export function applyGroupPatch(
         setGroupAttribute(state, operation.op, key, value);
       }
     } else {
-      throw ScimException.badRequest('An operation without a path needs an object value.', 'invalidValue');
+      throw ScimException.badRequest(
+        'An operation without a path needs an object value.',
+        'invalidValue',
+      );
     }
   }
 

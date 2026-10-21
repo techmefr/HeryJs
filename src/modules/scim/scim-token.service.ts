@@ -65,7 +65,9 @@ function toView(record: ScimTokenRecord | null): ScimTokenView {
  */
 @Injectable()
 export class ScimTokenService {
-  constructor(@Inject(SCIM_TOKEN_STORE) private readonly store: ScimTokenStore) {}
+  constructor(
+    @Inject(SCIM_TOKEN_STORE) private readonly store: ScimTokenStore,
+  ) {}
 
   async issue(tenantId: string): Promise<ScimIssuedToken> {
     const token = `${TOKEN_PREFIX}${randomBytes(TOKEN_BYTES).toString('base64url')}`;
