@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Prisma, Snippet } from '@prisma/client';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
+import { AmbientTransactionStorage } from '#technical/prisma/transaction-context';
 import { CapabilitySubject } from '#technical/capabilities/capabilities.types';
 import { scopeWhereFor } from '#technical/capabilities/scope-where';
 import { env } from '#technical/config/env';
@@ -53,9 +54,11 @@ export class SnippetService {
   ) {}
 
   private notify() {
-    void this.signal.publish(
-      `${TenantContextStorage.getTenantId()}:${SNIPPET_SIGNAL_CHANNEL}`,
-    );
+    const channel = `${TenantContextStorage.getTenantId()}:${SNIPPET_SIGNAL_CHANNEL}`;
+
+    void AmbientTransactionStorage.afterCommit(() => {
+      void this.signal.publish(channel);
+    });
   }
 
   // A search engine that is down must not turn into a failed write: the
@@ -67,6 +70,10 @@ export class SnippetService {
   // them, so a write has to reach all of them, and one engine being down
   // must not stop the others from getting the update.
   private async syncSearchIndex(record: Snippet) {
+    await AmbientTransactionStorage.afterCommit(() => this.indexRecord(record));
+  }
+
+  private async indexRecord(record: Snippet) {
     if (record.deletedAt) {
       await this.removeFromSearchIndex(record.id, record.tenantId);
       return;
@@ -95,6 +102,12 @@ export class SnippetService {
   // hard-deleted row has no updated record to read deletedAt off, only the
   // id and tenant it used to have.
   private async removeFromSearchIndex(id: string, tenantId: string) {
+    await AmbientTransactionStorage.afterCommit(() =>
+      this.dropFromIndex(id, tenantId),
+    );
+  }
+
+  private async dropFromIndex(id: string, tenantId: string) {
     for (const driver of this.searchEngines.externalDrivers) {
       try {
         await driver.remove(SEARCH_COLLECTION, id, tenantId);
@@ -172,6 +185,10 @@ export class SnippetService {
     );
 
     return { records, total, matches };
+  }
+
+  atomically<T>(callback: () => Promise<T>): Promise<T> {
+    return this.prisma.$atomic(callback);
   }
 
   async create(subject: CapabilitySubject, data: CreateSnippetInput) {

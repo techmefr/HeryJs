@@ -435,6 +435,13 @@ function idsList(): JsonSchema {
   };
 }
 
+const ATOMIC_PROPERTY: JsonSchema = {
+  type: 'boolean',
+  default: false,
+  description:
+    'When true the batch is all or nothing: every entry is authorised first, the writes run in one transaction, and the first failure rolls everything back and answers 422 with a result for every entry.',
+};
+
 export function mutationSchemas(ctx: ResourceContext): SchemaRegistry {
   const name = typeNameOf(ctx);
   const registry: SchemaRegistry = {
@@ -446,6 +453,7 @@ export function mutationSchemas(ctx: ResourceContext): SchemaRegistry {
           maxItems: MAX_BATCH_ENTRIES,
           items: ref(`${name}CreateItem`),
         },
+        atomic: ATOMIC_PROPERTY,
       },
       required: ['data'],
     },
@@ -458,6 +466,7 @@ export function mutationSchemas(ctx: ResourceContext): SchemaRegistry {
           maxItems: MAX_BATCH_ENTRIES,
           items: ref(`${name}UpdateItem`),
         },
+        atomic: ATOMIC_PROPERTY,
       },
       required: ['data'],
     },
@@ -471,6 +480,7 @@ export function mutationSchemas(ctx: ResourceContext): SchemaRegistry {
               mode: { type: 'string', enum: ['soft', 'hard'], default: 'soft' },
             }
           : {}),
+        atomic: ATOMIC_PROPERTY,
       },
       required: ['ids'],
     },
@@ -483,7 +493,11 @@ export function mutationSchemas(ctx: ResourceContext): SchemaRegistry {
   if (ctx.softDeletes) {
     registry[`${name}RestoreRequest`] = {
       type: 'object',
-      properties: { ids: idsList(), patch: ref(`${name}Patch`) },
+      properties: {
+        ids: idsList(),
+        patch: ref(`${name}Patch`),
+        atomic: ATOMIC_PROPERTY,
+      },
       required: ['ids'],
     };
     registry[`${name}Patch`] = updatePatchSchema(ctx);
@@ -528,6 +542,15 @@ export function sharedSchemas(): SchemaRegistry {
       additionalProperties: true,
     },
     Messages: { type: 'array', items: { type: 'string' } },
+    BatchMeta: {
+      type: 'object',
+      properties: {
+        total: { type: 'integer' },
+        succeeded: { type: 'integer' },
+        failed: { type: 'integer' },
+      },
+      required: ['total', 'succeeded', 'failed'],
+    },
     ResolvedError: {
       type: 'object',
       properties: {

@@ -82,6 +82,7 @@ export default defineConfig({
                   slug: 'guides/optimistic-concurrency',
                 },
                 { label: 'Dev dashboard', slug: 'guides/dev-dashboard' },
+                { label: 'Bulk mutations', slug: 'guides/bulk-mutations' },
                 { label: 'Jobs', slug: 'guides/jobs' },
                 { label: 'Logging', slug: 'guides/logging' },
                 { label: 'Migrations', slug: 'guides/migrations' },
