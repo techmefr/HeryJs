@@ -41,9 +41,23 @@ import Shell from '../layouts/Shell.astro';
       <option value="http">HTTP</option>
       <option value="storage">Object storage</option>
     </select>
-    <input name="url" placeholder="https://siem.example.com/ingest" aria-label="URL" />
-    <input name="authToken" type="password" placeholder="Bearer token" aria-label="Bearer token" autocomplete="off" />
-    <input name="storageDriver" placeholder="Storage driver (local, s3)" aria-label="Storage driver" />
+    <input
+      name="url"
+      placeholder="https://siem.example.com/ingest"
+      aria-label="URL"
+    />
+    <input
+      name="authToken"
+      type="password"
+      placeholder="Bearer token"
+      aria-label="Bearer token"
+      autocomplete="off"
+    />
+    <input
+      name="storageDriver"
+      placeholder="Storage driver (local, s3)"
+      aria-label="Storage driver"
+    />
     <label><input name="backfill" type="checkbox" /> Include history</label>
     <button type="submit" class="primary">Add sink</button>
     <span class="mono" id="sink-error"></span>
@@ -115,7 +129,13 @@ import Shell from '../layouts/Shell.astro';
           : table(data),
       );
       windowLabel.textContent =
-        'Page ' + page + ' of ' + (window?.last_page ?? 1) + ' · ' + (window?.total ?? data.length) + ' entries';
+        'Page ' +
+        page +
+        ' of ' +
+        (window?.last_page ?? 1) +
+        ' · ' +
+        (window?.total ?? data.length) +
+        ' entries';
       prev.disabled = page <= 1;
       next.disabled = page >= (window?.last_page ?? 1);
     } catch (error) {
@@ -137,9 +157,12 @@ import Shell from '../layouts/Shell.astro';
     const query = filterQuery();
     query.set('format', format);
 
-    const response = await fetch(API_URL + '/audit-logs/export?' + query.toString(), {
-      headers: { Authorization: 'Bearer ' + (token() ?? '') },
-    });
+    const response = await fetch(
+      API_URL + '/audit-logs/export?' + query.toString(),
+      {
+        headers: { Authorization: 'Bearer ' + (token() ?? '') },
+      },
+    );
 
     if (!response.ok) {
       windowLabel.textContent = 'Export refused (' + response.status + ')';
@@ -167,7 +190,9 @@ import Shell from '../layouts/Shell.astro';
     target.textContent = sink.url ?? 'storage:' + (sink.storageDriver ?? '');
     row.appendChild(target);
 
-    row.appendChild(pill(sink.active ? 'Streaming' : 'Paused', sink.active ? 'ok' : 'warn'));
+    row.appendChild(
+      pill(sink.active ? 'Streaming' : 'Paused', sink.active ? 'ok' : 'warn'),
+    );
 
     if (sink.lastError) {
       row.appendChild(pill('Failing', 'warn'));
@@ -248,7 +273,9 @@ import Shell from '../layouts/Shell.astro';
             })(),
       );
     } catch (error) {
-      sinks.replaceChildren(state('Could not load sinks', messageOf(error), 'denied'));
+      sinks.replaceChildren(
+        state('Could not load sinks', messageOf(error), 'denied'),
+      );
     }
   }
 
@@ -265,7 +292,11 @@ import Shell from '../layouts/Shell.astro';
 
       verdict.textContent = data.valid
         ? 'Intact: ' + data.checked + ' entries checked'
-        : 'Broken at entry ' + data.brokenAtSequence + ' after ' + data.checked + ' good ones';
+        : 'Broken at entry ' +
+          data.brokenAtSequence +
+          ' after ' +
+          data.checked +
+          ' good ones';
     } catch (error) {
       verdict.textContent = messageOf(error);
     }
@@ -276,8 +307,12 @@ import Shell from '../layouts/Shell.astro';
     page = 1;
     void loadEntries();
   });
-  document.getElementById('export-csv')!.addEventListener('click', () => void download('csv'));
-  document.getElementById('export-jsonl')!.addEventListener('click', () => void download('jsonl'));
+  document
+    .getElementById('export-csv')!
+    .addEventListener('click', () => void download('csv'));
+  document
+    .getElementById('export-jsonl')!
+    .addEventListener('click', () => void download('jsonl'));
   prev.addEventListener('click', () => {
     page -= 1;
     void loadEntries();
@@ -287,40 +322,45 @@ import Shell from '../layouts/Shell.astro';
     void loadEntries();
   });
 
-  document.getElementById('new-sink')!.addEventListener('submit', async (event) => {
-    event.preventDefault();
+  document
+    .getElementById('new-sink')!
+    .addEventListener('submit', async (event) => {
+      event.preventDefault();
 
-    const form = event.currentTarget as HTMLFormElement;
-    const values = new FormData(form);
-    const kind = String(values.get('kind'));
-    const body: Record<string, unknown> = {
-      name: String(values.get('name')),
-      kind,
-      backfill: values.get('backfill') === 'on',
-    };
-    const optional = (key: string) => String(values.get(key) ?? '').trim();
+      const form = event.currentTarget as HTMLFormElement;
+      const values = new FormData(form);
+      const kind = String(values.get('kind'));
+      const body: Record<string, unknown> = {
+        name: String(values.get('name')),
+        kind,
+        backfill: values.get('backfill') === 'on',
+      };
+      const optional = (key: string) => String(values.get(key) ?? '').trim();
 
-    if (kind === 'http') {
-      body.url = optional('url');
+      if (kind === 'http') {
+        body.url = optional('url');
 
-      if (optional('authToken')) {
-        body.authToken = optional('authToken');
+        if (optional('authToken')) {
+          body.authToken = optional('authToken');
+        }
+      } else if (optional('storageDriver')) {
+        body.storageDriver = optional('storageDriver');
       }
-    } else if (optional('storageDriver')) {
-      body.storageDriver = optional('storageDriver');
-    }
 
-    const error = document.getElementById('sink-error')!;
-    error.textContent = '';
+      const error = document.getElementById('sink-error')!;
+      error.textContent = '';
 
-    try {
-      await api('/audit-sinks', { method: 'POST', body: JSON.stringify(body) });
-      form.reset();
-      await loadSinks();
-    } catch (failure) {
-      error.textContent = messageOf(failure);
-    }
-  });
+      try {
+        await api('/audit-sinks', {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+        form.reset();
+        await loadSinks();
+      } catch (failure) {
+        error.textContent = messageOf(failure);
+      }
+    });
 
   void loadEntries();
   void loadSinks();

@@ -59,6 +59,16 @@ An admin can act as another user; the session is time-limited from the moment it
 
 Audited writes are appended with the acting user, so "who changed this" is answerable after the fact. The list of audited models is one declaration, read and rewritten by the generator rather than maintained in several places.
 
+### Exporting, verifying and streaming the trail
+
+An admin can take the trail out of the system three ways, all behind capabilities and all on the admin dashboard's Audit page.
+
+- **Export.** `GET /audit-logs/export?format=csv|jsonl&from=&to=&model=&operation=&recordId=&userId=` streams the filtered entries in chain order, a thousand at a time, so a year of writes does not sit in memory. Every row carries the hashed fields plus `previousHash` and `hash`. CSV cells that start with a formula character are prefixed so a spreadsheet reads them as text. The export is itself an entry in the chain, with who ran it and which filter they chose. The same filters apply to `GET /audit-logs`, so the screen and the file agree.
+- **Verify.** `GET /audit-logs/verify` walks the whole tenant chain and answers `{ valid, checked, brokenAtSequence, headHash }`: when something was altered it names the first entry that no longer matches.
+- **Stream.** `POST /audit-sinks` registers an HTTP sink (a URL and an optional bearer token, stored sealed and never returned) or an object-storage sink (a storage driver and a key prefix). A scheduled task hands each sink the entries after its cursor through the outbox, so a failing sink is retried with backoff and dead-lettered by the relay like any other delivery. A new sink streams from now on unless it is created with `backfill: true`. Delivery is at least once and idempotent: an HTTP batch carries an `Idempotency-Key` naming the sink and the sequence range, a storage batch overwrites the same object key. `POST /audit-sinks/:id/test` sends an empty batch through the real transport and `POST /audit-sinks/:id/stream` stages new entries immediately.
+
+A sink URL is typed by an operator and called by the server, so only http(s) URLs without credentials are accepted, and a host resolving to a private, loopback or link-local address is refused, at save time and again at delivery, unless `AUDIT_SINK_ALLOW_PRIVATE_HOSTS=true`. `AUDIT_STREAM_ENABLED` and `AUDIT_STREAM_INTERVAL_SECONDS` (default 10) control the streamer; turn it off on web processes when workers should own it.
+
 ## HTTP surface
 
 - **Security headers** through helmet, wired as an application middleware rather than in `main.ts` — the one file no test boots — with a content security policy of `default-src 'none'` and no script at all. The only HTML this API serves is its error page.

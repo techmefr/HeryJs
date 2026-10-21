@@ -13,6 +13,10 @@ category is called out here explicitly.
 
 First public release.
 
+### Audit export and streaming
+
+The audit trail can be exported (CSV or JSON lines, filtered by date range, model, operation, record and user), its hash chain verified on demand with the first broken entry named, and new entries streamed to a sink (HTTP or object storage) through the outbox, with retry and dead letters. The admin gets an Audit page for all of it. Adds the `AuditSink` table (migration `add_audit_sink`) and `AUDIT_STREAM_ENABLED`, `AUDIT_STREAM_INTERVAL_SECONDS`, `AUDIT_SINK_ALLOW_PRIVATE_HOSTS`. `GET /audit-logs/verify` now answers `{ valid, checked, brokenAtSequence, headHash }`; `valid` is unchanged.
+
 ### SMTP mail driver
 
 A new `mail-smtp` package adds an SMTP driver beside the log and Resend ones. `hery install mail-smtp` lands it in `src/modules/mail`; import `SmtpMailModule`, declare `smtp: { driver: 'smtp' }` under `mail.drivers` in `hery.config.ts`, and set `MAIL_SMTP_HOST` and `MAIL_SMTP_FROM` (plus `MAIL_SMTP_PORT`, `MAIL_SMTP_TLS`, `MAIL_SMTP_USER` and `MAIL_SMTP_PASSWORD` as the server needs). `MAIL_DRIVER=smtp` switches to it. The driver sends through nodemailer, refuses a half-written credential and a refused recipient rather than recording the mail as sent, and its spec delivers over a real socket to an in-process SMTP server. That makes twenty-nine installable modules.
