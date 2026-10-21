@@ -1,4 +1,4 @@
-import './passwordless-test-env';
+import '../../../test/passwordless-env';
 import { randomUUID } from 'node:crypto';
 import {
   Controller,

@@ -1,4 +1,4 @@
-import './passwordless-test-env';
+import '../../../test/passwordless-env';
 import { getAuthContext } from './better-auth.instance';
 
 interface AuthEndpoint {
