@@ -11,10 +11,13 @@ import {
   OUTBOX_QUEUE,
   WEBHOOK_QUEUE,
 } from './jobs.constants';
+import { HealthModule } from '#technical/health/health.module';
 import { JobsService } from './jobs.service';
+import { QueueHealthCheck } from './queue-health-check';
 
 @Module({
   imports: [
+    HealthModule,
     BullModule.forRoot({
       // Every other Redis consumer in this codebase hands the whole
       // REDIS_URL to IORedis. Pulling host/port out of the URL by hand here
@@ -39,7 +42,7 @@ import { JobsService } from './jobs.service';
     BullModule.registerQueue({ name: BILLING_QUEUE }),
     BullModule.registerQueue({ name: OUTBOX_QUEUE }),
   ],
-  providers: [JobsService],
+  providers: [JobsService, QueueHealthCheck],
   exports: [BullModule, JobsService],
 })
 export class JobsModule {}

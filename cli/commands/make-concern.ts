@@ -5,9 +5,14 @@ import pc from 'picocolors';
 import {
   jobFile,
   listenerFile,
+  notificationFile,
+  policyFile,
   scheduledTaskFile,
+  seederFile,
+  webhookHandlerFile,
 } from '../lib/makeable-templates';
 import {
+  camelCase,
   kebabCase,
   kebabToPascalCase,
   screamingSnakeCase,
@@ -20,9 +25,11 @@ interface ConcernKind {
   description: string;
   /** Stripped from the name to derive the default domain, so `make:job SendDigestJob` lands in `send-digest`. */
   suffix: RegExp;
+  fileSuffix?: string;
   render: (ctx: {
     pascalName: string;
     kebabName: string;
+    camelName: string;
     screamingSnakeName: string;
   }) => string;
   nextSteps: (pascalName: string, fileName: string) => string[];
@@ -69,6 +76,53 @@ export const CONCERN_KINDS: ConcernKind[] = [
       'Its runs are recorded through ScheduledTaskStore, so a task that stops firing is visible rather than merely silent',
     ],
   },
+  {
+    command: 'policy',
+    description: 'Generate a capability policy',
+    suffix: /-?policy$/,
+    fileSuffix: 'policy',
+    render: policyFile,
+    nextSteps: (pascalName) => [
+      `Replace adminAbility with the rule can${pascalName} actually enforces`,
+      `Guard a route with @Capability(can${pascalName})`,
+    ],
+  },
+  {
+    command: 'seeder',
+    description: 'Generate a seeder exposed to the CLI and the mine',
+    suffix: /-?seeder$/,
+    fileSuffix: 'seeder',
+    render: seederFile,
+    nextSteps: (pascalName) => [
+      `Write the rows ${pascalName}Seeder.run creates`,
+      `Register ${pascalName}Seeder in your resource's module`,
+      'Run it with "pnpm hery expose:run <name>.seed"',
+    ],
+  },
+  {
+    command: 'notification',
+    description: 'Generate a notification rendered per channel',
+    suffix: /-?notification$/,
+    fileSuffix: 'notification',
+    render: notificationFile,
+    nextSteps: (pascalName) => [
+      `Write what ${pascalName}Notification says on each channel, and delete the channels it has nothing to say on`,
+      `Send it with NotifierService.send(recipient, new ${pascalName}Notification())`,
+      'Run "pnpm hery install notifier" if the notifier module is not installed yet',
+    ],
+  },
+  {
+    command: 'webhook-handler',
+    description: 'Generate a handler for one webhook source',
+    suffix: /-?(webhook-)?handler$/,
+    fileSuffix: 'webhook-handler',
+    render: webhookHandlerFile,
+    nextSteps: (pascalName) => [
+      `Handle the payload in ${pascalName}WebhookHandler.handle -- it runs inside the event's tenant`,
+      `Register ${pascalName}WebhookHandler in your resource's module`,
+      'Create an endpoint with the same source name, and sign requests to it with its secret',
+    ],
+  },
 ];
 
 /**
@@ -87,10 +141,13 @@ export function buildConcern(
 
   return {
     domain: domain ? kebabCase(domain) : kebabName,
-    fileName: `${kebabName}.ts`,
+    fileName: kind.fileSuffix
+      ? `${kebabName}.${kind.fileSuffix}.ts`
+      : `${kebabName}.ts`,
     source: kind.render({
       pascalName,
       kebabName,
+      camelName: camelCase(pascalName),
       screamingSnakeName: screamingSnakeCase(pascalName),
     }),
     pascalName,

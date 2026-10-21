@@ -1,6 +1,7 @@
 export interface MakeableContext {
   pascalName: string;
   kebabName: string;
+  camelName: string;
   // Only a job needs it -- its name and its policy are module-level constants
   // -- so it is optional rather than forced on every makeable.
   screamingSnakeName?: string;
@@ -152,6 +153,116 @@ export class ${ctx.pascalName}Task {
     await this.store.run('${ctx.kebabName}', async () => {
       await Promise.resolve();
     });
+  }
+}
+`;
+}
+
+export function policyFile(ctx: MakeableContext): string {
+  return `import { adminAbility } from '#technical/capabilities/ability';
+import type { PolicyCheck } from '#technical/capabilities/capability-check';
+
+export const can${ctx.pascalName}: PolicyCheck = adminAbility;
+`;
+}
+
+export function seederFile(ctx: MakeableContext): string {
+  const actionName = `${ctx.camelName}.seed`;
+
+  return `import { Injectable } from '@nestjs/common';
+import { adminAbility } from '#technical/capabilities/ability';
+import type { PolicyCheck } from '#technical/capabilities/capability-check';
+import {
+  ExposeAction,
+  ExposeField,
+} from '#technical/exposition/exposition.decorators';
+
+export const canSeed${ctx.pascalName}: PolicyCheck = adminAbility;
+
+export interface ${ctx.pascalName}SeedResult {
+  count: number;
+}
+
+@Injectable()
+export class ${ctx.pascalName}Seeder {
+  @ExposeAction('${actionName}', {
+    capability: canSeed${ctx.pascalName},
+    environments: ['development', 'test'],
+  })
+  run(
+    @ExposeField('${actionName}.count', {
+      kind: 'number',
+      min: 1,
+      max: 500,
+      default: 10,
+    })
+    count: number,
+  ): Promise<${ctx.pascalName}SeedResult> {
+    return Promise.resolve({ count });
+  }
+}
+`;
+}
+
+export function notificationFile(ctx: MakeableContext): string {
+  return `import type {
+  Notification,
+  NotificationRecipient,
+} from '#modules/notifier/notification';
+import type { MailMessage } from '#technical/mail/mail-driver';
+import type { PushMessage } from '#technical/push/push-driver';
+import type { SmsMessage } from '#technical/sms/sms-driver';
+
+export class ${ctx.pascalName}Notification implements Notification {
+  toMail(recipient: NotificationRecipient): MailMessage {
+    return {
+      to: recipient.email ?? '',
+      subject: '${ctx.pascalName}',
+      html: '<p>Write what ${ctx.pascalName} says here.</p>',
+    };
+  }
+
+  toSms(recipient: NotificationRecipient): SmsMessage {
+    return {
+      to: recipient.phone ?? '',
+      body: 'Write what ${ctx.pascalName} says here.',
+    };
+  }
+
+  toPush(_recipient: NotificationRecipient): PushMessage {
+    return {
+      title: '${ctx.pascalName}',
+      body: 'Write what ${ctx.pascalName} says here.',
+    };
+  }
+}
+`;
+}
+
+export function webhookHandlerFile(ctx: MakeableContext): string {
+  return `import { Injectable } from '@nestjs/common';
+import type { OnModuleInit } from '@nestjs/common';
+import { registerWebhookHandler } from '#technical/webhooks/webhook-handler';
+import type {
+  WebhookEventRecord,
+  WebhookHandler,
+} from '#technical/webhooks/webhook-handler';
+
+export const ${ctx.screamingSnakeName}_WEBHOOK_SOURCE = '${ctx.kebabName}';
+
+@Injectable()
+export class ${ctx.pascalName}WebhookHandler
+  implements WebhookHandler, OnModuleInit
+{
+  readonly source = ${ctx.screamingSnakeName}_WEBHOOK_SOURCE;
+
+  onModuleInit(): void {
+    registerWebhookHandler(this);
+  }
+
+  handle(event: WebhookEventRecord): Promise<void> {
+    void event;
+    return Promise.resolve();
   }
 }
 `;

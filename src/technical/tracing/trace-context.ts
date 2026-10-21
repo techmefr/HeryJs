@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { trace } from '@opentelemetry/api';
 
 export type TraceStepStage = 'middleware' | 'guard' | 'controller' | 'prisma';
 
@@ -30,6 +31,11 @@ export const TraceContextStorage = {
 
   pushStep(step: TraceStep): void {
     storage.getStore()?.steps.push(step);
+
+    trace.getActiveSpan()?.addEvent(`${step.stage}: ${step.label}`, {
+      'hery.step.status': step.status,
+      'hery.step.duration_ms': step.durationMs,
+    });
   },
 
   getSteps(): TraceStep[] {

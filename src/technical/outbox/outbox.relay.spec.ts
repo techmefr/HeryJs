@@ -115,7 +115,7 @@ describe('OutboxRelay (real database)', () => {
         name: handlerName,
         names: [pattern],
         handle: (delivery) => {
-          if (delivery.id === id) {
+          if (delivery.name.startsWith(prefix)) {
             hits.push(handlerName);
           }
         },

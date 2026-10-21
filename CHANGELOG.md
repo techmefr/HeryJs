@@ -13,6 +13,27 @@ category is called out here explicitly.
 
 First public release.
 
+### More scaffolding, and a route table
+
+`make:policy`, `make:seeder`, `make:driver`, `make:notification` and
+`make:webhook-handler` join the existing `make:*` commands, and `hery routes`
+prints every route with its capability and rate-limit bucket. A webhook source
+can now have its own handler: a kernel `WebhookHandler` contract that the
+webhook processor calls per event, inside the event's tenant. In a project
+that already has the webhooks module, copy
+`src/technical/webhooks/webhook-handler.ts` and the processor change by hand.
+
+### Database workflow
+
+`migrate:status`, `migrate:fresh`, `db:seed [--fresh]`, `db:diff` and
+`db:branch create|drop|list` sit beside `migrate` and `migrate:down`. The two
+that wipe a database refuse in production, and `db:branch` copies a database
+with `CREATE DATABASE ... TEMPLATE`. `migrate:down` was also broken on Prisma
+7, which dropped `--from-schema-datasource` and `--shadow-database-url`: it now
+reads the shadow database from `SHADOW_DATABASE_URL` through `prisma.config.ts`.
+An existing project adds `shadowDatabaseUrl: process.env.SHADOW_DATABASE_URL`
+to the datasource in its own `prisma.config.ts` by hand.
+
 ### OpenAPI and a typed client
 
 `hery openapi` emits an OpenAPI 3.1 document and `hery openapi:client` a typed
@@ -20,6 +41,20 @@ TypeScript client, both read from the blueprints. What `/describe` does not
 publish (the resolved-capability block, capability-dependent shapes, morph
 targets, included-row types) is stated as absent, not guessed. Nothing in a
 generated file changes.
+
+### Triggers for exposed actions
+
+`@ExposeAction` accepts `triggers`: `http: false` to leave the generic route, `cron` to run on a schedule (cluster-locked, in an explicit tenant), and `webhook` to let a signed webhook endpoint with `source: "expose:<action>"` run it. Adds a `cron` dependency. The webhooks module's service, controller, processor and module change; a project that installed it applies them by hand. Arbitrary user-defined code is not supported.
+
+### Optimistic concurrency
+
+A blueprint can declare `versioned: true`. The model gets an integer `version`
+column that every update, soft delete and restore increments, the record view
+and `/describe` expose it, and the update route refuses an entry that does not
+say which version it read (`428`) or that read a stale one (`409`, or `412`
+when it came in as `If-Match`). The check is part of the write itself, so two
+concurrent saves at the same version cannot both succeed. Off by default:
+nothing changes for a resource that does not opt in.
 
 ### Installing it
 
@@ -65,6 +100,12 @@ Twelve packages, versioned together:
 - Teams with the `own` / `team` / `all` / `none` presets.
 - A tenant-namespaced cache on the same Valkey the kernel already depends on,
   exported globally with no module to install.
+- A test-support entry point, `#devtools/test-support`: recording fakes for
+  mail, sms, push, the notifier, jobs, storage, events, locks and the clock;
+  `bootTestApp()`; `actingAs()` for a user, role, tenant or API key; and tenant
+  isolation per suite. The generated spec now moves its outsider into another
+  tenant through `actingAs` and no longer opens a `PrismaClient` of its own,
+  which only changes new projects.
 - `Idempotency-Key` on every mutating route: the first request's response is
   stored per tenant and replayed on a retry, the same key with a different
   body or route is a `422`, and records expire after 24 hours through the
@@ -101,6 +142,23 @@ Twelve packages, versioned together:
   unless `reveal: true`, redacted in the audit chain and refused in filters and
   sorts. Keys are versioned in `SECRETS_KEYS`; `SecretsService` seals values
   that are not columns and `hery secrets:rotate` re-encrypts to the active key.
+- `/health` is now fed by a registry any module registers a check on, and
+  `/health/live` and `/health/ready` give an orchestrator the two probes
+  separately, public and carrying only ok or error. The report no longer names
+  a `redis` check: it reports `cache` and `queue`.
+- `hery down` puts every instance in maintenance mode, answering 503 with a
+  `Retry-After` unless the request carries the bypass secret, and
+  `hery up --lift` ends it. The health probes stay reachable throughout.
+- An error reporter contract (`errorReporter` in `hery.config.ts`) hands every
+  unexpected 500, with its `errorId`, tenant, caller and request path, to a
+  Sentry-style driver. The built-in `noop` driver is the default; a domain
+  exception or any other `HttpException` is never reported.
+- OpenTelemetry export of traces, metrics and logs over OTLP, configured by the
+  standard `OTEL_*` variables and off until `OTEL_EXPORTER_OTLP_ENDPOINT` is
+  set. Spans carry the request inspector's pipeline steps, `/metrics` is
+  unchanged, and every log line carries `trace_id` and `span_id`. New
+  dependencies: `@opentelemetry/api`, `@opentelemetry/api-logs` and
+  `@opentelemetry/sdk-node`.
 - An architecture linter that fails CI on a domain missing a concern, plus
   fourteen convention checks covering capabilities, pagination, RLS, rate
   limiting, module drift and patched kernel files.
@@ -126,6 +184,14 @@ installable with `hery install` and removable with `hery uninstall`.
   only. What happens when a provider email already belongs to a local account
   is the declared `OAUTH_LINK_POLICY`: `refuse` by default, so nothing links
   silently.
+
+- `notifier` honours per-user notification preferences: opt in or out per
+  channel (mail, sms, push, in-app) and per notification type, quiet hours in
+  the user's timezone, mail digests flushed by a scheduled job, and
+  `isMandatory` notifications that no preference can suppress. Users manage
+  their own rules under `/notification-preferences`. In-app is now a notifier
+  channel over `AppNotification`. Installing it adds three tables, so run the
+  migration it prints.
 
 A module is its default export, closed with `satisfies ModuleDefinition` and
 typed through an `import type` the compiler erases — so a published module has

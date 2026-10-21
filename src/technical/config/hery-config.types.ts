@@ -95,6 +95,7 @@ export interface HeryConfig {
   storage?: HeryConfigDrivers;
   httpClient?: HeryConfigDrivers;
   featureFlags?: HeryConfigDrivers;
+  errorReporter?: HeryConfigDrivers;
   sms?: HeryConfigDrivers;
   push?: HeryConfigDrivers;
   billing?: HeryConfigDrivers;

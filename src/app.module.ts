@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { AuditModule } from '#technical/audit/audit.module';
 import { AuthModule } from '#technical/auth/auth.module';
 import { CacheModule } from '#technical/cache/cache.module';
+import { ErrorReporterModule } from '#technical/error-reporter/error-reporter.module';
 import { EventsModule } from '#technical/events/events.module';
 import { ExpositionModule } from '#technical/exposition/exposition.module';
 import { IntrospectionModule } from '#technical/introspection/introspection.module';
@@ -17,6 +18,8 @@ import { ImpersonationModule } from '#modules/impersonation/impersonation.module
 import { JobsModule } from '#technical/jobs/jobs.module';
 import { ExportModule } from '#modules/export/export.module';
 import { MailModule } from '#modules/mail/mail.module';
+import { MaintenanceModule } from '#technical/maintenance/maintenance.module';
+import { MaintenanceMiddleware } from '#technical/maintenance/maintenance.middleware';
 import { MonitoringModule } from '#technical/monitoring/monitoring.module';
 import { OutboxModule } from '#technical/outbox/outbox.module';
 import { NotificationsModule } from '#technical/notifications/notifications.module';
@@ -38,23 +41,37 @@ import { OAuthModule } from '#modules/oauth/oauth.module';
 import { LocaleMiddleware } from '#technical/i18n/locale.middleware';
 import { TenantMiddleware } from '#technical/tenancy/tenant.middleware';
 import { DomainExceptionFilter } from '#technical/errors/domain-exception.filter';
+import { TelemetryModule } from '#technical/telemetry/telemetry.module';
+import { TelemetryMiddleware } from '#technical/telemetry/telemetry.middleware';
+import { telemetryPinoOptions } from '#technical/telemetry/telemetry-logs';
 import { tenantLogMixin } from '#technical/logging/tenant-log-mixin';
 import { logShippingStream } from '#technical/logging/log.pipeline';
 import { LogShippingModule } from '#technical/logging/log-shipping.module';
 import { redactedRequestSerializer } from '#technical/logging/redacted-request-serializer';
+
+const telemetryOptions = telemetryPinoOptions();
 
 @Module({
   imports: [
     LoggerModule.forRoot({
       pinoHttp: [
         {
+          ...telemetryOptions,
           level:
             process.env.NODE_ENV === 'test'
               ? 'silent'
               : process.env.NODE_ENV === 'production'
                 ? 'info'
                 : 'debug',
-          mixin: tenantLogMixin,
+          mixin: () => ({
+            ...telemetryOptions.mixin?.(),
+            ...tenantLogMixin(),
+          }),
+          transport:
+            process.env.NODE_ENV === "production" ||
+            process.env.NODE_ENV === "test"
+              ? undefined
+              : { target: "pino-pretty", options: { singleLine: true } },
           // A bearer token IS a live session (or, for up to 30 minutes, an
           // impersonation session) -- logging it verbatim on every request is
           // equivalent to logging the password. redact() below drops the value
@@ -82,6 +99,7 @@ import { redactedRequestSerializer } from '#technical/logging/redacted-request-s
     AuthModule,
     CacheModule,
     EtagModule,
+    ErrorReporterModule,
     EventsModule,
     ExportModule,
     ExpositionModule,
@@ -93,6 +111,7 @@ import { redactedRequestSerializer } from '#technical/logging/redacted-request-s
     JobsModule,
     LogShippingModule,
     MailModule,
+    MaintenanceModule,
     MonitoringModule,
     NotificationsModule,
     OutboxModule,
@@ -107,6 +126,7 @@ import { redactedRequestSerializer } from '#technical/logging/redacted-request-s
     SseModule,
     StorageModule,
     TeamsModule,
+    TelemetryModule,
     WebhooksModule,
   ],
   controllers: [AppController],
@@ -122,7 +142,9 @@ export class AppModule implements NestModule {
     // everything else, so every guard, interceptor, handler, and Prisma call
     // downstream (tenant resolution included) can attach a step to the same
     // request-scoped context.
+    consumer.apply(TelemetryMiddleware).forRoutes('*');
     consumer.apply(SecurityHeadersMiddleware).forRoutes('*');
+    consumer.apply(MaintenanceMiddleware).forRoutes('*');
     consumer.apply(LocaleMiddleware).forRoutes('*');
     consumer.apply(PipelineMiddleware).forRoutes('*');
     consumer.apply(TenantMiddleware).forRoutes('*');

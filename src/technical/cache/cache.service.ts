@@ -63,6 +63,10 @@ export class CacheService implements OnModuleDestroy {
     return raw === null || raw === undefined ? null : (JSON.parse(raw) as T);
   }
 
+  async ping(): Promise<void> {
+    await this.client.ping();
+  }
+
   async del(key: string): Promise<void> {
     await this.client.del(this.key(key));
   }

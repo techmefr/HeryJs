@@ -12,7 +12,7 @@ import {
   settle,
   type,
 } from './resource-view.harness';
-import { mockDecisions, mockRow } from './resource.fixture';
+import { mockDecisions, mockDescription, mockRow } from './resource.fixture';
 
 installServer();
 
@@ -274,6 +274,37 @@ describe('editing a record', () => {
       (call) => call.route === '/blog-posts/update',
     );
     expect(updated?.body).toEqual({ data: [{ id: 'a', title: 'Renamed' }] });
+  });
+
+  it('sends the version the record was read at when the resource is versioned', async () => {
+    mockDescription.versioned = { field: 'version', header: 'If-Match' };
+    server.handlers['/blog-posts/update'] = () =>
+      envelope([{ index: 0, id: 'a', status: 'ok', data: { id: 'a' } }]);
+
+    try {
+      const root = await mount();
+      server.rows = [{ ...mockRow('a', 'First'), version: 4 }];
+
+      root.querySelector<HTMLButtonElement>('[data-action="edit"]')!.click();
+      await settle();
+      type(
+        root.querySelector<HTMLInputElement>('input[name="title"]')!,
+        'Renamed',
+      );
+      root
+        .querySelector('form')!
+        .dispatchEvent(new Event('submit', { cancelable: true }));
+      await settle();
+
+      const updated = server.calls.find(
+        (call) => call.route === '/blog-posts/update',
+      );
+      expect(updated?.body).toEqual({
+        data: [{ id: 'a', version: 4, title: 'Renamed' }],
+      });
+    } finally {
+      delete mockDescription.versioned;
+    }
   });
 
   it('refuses to open a form for a record whose update was withdrawn since the list loaded', async () => {

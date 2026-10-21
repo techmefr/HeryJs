@@ -333,7 +333,11 @@ describe('section discovery', () => {
   it('skips the routes the overview already reports', () => {
     expect(
       sectionsOf([
-        controller('/health', [['GET', '/']]),
+        controller('/health', [
+          ['GET', '/'],
+          ['GET', '/live'],
+          ['GET', '/ready'],
+        ]),
         controller('/metrics', [['GET', '/']]),
         controller('/introspect', [['GET', '/']]),
         controller('/expose', [['GET', '/']]),

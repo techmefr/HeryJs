@@ -111,6 +111,8 @@ const HIDDEN_PATHS = [
   '/introspect',
   '/expose',
   '/health',
+  '/health/live',
+  '/health/ready',
   '/metrics',
   '/pipeline/traces',
   '/signal/stream',
