@@ -224,6 +224,9 @@ export const APP_ENFORCED_TENANT_MODELS = new Set<string>([
   // request that produced an entry has ended, so there is no ambient tenant
   // to stamp: each entry carries the tenant it was recorded under.
   'DevtoolsEntry',
+  'SsoConnection',
+  'SsoDomain',
+  'SsoIdentity',
 ]);
 
 type TenantHandling =
