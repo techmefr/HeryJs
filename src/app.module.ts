@@ -18,6 +18,7 @@ import { DevDashboardMiddleware } from '#devtools/dashboard/dev-dashboard.middle
 import { InspectorModule } from '#devtools/inspector/inspector.module';
 import { PipelineModule } from '#devtools/pipeline/pipeline.module';
 import { ImpersonationModule } from '#modules/impersonation/impersonation.module';
+import { JobFlowsModule } from '#technical/job-flows/job-flows.module';
 import { JobsModule } from '#technical/jobs/jobs.module';
 import { ExportModule } from '#modules/export/export.module';
 import { MailModule } from '#modules/mail/mail.module';
@@ -26,6 +27,7 @@ import { MaintenanceMiddleware } from '#technical/maintenance/maintenance.middle
 import { MonitoringModule } from '#technical/monitoring/monitoring.module';
 import { OutboxModule } from '#technical/outbox/outbox.module';
 import { NotificationsModule } from '#technical/notifications/notifications.module';
+import { PrivacyModule } from '#technical/privacy/privacy.module';
 import { BackupModule } from '#technical/backup/backup.module';
 import { PruneModule } from '#technical/prune/prune.module';
 import { QuotasModule } from '#technical/quotas/quotas.module';
@@ -116,6 +118,7 @@ const telemetryOptions = telemetryPinoOptions();
     ImpersonationModule,
     InspectorModule,
     IntrospectionModule,
+    JobFlowsModule,
     JobsModule,
     LogShippingModule,
     MailModule,
@@ -124,6 +127,7 @@ const telemetryOptions = telemetryPinoOptions();
     NotificationsModule,
     OutboxModule,
     PipelineModule,
+    PrivacyModule,
     BackupModule,
     PruneModule,
     QuotasModule,

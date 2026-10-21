@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { writeAuditLogInTransaction } from '#technical/audit/audit-log';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { heryConfig } from '#technical/config/hery-config';
@@ -7,7 +8,7 @@ import {
   ExposeField,
 } from '#technical/exposition/exposition.decorators';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
-import { prunableModels } from './prunable-models';
+import { HISTORY_MODEL, prunableModels } from './prunable-models';
 import { canManagePrune } from './prune.policy';
 import { resolvePruneRule } from './prune.config';
 import type { ResolvedPruneRule } from './prune.config';
@@ -79,6 +80,10 @@ export class PruneService {
   ): Promise<PruneRunResult> {
     const cutoff = new Date(Date.now() - rule.retentionDays * DAY_MS);
 
+    if (model === HISTORY_MODEL) {
+      return this.pruneHistory(cutoff, actor, tenantId);
+    }
+
     return authPrismaClient.$transaction(async (tx) => {
       const delegate = delegateFor(tx, model);
 
@@ -100,6 +105,12 @@ export class PruneService {
 
       await delegate.deleteMany({
         where: { id: { in: rows.map((row) => row.id) } },
+      });
+      // A snapshot is the history of a row that no longer exists: with no
+      // record to load, no route can reach it, and it would sit there until
+      // its own retention ran out.
+      await tx.recordSnapshot.deleteMany({
+        where: { model, recordId: { in: rows.map((row) => row.id) } },
       });
 
       const idsByTenant = new Map<string, string[]>();
@@ -123,6 +134,59 @@ export class PruneService {
       }
 
       return { model, deletedCount: rows.length };
+    });
+  }
+
+  /**
+   * History ages out record by record, never whole: the newest snapshot of a
+   * record is kept however old it is, because it is what a diff and a restore
+   * start from. Only a snapshot with a newer one behind it, and past the
+   * cutoff, is deleted.
+   */
+  private async pruneHistory(
+    cutoff: Date,
+    actor: PruneActor,
+    tenantId?: string,
+  ): Promise<PruneRunResult> {
+    return authPrismaClient.$transaction(async (tx) => {
+      const deleted = await tx.$queryRaw<{ tenantId: string }[]>`
+        DELETE FROM "RecordSnapshot" AS old
+        WHERE old."createdAt" < ${cutoff}
+          ${tenantId === undefined ? Prisma.empty : Prisma.sql`AND old."tenantId" = ${tenantId}`}
+          AND EXISTS (
+            SELECT 1 FROM "RecordSnapshot" AS newer
+            WHERE newer."tenantId" = old."tenantId"
+              AND newer."model" = old."model"
+              AND newer."recordId" = old."recordId"
+              AND newer."sequence" > old."sequence"
+          )
+        RETURNING old."tenantId"`;
+
+      const countByTenant = new Map<string, number>();
+
+      for (const row of deleted) {
+        countByTenant.set(
+          row.tenantId,
+          (countByTenant.get(row.tenantId) ?? 0) + 1,
+        );
+      }
+
+      // One entry per tenant and a count rather than ids: a busy resource ages
+      // out thousands of snapshots a day, and the chain should say that history
+      // was trimmed, not carry every id.
+      for (const [owner, count] of countByTenant) {
+        await writeAuditLogInTransaction(tx, {
+          tenantId: owner,
+          model: HISTORY_MODEL,
+          operation: 'prune',
+          recordId: null,
+          data: { count },
+          userId: actor.userId,
+          impersonatedBy: actor.impersonatedBy,
+        });
+      }
+
+      return { model: HISTORY_MODEL, deletedCount: deleted.length };
     });
   }
 

@@ -9,6 +9,12 @@
  */
 import { driverToken } from '#technical/drivers/driver-token';
 import type { PageQuery } from '#technical/http/page-query';
+import type {
+  FeatureFlagContext,
+  FeatureFlagEvaluation,
+  FeatureFlagRule,
+  RolloutBy,
+} from './feature-flag-evaluation';
 
 export const FEATURE_FLAGS_MODULE = 'feature-flags';
 
@@ -21,17 +27,37 @@ export interface FeatureFlagRecord {
   key: string;
   tenantId: string | null;
   enabled: boolean;
+  rolloutPercentage: number;
+  rolloutBy: RolloutBy;
+  rules: FeatureFlagRule[];
 }
 
+export type FeatureFlagPatch = Partial<
+  Pick<
+    FeatureFlagRecord,
+    'enabled' | 'rolloutPercentage' | 'rolloutBy' | 'rules'
+  >
+>;
+
 export interface FeatureFlagDriver {
-  isEnabled(key: string, tenantId?: string): Promise<boolean>;
+  isEnabled(key: string, context?: FeatureFlagContext): Promise<boolean>;
+  /**
+   * Same decision as `isEnabled`, with the reason, so an operator can preview
+   * what a given user or tenant would get. A provider that cannot explain
+   * itself answers with reason `provider`.
+   */
+  evaluate(
+    key: string,
+    context?: FeatureFlagContext,
+  ): Promise<FeatureFlagEvaluation>;
   list(tenantId?: string): Promise<FeatureFlagRecord[]>;
   listAll(
     page: PageQuery,
   ): Promise<{ records: FeatureFlagRecord[]; total: number }>;
   set(
     key: string,
-    enabled: boolean,
+    patch: FeatureFlagPatch,
     tenantId?: string,
   ): Promise<FeatureFlagRecord>;
+  remove(key: string, tenantId?: string): Promise<boolean>;
 }

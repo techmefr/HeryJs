@@ -1,12 +1,20 @@
 import { ApiError, api, labelOf } from './api';
 import type { DescribedController } from './api';
+import type { RichtextAllow } from './safe-html';
 
-export type FieldType = 'string' | 'int' | 'boolean' | 'datetime' | 'file';
+export type FieldType =
+  'string' | 'int' | 'boolean' | 'datetime' | 'file' | 'richtext';
+
+export interface DescribedRichtext {
+  maxLength: number;
+  allow: RichtextAllow;
+}
 
 export interface DescribedField {
   name: string;
   type: FieldType;
   optional: boolean;
+  richtext?: DescribedRichtext;
 }
 
 export interface JsonSchemaProperty {
@@ -33,9 +41,26 @@ export interface DescribedVersioning {
   header: string;
 }
 
+export interface DescribedTransition {
+  name: string;
+  from: string[];
+  to: string;
+  requires: string[];
+}
+
+export interface DescribedWorkflow {
+  field: string;
+  initial: string;
+  states: string[];
+  transitions: DescribedTransition[];
+}
+
 export interface ResourceDescription {
   version: number;
   versioned?: DescribedVersioning;
+  workflow?: DescribedWorkflow;
+  history?: boolean;
+  sharing?: boolean;
   fields: DescribedField[];
   sorts: string[];
   filters: string[];
@@ -88,7 +113,8 @@ export type BatchEntry =
   | { index: number; id?: string; status: 'ok'; data: unknown }
   | { index: number; id?: string; status: 'error'; error: ResolvedFailure };
 
-export type MutationVerb = 'create' | 'update' | 'delete' | 'restore';
+export type MutationVerb =
+  'create' | 'update' | 'delete' | 'restore' | 'transition';
 
 export interface ResourceRef {
   base: string;
@@ -146,11 +172,55 @@ export function capabilityKeysOf(description: ResourceDescription): string[] {
     keys.push('restore');
   }
 
+  if (description.history) {
+    keys.push('history', 'revert');
+  }
+
+  if (description.sharing) {
+    keys.push('share');
+  }
+
   for (const relation of description.relations) {
     keys.push('attach' + pascalOf(relation), 'detach' + pascalOf(relation));
   }
 
+  for (const transition of description.workflow?.transitions ?? []) {
+    keys.push(transition.name);
+  }
+
   return keys;
+}
+
+/**
+ * The transitions a row can be offered: the ones whose source states include
+ * the state the row is in. Whether the caller may fire one is the row's own
+ * capability for it, read separately, so a button can be shown and disabled
+ * rather than silently missing.
+ */
+export function transitionsFrom(
+  description: Pick<ResourceDescription, 'workflow'>,
+  row: ResourceRow,
+): DescribedTransition[] {
+  const workflow = description.workflow;
+
+  if (!workflow) {
+    return [];
+  }
+
+  const current = row[workflow.field];
+
+  return workflow.transitions.filter(
+    (transition) =>
+      typeof current === 'string' && transition.from.includes(current),
+  );
+}
+
+export function mutateTransition(
+  base: string,
+  id: string,
+  transition: string,
+): Promise<BatchEntry[]> {
+  return mutate(base, 'transition', { data: [{ id, transition }] });
 }
 
 export function isAllowed(

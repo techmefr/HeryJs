@@ -3,6 +3,7 @@ import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
 
 const snippetFields = z.object({
   title: z.string().min(1).max(255),
+  summary: z.string().min(1).max(255).optional(),
 });
 
 /**
@@ -102,4 +103,23 @@ export const restoreSnippetRequestSchema = z.object({
 });
 export type RestoreSnippetRequestBody = z.infer<
   typeof restoreSnippetRequestSchema
+>;
+
+// A transition is asked for by name, never by writing the state column: the
+// service moves the row only along an edge the blueprint declared.
+export const SNIPPET_TRANSITIONS = ['publish', 'archive', 'reopen'] as const;
+
+export const transitionSnippetRequestSchema = z.object({
+  data: z
+    .array(
+      z.object({
+        id: z.string(),
+        transition: z.enum(SNIPPET_TRANSITIONS),
+      }),
+    )
+    .max(MAX_BATCH_ENTRIES),
+  atomic: z.boolean().default(false),
+});
+export type TransitionSnippetRequestBody = z.infer<
+  typeof transitionSnippetRequestSchema
 >;
