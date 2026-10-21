@@ -1,5 +1,6 @@
 import { ApiError } from './api';
 import { drawBulk } from './bulk-bar';
+import { openHistory } from './history-panel';
 import type { BulkKind } from './bulk';
 import {
   extensionFor,
@@ -90,6 +91,22 @@ function buttonsOf(view: View, row: ResourceRow): RowButton[] {
       label: 'Delete',
       isAllowed: isAllowed(row.capabilities, 'delete'),
       onClick: () => void runRowChange(view, 'delete', row),
+    });
+  }
+
+  if (view.description.history) {
+    buttons.push({
+      id: 'history',
+      label: 'History',
+      isAllowed: isAllowed(row.capabilities, 'history'),
+      onClick: () =>
+        void openHistory({
+          root: view.root,
+          base: view.options.base,
+          description: view.description,
+          row,
+          onRestored: reload,
+        }),
     });
   }
 

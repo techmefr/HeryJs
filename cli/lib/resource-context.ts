@@ -29,6 +29,7 @@ export interface ResourceContext {
   pluralKebabName: string;
   softDeletes: Blueprint['softDeletes'];
   versioned: Blueprint['versioned'];
+  history: Blueprint['history'];
   fields: ScalarBlueprintField[];
   /** The embedding column, when the resource declares one: derived from `source`, never client-writable and never returned. */
   vector: VectorBlueprintField | null;
@@ -64,6 +65,7 @@ export function buildResourceContext(blueprint: Blueprint): ResourceContext {
     pluralKebabName,
     softDeletes: blueprint.softDeletes,
     versioned: blueprint.versioned,
+    history: blueprint.history,
     fields: blueprint.fields.filter(isScalarField),
     vector: blueprint.fields.find(isVectorField) ?? null,
     permissions: blueprint.permissions,

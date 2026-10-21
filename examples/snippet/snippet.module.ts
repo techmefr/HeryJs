@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '#technical/auth/auth.module';
 import { CapabilitiesService } from '#technical/capabilities/capabilities.service';
 import { ChangeFeedModule } from '#technical/change-feed/change-feed.module';
+import { HistoryModule } from '#technical/history/history.module';
 import { PrismaModule } from '#technical/prisma/prisma.module';
 import { SearchModule } from '#technical/search/search.module';
 import { SignalModule } from '#technical/signal/signal.module';
@@ -23,6 +24,7 @@ import {
     SearchModule,
     SignalModule,
     ChangeFeedModule,
+    HistoryModule,
   ],
   controllers: [SnippetController],
   providers: [

@@ -8,6 +8,7 @@ import {
   writeAuditLogInTransaction,
 } from '../audit/audit-log';
 import { env } from '../config/env';
+import { recordHistoryOf } from '../history/history-recorder';
 import {
   modelChangeMessages,
   outboxEmitsFor,
@@ -213,6 +214,10 @@ export const APP_ENFORCED_TENANT_MODELS = new Set<string>([
   // extension chain so an audit entry cannot be scoped away by the boundary it
   // is recording a crossing of.
   'AuditLog',
+  // Written by the same extension and for the same reason as AuditLog: the
+  // snapshot of a write must not be scoped away by the boundary it describes.
+  // HistoryService states the tenant in every read.
+  'RecordSnapshot',
   // Global rows are the point of a feature flag: tenantId is nullable, and the
   // extension would stamp the current tenant onto a flag meant for everyone.
   'FeatureFlag',
@@ -337,6 +342,15 @@ export function createTenantScopedPrismaClient() {
               await writeAuditLog(rawClient, entry);
             }
           }
+
+          const ambient = AmbientTransactionStorage.current();
+
+          await recordHistoryOf(ambient ? ambient.tx : rawClient, {
+            model,
+            operation,
+            args,
+            result,
+          });
 
           return result;
         },

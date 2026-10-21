@@ -1,5 +1,6 @@
 name: Snippet
 versioned: true
+history: true
 
 fields:
   - name: title

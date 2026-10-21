@@ -1,5 +1,19 @@
 import type { ResourceContext } from './resource-context';
 import {
+  historyCapabilityKeys,
+  historyCapabilityLines,
+  historyConstructorParameter,
+  historyControllerImports,
+  historyPolicyBlock,
+  historyPolicyImports,
+  historyPurgeCleanup,
+  historyRoutes,
+  historyServiceConstants,
+  historyServiceImports,
+  historyServiceMethods,
+  historySpecBlock,
+} from './history-templates';
+import {
   fakerValueFor,
   graphqlTypeFor,
   prismaTypeFor,
@@ -276,6 +290,8 @@ function recordCapabilityKeyList(ctx: ResourceContext): string[] {
     keys.push(`attach${pascalRelation}`, `detach${pascalRelation}`);
   }
 
+  keys.push(...historyCapabilityKeys(ctx));
+
   return keys;
 }
 
@@ -305,6 +321,8 @@ function recordCapabilityLines(ctx: ResourceContext): string {
       `      detach${pascalRelation}: canDetach${pascalRelation}From${ctx.pascalName}(subject, record),`,
     );
   }
+
+  lines.push(...historyCapabilityLines(ctx));
 
   return lines.length > 0 ? '\n' + lines.join('\n') : '';
 }
@@ -349,7 +367,7 @@ export const canUpdate${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike
 // route takes, before canUpdate${ctx.pascalName} narrows per record inside the handler.
 export const canUpdateAny${ctx.pascalName}: PolicyCheck = (subject) =>
   resolveCollectionCapability(${ctx.screamingSnakeName}_PRESETS.update, subject);
-${relationPolicyBlock(ctx)}
+${relationPolicyBlock(ctx)}${historyPolicyBlock(ctx)}
 export const canDelete${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike> = (
   subject,
   record,
@@ -514,9 +532,9 @@ import { SearchEngineRegistry } from '#technical/search/search-engine.registry';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { writeAuditLog } from '#technical/audit/audit-log';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
-${
-  hasTranslatable
-    ? `import {
+${historyServiceImports(ctx)}${
+    hasTranslatable
+      ? `import {
   normalizeTranslatableWrite,
   searchDocumentFor,
 } from '#technical/i18n/translatable';
@@ -528,8 +546,8 @@ import {
 } from '#technical/i18n/translatable-query';
 import type { TranslatableRow } from '#technical/i18n/translatable-query';
 `
-    : ''
-}import { resolveRelationInstructions } from '#technical/http/relation-resolver';
+      : ''
+  }import { resolveRelationInstructions } from '#technical/http/relation-resolver';
 import type { PrismaRelationClient } from '#technical/http/relation-resolver';
 ${ctx.versioned ? `import { VersionConflictException } from '#technical/errors/version-conflict.exception';\nimport { assertVersionIsCurrent, isLostRaceError } from '#technical/http/record-version';\nimport type { ExpectedVersion } from '#technical/http/record-version';\n` : ''}import type { RelationInstruction${childIncludes.length > 0 ? ', ParsedListQuery' : ''} } from '#technical/http/list-query';${ctx.relations.length > 0 ? `\nimport { applyRelationMutation } from '#technical/http/relation-mutations';\nimport type { PivotDelegate, RelatedDelegate } from '#technical/http/relation-mutations';\nimport { MAX_BATCH_ENTRIES } from '#technical/http/batch';` : ''}
 import {
@@ -539,7 +557,7 @@ import {
 import { ${ctx.screamingSnakeName}_PRESETS } from './${ctx.kebabName}.presets';
 
 const SEARCHABLE_FIELDS = [${searchableFields.map((name) => `'${name}'`).join(', ')}] as const;
-const SEARCH_COLLECTION = '${ctx.kebabName}';${vectorServiceConstants(ctx)}${
+const SEARCH_COLLECTION = '${ctx.kebabName}';${vectorServiceConstants(ctx)}${historyServiceConstants(ctx)}${
     hasTranslatable
       ? `
 const TRANSLATABLE_FIELDS: readonly TranslatableFieldSpec[] = ${translatableFieldsLiteral(ctx)};
@@ -575,7 +593,7 @@ export class ${ctx.pascalName}Service {
   constructor(
     @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,
     private readonly signal: SignalService,
-    private readonly searchEngines: SearchEngineRegistry,${vectorConstructorParameter(ctx)}
+    private readonly searchEngines: SearchEngineRegistry,${vectorConstructorParameter(ctx)}${historyConstructorParameter(ctx)}
   ) {${vectorConstructorBody(ctx)}}
 
   private notify() {
@@ -851,8 +869,8 @@ ${
     return { records, total };
   }
 `;
-  })
-  .join('')}
+    })
+    .join('')}
 ${ctx.relations
   .map((relation) => {
     const pascalRelation = pascalRelationName(relation);
@@ -1042,11 +1060,11 @@ ${
     });
     await authPrismaClient.${ctx.camelName}.delete({
       where: { id: record.id, tenantId: record.tenantId },
-    });
+    });${historyPurgeCleanup(ctx)}
     this.notify();
     await this.removeFromSearchIndex(record.id, record.tenantId);
   }
-}
+${historyServiceMethods(ctx)}}
 `;
 }
 
@@ -1288,7 +1306,8 @@ export function controllerFile(ctx: ResourceContext): string {
     ...(ctx.versioned ? ['version'] : []),
   ];
   const childIncludes = ownRouteIncludes(ctx);
-  const hasParentRoutes = childIncludes.length > 0 || ctx.relations.length > 0;
+  const hasParentRoutes =
+    childIncludes.length > 0 || ctx.relations.length > 0 || ctx.history;
   // The child route loads its parent through the loader that refuses a trashed
   // row: without it, soft-deleting a parent would leave its children listable
   // through POST /<parent>/:id/<relation>/search, which is the record coming
@@ -1324,7 +1343,7 @@ import type {
   ListQueryContract,
   SearchRequestBody,
 } from '#technical/http/list-query';
-${hasTranslatable ? `import { describeLocales } from '#technical/i18n/translatable';\n` : ''}import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
+${hasTranslatable ? `import { describeLocales } from '#technical/i18n/translatable';\n` : ''}${historyControllerImports(ctx)}import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import {
   create${ctx.pascalName}RequestSchema,
   create${ctx.pascalName}Schema,
@@ -1360,7 +1379,7 @@ ${
 `
     : ''
 }  canUpdate${ctx.pascalName},
-  canUpdateAny${ctx.pascalName},${hasParentRoutes ? `\n  canView${ctx.pascalName},` : ''}
+  canUpdateAny${ctx.pascalName},${childIncludes.length > 0 || ctx.relations.length > 0 ? `\n  canView${ctx.pascalName},` : ''}${historyPolicyImports(ctx)}
   canViewAny${ctx.pascalName},
   ${ctx.pascalName}Policy,
 } from './${ctx.kebabName}.policy';
@@ -1404,7 +1423,7 @@ ${ctx.fields.map((field) => `    { name: '${field.name}', type: '${field.type}',
   // knows the search route returns every match, and that asking for a page is
   // an error rather than a no-op.
   paginated: ${ctx.pagination ? 'true' : 'false'},
-  softDeletes: ${ctx.softDeletes ? 'true' : 'false'},${ctx.versioned ? `\n  versioned: { field: 'version', header: 'If-Match' },` : ''}
+  softDeletes: ${ctx.softDeletes ? 'true' : 'false'},${ctx.versioned ? `\n  versioned: { field: 'version', header: 'If-Match' },` : ''}${ctx.history ? `\n  history: true,` : ''}
   // The many-to-many relations the update route can attach to and detach from
   // by id. A client builds its relation controls from this list and reads
   // whether each is allowed from the record's own capabilities, so it neither
@@ -1659,6 +1678,7 @@ ${paginationMetaLines(include.pagination)}      total,
 `;
     })
     .join('')}
+${historyRoutes(ctx)}
   @Post('create')
   @Capability(canCreate${ctx.pascalName})
   async create(
@@ -1892,7 +1912,7 @@ export function moduleFile(ctx: ResourceContext): string {
   return `import { Module } from '@nestjs/common';
 import { AuthModule } from '#technical/auth/auth.module';
 import { CapabilitiesService } from '#technical/capabilities/capabilities.service';
-import { ChangeFeedModule } from '#technical/change-feed/change-feed.module';
+import { ChangeFeedModule } from '#technical/change-feed/change-feed.module';${ctx.history ? "\nimport { HistoryModule } from '#technical/history/history.module';" : ''}
 import { PrismaModule } from '#technical/prisma/prisma.module';
 import { SearchModule } from '#technical/search/search.module';
 import { SignalModule } from '#technical/signal/signal.module';${ctx.vector ? "\nimport { VectorModule } from '#technical/vector/vector.module';" : ''}
@@ -1913,7 +1933,7 @@ import {
     AuthModule,
     SearchModule,
     SignalModule,
-    ChangeFeedModule${ctx.vector ? ', VectorModule' : ''},
+    ChangeFeedModule${ctx.vector ? ', VectorModule' : ''}${ctx.history ? ', HistoryModule' : ''},
   ],
   controllers: [${ctx.pascalName}Controller],
   providers: [
@@ -3611,7 +3631,7 @@ ${
   });
 
 ${bulkSpecBlock(ctx, createBody)}
-${ctx.versioned ? `${versionedSpecBlock(ctx, createBody)}\n` : ''}`
+${ctx.versioned ? `${versionedSpecBlock(ctx, createBody)}\n` : ''}${ctx.history ? `${historySpecBlock(ctx, createBody)}\n` : ''}`
       : ''
   }${
     !(canCreateAny && canDeleteAny)

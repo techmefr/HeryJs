@@ -327,6 +327,12 @@ softDeletes: true
 # overwriting what someone else just wrote.
 versioned: false
 
+# Off unless you say so. Turn it on and every write stores a snapshot of the
+# record (never of a hidden or encrypted field), and the resource gains routes to
+# list its history, diff an entry against the record as it is now, and restore
+# one through the normal update path. Snapshots age out with prune.
+history: false
+
 permissions:
   # preset: own (creator/owner only) | team (same team) | all (any authenticated user) | none (nobody)
   # view drives the detail route and the collection filter from the same preset,

@@ -74,6 +74,10 @@ With `softDeletes: false`, there is no `deletedAt` column, no restore route, no 
 
 Off by default. `versioned: true` adds an integer `version` column that every update, delete and restore increments, exposes it on the record, and makes the update route refuse an entry that does not say which version it read, or that read a stale one (`409`, or `412` through `If-Match`). `version` is reserved on a versioned resource and the key is refused on a `routed: false` one. See [Optimistic concurrency](../guides/optimistic-concurrency/).
 
+### History
+
+Off by default. `history: true` stores a snapshot of the record after every write and adds three routes to read, diff and restore them. Hidden and encrypted fields are never stored. See [Row history](../guides/row-history/).
+
 ## Permissions
 
 One preset per action, each resolved through the same capabilities engine described in the capabilities guide.

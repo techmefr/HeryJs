@@ -118,6 +118,92 @@ function childPath(ctx: ResourceContext, include: ResolvedInclude): JsonSchema {
   };
 }
 
+function historyPaths(ctx: ResourceContext): PathItems {
+  const base = `/${ctx.routePath}/{id}/history`;
+  const name = typeNameOf(ctx);
+  const parameters = [
+    { name: 'id', in: 'path', required: true, schema: { type: 'string' } },
+  ];
+  const notFound = response(
+    'No such record, or no such history entry for it',
+    ref('ErrorResponse'),
+  );
+
+  return {
+    [base]: {
+      post: operation(
+        ctx,
+        'History',
+        `List the history of a ${ctx.pascalName}`,
+        {
+          parameters,
+          requestBody: body(`${name}HistoryListRequest`),
+          responses: {
+            '200': response(
+              "The record's snapshots, newest first. meta.nextBefore is the cursor for the next page, or null at the end.",
+              envelope(
+                { type: 'array', items: ref(`${name}HistoryEntry`) },
+                {
+                  type: 'object',
+                  properties: {
+                    nextBefore: {
+                      anyOf: [{ type: 'integer' }, { type: 'null' }],
+                    },
+                  },
+                  required: ['nextBefore'],
+                },
+              ),
+            ),
+            ...errorResponses(),
+            '404': notFound,
+          },
+        },
+      ),
+    },
+    [`${base}/diff`]: {
+      post: operation(ctx, 'HistoryDiff', `Diff a ${ctx.pascalName} snapshot`, {
+        parameters,
+        requestBody: body(`${name}HistoryDiffRequest`),
+        responses: {
+          '200': response(
+            'The fields that differ between the two sides',
+            envelope(ref(`${name}HistoryDiff`)),
+          ),
+          ...errorResponses(),
+          '404': notFound,
+        },
+      }),
+    },
+    [`${base}/restore`]: {
+      post: operation(
+        ctx,
+        'HistoryRestore',
+        `Restore a ${ctx.pascalName} snapshot`,
+        {
+          parameters,
+          requestBody: body(`${name}HistoryRestoreRequest`),
+          responses: {
+            '201': response(
+              'The record after the snapshot was written back through the update path',
+              envelope(ref(name)),
+            ),
+            ...errorResponses(),
+            '404': notFound,
+            ...(ctx.versioned
+              ? {
+                  '409': response(
+                    'The record changed since the version sent',
+                    ref('ErrorResponse'),
+                  ),
+                }
+              : {}),
+          },
+        },
+      ),
+    },
+  };
+}
+
 export function pathsFor(ctx: ResourceContext): PathItems {
   const base = `/${ctx.routePath}`;
   const name = typeNameOf(ctx);
@@ -194,6 +280,10 @@ export function pathsFor(ctx: ResourceContext): PathItems {
       ref(name),
       true,
     );
+  }
+
+  if (ctx.history) {
+    Object.assign(paths, historyPaths(ctx));
   }
 
   for (const include of ownRouteIncludes(ctx)) {

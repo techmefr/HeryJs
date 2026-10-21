@@ -15,7 +15,10 @@ import { SessionGuard } from '#technical/auth/session.guard';
 import type { RequestWithUser } from '#technical/auth/session.guard';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { subjectOf } from '#technical/capabilities/subject';
-import { Capability } from '#technical/capabilities/capability.decorator';
+import {
+  Capability,
+  LoadRecordWith,
+} from '#technical/capabilities/capability.decorator';
 import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
 import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
 import { AlreadyRestoredException } from '#technical/errors/already-restored.exception';
@@ -39,6 +42,16 @@ import type {
   ListQueryContract,
   SearchRequestBody,
 } from '#technical/http/list-query';
+import {
+  historyDiffSchema,
+  historyListSchema,
+  historyRestoreSchema,
+} from '#technical/history/history.schemas';
+import type {
+  HistoryDiffBody,
+  HistoryListBody,
+  HistoryRestoreBody,
+} from '#technical/history/history.schemas';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import {
   createSnippetRequestSchema,
@@ -64,11 +77,16 @@ import {
   canRestoreAnySnippet,
   canUpdateSnippet,
   canUpdateAnySnippet,
+  canRevertSnippet,
+  canViewHistorySnippet,
   canViewAnySnippet,
   SnippetPolicy,
 } from './snippet.policy';
 import { SNIPPET_SIGNAL_CHANNEL, SnippetService } from './snippet.service';
-import { SNIPPET_RECORD_LOADER } from './snippet-record.loader';
+import {
+  SNIPPET_RECORD_LOADER,
+  SNIPPET_VISIBLE_RECORD_LOADER,
+} from './snippet-record.loader';
 import type { SnippetRecordLoader } from './snippet-record.loader';
 import { toSnippetView } from './snippet.view';
 import type { SnippetView } from './snippet.view';
@@ -112,6 +130,7 @@ const SNIPPET_DESCRIBE = {
   paginated: true,
   softDeletes: true,
   versioned: { field: 'version', header: 'If-Match' },
+  history: true,
   // The many-to-many relations the update route can attach to and detach from
   // by id. A client builds its relation controls from this list and reads
   // whether each is allowed from the record's own capabilities, so it neither
@@ -125,6 +144,8 @@ const SNIPPET_DESCRIBE = {
     update: z.toJSONSchema(updateSnippetSchema, { unrepresentable: 'any' }),
   },
 };
+
+type RequestWithSnippet = RequestWithUser & { record: Snippet };
 
 @Controller('snippets')
 @UseGuards(SessionGuard, CapabilitiesGuard)
@@ -288,6 +309,62 @@ export class SnippetController {
   @CacheableRead()
   describe() {
     return ok(SNIPPET_DESCRIBE);
+  }
+
+  // Read with the any-state loader, so the history of a trashed record is
+  // still reachable: it is how an operator finds what was there before the
+  // delete. Newest first; pass nextBefore back as `before` for the next page.
+  @Post(':id/history')
+  @HttpCode(200)
+  @Capability(canViewHistorySnippet)
+  @LoadRecordWith(SNIPPET_RECORD_LOADER, 'snippet')
+  async history(
+    @Req() req: RequestWithSnippet,
+    @Body(new ZodValidationPipe(historyListSchema)) body: HistoryListBody,
+  ) {
+    const page = await this.snippets.historyOf(req.record, body);
+
+    return ok(page.entries, { nextBefore: page.nextBefore });
+  }
+
+  // Compares one entry with another, or with the record as it is now when no
+  // second one is named. The current side is cut to the same columns as a
+  // stored snapshot, so the diff cannot show a field history never kept.
+  @Post(':id/history/diff')
+  @HttpCode(200)
+  @Capability(canViewHistorySnippet)
+  @LoadRecordWith(SNIPPET_RECORD_LOADER, 'snippet')
+  async historyDiff(
+    @Req() req: RequestWithSnippet,
+    @Body(new ZodValidationPipe(historyDiffSchema)) body: HistoryDiffBody,
+  ) {
+    return ok(await this.snippets.historyDiffOf(req.record, body));
+  }
+
+  // Not a second write path: the snapshot's fields go through the same update
+  // as an edit, so the update policy, the version check, the audit entry and the change
+  // feed all apply, and the revert itself becomes the newest entry of the
+  // history. A trashed record is refused here -- bring it back from the bin first.
+  @Post(':id/history/restore')
+  @Capability(canRevertSnippet)
+  @LoadRecordWith(SNIPPET_VISIBLE_RECORD_LOADER, 'snippet')
+  async restoreHistory(
+    @Req() req: RequestWithSnippet,
+    @Body(new ZodValidationPipe(historyRestoreSchema)) body: HistoryRestoreBody,
+    @Headers('if-match') ifMatch?: string,
+  ) {
+    const entry = await this.snippets.historyEntryOf(
+      req.record,
+      body.snapshotId,
+    );
+    const expected = resolveExpectedVersion(
+      'snippet',
+      body.version,
+      ifMatchVersionOf(ifMatch, 1),
+    );
+    const updated = await this.snippets.revert(req.record, entry, expected);
+
+    return ok(toSnippetView(updated));
   }
 
   @Post('create')

@@ -146,6 +146,9 @@ export const blueprintSchema = z.strictObject({
   // written down on purpose.
   softDeletes: z.boolean().optional(),
   versioned: z.boolean().default(false),
+  // Off unless written: every write to the resource stores a snapshot, and the
+  // generated resource gains routes to read, diff and restore them.
+  history: z.boolean().default(false),
   fields: z.array(blueprintFieldSchema).default([]),
   permissions: z
     .strictObject({
@@ -544,6 +547,33 @@ function assertVersionedIsCoherent(
   }
 }
 
+function assertHistoryIsCoherent(
+  blueprint: RawBlueprint,
+  report: (message: string) => void,
+): void {
+  if (!blueprint.history) {
+    return;
+  }
+
+  if (!blueprint.routed) {
+    report(
+      'history only applies to a routed resource: an unrouted one has no routes to read a history from',
+    );
+  }
+
+  if (blueprint.model !== undefined && blueprint.model !== blueprint.name) {
+    report(
+      "history belongs to the resource that owns the model: this one serves another resource's model, so its writes would be snapshotted twice",
+    );
+  }
+
+  for (const field of blueprint.fields.filter((item) => item.translatable)) {
+    report(
+      `field "${field.name}" is translatable, which history does not snapshot yet: a snapshot would have to hold every locale`,
+    );
+  }
+}
+
 /**
  * ownRoute only makes sense on an include: an aggregate resolves to a single
  * number, not a collection, so there is nothing for a scoped route to page
@@ -798,6 +828,7 @@ export function loadBlueprint(filePath: string): Blueprint {
   assertTranslatableIsCoherent(blueprint, (message) => problems.push(message));
   assertVectorFieldsAreCoherent(blueprint, (message) => problems.push(message));
   assertVersionedIsCoherent(blueprint, (message) => problems.push(message));
+  assertHistoryIsCoherent(blueprint, (message) => problems.push(message));
   assertRelationsAreUnique(blueprint, (message) => problems.push(message));
   assertOwnRouteOnlyOnIncludes(blueprint, (message) => problems.push(message));
 

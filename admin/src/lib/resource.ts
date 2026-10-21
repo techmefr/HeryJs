@@ -36,6 +36,7 @@ export interface DescribedVersioning {
 export interface ResourceDescription {
   version: number;
   versioned?: DescribedVersioning;
+  history?: boolean;
   fields: DescribedField[];
   sorts: string[];
   filters: string[];
@@ -144,6 +145,10 @@ export function capabilityKeysOf(description: ResourceDescription): string[] {
 
   if (description.softDeletes) {
     keys.push('restore');
+  }
+
+  if (description.history) {
+    keys.push('history', 'revert');
   }
 
   for (const relation of description.relations) {

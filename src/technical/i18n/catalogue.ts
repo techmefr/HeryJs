@@ -67,6 +67,10 @@ export const CATALOGUE: Catalogue = {
     fr: (details) =>
       `${String(details.resource)} n'est pas dans la corbeille, il ne peut donc pas être restauré.`,
   },
+  'record.historyEntryNotFound': {
+    fr: (details) =>
+      `${String(details.resource)} n'a pas d'entrée d'historique ${String(details.entryId)}.`,
+  },
   'translatable.empty': {
     fr: (details) =>
       `"${String(details.field)}" est obligatoire et resterait sans aucune traduction.`,

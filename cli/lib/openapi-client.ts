@@ -18,6 +18,7 @@ import {
   typeNameOf,
 } from './openapi-contract';
 import type { RecordProperty } from './openapi-contract';
+import { historyFields } from './history-templates';
 
 const FIELD_TS_TYPES: Record<RecordProperty['type'], string> = {
   string: 'string',
@@ -200,14 +201,26 @@ function mutationDeclarations(ctx: ResourceContext): string {
   ].join('\n\n');
 }
 
+function historyDeclarations(ctx: ResourceContext): string {
+  if (!ctx.history) {
+    return '';
+  }
+
+  const keys = [
+    ...historyFields(ctx).map((field) => field.name),
+    ...(ctx.softDeletes ? ['deletedAt'] : []),
+    ...(ctx.versioned ? ['version'] : []),
+  ];
+
+  return `export type ${typeNameOf(ctx)}Snapshot = Partial<Pick<${typeNameOf(ctx)}, ${union(keys)}>>;`;
+}
+
 function describeDeclaration(ctx: ResourceContext): string {
   const name = typeNameOf(ctx);
   const pagination = ctx.pagination
     ? `  limits: number[];\n  defaultLimit: number;\n  paginated: true;`
     : '  paginated: false;';
-  const versioned = ctx.versioned
-    ? `\n  versioned: { field: 'version'; header: 'If-Match' };`
-    : '';
+  const versioned = `${ctx.versioned ? `\n  versioned: { field: 'version'; header: 'If-Match' };` : ''}${ctx.history ? '\n  history: true;' : ''}`;
 
   return `export interface ${name}Describe {
   version: ${ctx.version};
@@ -279,6 +292,18 @@ function clientFunction(ctx: ResourceContext): string {
     const child = `${name}${pascalOf(include.relation)}`;
     members.push(`    search${pascalOf(include.relation)}: (id: string, options: ${child}SearchOptions = {}) =>
       request<Envelope<${child}Row[], ${child}Meta>>('POST', \`${route}/\${encodeURIComponent(id)}/${include.relation}/search\`, options),`);
+  }
+
+  if (ctx.history) {
+    const id = 'encodeURIComponent(id)';
+    members.push(
+      `    history: (id: string, options: { limit?: number; before?: number } = {}) =>
+      request<Envelope<Array<HistoryEntry<${name}Snapshot>>, { nextBefore: number | null }>>('POST', \`${route}/\${${id}}/history\`, options),`,
+      `    historyDiff: (id: string, options: { from: string; to?: string }) =>
+      request<Envelope<HistoryDiff<${name}Snapshot>>>('POST', \`${route}/\${${id}}/history/diff\`, options),`,
+      `    restoreHistory: (id: string, options: { snapshotId: string${ctx.versioned ? '; version: number' : ''} }) =>
+      request<Envelope<${name}>>('POST', \`${route}/\${${id}}/history/restore\`, options),`,
+    );
   }
 
   members.push(
@@ -359,6 +384,24 @@ export interface ResourceMeta {
   capabilities?: Record<string, unknown>;
 }
 
+export type HistoryOperation = 'create' | 'update' | 'delete' | 'restore' | 'revert';
+
+export interface HistoryEntry<S> {
+  id: string;
+  sequence: number;
+  operation: HistoryOperation;
+  userId: string | null;
+  impersonatedBy: string | null;
+  createdAt: string;
+  snapshot: S;
+}
+
+export interface HistoryDiff<S> {
+  from: HistoryEntry<S>;
+  to: HistoryEntry<S> | null;
+  changes: Array<{ field: string; before: unknown; after: unknown }>;
+}
+
 export interface DescribedRelation {
   type: 'hasMany' | 'morphMany';
   foreignKey: string;
@@ -381,9 +424,12 @@ export function openApiClientFile(contexts: ResourceContext[]): string {
       ...ownRouteIncludes(ctx).map((include) =>
         childDeclarations(ctx, include),
       ),
+      historyDeclarations(ctx),
       describeDeclaration(ctx),
       clientFunction(ctx),
-    ].join('\n\n'),
+    ]
+      .filter((section) => section !== '')
+      .join('\n\n'),
   );
   const aggregate = `export function createHeryClient(request: HeryRequest) {
   return {

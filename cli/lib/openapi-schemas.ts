@@ -25,6 +25,7 @@ import {
   typeNameOf,
 } from './openapi-contract';
 import type { RecordProperty } from './openapi-contract';
+import { historyFields } from './history-templates';
 
 export type JsonSchema = Record<string, unknown>;
 export type SchemaRegistry = Record<string, JsonSchema>;
@@ -539,6 +540,133 @@ export function mutationSchemas(ctx: ResourceContext): SchemaRegistry {
   return registry;
 }
 
+/**
+ * The history a resource that declared `history: true` publishes. A snapshot
+ * lists exactly the columns the kernel registry keeps for it, which excludes
+ * every hidden and every encrypted field: the schema says so by never naming
+ * them, and `additionalProperties: false` keeps a client from expecting more.
+ */
+export function historySchemas(ctx: ResourceContext): SchemaRegistry {
+  const name = typeNameOf(ctx);
+  const properties: Record<string, JsonSchema> = Object.fromEntries([
+    ...historyFields(ctx).map((field): [string, JsonSchema] => [
+      field.name,
+      recordPropertySchema({
+        name: field.name,
+        type: field.type,
+        optional: field.optional,
+      }),
+    ]),
+    ...(ctx.softDeletes
+      ? [
+          [
+            'deletedAt',
+            recordPropertySchema({
+              name: 'deletedAt',
+              type: 'timestamp',
+              optional: true,
+            }),
+          ],
+        ]
+      : []),
+    ...(ctx.versioned ? [['version', { type: 'integer' }]] : []),
+  ]);
+
+  return {
+    [`${name}Snapshot`]: {
+      type: 'object',
+      description:
+        'The record as it stood after one write. A column added after the entry was written is absent from it.',
+      properties,
+      additionalProperties: false,
+    },
+    [`${name}HistoryEntry`]: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        sequence: { type: 'integer' },
+        operation: {
+          type: 'string',
+          enum: ['create', 'update', 'delete', 'restore', 'revert'],
+        },
+        userId: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+        impersonatedBy: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+        createdAt: DATE_TIME,
+        snapshot: ref(`${name}Snapshot`),
+      },
+      required: [
+        'id',
+        'sequence',
+        'operation',
+        'userId',
+        'impersonatedBy',
+        'createdAt',
+        'snapshot',
+      ],
+    },
+    [`${name}HistoryListRequest`]: {
+      type: 'object',
+      properties: {
+        limit: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+        before: {
+          type: 'integer',
+          minimum: 1,
+          description:
+            'The `nextBefore` of the previous page: only older entries are returned.',
+        },
+      },
+      additionalProperties: false,
+    },
+    [`${name}HistoryDiffRequest`]: {
+      type: 'object',
+      properties: {
+        from: { type: 'string' },
+        to: {
+          type: 'string',
+          description:
+            'Another entry of the same record. Omitted, the entry is compared with the record as it is now.',
+        },
+      },
+      required: ['from'],
+      additionalProperties: false,
+    },
+    [`${name}HistoryDiff`]: {
+      type: 'object',
+      properties: {
+        from: ref(`${name}HistoryEntry`),
+        to: { anyOf: [ref(`${name}HistoryEntry`), { type: 'null' }] },
+        changes: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { field: { type: 'string' }, before: {}, after: {} },
+            required: ['field', 'before', 'after'],
+          },
+        },
+      },
+      required: ['from', 'to', 'changes'],
+    },
+    [`${name}HistoryRestoreRequest`]: {
+      type: 'object',
+      properties: {
+        snapshotId: { type: 'string' },
+        ...(ctx.versioned
+          ? {
+              version: {
+                type: 'integer',
+                minimum: 1,
+                description:
+                  'The version the record is at now. Required on a versioned resource; a request may send it as an If-Match header instead.',
+              },
+            }
+          : {}),
+      },
+      required: ['snapshotId'],
+      additionalProperties: false,
+    },
+  };
+}
+
 export function sharedSchemas(): SchemaRegistry {
   return {
     FilterOperator: {
@@ -763,6 +891,7 @@ export function describeSchema(ctx: ResourceContext): JsonSchema {
         : {}),
       ...(ctx.vector ? { similar: { const: true } } : {}),
       paginated: { const: Boolean(ctx.pagination) },
+      ...(ctx.history ? { history: { const: true } } : {}),
       ...(ctx.versioned
         ? {
             versioned: {
