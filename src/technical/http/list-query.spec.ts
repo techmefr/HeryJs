@@ -983,6 +983,81 @@ describe('nextCursorFor', () => {
   });
 });
 
+describe('translatable fields in a list query', () => {
+  const translatableContract: ListQueryContract = {
+    sorts: ['title', 'summary'],
+    filters: ['title', 'summary'],
+    selects: ['id', 'title', 'summary', 'summaryTranslations'],
+    translatable: ['summary'],
+    limits: [10],
+    defaultLimit: 10,
+  };
+
+  it('turns a filter on a translatable field into a marker for the service to settle', () => {
+    const query = parseSearchRequest(
+      { filters: [{ field: 'summary', operator: 'like', value: 'hi' }] },
+      translatableContract,
+    );
+
+    expect(query.where).toEqual({
+      $translatable: { field: 'summary', operator: 'like', value: 'hi' },
+    });
+  });
+
+  it('keeps a plain field on the ordinary Prisma path', () => {
+    const query = parseSearchRequest(
+      { filters: [{ field: 'title', value: 'x' }] },
+      translatableContract,
+    );
+
+    expect(query.where).toEqual({ title: { equals: 'x' } });
+  });
+
+  it('refuses an operator that has no meaning on translated text', () => {
+    expect(() =>
+      parseSearchRequest(
+        { filters: [{ field: 'summary', operator: '>', value: 'a' }] },
+        translatableContract,
+      ),
+    ).toThrow(InvalidQueryException);
+  });
+
+  it('refuses a cursor over a sort on a translatable field', () => {
+    const first = parseSearchRequest(
+      { sorts: [{ field: 'title', direction: 'asc' }] },
+      translatableContract,
+    );
+    const cursor = nextCursorFor(
+      [{ id: 'a', title: 'x', summary: { en: 'y' } }],
+      first.sorts,
+      1,
+    );
+
+    expect(() =>
+      parseSearchRequest(
+        {
+          cursor: cursor ?? '',
+          sorts: [{ field: 'summary', direction: 'asc' }],
+        },
+        translatableContract,
+      ),
+    ).toThrow(InvalidQueryException);
+  });
+
+  it('never builds a cursor from a stored translation object', () => {
+    expect(
+      nextCursorFor(
+        [{ id: 'a', summary: { en: 'y' } }],
+        [
+          { field: 'summary', direction: 'asc' },
+          { field: 'id', direction: 'asc' },
+        ],
+        1,
+      ),
+    ).toBeNull();
+  });
+});
+
 describe('mode: similar', () => {
   const similarContract: ListQueryContract = { ...contract, similar: true };
 

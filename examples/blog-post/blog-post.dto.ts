@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
+import { translatableInputSchema } from '#technical/i18n/translatable';
 
 const blogPostFields = z.object({
   title: z.string().min(1).max(255),
+  summary: translatableInputSchema(z.string().min(1).max(255)).optional(),
   privateNote: z.string().min(1).max(4096).optional(),
 });
 

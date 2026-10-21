@@ -67,6 +67,10 @@ export const CATALOGUE: Catalogue = {
     fr: (details) =>
       `${String(details.resource)} n'est pas dans la corbeille, il ne peut donc pas être restauré.`,
   },
+  'translatable.empty': {
+    fr: (details) =>
+      `"${String(details.field)}" est obligatoire et resterait sans aucune traduction.`,
+  },
   'record.versionConflict': {
     fr: (details) =>
       `${String(details.resource)} a été modifié depuis votre lecture (version envoyée ${String(details.expected)}, version actuelle ${typeof details.current === 'number' ? details.current : 'inconnue'}). Rechargez-le puis réappliquez votre modification.`,

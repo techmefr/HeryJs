@@ -74,7 +74,9 @@ describe('discoverResourceContexts', () => {
   });
 
   it('returns nothing for a directory that does not exist', () => {
-    expect(discoverResourceContexts(path.join(__dirname, 'fixtures', 'nope'))).toEqual([]);
+    expect(
+      discoverResourceContexts(path.join(__dirname, 'fixtures', 'nope')),
+    ).toEqual([]);
   });
 });
 
@@ -119,10 +121,16 @@ describe('buildOpenApiDocument for a paginated, soft-deleting resource with incl
       'tenantId',
       'ownerId',
       'title',
+      'summary',
+      'summaryTranslations',
       'createdAt',
       'updatedAt',
       'deletedAt',
     ]);
+    expect(properties(document, 'BlogPost').summaryTranslations).toEqual({
+      type: 'object',
+      additionalProperties: { type: 'string' },
+    });
     expect(properties(document, 'BlogPost').deletedAt).toEqual({
       anyOf: [{ type: 'string', format: 'date-time' }, { type: 'null' }],
     });
@@ -140,7 +148,7 @@ describe('buildOpenApiDocument for a paginated, soft-deleting resource with incl
         };
       };
     };
-    expect(sorts.items.properties.field.enum).toEqual(['createdAt']);
+    expect(sorts.items.properties.field.enum).toEqual(['createdAt', 'summary']);
     expect(sorts.items.properties.direction.enum).toEqual(['asc', 'desc']);
   });
 

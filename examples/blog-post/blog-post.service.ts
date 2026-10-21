@@ -11,6 +11,17 @@ import { SearchEngineRegistry } from '#technical/search/search-engine.registry';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { writeAuditLog } from '#technical/audit/audit-log';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import {
+  normalizeTranslatableWrite,
+  searchDocumentFor,
+} from '#technical/i18n/translatable';
+import type { TranslatableFieldSpec } from '#technical/i18n/translatable';
+import {
+  hasTranslatableSort,
+  resolveTranslatableFilters,
+  sortByResolvedTranslations,
+} from '#technical/i18n/translatable-query';
+import type { TranslatableRow } from '#technical/i18n/translatable-query';
 import { resolveRelationInstructions } from '#technical/http/relation-resolver';
 import type { PrismaRelationClient } from '#technical/http/relation-resolver';
 import type {
@@ -30,8 +41,12 @@ import {
 } from './blog-post.dto';
 import { BLOG_POST_PRESETS } from './blog-post.presets';
 
-const SEARCHABLE_FIELDS = ['title'] as const;
+const SEARCHABLE_FIELDS = ['title', 'summary'] as const;
 const SEARCH_COLLECTION = 'blog-post';
+const TRANSLATABLE_FIELDS: readonly TranslatableFieldSpec[] = [
+  { name: 'summary', optional: true },
+];
+const TRANSLATABLE_FIELD_NAMES = TRANSLATABLE_FIELDS.map((field) => field.name);
 
 export interface BlogPostSearchOptions {
   withTrashed?: boolean;
@@ -88,8 +103,10 @@ export class BlogPostService {
 
     for (const driver of this.searchEngines.externalDrivers) {
       try {
-        const document = Object.fromEntries(
-          SEARCHABLE_FIELDS.map((field) => [field, record[field]]),
+        const document = searchDocumentFor(
+          record,
+          SEARCHABLE_FIELDS,
+          TRANSLATABLE_FIELD_NAMES,
         );
         await driver.index(
           SEARCH_COLLECTION,
@@ -158,11 +175,19 @@ export class BlogPostService {
 
     // The scope clause sits in its own AND branch so a declared filter can
     // never widen it back, whatever the caller passes in the query string.
+    const visibleWhere = {
+      AND: [scopeWhereFor(BLOG_POST_PRESETS.view, subject), trashedWhere],
+    };
+    const filterWhere = options.where
+      ? ((await resolveTranslatableFilters(options.where, (field) =>
+          this.loadTranslations(visibleWhere, field),
+        )) as Record<string, unknown>)
+      : undefined;
     const where = {
       AND: [
         scopeWhereFor(BLOG_POST_PRESETS.view, subject),
         trashedWhere,
-        ...(options.where ? [options.where] : []),
+        ...(filterWhere ? [filterWhere] : []),
         ...(searchWhere ? [searchWhere] : []),
       ],
     };
@@ -171,6 +196,17 @@ export class BlogPostService {
     // undefined, never null: Prisma reads an absent take as "every row", which
     // is what a resource with no declared pagination asks for.
     const limit = options.limit ?? undefined;
+
+    if (hasTranslatableSort(options.sorts, TRANSLATABLE_FIELD_NAMES)) {
+      const sorted = await this.searchSortedByTranslation(
+        where,
+        options,
+        page,
+        limit,
+      );
+
+      return { ...sorted, matches };
+    }
 
     const [records, total] = await Promise.all([
       this.prisma.blogPost.findMany({
@@ -195,6 +231,59 @@ export class BlogPostService {
     );
 
     return { records, total, matches };
+  }
+
+  private async loadTranslations(
+    where: Record<string, unknown>,
+    field: string,
+  ): Promise<TranslatableRow[]> {
+    const rows = (await this.prisma.blogPost.findMany({
+      where,
+      select: { id: true, [field]: true },
+    })) as unknown as Record<string, unknown>[];
+
+    return rows.map((row) => ({ id: String(row.id), value: row[field] }));
+  }
+
+  private async searchSortedByTranslation(
+    where: Record<string, unknown>,
+    options: BlogPostSearchOptions,
+    page: number,
+    limit: number | undefined,
+  ) {
+    const sorts = options.sorts ?? [];
+    const keys = (await this.prisma.blogPost.findMany({
+      where,
+      select: Object.fromEntries([
+        ['id', true],
+        ...sorts.map((sort) => [sort.field, true]),
+      ]) as Prisma.BlogPostSelect,
+    })) as unknown as Record<string, unknown>[];
+    const ids = sortByResolvedTranslations(
+      keys,
+      sorts,
+      TRANSLATABLE_FIELD_NAMES,
+    ).map((row) => String(row.id));
+    const pageIds = limit ? ids.slice((page - 1) * limit, page * limit) : ids;
+
+    const found = await this.prisma.blogPost.findMany({
+      where: { AND: [where, { id: { in: pageIds } }] },
+      include: options.include as Prisma.BlogPostInclude | undefined,
+    });
+    const byId = new Map(found.map((record) => [record.id, record] as const));
+    const records = pageIds.flatMap((id) => {
+      const record = byId.get(id);
+
+      return record ? [record] : [];
+    });
+
+    await resolveRelationInstructions(
+      this.prisma as unknown as PrismaRelationClient,
+      records,
+      options.relationInstructions,
+    );
+
+    return { records, total: ids.length };
   }
 
   // Scoped to the already-loaded parent by blogPostId -- there is
@@ -265,7 +354,7 @@ export class BlogPostService {
     const record = await this.prisma.blogPost.create({
       // tenantId is injected by the tenant-scoping Prisma extension, invisible to callers by design.
       data: {
-        ...data,
+        ...normalizeTranslatableWrite(data, TRANSLATABLE_FIELDS),
         ownerId: subject.id,
       } as unknown as Prisma.BlogPostCreateInput,
     });
@@ -277,7 +366,7 @@ export class BlogPostService {
   async update(record: BlogPost, data: UpdateBlogPostInput) {
     const updated = await this.prisma.blogPost.update({
       where: { id: record.id },
-      data,
+      data: normalizeTranslatableWrite(data, TRANSLATABLE_FIELDS, record),
     });
     this.notify();
     await this.syncSearchIndex(updated);
@@ -323,7 +412,10 @@ export class BlogPostService {
   async restore(record: BlogPost, patch?: UpdateBlogPostInput) {
     const updated = await this.prisma.blogPost.update({
       where: { id: record.id },
-      data: { ...patch, deletedAt: null },
+      data: {
+        ...normalizeTranslatableWrite(patch ?? {}, TRANSLATABLE_FIELDS, record),
+        deletedAt: null,
+      },
     });
     this.notify();
     await this.syncSearchIndex(updated);
