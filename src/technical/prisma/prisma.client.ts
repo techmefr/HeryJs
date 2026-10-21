@@ -11,6 +11,9 @@ import {
   outboxEmitsFor,
   stageOutboxMessages,
 } from '../outbox/outbox-stage';
+import { defaultKeyring } from '../secrets/default-keyring';
+import { redactEncryptedColumns } from '../secrets/encrypted-columns';
+import { encryptedFieldsExtension } from '../secrets/encrypted-fields.extension';
 import { TenantContextStorage } from '../tenancy/tenant-context';
 import { TraceContextStorage } from '../tracing/trace-context';
 
@@ -163,6 +166,11 @@ export const TENANT_FREE_MODELS = new Set<string>([
   // Second-factor secrets and backup codes, hanging off a User like the rows
   // above and written only by better-auth's own adapter.
   'TwoFactor',
+  // WebAuthn credentials, hanging off a User and written only by better-auth's
+  // passkey plugin. A sign-in finds the row by its credential id before any
+  // session exists, so there is no tenant to scope the lookup by -- the user
+  // it resolves to carries the tenant.
+  'Passkey',
   // Email-verification and password-reset tokens, looked up by their own value
   // before any session exists, so there is no tenant to scope the lookup by.
   'Verification',
@@ -271,7 +279,10 @@ export function createTenantScopedPrismaClient() {
   // rather than proceeding down the chain), and only a layer that wraps
   // *around* that call still observes its result. An audit extension applied
   // second would sit inside the tenant layer and never run on that branch.
-  const auditedClient = rawClient.$extends({
+  const encryptedClient = rawClient.$extends(
+    encryptedFieldsExtension(defaultKeyring),
+  );
+  const auditedClient = encryptedClient.$extends({
     query: {
       $allModels: {
         async $allOperations({ model, operation, args, query }) {
@@ -285,7 +296,7 @@ export function createTenantScopedPrismaClient() {
               model,
               operation,
               recordId: record?.id ?? null,
-              data: result,
+              data: redactEncryptedColumns(model, result),
               userId: TenantContextStorage.getUserId(),
               impersonatedBy: TenantContextStorage.getImpersonatedBy(),
             });

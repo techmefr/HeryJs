@@ -67,6 +67,7 @@ export default {
             '      twoFactor({',
             '        issuer: authEnv.AUTH_TWO_FACTOR_ISSUER,',
             '      }),',
+            '      ...(await buildPasswordlessPlugins(authEnv, authPrismaClient)),',
             '    ],',
           ].join('\n'),
           [
@@ -84,6 +85,7 @@ export default {
             '      twoFactor({',
             '        issuer: authEnv.AUTH_TWO_FACTOR_ISSUER,',
             '      }),',
+            '      ...(await buildPasswordlessPlugins(authEnv, authPrismaClient)),',
             '    ],',
           ].join('\n'),
         ],

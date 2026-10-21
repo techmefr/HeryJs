@@ -51,6 +51,33 @@ describe('BlogPost resource', () => {
     ).toBe('default');
   });
 
+  it('stores privateNote sealed and never returns it', async () => {
+    const secret = `privateNote-${randomUUID()}`;
+    const created = await request(app.getHttpServer())
+      .post('/blog-posts/create')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ data: [{ ...{ title: 'title-value' }, privateNote: secret }] })
+      .expect(201);
+
+    expect(JSON.stringify(created.body)).not.toContain(secret);
+
+    const listed = await request(app.getHttpServer())
+      .post('/blog-posts/search')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({})
+      .expect(200);
+    expect(JSON.stringify(listed.body)).not.toContain(secret);
+
+    const recordId = (
+      created.body as { data: { status: string; data: { id: string } }[] }
+    ).data[0]!.data.id;
+    const stored = await prisma.blogPost.findUniqueOrThrow({
+      where: { id: recordId },
+    });
+    expect(stored.privateNote).toMatch(/^enc:/);
+    expect(stored.privateNote).not.toContain(secret);
+  });
+
   it('describes its fields and create/update rules for a frontend to consume', async () => {
     const response = await request(app.getHttpServer())
       .get('/blog-posts/describe')
@@ -65,7 +92,10 @@ describe('BlogPost resource', () => {
         rules: { create: { required?: string[] } };
       };
     };
-    expect(body.data.fields.map((field) => field.name)).toEqual(['title']);
+    expect(body.data.fields.map((field) => field.name)).toEqual([
+      'title',
+      'privateNote',
+    ]);
     expect(body.data.paginated).toBe(true);
     expect(body.data.limits).toEqual([10, 15, 20]);
     expect(body.data.rules.create.required).toEqual(['title']);

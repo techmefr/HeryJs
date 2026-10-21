@@ -2,8 +2,12 @@ import { All, Controller, Req, Res } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request as ExpressRequest, Response } from 'express';
 import { PublicRoute } from '#technical/capabilities/public-route.decorator';
+import { env } from '#technical/config/env';
 import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
+import { AuthRecipientThrottle, recipientOf } from './auth-recipient-throttle';
 import { getAuthContext } from './better-auth.instance';
+
+const BASE_PATH = '/api/auth';
 
 /**
  * Password reset, email verification, two-factor and social login are all
@@ -26,6 +30,8 @@ import { getAuthContext } from './better-auth.instance';
  */
 @Controller('api/auth')
 export class BetterAuthController {
+  constructor(private readonly recipientThrottle: AuthRecipientThrottle) {}
+
   @All('*path')
   @RateLimit('auth')
   @PublicRoute(
@@ -35,6 +41,15 @@ export class BetterAuthController {
     @Req() request: RawBodyRequest<ExpressRequest>,
     @Res() response: Response,
   ): Promise<void> {
+    const recipient = recipientOf(
+      request.path.slice(BASE_PATH.length),
+      request.body,
+    );
+
+    if (recipient && !env.RATE_LIMIT_DISABLED) {
+      await this.recipientThrottle.hit(recipient);
+    }
+
     const { auth } = await getAuthContext();
     const result = await auth.handler(toWebRequest(request));
 

@@ -1,4 +1,17 @@
 import { z } from 'zod';
+import { parseSecretKeys } from '../secrets/keyring';
+
+export const DEV_SECRETS_KEYS =
+  'dev:ZGV2ZWxvcG1lbnQta2V5LW5vdC1hLXNlY3JldC0wMDA=';
+
+function isValidSecretKeyList(value: string): boolean {
+  try {
+    parseSecretKeys(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Split from env.ts so this file has no side effect: env.ts's bottom-level
@@ -30,6 +43,15 @@ export function buildServerSchema(nodeEnv: string | undefined) {
     STORAGE_URL_SECRET: devOnlySecret(
       'dev-storage-secret-change-in-production',
     ),
+    SECRETS_KEYS: z
+      .string()
+      .min(1)
+      .default(DEV_SECRETS_KEYS)
+      .refine(isValidSecretKeyList, {
+        message:
+          'must be a comma-separated list of <id>:<base64 key>, each key 32 bytes (openssl rand -base64 32)',
+      }),
+    SECRETS_ACTIVE_KEY_ID: z.string().min(1).optional(),
     RLS_ENABLED: z
       .string()
       .default('false')
@@ -94,6 +116,49 @@ export function buildServerSchema(nodeEnv: string | undefined) {
       .int()
       .positive()
       .default(60 * 60),
+    AUTH_MAGIC_LINK_ENABLED: z
+      .string()
+      .default('false')
+      .transform((value) => value === 'true'),
+    AUTH_EMAIL_OTP_ENABLED: z
+      .string()
+      .default('false')
+      .transform((value) => value === 'true'),
+    AUTH_PHONE_OTP_ENABLED: z
+      .string()
+      .default('false')
+      .transform((value) => value === 'true'),
+    AUTH_ANONYMOUS_ENABLED: z
+      .string()
+      .default('false')
+      .transform((value) => value === 'true'),
+    AUTH_PASSKEY_ENABLED: z
+      .string()
+      .default('false')
+      .transform((value) => value === 'true'),
+    AUTH_PASSKEY_RP_ID: z.string().min(1).optional(),
+    AUTH_PASSKEY_RP_NAME: z.string().min(1).default('HeryJs'),
+    AUTH_PASSKEY_ORIGIN: z.string().min(1).optional(),
+    AUTH_PASSWORDLESS_ALLOW_SIGN_UP: z
+      .string()
+      .default('true')
+      .transform((value) => value === 'true'),
+    AUTH_MAGIC_LINK_EXPIRES_SECONDS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(5 * 60),
+    AUTH_OTP_EXPIRES_SECONDS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(5 * 60),
+    AUTH_OTP_LENGTH: z.coerce.number().int().min(4).max(10).default(6),
+    AUTH_OTP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(3),
+    AUTH_ANONYMOUS_EMAIL_DOMAIN: z
+      .string()
+      .min(1)
+      .default('guest.heryjs.local'),
     // No devOnlySecret for these four: that helper covers secrets the
     // framework owns end to end, and an OAuth client secret is issued by
     // Google or GitHub, so a placeholder could only ever produce a login

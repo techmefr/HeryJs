@@ -120,6 +120,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1127.0",
     "@aws-sdk/s3-request-presigner": "^3.1127.0",
+    "@better-auth/passkey": "1.7.3",
     "@bull-board/api": "^9.8.0",
     "@bull-board/express": "^9.8.0",
     "@modelcontextprotocol/sdk": "^1.30.0",

@@ -51,6 +51,13 @@ Twelve packages, versioned together:
 - Session management: list devices, revoke one, sign out everywhere, a password
   change that revokes the other sessions, and per-account lockout after
   repeated failed sign-ins.
+- Passwordless sign-in on better-auth, each method off until its env flag
+  turns it on: magic link and email OTP delivered through the mail module,
+  phone OTP through the sms module, passkeys (WebAuthn), and guest sessions
+  whose work moves to the account they later sign in to. Sends are capped per recipient on top of
+  the per-caller `auth` bucket. Two migrations add `phoneNumber`,
+  `phoneNumberVerified` and `isAnonymous` to `User` and a `Passkey` table; an
+  existing project applies them with `hery migrate`.
 - Capabilities resolved server-side in memory and returned as decisions
   (`{ allowed, scope }`) — never as rules the frontend could reinterpret.
 - Multi-tenancy resolved once per request and enforced underneath permissions,
@@ -83,6 +90,11 @@ Twelve packages, versioned together:
   registered handler, with per-handler receipts, exponential backoff, a
   dead-letter state and a daily prune. New `OutboxMessage` and `OutboxReceipt`
   tables, and `OUTBOX_RELAY_ENABLED` / `OUTBOX_RELAY_INTERVAL_MS`.
+- An `encrypted` blueprint field type: AES-256-GCM at rest, decrypted
+  transparently by the tenant-scoped Prisma client, hidden from responses
+  unless `reveal: true`, redacted in the audit chain and refused in filters and
+  sorts. Keys are versioned in `SECRETS_KEYS`; `SecretsService` seals values
+  that are not columns and `hery secrets:rotate` re-encrypts to the active key.
 - An architecture linter that fails CI on a domain missing a concern, plus
   fourteen convention checks covering capabilities, pagination, RLS, rate
   limiting, module drift and patched kernel files.

@@ -4,6 +4,7 @@ export interface BlogPostFactoryOverrides {
   ownerId: string;
   tenantId?: string;
   title?: string;
+  privateNote?: string;
   trashed?: boolean;
 }
 
@@ -14,6 +15,7 @@ export interface BlogPostFactoryOptions {
 function buildBlogPost(overrides: BlogPostFactoryOverrides) {
   return {
     title: overrides.title ?? faker.lorem.words(3),
+    privateNote: overrides.privateNote ?? faker.string.alphanumeric(24),
     ownerId: overrides.ownerId,
     ...(overrides.tenantId ? { tenantId: overrides.tenantId } : {}),
     deletedAt: overrides.trashed ? new Date() : null,
