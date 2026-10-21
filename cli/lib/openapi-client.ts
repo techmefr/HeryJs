@@ -192,7 +192,7 @@ function mutationDeclarations(ctx: ResourceContext): string {
   return [
     `export interface ${name}CreateItem {\n${createFields.join('\n')}\n}`,
     `export interface ${name}Patch {\n${patchFields.join('\n')}\n}`,
-    `export interface ${name}UpdateItem extends ${name}Patch {\n  id: string;${relations}\n}`,
+    `export interface ${name}UpdateItem extends ${name}Patch {\n  id: string;${ctx.versioned ? '\n  version: number;' : ''}${relations}\n}`,
     `export type ${name}UpdateData = ${updateData};`,
   ].join('\n\n');
 }
@@ -202,6 +202,9 @@ function describeDeclaration(ctx: ResourceContext): string {
   const pagination = ctx.pagination
     ? `  limits: number[];\n  defaultLimit: number;\n  paginated: true;`
     : '  paginated: false;';
+  const versioned = ctx.versioned
+    ? `\n  versioned: { field: 'version'; header: 'If-Match' };`
+    : '';
 
   return `export interface ${name}Describe {
   version: ${ctx.version};
@@ -211,7 +214,7 @@ function describeDeclaration(ctx: ResourceContext): string {
   selects: string[];
   includes: Record<string, DescribedRelation>;
   aggregates: Record<string, DescribedRelation>;
-${pagination}
+${pagination}${versioned}
   rules: { create: Record<string, unknown>; update: Record<string, unknown> };
 }`;
 }

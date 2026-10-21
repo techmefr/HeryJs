@@ -35,6 +35,16 @@ generated file changes.
 
 `@ExposeAction` accepts `triggers`: `http: false` to leave the generic route, `cron` to run on a schedule (cluster-locked, in an explicit tenant), and `webhook` to let a signed webhook endpoint with `source: "expose:<action>"` run it. Adds a `cron` dependency. The webhooks module's service, controller, processor and module change; a project that installed it applies them by hand. Arbitrary user-defined code is not supported.
 
+### Optimistic concurrency
+
+A blueprint can declare `versioned: true`. The model gets an integer `version`
+column that every update, soft delete and restore increments, the record view
+and `/describe` expose it, and the update route refuses an entry that does not
+say which version it read (`428`) or that read a stale one (`409`, or `412`
+when it came in as `If-Match`). The check is part of the write itself, so two
+concurrent saves at the same version cannot both succeed. Off by default:
+nothing changes for a resource that does not opt in.
+
 ### Installing it
 
 Twelve packages, versioned together:

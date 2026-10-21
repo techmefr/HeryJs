@@ -77,6 +77,10 @@ export default defineConfig({
                 { label: 'Maintenance mode', slug: 'guides/maintenance' },
                 { label: 'Error reporting', slug: 'guides/error-reporting' },
                 { label: 'OpenTelemetry', slug: 'guides/opentelemetry' },
+                {
+                  label: 'Optimistic concurrency',
+                  slug: 'guides/optimistic-concurrency',
+                },
                 { label: 'Jobs', slug: 'guides/jobs' },
                 { label: 'Migrations', slug: 'guides/migrations' },
                 { label: 'Prune', slug: 'guides/prune' },

@@ -1,0 +1,22 @@
+name: Snippet
+versioned: true
+
+fields:
+  - name: title
+    type: string
+
+permissions:
+  view: own
+  create: own
+  update: own
+  delete: own
+
+sorts:
+  - createdAt
+
+filters:
+  - title
+
+pagination:
+  limits: [10, 20]
+  default: 10

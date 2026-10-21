@@ -1,6 +1,12 @@
 import { fetchRelated, labelOfRelated, relationBody } from './relations';
 import type { RelationMode } from './relations';
-import { failureMessages, isAllowed, mutate, pascalOf } from './resource';
+import {
+  failureMessages,
+  isAllowed,
+  mutate,
+  pascalOf,
+  versionPartOf,
+} from './resource';
 import type { ResourceRow } from './resource';
 import type { RelationsPanelOptions } from './relations-panel';
 
@@ -82,7 +88,13 @@ export function relationControl(
       const [entry] = await mutate(
         options.base,
         'update',
-        relationBody(options.row.id, relation, mode, [related.id]),
+        relationBody(
+          options.row.id,
+          relation,
+          mode,
+          [related.id],
+          versionPartOf(options.description, row),
+        ),
       );
 
       if (!entry || entry.status === 'error') {

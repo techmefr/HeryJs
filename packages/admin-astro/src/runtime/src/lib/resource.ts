@@ -28,8 +28,14 @@ export interface DescribedInclude {
   childDelegate?: string;
 }
 
+export interface DescribedVersioning {
+  field: string;
+  header: string;
+}
+
 export interface ResourceDescription {
   version: number;
+  versioned?: DescribedVersioning;
   fields: DescribedField[];
   sorts: string[];
   filters: string[];
@@ -185,6 +191,16 @@ export async function mutate(
   });
 
   return data;
+}
+
+export function versionPartOf(
+  description: Pick<ResourceDescription, 'versioned'>,
+  row: ResourceRow | null,
+): Record<string, number> {
+  const field = description.versioned?.field;
+  const value = field && row ? row[field] : undefined;
+
+  return field && typeof value === 'number' ? { [field]: value } : {};
 }
 
 export function chunked<T>(items: T[], size: number): T[][] {

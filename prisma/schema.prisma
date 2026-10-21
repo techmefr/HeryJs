@@ -31,6 +31,7 @@ model User {
   sessions                  Session[]
   accounts                  Account[]
   blogPosts                 BlogPost[]
+  snippets                  Snippet[]
   notifications             AppNotification[]
   memberships               TeamMember[]
   apiKeys                   ApiKey[]
@@ -506,4 +507,22 @@ model TwoFactorVerifiedSession {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, userId])
+}
+
+model Snippet {
+  id        String    @id @default(cuid())
+  tenantId  String
+  ownerId   String
+  title     String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  version   Int       @default(1)
+
+  owner User @relation(fields: [ownerId], references: [id])
+
+  @@index([tenantId])
+  // Every default read filters on these two together, so the composite keeps
+  // the "not deleted" clause from scanning the whole tenant.
+  @@index([tenantId, deletedAt])
 }
