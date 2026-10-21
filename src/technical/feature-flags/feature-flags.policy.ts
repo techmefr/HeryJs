@@ -7,3 +7,9 @@ import type { PolicyCheck } from '#technical/capabilities/capability-check';
 // same way impersonation is, or any authenticated user in any tenant could
 // read or flip every other tenant's flags through this same route.
 export const canManageFeatureFlags: PolicyCheck = adminAbility;
+
+// The preview takes any tenant and user id in its body, so it is the same
+// cross-tenant reach as the write routes. It is bound under its own name so
+// the introspected capability says what the route does.
+export const canEvaluateFeatureFlags: PolicyCheck = (subject, record) =>
+  adminAbility(subject, record);

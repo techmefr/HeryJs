@@ -63,6 +63,7 @@ async function promptVector(
     hidden: false,
     translatable: false,
     reveal: false,
+    personal: false,
     dimensions: dimensionsResponse.dimensions,
     source: sourceResponse.source,
   };
@@ -107,6 +108,11 @@ async function promptFields(): Promise<BlueprintField[]> {
           title:
             'vector (an embedding of another string field, for similarity search)',
           value: 'vector',
+        },
+        {
+          title:
+            'richtext (HTML sanitised by an allow-list on write and on read)',
+          value: 'richtext',
         },
       ],
     })) as { type?: BlueprintField['type'] };
@@ -153,6 +159,7 @@ async function promptFields(): Promise<BlueprintField[]> {
       hidden: hiddenResponse.hidden ?? false,
       translatable: translatableResponse.translatable ?? false,
       reveal: false,
+      personal: false,
     });
   }
 
@@ -166,6 +173,7 @@ async function promptFields(): Promise<BlueprintField[]> {
           hidden: false,
           translatable: false,
           reveal: false,
+          personal: false,
         },
       ];
 }
@@ -326,6 +334,17 @@ softDeletes: true
 # version is refused for that entry with a 409 (412 via If-Match) instead of
 # overwriting what someone else just wrote.
 versioned: false
+
+# Off unless you say so. Turn it on and every write stores a snapshot of the
+# record (never of a hidden or encrypted field), and the resource gains routes to
+# list its history, diff an entry against the record as it is now, and restore
+# one through the normal update path. Snapshots age out with prune.
+history: false
+
+# Off unless you say so. Turn it on and the owner can grant a user or a team read or
+# write access to a single record: the resource gets share routes and a share
+# capability, and shared records join the list scope without a query per row.
+sharing: false
 
 permissions:
   # preset: own (creator/owner only) | team (same team) | all (any authenticated user) | none (nobody)
