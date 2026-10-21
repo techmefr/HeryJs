@@ -9,7 +9,7 @@ import { AppModule } from '#app.module';
 import { BlogPostModule } from './blog-post.module';
 import { env } from '#technical/config/env';
 import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
-import { registerAndLogin } from '#devtools/testing/register-and-login';
+import { actingAs, registerAndLogin } from '#devtools/test-support';
 
 const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -390,10 +390,8 @@ describe('BlogPost resource', () => {
   });
 
   it('never lets a different tenant see this tenant records', async () => {
-    const outsider = await registerAndLogin(app);
-    await prisma.user.update({
-      where: { email: outsider.email },
-      data: { tenantId: `tenant-${randomUUID()}` },
+    const outsider = await actingAs(app, {
+      tenantId: `tenant-${randomUUID()}`,
     });
 
     const response = await request(app.getHttpServer())

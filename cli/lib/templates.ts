@@ -2842,22 +2842,17 @@ export function specFile(ctx: ResourceContext): string {
   const canCreateAny = ctx.permissions.create !== 'none';
   const canUpdateAny = ctx.permissions.update !== 'none';
   const canDeleteAny = ctx.permissions.delete !== 'none';
+  const hasRelations = ctx.relations.length > 0;
 
   return `import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '@prisma/client';
+import { Test } from '@nestjs/testing';${hasRelations ? `\nimport { PrismaPg } from '@prisma/adapter-pg';\nimport { PrismaClient } from '@prisma/client';` : ''}
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { AppModule } from '#app.module';
-import { env } from '#technical/config/env';
+import { AppModule } from '#app.module';${primarySearchField || hasRelations ? `\nimport { env } from '#technical/config/env';` : ''}
 import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
-import { registerAndLogin } from '#devtools/testing/register-and-login';
-
-const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
-const prisma = new PrismaClient({ adapter });
-
+import { actingAs, registerAndLogin } from '#devtools/test-support';
+${hasRelations ? `\nconst adapter = new PrismaPg({ connectionString: env.DATABASE_URL });\nconst prisma = new PrismaClient({ adapter });\n` : ''}
 describe('${ctx.pascalName} resource', () => {
   let app: INestApplication<App>;
   let ownerToken: string;
@@ -2896,8 +2891,7 @@ ${
 }  });
 
   afterAll(async () => {
-    await app.close();
-    await prisma.$disconnect();
+    await app.close();${hasRelations ? `\n    await prisma.$disconnect();` : ''}
   });
 
 ${
@@ -3098,10 +3092,8 @@ ${ctx.versioned ? `${versionedSpecBlock(ctx, createBody)}\n` : ''}`
 
 `
   }  it('never lets a different tenant see this tenant records', async () => {
-    const outsider = await registerAndLogin(app);
-    await prisma.user.update({
-      where: { email: outsider.email },
-      data: { tenantId: \`tenant-\${randomUUID()}\` },
+    const outsider = await actingAs(app, {
+      tenantId: \`tenant-\${randomUUID()}\`,
     });
 
     const response = await request(app.getHttpServer())

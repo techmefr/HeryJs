@@ -61,7 +61,7 @@ Seventeen cases for the default permission presets, with two users — an owner 
 16. **Rejects a search engine keyword `hery.config.ts` never declared** — a 400, not a silent fallback.
 17. **Attaches, syncs and detaches a relation through the update route** — one case per mutable relation the blueprint declares.
 
-Cases that depend on a write disappear when the blueprint's presets make them unreachable — `create`/`update`/`delete: none` skips the setup they need. Cases 11 and 12 only appear when the blueprint declares pagination, 13-14 only when it declares an include or an aggregate, 15-16 only when it has a visible string field to search on, and 17 only when it declares a mutable relation. Case 9 is the one that needs the raw client. The spec opens its own unextended `PrismaClient`, deliberately _not_ the tenant-scoped one, because reassigning a user's tenant is exactly the operation the scoped client is built to prevent. Setting up an adversarial condition requires stepping outside the thing being tested.
+Cases that depend on a write disappear when the blueprint's presets make them unreachable — `create`/`update`/`delete: none` skips the setup they need. Cases 11 and 12 only appear when the blueprint declares pagination, 13-14 only when it declares an include or an aggregate, 15-16 only when it has a visible string field to search on, and 17 only when it declares a mutable relation. Case 9 is the one that steps outside the pipeline. It calls `actingAs(app, { tenantId })`, which registers a user and then reassigns it through the unscoped client the auth layer owns, because reassigning a user's tenant is exactly the operation the tenant-scoped client is built to prevent. Setting up an adversarial condition requires stepping outside the thing being tested, and the helper is where that happens once.
 
 ### The scope-parity and trash-parity cases adapt to the blueprint
 
@@ -84,6 +84,85 @@ All six assert the same underlying property from whichever side applies: the det
 The generated spec is a floor, not a ceiling — it is written once and then owned, like everything else. The reference resource in `examples/blog-post/` shows what a filled-out version looks like.
 
 A factory is generated alongside the spec (`<name>.factory.ts`, faker-backed, with a `trashed` override and a `count` option) for seeding rows directly. The generated spec does not use it, going through HTTP instead — reach for the factory when you need a hundred rows or an awkward state, not for the paths a client would exercise.
+
+## Test support
+
+Everything a hand-written test usually rebuilds lives behind one import:
+
+```ts
+import { bootTestApp } from '#devtools/test-support';
+```
+
+`bootTestApp()` boots `AppModule` with the fakes you name and hands back the app, the fakes, and a `close()` that undoes everything it installed:
+
+```ts
+const testApp = await bootTestApp({ isolation: 'tenant' });
+const admin = await testApp.actingAs({ role: 'admin' });
+
+await request(testApp.app.getHttpServer())
+  .post('/invoices/create')
+  .set('Authorization', admin.authorization)
+  .send({ data: [{ amount: 100 }] })
+  .expect(201);
+
+testApp.fakes.mail.assertSent(message => message.subject === 'Invoice');
+```
+
+### The fakes
+
+Each fake records what reached it and asserts in one line. A failed assertion lists what was recorded, so the failure says what happened instead of only that nothing matched.
+
+| Fake | Replaces | Assertions |
+| --- | --- | --- |
+| `fakes.mail` | the mail driver | `assertSent`, `assertNotSent`, `assertNothingSent`, `waitForSent` |
+| `fakes.sms` | the sms driver | the same four |
+| `fakes.push` | the push driver | the same four, plus `outcome` to simulate an expired or failed token |
+| `fakes.storage` | the storage driver | `assertStored`, `assertNotStored`, `assertRemoved`; objects are held in memory |
+| `fakes.notifier` | the notifier's mail, sms and push channels | `assertSent`, `assertNotSent`, `assertNothingSent` |
+| `fakes.jobs` | `JobsService` | `assertDispatched(name, predicate?, times?)`, `assertNotDispatched`, `assertNothingDispatched`, `drain(processor)` |
+| `fakes.events` | `EventDispatcher` | `assertDispatched(EventClass, predicate?, times?)`, `assertNotDispatched`; `callThrough()` runs the synchronous listeners |
+| `fakes.locks` | `LockService` | `assertAcquired`, `assertContended`, `assertReleased`; `hold(name)` simulates another instance holding it |
+| `fakes.clock` | `Date` | `freeze(at)`, `set(at)`, `travel(ms)`, `restore()` |
+
+By default `bootTestApp` fakes the four delivery drivers, so a test can never send a real mail or SMS by accident. Pass `fakes: ['mail', 'jobs']`, `'all'` or `'none'` to choose.
+
+The delivery fakes are real drivers registered through the same module-and-driver convention a package driver uses. The real `MailService`, the SMS consent and quiet-hours guard, the push token registry and the queue all still run; only the wire is replaced.
+
+Mail is the one that crosses a queue, and that is worth knowing before you rely on it. The suite shares one Redis, so a job your test enqueues can be picked up by the worker of a spec running in another process, which delivers it through _its_ driver. Fake the queue next to the mail and drain it yourself, which is deterministic:
+
+```ts
+const testApp = await bootTestApp({ fakes: ['mail', 'jobs'] });
+
+await mailService.send(new WelcomeMail(user));
+await testApp.fakes.jobs.drain(testApp.app.get(MailProcessor));
+
+testApp.fakes.mail.assertSent(message => message.to === user.email);
+```
+
+`fakes.jobs` stops every dispatch at the recorder; `drain(processor, predicate?)` then hands each recorded job to the processor exactly once, so the real worker code runs in your process and the fake driver sees the result. If you only care that work was scheduled, skip the drain and assert on `fakes.jobs.assertDispatched('mail.send', ...)`. Faking events works the same way: listeners do not run unless you call `callThrough()`.
+
+`fakes.clock` fakes `Date` only. Timers, `setImmediate` and `process.nextTick` stay real so the database driver and the queue keep working while time is frozen. Postgres `now()` and Redis expiry run on their own clocks and are not affected.
+
+Outside `bootTestApp`, `createTestFakes()` builds the same objects for a unit test, and every fake has a `reset()`.
+
+### Acting as someone
+
+```ts
+const owner = await testApp.actingAs();
+const admin = await testApp.actingAs({ role: 'admin' });
+const outsider = await actingAs(testApp.app, { tenantId: 'tenant-b' });
+const robot = await testApp.actingAsApiKey({ role: 'admin' });
+```
+
+An actor carries `id`, `email`, `token`, `tenantId`, `role` and a ready `authorization` header value. `actingAsApiKey` creates the key through the real `/api-keys` route, so the token it returns is a genuine `hery_ak_` key and the request goes through the same credential resolution a client would. `asActor(request, actor)` sets the header on a supertest request.
+
+### Isolation
+
+`isolation: 'tenant'` gives the suite a tenant of its own. Actors default to it, `testApp.tenantId` names it, and `close()` deletes every row it wrote from every table that has a `tenantId` column. It is the idiom from the section below with the cleanup done for you.
+
+For an in-process test that talks to Prisma directly rather than over HTTP, `inRolledBackTransaction(client, async tx => { ... })` runs the work in a transaction and rolls it back afterwards, returning whatever the work returned. It cannot isolate a request that goes over HTTP, for the reason given below.
+
+There is no per-worker database. Each query path builds its adapter from `DATABASE_URL` when it is imported, so the tenant is the isolation boundary the suite relies on.
 
 ## Running them
 
