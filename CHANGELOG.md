@@ -47,6 +47,10 @@ Twelve packages, versioned together:
 - Teams with the `own` / `team` / `all` / `none` presets.
 - A tenant-namespaced cache on the same Valkey the kernel already depends on,
   exported globally with no module to install.
+- `Idempotency-Key` on every mutating route: the first request's response is
+  stored per tenant and replayed on a retry, the same key with a different
+  body or route is a `422`, and records expire after 24 hours through the
+  existing prune sweep.
 - A rate limit on by default across every kernel and module route, with
   `read` / `write` / `auth` buckets a project can retune but never remove.
 - A `hasMany` include may itself carry a further `includes` — a relation of a
