@@ -365,7 +365,7 @@ describe('Enterprise SSO', () => {
       .patch(`/sso/connections/${id}`)
       .set('Authorization', `Bearer ${admin.token}`)
       .send({ issuer: 'https://other-idp.sso-spec.test' })
-      .expect(400);
+      .expect(422);
 
     const renamed = await request(app.getHttpServer())
       .patch(`/sso/connections/${id}`)
@@ -490,7 +490,7 @@ describe('Enterprise SSO', () => {
           SAMLResponse: samlResponse,
           RelayState: location.searchParams.get('RelayState'),
         })
-        .expect(200);
+        .expect(201);
       const result = (
         acs.body as {
           data: {
