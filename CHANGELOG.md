@@ -89,6 +89,12 @@ Twelve packages, versioned together:
 - Teams with the `own` / `team` / `all` / `none` presets.
 - A tenant-namespaced cache on the same Valkey the kernel already depends on,
   exported globally with no module to install.
+- A test-support entry point, `#devtools/test-support`: recording fakes for
+  mail, sms, push, the notifier, jobs, storage, events, locks and the clock;
+  `bootTestApp()`; `actingAs()` for a user, role, tenant or API key; and tenant
+  isolation per suite. The generated spec now moves its outsider into another
+  tenant through `actingAs` and no longer opens a `PrismaClient` of its own,
+  which only changes new projects.
 - `Idempotency-Key` on every mutating route: the first request's response is
   stored per tenant and replayed on a retry, the same key with a different
   body or route is a `422`, and records expire after 24 hours through the
