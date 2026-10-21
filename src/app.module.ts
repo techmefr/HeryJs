@@ -10,6 +10,7 @@ import { EventsModule } from '#technical/events/events.module';
 import { ExpositionModule } from '#technical/exposition/exposition.module';
 import { IntrospectionModule } from '#technical/introspection/introspection.module';
 import { FeatureFlagsModule } from '#technical/feature-flags/feature-flags.module';
+import { IdempotencyModule } from '#technical/idempotency/idempotency.module';
 import { InspectorModule } from '#devtools/inspector/inspector.module';
 import { PipelineModule } from '#devtools/pipeline/pipeline.module';
 import { ImpersonationModule } from '#modules/impersonation/impersonation.module';
@@ -80,6 +81,7 @@ import { redactedRequestSerializer } from '#technical/logging/redacted-request-s
     ExportModule,
     ExpositionModule,
     FeatureFlagsModule,
+    IdempotencyModule,
     ImpersonationModule,
     InspectorModule,
     IntrospectionModule,
