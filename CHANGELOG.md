@@ -52,6 +52,16 @@ Twelve packages, versioned together:
 ### The kernel
 
 - Authentication, API keys and sessions on better-auth.
+- Session management: list devices, revoke one, sign out everywhere, a password
+  change that revokes the other sessions, and per-account lockout after
+  repeated failed sign-ins.
+- Passwordless sign-in on better-auth, each method off until its env flag
+  turns it on: magic link and email OTP delivered through the mail module,
+  phone OTP through the sms module, passkeys (WebAuthn), and guest sessions
+  whose work moves to the account they later sign in to. Sends are capped per recipient on top of
+  the per-caller `auth` bucket. Two migrations add `phoneNumber`,
+  `phoneNumberVerified` and `isAnonymous` to `User` and a `Passkey` table; an
+  existing project applies them with `hery migrate`.
 - Capabilities resolved server-side in memory and returned as decisions
   (`{ allowed, scope }`) — never as rules the frontend could reinterpret.
 - Multi-tenancy resolved once per request and enforced underneath permissions,
@@ -77,6 +87,35 @@ Twelve packages, versioned together:
   when `hery.config.ts` declares more than one locale; `key` never changes.
   `capability.forbidden` is excluded on purpose, and a `key` with no catalogue
   entry for the caller's locale falls back to its hardcoded English message.
+- A transactional outbox: every create, update and delete of a tenant-scoped
+  model stages a `model.created` / `model.updated` / `model.deleted` message in
+  the same transaction as the write, and a relay on the `heryjs-outbox` queue
+  delivers it at-least-once to the events bus (as `ModelChanged`) and to any
+  registered handler, with per-handler receipts, exponential backoff, a
+  dead-letter state and a daily prune. New `OutboxMessage` and `OutboxReceipt`
+  tables, and `OUTBOX_RELAY_ENABLED` / `OUTBOX_RELAY_INTERVAL_MS`.
+- An `encrypted` blueprint field type: AES-256-GCM at rest, decrypted
+  transparently by the tenant-scoped Prisma client, hidden from responses
+  unless `reveal: true`, redacted in the audit chain and refused in filters and
+  sorts. Keys are versioned in `SECRETS_KEYS`; `SecretsService` seals values
+  that are not columns and `hery secrets:rotate` re-encrypts to the active key.
+- `/health` is now fed by a registry any module registers a check on, and
+  `/health/live` and `/health/ready` give an orchestrator the two probes
+  separately, public and carrying only ok or error. The report no longer names
+  a `redis` check: it reports `cache` and `queue`.
+- `hery down` puts every instance in maintenance mode, answering 503 with a
+  `Retry-After` unless the request carries the bypass secret, and
+  `hery up --lift` ends it. The health probes stay reachable throughout.
+- An error reporter contract (`errorReporter` in `hery.config.ts`) hands every
+  unexpected 500, with its `errorId`, tenant, caller and request path, to a
+  Sentry-style driver. The built-in `noop` driver is the default; a domain
+  exception or any other `HttpException` is never reported.
+- OpenTelemetry export of traces, metrics and logs over OTLP, configured by the
+  standard `OTEL_*` variables and off until `OTEL_EXPORTER_OTLP_ENDPOINT` is
+  set. Spans carry the request inspector's pipeline steps, `/metrics` is
+  unchanged, and every log line carries `trace_id` and `span_id`. New
+  dependencies: `@opentelemetry/api`, `@opentelemetry/api-logs` and
+  `@opentelemetry/sdk-node`.
 - An architecture linter that fails CI on a domain missing a concern, plus
   fourteen convention checks covering capabilities, pagination, RLS, rate
   limiting, module drift and patched kernel files.
@@ -87,10 +126,21 @@ Twelve packages, versioned together:
 `mcp`, `search-elasticsearch`, `search-meilisearch` and `admin-astro`, each
 installable with `hery install` and removable with `hery uninstall`.
 
+- `two-factor` (`@heryjs/two-factor`) adds TOTP enrolment that only counts once a
+  first code is verified, a `TwoFactorGuard` that holds a session until it has
+  passed its second factor, hashed single-use recovery codes, and a per-role
+  requirement an admin sets. Its verification routes sit in the `auth`
+  rate-limit bucket and lock after repeated wrong codes.
 - `storage` gained `POST /storage/upload`: a driver-agnostic multipart route
   behind a session, gating on a content-type allowlist and a size cap before
   handing back a tenant-prefixed key the caller never names. A blueprint
   field can now declare `type: file` to own that key like any other column.
+
+- `oauth` adds social sign-in (Google, GitHub, Microsoft) behind a provider
+  contract, with PKCE, a signed single-use state cookie and verified emails
+  only. What happens when a provider email already belongs to a local account
+  is the declared `OAUTH_LINK_POLICY`: `refuse` by default, so nothing links
+  silently.
 
 A module is its default export, closed with `satisfies ModuleDefinition` and
 typed through an `import type` the compiler erases — so a published module has

@@ -5,12 +5,19 @@ import { AppModule } from '#app.module';
 import { env } from '#technical/config/env';
 import { loadCorsConfig, resolveCorsOptions } from '#technical/http/cors';
 import { mountBullBoard } from '#technical/jobs/bull-board';
+import { startTelemetry } from '#technical/telemetry/start-telemetry';
 
 async function bootstrap() {
+  const isTelemetryOn = await startTelemetry();
+
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
     rawBody: true,
   });
+  if (isTelemetryOn) {
+    app.enableShutdownHooks();
+  }
+
   const logger = app.get(Logger);
   app.useLogger(logger);
 

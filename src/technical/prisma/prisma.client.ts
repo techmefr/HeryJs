@@ -6,6 +6,14 @@ import {
   writeAuditLog,
 } from '../audit/audit-log';
 import { env } from '../config/env';
+import {
+  modelChangeMessages,
+  outboxEmitsFor,
+  stageOutboxMessages,
+} from '../outbox/outbox-stage';
+import { defaultKeyring } from '../secrets/default-keyring';
+import { redactEncryptedColumns } from '../secrets/encrypted-columns';
+import { encryptedFieldsExtension } from '../secrets/encrypted-fields.extension';
 import { TenantContextStorage } from '../tenancy/tenant-context';
 import { TraceContextStorage } from '../tracing/trace-context';
 
@@ -16,6 +24,10 @@ interface PrismaQueryEvent {
 }
 
 const TENANT_SCOPED_MODELS = new Set<string>([
+  'TwoFactorEnrolment',
+  'TwoFactorRecoveryCode',
+  'TwoFactorRoleRequirement',
+  'TwoFactorVerifiedSession',
   'Team',
   'TeamMember',
   'BlogPost',
@@ -154,9 +166,17 @@ export const TENANT_FREE_MODELS = new Set<string>([
   // Second-factor secrets and backup codes, hanging off a User like the rows
   // above and written only by better-auth's own adapter.
   'TwoFactor',
+  // WebAuthn credentials, hanging off a User and written only by better-auth's
+  // passkey plugin. A sign-in finds the row by its credential id before any
+  // session exists, so there is no tenant to scope the lookup by -- the user
+  // it resolves to carries the tenant.
+  'Passkey',
   // Email-verification and password-reset tokens, looked up by their own value
   // before any session exists, so there is no tenant to scope the lookup by.
   'Verification',
+  'OauthIdentity',
+  // Bookkeeping keyed by an OutboxMessage id, which carries the tenant.
+  'OutboxReceipt',
 ]);
 
 /**
@@ -191,6 +211,10 @@ export const APP_ENFORCED_TENANT_MODELS = new Set<string>([
   'WebhookEndpoint',
   'WebhookEvent',
   'IdempotencyKey',
+  // Staged inside the transaction of the write it describes, and drained by a
+  // relay with no request behind it, so it can be neither stamped nor filtered
+  // by the ambient tenant.
+  'OutboxMessage',
 ]);
 
 type TenantHandling =
@@ -255,7 +279,10 @@ export function createTenantScopedPrismaClient() {
   // rather than proceeding down the chain), and only a layer that wraps
   // *around* that call still observes its result. An audit extension applied
   // second would sit inside the tenant layer and never run on that branch.
-  const auditedClient = rawClient.$extends({
+  const encryptedClient = rawClient.$extends(
+    encryptedFieldsExtension(defaultKeyring),
+  );
+  const auditedClient = encryptedClient.$extends({
     query: {
       $allModels: {
         async $allOperations({ model, operation, args, query }) {
@@ -269,7 +296,7 @@ export function createTenantScopedPrismaClient() {
               model,
               operation,
               recordId: record?.id ?? null,
-              data: result,
+              data: redactEncryptedColumns(model, result),
               userId: TenantContextStorage.getUserId(),
               impersonatedBy: TenantContextStorage.getImpersonatedBy(),
             });
@@ -336,19 +363,24 @@ export function createTenantScopedPrismaClient() {
             tenantId,
           );
 
-          if (!env.RLS_ENABLED) {
+          const emitsOutbox = outboxEmitsFor(model, operation);
+
+          if (!env.RLS_ENABLED && !emitsOutbox) {
             return query(args);
           }
 
-          // Row-level security relies on a session-local setting, which only
-          // survives for the lifetime of a single transaction (this also
-          // holds under pgBouncer's transaction pooling mode, since the
-          // whole block below runs on one pooled connection). Every
-          // tenant-scoped operation is wrapped so the setting and the query
-          // it protects always travel together.
+          // A write that has to be announced travels in one transaction with
+          // its outbox row: both commit or neither does. Row-level security
+          // relies on a session-local setting, which only survives for the
+          // lifetime of a single transaction (this also holds under
+          // pgBouncer's transaction pooling mode, since the whole block below
+          // runs on one pooled connection), so the same block carries it and
+          // the setting and the query it protects always travel together.
           const delegateName = model.charAt(0).toLowerCase() + model.slice(1);
           return rawClient.$transaction(async (tx) => {
-            await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
+            if (env.RLS_ENABLED) {
+              await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
+            }
             const delegates = tx as unknown as Record<
               string,
               Record<string, (opArgs: unknown) => unknown>
@@ -359,7 +391,22 @@ export function createTenantScopedPrismaClient() {
                 `No Prisma delegate for model "${model}" operation "${operation}"`,
               );
             }
-            return run(args);
+            const result = await run(args);
+
+            if (emitsOutbox) {
+              await stageOutboxMessages(
+                tx,
+                modelChangeMessages({
+                  model,
+                  operation,
+                  args,
+                  result,
+                  tenantId,
+                }),
+              );
+            }
+
+            return result;
           });
         },
       },

@@ -134,15 +134,27 @@ const BLOG_POST_DESCRIBE = {
   // Published so a client can tell which contract it is holding without
   // inferring it from the path it happened to call.
   version: 1,
-  fields: [{ name: 'title', type: 'string', optional: false }],
+  fields: [
+    { name: 'title', type: 'string', optional: false },
+    { name: 'privateNote', type: 'encrypted', optional: true },
+  ],
   ...BLOG_POST_CONTRACT,
   // Stated rather than implied by the absence of limits: a client reading this
   // knows the search route returns every match, and that asking for a page is
   // an error rather than a no-op.
   paginated: true,
+  softDeletes: true,
+  // The many-to-many relations the update route can attach to and detach from
+  // by id. A client builds its relation controls from this list and reads
+  // whether each is allowed from the record's own capabilities, so it neither
+  // guesses the relation names nor re-derives who may change them.
+  relations: ['tags'],
+  // A date has no JSON Schema form, and without this the whole module throws
+  // at load for any resource that declares a datetime field. The field list
+  // above still says which fields are dates.
   rules: {
-    create: z.toJSONSchema(createBlogPostSchema),
-    update: z.toJSONSchema(updateBlogPostSchema),
+    create: z.toJSONSchema(createBlogPostSchema, { unrepresentable: 'any' }),
+    update: z.toJSONSchema(updateBlogPostSchema, { unrepresentable: 'any' }),
   },
 };
 
@@ -159,6 +171,10 @@ const BLOG_POST_NOTES_CONTRACT = {
   limits: [5, 10],
   defaultLimit: 5,
 } as const satisfies ListQueryContract;
+
+// The picker for a relation asks for candidates by a free-text term; the
+// related resource has no search route of its own, so this is the whole contract.
+const relationOptionsSchema = z.object({ q: z.string().max(255).optional() });
 
 @Controller('blog-posts')
 @UseGuards(SessionGuard, CapabilitiesGuard)
@@ -345,6 +361,28 @@ export class BlogPostController {
     };
 
     return ok(records, meta);
+  }
+
+  // Reading who is attached is reading the blog-post, so the view
+  // capability gates it; the related resource has no route or capability of
+  // its own to ask instead.
+  @Post(':id/tags/members')
+  @HttpCode(200)
+  @Capability(canViewBlogPost)
+  @LoadRecordWith(BLOG_POST_VISIBLE_RECORD_LOADER, 'blog-post')
+  async membersTags(@Req() req: RequestWithBlogPost) {
+    return ok(await this.blogPosts.membersTags(req.record.id));
+  }
+
+  // Candidates to attach are offered only to a caller who may attach.
+  @Post(':id/tags/options')
+  @HttpCode(200)
+  @Capability(canAttachTagsToBlogPost)
+  @LoadRecordWith(BLOG_POST_VISIBLE_RECORD_LOADER, 'blog-post')
+  async optionsTags(
+    @Body(new ZodValidationPipe(relationOptionsSchema)) body: { q?: string },
+  ) {
+    return ok(await this.blogPosts.optionsTags(body.q));
   }
 
   @Post('create')

@@ -32,9 +32,11 @@ This is the one casing convention in the project, and it is deliberately the onl
 
 ## Fields
 
-Each field has a `type` (`string`, `int`, `boolean`, `datetime`, `file`), whether it's `optional`, and whether it's `hidden` — a hidden field is stripped from every API response by the generated `<name>.view.ts`, no matter which endpoint returns the record.
+Each field has a `type` (`string`, `int`, `boolean`, `datetime`, `file`, `encrypted`), whether it's `optional`, and whether it's `hidden` — a hidden field is stripped from every API response by the generated `<name>.view.ts`, no matter which endpoint returns the record.
 
 `file` is a plain string column underneath — the storage key `POST /storage/upload` already returned, not the bytes themselves. See [Storage](../guides/storage/) for the upload flow it pairs with.
+
+`encrypted` is a text column sealed with AES-256-GCM, hidden from responses unless the field says `reveal: true`, and refused in `filters` and `sorts`. See [Secrets](../guides/secrets/).
 
 ### Reserved fields
 

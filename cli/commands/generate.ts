@@ -144,6 +144,14 @@ export function registerGenerateCommand(program: Command): void {
           'audit-log.ts',
         );
 
+        const encryptedColumnsPath = path.join(
+          root,
+          'src',
+          'technical',
+          'secrets',
+          'encrypted-columns.ts',
+        );
+
         // A resource declaring another resource's model -- a second version of
         // a contract over the same table -- owns none of the schema. Emitting
         // the model again would duplicate a table that already exists, and
@@ -157,6 +165,15 @@ export function registerGenerateCommand(program: Command): void {
             ctx.pascalName,
           );
           patchModelSet(auditLogPath, 'AUDITED_MODELS', ctx.pascalName);
+          for (const field of ctx.fields.filter(
+            (candidate) => candidate.type === 'encrypted',
+          )) {
+            patchModelSet(
+              encryptedColumnsPath,
+              'ENCRYPTED_COLUMNS',
+              `${ctx.modelPascalName}.${field.name}`,
+            );
+          }
           console.log(
             schemaPatched
               ? pc.green(`✔ patched ${schemaPath}`)

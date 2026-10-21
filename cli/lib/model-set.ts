@@ -39,6 +39,11 @@ export const MODEL_REGISTRIES = [
     stripped: false,
   },
   {
+    file: 'src/technical/secrets/encrypted-columns.ts',
+    set: 'ENCRYPTED_COLUMNS',
+    stripped: true,
+  },
+  {
     file: 'src/technical/audit/audit-log.ts',
     set: 'AUDITED_MODELS',
     stripped: true,

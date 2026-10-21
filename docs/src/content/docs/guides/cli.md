@@ -23,6 +23,8 @@ The `hery` CLI is the only thing in this project that reads a blueprint. It is a
 | `search:reindex <Name>`      | Rebuilds a resource's search index from Postgres.                                       |
 | `openapi`                    | Emits an OpenAPI 3.1 document from every routed blueprint.                              |
 | `openapi:client`             | Emits a typed TypeScript client from the same blueprints.                               |
+| `secrets:key`                | Prints a new 32-byte key for `SECRETS_KEYS`.                                            |
+| `secrets:rotate`             | Re-encrypts every encrypted column to the active key.                                   |
 | `expose:list`                | Prints the catalog of `@ExposeAction`s.                                                 |
 | `expose:run <action>`        | Runs one exposed action, `--param name=value` per field.                                |
 | `up`                         | Checks that local dependencies are ready.                                               |
@@ -186,6 +188,10 @@ Reachable here means the service answered as itself, not that a socket opened: P
 ```
 
 `--start` brings the compose services up first and then does something more interesting: it reads back the **ports Docker actually assigned** and writes them into `.env`. The compose files publish container ports without fixing a host port, so several projects can run side by side without colliding, and `hery up --start` is what reconciles that with your configuration. It resolves `DATABASE_URL` and `REDIS_URL`, plus `ELASTICSEARCH_URL` or `MEILISEARCH_URL` if the matching search module is installed.
+
+## `hery down` and `hery up --lift`
+
+`hery down` puts the running application in [maintenance mode](/HeryJs/guides/maintenance): every request answers `503` with a `Retry-After` until `hery up --lift` ends it. `--secret` lets requests carrying a secret through, `--retry <seconds>` sets the `Retry-After`, and `--message <text>` sets what the 503 says. The switch lives in Redis, so it reaches every instance at once.
 
 ## `hery doctor`
 

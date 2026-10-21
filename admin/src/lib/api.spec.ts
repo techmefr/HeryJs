@@ -44,6 +44,48 @@ afterEach(() => {
 });
 
 describe('the api client', () => {
+  it('keeps what the api said about a refusal on the error', async () => {
+    vi.stubGlobal(
+      'fetch',
+      answering(400, {
+        error: {
+          message: 'Bad Request',
+          details: { fieldErrors: { data: ['Too small'] } },
+        },
+      }),
+    );
+
+    const failure = await api('/blog-posts/create').catch(
+      (error: unknown) => error,
+    );
+
+    expect(failure).toBeInstanceOf(ApiError);
+    expect((failure as ApiError).status).toBe(400);
+    expect((failure as ApiError).serverMessage).toBe('Bad Request');
+    expect((failure as ApiError).details).toEqual({
+      fieldErrors: { data: ['Too small'] },
+    });
+  });
+
+  it('still fails cleanly when the refusal has no readable body', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve({
+          status: 502,
+          ok: false,
+          json: () => Promise.reject(new SyntaxError('not json')),
+        }),
+      ),
+    );
+
+    const failure = await api('/blog-posts').catch((error: unknown) => error);
+
+    expect((failure as ApiError).status).toBe(502);
+    expect((failure as ApiError).details).toBeNull();
+    expect((failure as ApiError).serverMessage).toBeNull();
+  });
+
   it('sends the call to the configured api, not to the admin origin', async () => {
     const sent = answering(200);
     vi.stubGlobal('fetch', sent);
@@ -291,7 +333,11 @@ describe('section discovery', () => {
   it('skips the routes the overview already reports', () => {
     expect(
       sectionsOf([
-        controller('/health', [['GET', '/']]),
+        controller('/health', [
+          ['GET', '/'],
+          ['GET', '/live'],
+          ['GET', '/ready'],
+        ]),
         controller('/metrics', [['GET', '/']]),
         controller('/introspect', [['GET', '/']]),
         controller('/expose', [['GET', '/']]),
