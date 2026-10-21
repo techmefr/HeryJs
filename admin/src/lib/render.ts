@@ -147,7 +147,7 @@ export function columnsOf(
   const named = (declared ?? []).filter((column) =>
     present.includes(column.key),
   );
-  const rest = present
+  const rest: AdminColumn[] = present
     .filter((key) => !named.some((column) => column.key === key))
     .map((key) => ({ key, label: key }));
 
