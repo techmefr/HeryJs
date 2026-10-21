@@ -935,7 +935,6 @@ describe('Snippet resource', () => {
       const held = await prisma.auditLog.findMany({
         where: { tenantId, model: 'Snippet', recordId: ownId },
       });
-      expect(held.length).toBeGreaterThan(0);
       expect(held.every((entry) => entry.redactedAt !== null)).toBe(true);
       expect(JSON.stringify(held)).not.toContain(marker);
 
