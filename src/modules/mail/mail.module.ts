@@ -8,6 +8,7 @@ import { PrismaModule } from '#technical/prisma/prisma.module';
 import { NOTIFIER_MAIL_CHANNEL } from '#technical/notifier/notifier-mail-channel';
 import { AUTH_MAILER_PROVIDER, AuthMailAdapter } from './auth-mail.adapter';
 import { LogMailDriver } from './log-mail.driver';
+import { MailAdminController } from './mail-admin.controller';
 import { MailController } from './mail.controller';
 import { MailDriverRegistry } from './mail-driver.registry';
 import { MailProcessor } from './mail.processor';
@@ -24,7 +25,7 @@ import { MailService } from './mail.service';
     HeryConfigModule,
     DriversModule,
   ],
-  controllers: [MailController],
+  controllers: [MailController, MailAdminController],
   providers: [
     MailService,
     MailProcessor,

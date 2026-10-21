@@ -13,7 +13,13 @@ import {
   resolveDefaultLocale,
   resolveSupportedLocales,
 } from '#technical/i18n/locale.config';
-import { actingAs, registerAndLogin } from '#devtools/test-support';
+import {
+  actingAs,
+  createTestTenantId,
+  purgeTenant,
+  registerAndLogin,
+} from '#devtools/test-support';
+import type { Actor } from '#devtools/test-support';
 
 const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -101,6 +107,7 @@ describe('BlogPost resource', () => {
     expect(body.data.fields.map((field) => field.name)).toEqual([
       'title',
       'summary',
+      'body',
       'privateNote',
     ]);
     expect(body.data.paginated).toBe(true);
@@ -955,6 +962,414 @@ describe('BlogPost resource', () => {
         'b-' + marker,
         'a-' + marker,
       ]);
+    });
+  });
+
+  describe('richtext field body', () => {
+    const XSS_PAYLOADS: string[] = [
+      '<script>alert(1)</script><p>ok</p>',
+      '<img src=x onerror=alert(1)>',
+      '<a href="javascript:alert(1)">x</a>',
+      '<a href="JaVaScRiPt:alert(1)">x</a>',
+      '<a href="&#106;avascript:alert(1)">x</a>',
+      '<a href="data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==">x</a>',
+      '<p onclick="alert(1)">x</p>',
+      '<p style="background:url(javascript:alert(1))">x</p>',
+      '<svg onload=alert(1)>',
+      '<svg><script>alert(1)</script></svg>',
+      '<iframe src="javascript:alert(1)"></iframe>',
+      '<iframe srcdoc="<script>alert(1)</script>"></iframe>',
+      '<object data="data:text/html,<script>alert(1)</script>"></object>',
+      '<form action="javascript:alert(1)"><input type=submit></form>',
+      '<body onload=alert(1)>',
+      '<style>*{background:url(javascript:alert(1))}</style>',
+      '<scr<script>ipt>alert(1)</scr</script>ipt>',
+      '<math><mi xlink:href="javascript:alert(1)">x</mi></math>',
+    ];
+    const DANGEROUS =
+      /<\s*(script|iframe|svg|math|style|object|embed|form|input|link|meta|body)|javascript:|data:|\son[a-z]+\s*=|\sstyle\s*=|srcdoc/i;
+
+    async function createWith(html: string): Promise<Record<string, unknown>> {
+      const response = await request(app.getHttpServer())
+        .post('/blog-posts/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ ...{ title: 'title-value' }, body: html }] })
+        .expect(201);
+
+      return (response.body as { data: { data: Record<string, unknown> }[] })
+        .data[0]!.data;
+    }
+
+    async function readBack(id: unknown): Promise<Record<string, unknown>> {
+      const response = await request(app.getHttpServer())
+        .post('/blog-posts/search')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ filters: [{ field: 'id', value: id }] })
+        .expect(200);
+
+      return (response.body as { data: Record<string, unknown>[] }).data[0]!;
+    }
+
+    it('publishes the size limit and the allow-list', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/blog-posts/describe')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      const body = response.body as {
+        data: {
+          fields: Array<{
+            name: string;
+            type: string;
+            richtext?: {
+              maxLength: number;
+              allow: {
+                tags: string[];
+                attributes: Record<string, string[]>;
+                schemes: string[];
+              };
+            };
+          }>;
+        };
+      };
+      const described = body.data.fields.find((entry) => entry.name === 'body');
+      expect(described?.type).toBe('richtext');
+      expect(described?.richtext?.maxLength).toBe(20000);
+      expect(described?.richtext?.allow.tags).toContain('p');
+      expect(described?.richtext?.allow.tags).not.toContain('script');
+      expect(described?.richtext?.allow.schemes).not.toContain('javascript');
+    });
+
+    it('strips every XSS payload on write', async () => {
+      for (const payload of XSS_PAYLOADS) {
+        const created = await createWith(payload);
+
+        expect(String(created.body)).not.toMatch(DANGEROUS);
+        expect(JSON.stringify(await readBack(created.id))).not.toMatch(
+          DANGEROUS,
+        );
+      }
+    });
+
+    it('keeps the formatting the allow-list names and hardens a link', async () => {
+      const created = await createWith(
+        '<h2>Title</h2><p>a <strong>b</strong> <a href="https://example.com/x">go</a></p>',
+      );
+
+      expect(created.body).toBe(
+        '<h2>Title</h2><p>a <strong>b</strong> <a href="https://example.com/x" rel="noopener noreferrer nofollow">go</a></p>',
+      );
+    });
+
+    it('refuses more than 20000 characters of HTML, counted before sanitising', async () => {
+      await request(app.getHttpServer())
+        .post('/blog-posts/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({
+          data: [
+            {
+              ...{ title: 'title-value' },
+              body: '<p>' + 'a'.repeat(20000) + '</p>',
+            },
+          ],
+        })
+        .expect(400);
+    });
+
+    it('strips a payload sent on update as well', async () => {
+      const created = await createWith('<p>clean</p>');
+
+      const response = await request(app.getHttpServer())
+        .post('/blog-posts/update')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({
+          data: [
+            {
+              id: created.id,
+              body: '<img src=x onerror=alert(1)><p>after</p>',
+            },
+          ],
+        })
+        .expect(201);
+
+      const updated = (
+        response.body as { data: { data: Record<string, unknown> }[] }
+      ).data[0]!.data;
+      expect(updated.body).toBe('<p>after</p>');
+    });
+
+    it('never trusts what the column holds: a row written past the service is sanitised on read', async () => {
+      const created = await createWith('<p>fine</p>');
+      await prisma.blogPost.update({
+        where: { id: created.id as string },
+        data: {
+          body: '<script>alert(1)</script><p onclick="alert(1)">stored</p>',
+        },
+      });
+
+      const read = await readBack(created.id);
+
+      expect(read.body).toBe('<p>stored</p>');
+    });
+  });
+
+  describe('privacy requests', () => {
+    const tenantId = createTestTenantId();
+    let admin: Actor;
+    let subject: Actor;
+    let bystander: Actor;
+
+    beforeAll(async () => {
+      admin = await actingAs(app, { tenantId, role: 'admin' });
+      subject = await actingAs(app, { tenantId });
+      bystander = await actingAs(app, { tenantId });
+    });
+
+    afterAll(async () => {
+      await purgeTenant(tenantId);
+    });
+
+    async function createAs(
+      actor: Actor,
+      body: Record<string, unknown>,
+    ): Promise<string> {
+      const response = await request(app.getHttpServer())
+        .post('/blog-posts/create')
+        .set('Authorization', actor.authorization)
+        .send({ data: [body] })
+        .expect(201);
+
+      return (response.body as { data: { data: { id: string } }[] }).data[0]!
+        .data.id;
+    }
+
+    async function requestAs(
+      actor: Actor,
+      path: string,
+      body: Record<string, unknown>,
+      status: number,
+    ): Promise<string> {
+      const response = await request(app.getHttpServer())
+        .post(path)
+        .set('Authorization', actor.authorization)
+        .send(body)
+        .expect(status);
+
+      return (response.body as { data?: { id: string } }).data?.id ?? '';
+    }
+
+    // An erasure ends the sessions of the user it erased, so the outcome of
+    // one is read from the request row; an export is collected over the API.
+    async function settled(id: string) {
+      for (let attempt = 0; attempt < 90; attempt += 1) {
+        const row = await prisma.privacyRequest.findUniqueOrThrow({
+          where: { id },
+        });
+
+        if (row.status === 'done' || row.status === 'failed') {
+          return row;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+
+      throw new Error('privacy request ' + id + ' did not settle');
+    }
+
+    async function collect(actor: Actor, id: string) {
+      for (let attempt = 0; attempt < 90; attempt += 1) {
+        const response = await request(app.getHttpServer())
+          .get('/privacy/requests/' + id)
+          .set('Authorization', actor.authorization)
+          .expect(200);
+        const view = (
+          response.body as {
+            data: { status: string; error: string | null; result?: unknown };
+          }
+        ).data;
+
+        if (view.status === 'done' || view.status === 'failed') {
+          return view;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+
+      throw new Error('privacy request ' + id + ' did not settle');
+    }
+
+    it('exports the rows a user owns, opened, and none of anyone else', async () => {
+      const marker = 'export-' + randomUUID();
+      const ownId = await createAs(subject, {
+        title: marker,
+        privateNote: 'privateNote-secret-value',
+      });
+      const otherId = await createAs(bystander, { title: 'title-value' });
+
+      const id = await requestAs(subject, '/privacy/exports', {}, 202);
+      const bundle = await collect(subject, id);
+
+      expect(bundle).toMatchObject({ status: 'done', error: null });
+
+      const exported = bundle.result as {
+        identity: { id: string };
+        resources: Record<string, Array<Record<string, unknown>>>;
+      };
+      const rows = exported.resources.BlogPost!;
+
+      expect(exported.identity.id).toBe(subject.id);
+      expect(rows.map((row) => row.id)).toEqual([ownId]);
+      expect(rows[0]).toMatchObject({
+        title: marker,
+        privateNote: 'privateNote-secret-value',
+      });
+      expect(JSON.stringify(bundle.result)).not.toContain(otherId);
+
+      const again = await request(app.getHttpServer())
+        .get('/privacy/requests/' + id)
+        .set('Authorization', subject.authorization)
+        .expect(200);
+      expect(
+        (again.body as { data: { result?: unknown } }).data.result,
+      ).toBeUndefined();
+    });
+
+    it('refuses a request about another user unless an admin makes it', async () => {
+      await requestAs(
+        bystander,
+        '/privacy/exports',
+        { userId: subject.id },
+        403,
+      );
+      await requestAs(
+        bystander,
+        '/privacy/erasures/user',
+        { userId: subject.id },
+        403,
+      );
+      await requestAs(
+        subject,
+        '/privacy/erasures/tenant',
+        { confirm: tenantId },
+        403,
+      );
+      await requestAs(
+        admin,
+        '/privacy/erasures/tenant',
+        { confirm: 'another-tenant' },
+        400,
+      );
+
+      const id = await requestAs(
+        admin,
+        '/privacy/exports',
+        { userId: subject.id },
+        202,
+      );
+
+      await request(app.getHttpServer())
+        .get('/privacy/requests/' + id)
+        .set('Authorization', bystander.authorization)
+        .expect(404);
+      expect(await collect(admin, id)).toMatchObject({ status: 'done' });
+    });
+
+    it('erases a user, redacts what the audit trail held and keeps the request itself', async () => {
+      const marker = 'erase-' + randomUUID();
+      const ownId = await createAs(subject, { title: marker });
+      const keptId = await createAs(bystander, { title: 'title-value' });
+
+      const id = await requestAs(
+        subject,
+        '/privacy/erasures/user',
+        { userId: subject.id },
+        202,
+      );
+
+      expect(await settled(id)).toMatchObject({ status: 'done', error: null });
+
+      const rows = await prisma.blogPost.findMany({
+        where: { ownerId: subject.id },
+      });
+      expect(rows.length).toBeGreaterThan(0);
+      for (const row of rows) {
+        expect(row).toMatchObject({
+          title: '[erased]',
+          summary: null,
+          privateNote: null,
+        });
+      }
+      expect(
+        await prisma.blogPost.findUnique({ where: { id: keptId } }),
+      ).not.toBeNull();
+
+      const held = await prisma.auditLog.findMany({
+        where: { tenantId, model: 'BlogPost', recordId: ownId },
+      });
+      expect(held.every((entry) => entry.redactedAt !== null)).toBe(true);
+      expect(JSON.stringify(held)).not.toContain(marker);
+
+      const trail = await prisma.auditLog.findMany({
+        where: { tenantId, model: 'PrivacyRequest', recordId: id },
+        orderBy: { sequence: 'asc' },
+      });
+      expect(trail.map((entry) => entry.operation)).toEqual([
+        'privacy.erase-user.requested',
+        'privacy.erase-user.completed',
+      ]);
+      expect(JSON.stringify(trail)).not.toContain(marker);
+
+      const identity = await prisma.user.findUniqueOrThrow({
+        where: { id: subject.id },
+      });
+      expect(identity.email).toMatch(/@erased\.invalid$/);
+      expect(identity.banned).toBe(true);
+
+      const verified = await request(app.getHttpServer())
+        .get('/audit-logs/verify')
+        .set('Authorization', admin.authorization)
+        .expect(200);
+      expect((verified.body as { data: { valid: boolean } }).data.valid).toBe(
+        true,
+      );
+    });
+
+    it('erases a whole tenant and leaves every other tenant alone', async () => {
+      await createAs(bystander, { title: 'title-value' });
+      const foreign = await actingAs(app);
+      const foreignId = await createAs(foreign, { title: 'title-value' });
+
+      const id = await requestAs(
+        admin,
+        '/privacy/erasures/tenant',
+        { confirm: tenantId },
+        202,
+      );
+      const outcome = await collect(admin, id);
+
+      expect(outcome).toMatchObject({ status: 'done', error: null });
+
+      const rows = await prisma.blogPost.findMany({ where: { tenantId } });
+      expect(rows.length).toBeGreaterThan(0);
+      for (const row of rows) {
+        expect(row).toMatchObject({
+          title: '[erased]',
+          summary: null,
+          privateNote: null,
+        });
+      }
+      expect(
+        await prisma.blogPost.findUnique({ where: { id: foreignId } }),
+      ).not.toBeNull();
+
+      const erased = await prisma.user.findUniqueOrThrow({
+        where: { id: bystander.id },
+      });
+      const requester = await prisma.user.findUniqueOrThrow({
+        where: { id: admin.id },
+      });
+      expect(erased.email).toMatch(/@erased\.invalid$/);
+      expect(requester.email).toBe(admin.email);
     });
   });
 });

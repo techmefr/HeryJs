@@ -1,5 +1,6 @@
 import { ApiError } from './api';
 import { drawBulk } from './bulk-bar';
+import { openHistory } from './history-panel';
 import type { BulkKind } from './bulk';
 import {
   extensionFor,
@@ -13,18 +14,27 @@ import type { QueryState } from './query';
 import { drawPager } from './pager';
 import { state as stateCard, skeleton } from './render';
 import { childRelationsOf } from './relations';
-import { openCreate, openEdit } from './resource-editor';
+import { failureOfEntry, openCreate, openEdit } from './resource-editor';
+import { formFieldsOf, payloadOf, valuesOf, validate } from './form-schema';
+import type { FormField } from './form-schema';
 import type { EditorContext } from './resource-editor';
+import { openShares } from './shares';
 import { resourceTable, columnsOf } from './resource-table';
 import type { RowButton } from './resource-table';
 import {
   capabilityKeysOf,
   describeResource,
   isAllowed,
+  mutate,
   mutateIds,
+  mutateTransition,
+  pascalOf,
+  versionPartOf,
+  failureMessages,
   resourcesOf,
   searchResource,
   summarize,
+  transitionsFrom,
 } from './resource';
 import type {
   ResourceDescription,
@@ -75,6 +85,26 @@ function buttonsOf(view: View, row: ResourceRow): RowButton[] {
     });
   }
 
+  if (!query.trashed) {
+    for (const transition of transitionsFrom(view.description, row)) {
+      buttons.push({
+        id: 'transition-' + transition.name,
+        label: pascalOf(transition.name),
+        isAllowed: isAllowed(row.capabilities, transition.name),
+        onClick: () => void runRowTransition(view, row, transition.name),
+      });
+    }
+  }
+
+  if (view.description.sharing && !query.trashed) {
+    buttons.push({
+      id: 'share',
+      label: 'Share',
+      isAllowed: isAllowed(row.capabilities, 'share'),
+      onClick: () => void openShares(view.root, view.options.base, row),
+    });
+  }
+
   if (query.trashed && view.description.softDeletes) {
     buttons.push({
       id: 'restore',
@@ -93,6 +123,22 @@ function buttonsOf(view: View, row: ResourceRow): RowButton[] {
     });
   }
 
+  if (view.description.history) {
+    buttons.push({
+      id: 'history',
+      label: 'History',
+      isAllowed: isAllowed(row.capabilities, 'history'),
+      onClick: () =>
+        void openHistory({
+          root: view.root,
+          base: view.options.base,
+          description: view.description,
+          row,
+          onRestored: reload,
+        }),
+    });
+  }
+
   for (const action of extension.rowActions ?? []) {
     buttons.push({
       id: action.id,
@@ -105,6 +151,29 @@ function buttonsOf(view: View, row: ResourceRow): RowButton[] {
   }
 
   return buttons;
+}
+
+async function runRowTransition(
+  view: View,
+  row: ResourceRow,
+  transition: string,
+): Promise<void> {
+  const label = pascalOf(transition);
+
+  if (!confirmed(view, label + ' this record?')) {
+    return;
+  }
+
+  const failure = summarize(
+    await mutateTransition(view.options.base, row.id, transition),
+  ).failed[0];
+
+  announce(
+    view,
+    failure ? failure.message : label + ' done.',
+    failure !== undefined,
+  );
+  await load(view);
 }
 
 async function runRowChange(
@@ -159,6 +228,7 @@ function drawTable(view: View): void {
       selectable: !isDisabled(view.extension, 'bulk'),
       selected: view.selected,
       buttonsOf: (row) => buttonsOf(view, row),
+      inline: inlineOf(view),
       onSort: (field) => {
         view.query.sort = nextSort(view.query.sort, field);
         view.query.page = 1;
@@ -180,6 +250,75 @@ function drawTable(view: View): void {
       },
     }),
   );
+}
+
+function inlineOf(view: View) {
+  if (view.query.trashed || isDisabled(view.extension, 'update')) {
+    return undefined;
+  }
+
+  // Only a plain value is edited in place: a date has a picker of its own and
+  // a relation its own panel, both of which the full form already has.
+  const fields = new Map<string, FormField>(
+    formFieldsOf(view.description, 'update', view.extension.fields ?? {})
+      .filter((field) => !field.readonly && field.kind !== 'datetime')
+      .map((field) => [field.name, field]),
+  );
+
+  return {
+    fields,
+    canEdit: (row: ResourceRow) => isAllowed(row.capabilities, 'update'),
+    commit: async (
+      row: { id: string },
+      field: FormField,
+      value: string | boolean,
+    ): Promise<string | null> => {
+      const full = view.outcome.rows.find(
+        (candidate) => candidate.id === row.id,
+      );
+      const errors = validate([field], { [field.name]: value });
+
+      if (errors[field.name]) {
+        return errors[field.name];
+      }
+
+      const payload = payloadOf(
+        [field],
+        { [field.name]: value },
+        valuesOf([field], full ?? null),
+        'update',
+      );
+
+      if (Object.keys(payload).length === 0) {
+        await load(view);
+        return null;
+      }
+
+      try {
+        const [entry] = await mutate(view.options.base, 'update', {
+          data: [
+            {
+              id: row.id,
+              ...versionPartOf(view.description, full ?? null),
+              ...payload,
+            },
+          ],
+        });
+        const failure = failureOfEntry(entry);
+
+        if (failure.length > 0) {
+          return failure.join(' ');
+        }
+
+        announce(view, 'Saved.', false);
+        await load(view);
+
+        return null;
+      } catch (error) {
+        return failureMessages(error).join(' ');
+      }
+    },
+  };
 }
 
 async function goTo(view: View, page: number): Promise<void> {

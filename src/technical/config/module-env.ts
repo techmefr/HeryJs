@@ -44,3 +44,11 @@ export function devOnlyDefault(variable: string, devValue: string) {
       },
     );
 }
+
+/**
+ * Whether a variable is set to something, and nothing more: the deployment
+ * report names what is missing without ever carrying a value.
+ */
+export function isEnvSet(name: string): boolean {
+  return Boolean(process.env[name]);
+}

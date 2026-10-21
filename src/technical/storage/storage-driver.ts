@@ -32,6 +32,11 @@ export interface StoredObjectStat {
   contentType: string;
 }
 
+export interface StoredObjectSummary {
+  key: string;
+  size: number;
+}
+
 export interface StorageDriver {
   put(key: string, body: Buffer, contentType: string): Promise<StoredObject>;
   get(key: string): Promise<Buffer>;
@@ -43,4 +48,9 @@ export interface StorageDriver {
     sizeBytes: number,
   ): Promise<PresignedUpload>;
   stat(key: string): Promise<StoredObjectStat | null>;
+  /**
+   * The objects whose key starts with `prefix`, at most `limit` of them. What
+   * the admin browses; nothing on the upload path depends on it.
+   */
+  list(prefix: string, limit: number): Promise<StoredObjectSummary[]>;
 }

@@ -110,6 +110,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "typecheck:packages": "for d in packages/*/ examples/hery-module-*/; do if [ -f \"$d/tsconfig.json\" ]; then echo \"$d\"; tsc --noEmit -p \"$d/tsconfig.json\" || exit 1; fi; done",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest && pnpm run test:module-specs && pnpm --filter admin test",
+    "test:serial": "JEST_SHARED_DB=true NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
     "test:cov": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "test:debug": "NODE_OPTIONS=--experimental-vm-modules node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
@@ -176,6 +177,7 @@
     "prompts": "^2.4.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "sanitize-html": "2.18.1",
     "semver": "^7.8.5",
     "socket.io": "^4.8.3",
     "xpath": "^0.0.34",
@@ -199,6 +201,7 @@
     "@types/node": "^24.13.3",
     "@types/pg": "^8.23.1",
     "@types/prompts": "^2.4.9",
+    "@types/sanitize-html": "^2.16.2",
     "@types/semver": "^7.8.0",
     "@types/supertest": "^7.0.0",
     "dependency-cruiser": "^18.2.0",
@@ -231,7 +234,12 @@
     ],
     "rootDir": ".",
     "testRegex": ".*\\.spec\\.ts$",
-    "globalSetup": "<rootDir>/test/global-setup.ts",
+    "globalSetup": "<rootDir>/test/parallel-setup.ts",
+    "globalTeardown": "<rootDir>/test/parallel-teardown.ts",
+    "setupFiles": [
+      "<rootDir>/test/parallel-env.ts"
+    ],
+    "maxWorkers": 4,
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },

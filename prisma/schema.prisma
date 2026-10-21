@@ -10,23 +10,23 @@ datasource db {
 }
 
 model User {
-  id               String    @id @default(cuid())
-  email            String    @unique
-  emailVerified    Boolean   @default(false)
-  name             String?
-  image            String?
-  tenantId         String    @default("default")
-  currentTeamId    String?
-  role             String?
-  banned           Boolean   @default(false)
-  banReason        String?
-  banExpires       DateTime?
-  twoFactorEnabled Boolean   @default(false)
-  phoneNumber      String?   @unique
-  phoneNumberVerified Boolean @default(false)
-  isAnonymous      Boolean   @default(false)
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  emailVerified       Boolean   @default(false)
+  name                String?
+  image               String?
+  tenantId            String    @default("default")
+  currentTeamId       String?
+  role                String?
+  banned              Boolean   @default(false)
+  banReason           String?
+  banExpires          DateTime?
+  twoFactorEnabled    Boolean   @default(false)
+  phoneNumber         String?   @unique
+  phoneNumberVerified Boolean   @default(false)
+  isAnonymous         Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   sessions                  Session[]
   accounts                  Account[]
@@ -124,12 +124,17 @@ model Verification {
 }
 
 model FeatureFlag {
-  id        String   @id @default(cuid())
-  key       String
-  tenantId  String?
-  enabled   Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String   @id @default(cuid())
+  key               String
+  tenantId          String?
+  enabled           Boolean  @default(false)
+  // 0-100, bucketed per user or per tenant (rolloutBy); 100 means everyone.
+  rolloutPercentage Int      @default(100)
+  rolloutBy         String   @default("user")
+  // Ordered targeting rules, first match wins; see feature-flag-evaluation.ts.
+  rules             Json     @default("[]")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@unique([key, tenantId])
 }
@@ -150,13 +155,13 @@ model AppNotification {
 }
 
 model AuditLog {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   // createdAt is a millisecond timestamp, so two entries written in the same
   // millisecond -- routine under load -- have no order at all. Reading the
   // chain by it can hand the verifier a legitimate chain in the wrong order,
   // and reading the tail by it can return the wrong predecessor. The sequence
   // is what actually orders the chain.
-  sequence       Int      @unique @default(autoincrement())
+  sequence       Int       @unique @default(autoincrement())
   tenantId       String
   model          String
   operation      String
@@ -170,7 +175,11 @@ model AuditLog {
   // genesis entries -- as many parallel chains -- while the constraint below
   // looked like it forbade them.
   previousHash   String
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
+  // Set when an erasure request replaced `data` with a digest of it. The entry
+  // stays in the chain so its neighbours still link to it, but its content can
+  // no longer be recomputed, so the verifier checks its links, not its hash.
+  redactedAt     DateTime?
 
   // Two entries in the same tenant's chain can never claim the same
   // predecessor -- that is a fork, and the linear verifier can never accept
@@ -178,18 +187,70 @@ model AuditLog {
   // genesis entry.
   @@unique([tenantId, previousHash])
   @@index([tenantId, sequence])
+  @@index([tenantId, createdAt])
+}
+
+// Where a tenant's audit entries are streamed to, for a SIEM. `cursor` is the
+// last AuditLog.sequence already handed to the outbox for this sink, so a
+// sink never skips or repeats an entry: the cursor moves in the same
+// transaction that stages the delivery. `authToken` holds a sealed envelope,
+// never the token.
+model AuditSink {
+  id                    String    @id @default(cuid())
+  tenantId              String
+  name                  String
+  kind                  String
+  url                   String?
+  authToken             String?
+  storageDriver         String?
+  keyPrefix             String?
+  active                Boolean   @default(true)
+  cursor                Int       @default(0)
+  lastError             String?
+  lastDeliveredAt       DateTime?
+  lastDeliveredSequence Int?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([active])
+}
+
+// One row per write to a resource that declared history: true. The snapshot is
+// the record as it stood after the write, restricted to the columns the
+// generator registered in HISTORY_COLUMNS -- a hidden or encrypted field is
+// never registered, so it is never stored here, not merely never shown.
+// Written like AuditLog, from the client's own extension with the tenant passed
+// explicitly, and read through HistoryService, which filters on it.
+model RecordSnapshot {
+  id             String   @id @default(cuid())
+  // Orders a record's history; createdAt alone cannot when two writes land in
+  // the same millisecond.
+  sequence       Int      @unique @default(autoincrement())
+  tenantId       String
+  model          String
+  recordId       String
+  operation      String
+  snapshot       Json
+  userId         String?
+  impersonatedBy String?
+  createdAt      DateTime @default(now())
+
+  @@index([tenantId, model, recordId, sequence])
+  @@index([createdAt])
 }
 
 model BlogPost {
-  id        String    @id @default(cuid())
-  tenantId  String
-  ownerId   String
-  title     String
-  summary   Json?
+  id          String    @id @default(cuid())
+  tenantId    String
+  ownerId     String
+  title       String
+  summary     Json?
+  body        String?
   privateNote String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
 
   owner User           @relation(fields: [ownerId], references: [id])
   notes BlogPostNote[]
@@ -300,6 +361,57 @@ model WebhookEvent {
 
   @@index([tenantId])
   @@index([endpointId])
+}
+
+// A customer's own URL receiving signed events. The secret is sealed with the
+// kernel's SecretsService: signing needs the plaintext back, so it cannot be a
+// one-way hash, but it does not have to sit readable in the table. During a
+// rotation the previous secret stays valid until previousSecretExpiresAt, and
+// every delivery in that window carries a signature for both.
+model WebhookSubscription {
+  id                      String    @id @default(cuid())
+  tenantId                String
+  url                     String
+  description             String?
+  events                  String[]
+  secret                  String
+  previousSecret          String?
+  previousSecretExpiresAt DateTime?
+  active                  Boolean   @default(true)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  deliveries WebhookDelivery[]
+
+  @@index([tenantId])
+}
+
+// One row per (subscription, outbox message): the delivery log and the dead
+// letter in the same table. The unique pair is what makes the fan-out
+// idempotent when the relay hands the same message over twice. round counts
+// manual redeliveries, so each run gets a queue job id of its own.
+model WebhookDelivery {
+  id             String    @id @default(cuid())
+  subscriptionId String
+  tenantId       String
+  messageId      String
+  event          String
+  payload        Json
+  status         String    @default("pending")
+  attempts       Int       @default(0)
+  round          Int       @default(0)
+  lastStatusCode Int?
+  lastError      String?
+  lastAttemptAt  DateTime?
+  deliveredAt    DateTime?
+  deadAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  subscription WebhookSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionId, messageId])
+  @@index([tenantId, status])
+  @@index([subscriptionId])
 }
 
 // Written in the same transaction as the change it describes, then relayed to
@@ -548,10 +660,12 @@ model Snippet {
   tenantId  String
   ownerId   String
   title     String
+  summary   String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
   version   Int       @default(1)
+  status    String    @default("draft")
 
   owner User @relation(fields: [ownerId], references: [id])
 
@@ -625,20 +739,20 @@ model DevtoolsEntry {
 }
 
 model SsoConnection {
-  id              String   @id @default(cuid())
-  tenantId        String
-  name            String
-  protocol        String   @default("oidc")
-  issuer          String
-  clientId        String
-  clientSecret    String?
-  samlEntryPoint  String?
-  samlCertificate String?
+  id                   String   @id @default(cuid())
+  tenantId             String
+  name                 String
+  protocol             String   @default("oidc")
+  issuer               String
+  clientId             String
+  clientSecret         String?
+  samlEntryPoint       String?
+  samlCertificate      String?
   samlAttributeMapping String?
-  linkPolicy      String   @default("refuse")
-  isEnabled       Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  linkPolicy           String   @default("refuse")
+  isEnabled            Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   domains    SsoDomain[]
   identities SsoIdentity[]
@@ -712,5 +826,62 @@ model ScimIdentity {
 
   @@unique([tenantId, kind, resourceId])
   @@unique([tenantId, kind, externalId])
+  @@index([tenantId])
+}
+
+model JobFlow {
+  id          String    @id @default(cuid())
+  tenantId    String
+  kind        String
+  name        String
+  queue       String
+  rootJobId   String
+  steps       Json
+  createdById String?
+  createdAt   DateTime  @default(now())
+  cancelledAt DateTime?
+
+  @@index([tenantId, createdAt])
+  @@index([createdAt])
+}
+
+// One row grants one user or one team read or write access to one record of a
+// sharing-enabled resource. resource is the Prisma model name, so the table is
+// shared by every such resource and carries no foreign key to any of them.
+model RecordShare {
+  id          String   @id @default(cuid())
+  tenantId    String
+  resource    String
+  recordId    String
+  granteeType String
+  granteeId   String
+  access      String
+  grantedById String
+  createdAt   DateTime @default(now())
+
+  @@unique([tenantId, resource, recordId, granteeType, granteeId], map: "RecordShare_grant_key")
+  // The lookup that folds shares into a collection scope: everything shared
+  // with one subject, for one resource.
+  @@index([tenantId, resource, granteeType, granteeId])
+  @@index([tenantId, resource, recordId])
+}
+
+// One export, user erasure or tenant erasure, run by a worker. `result` holds an
+// export's bundle until the requester reads it once; it is the only place the
+// bundle is kept, and reading it clears it.
+model PrivacyRequest {
+  id          String    @id @default(cuid())
+  tenantId    String
+  kind        String
+  status      String    @default("pending")
+  subjectId   String
+  requestedBy String?
+  summary     Json?
+  result      Json?
+  error       String?
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+  deliveredAt DateTime?
+
   @@index([tenantId])
 }

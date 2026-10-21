@@ -176,6 +176,16 @@ It lands in `src/modules/mail` for the same reason Resend does. Import `SmtpMail
 
 The driver uses nodemailer rather than writing the SMTP dialogue by hand, and opens a connection per message instead of pooling: every send is already a queued job, so the connection is off any request's path, and a pooled socket on a long-lived worker would outlive a rotated credential. A refused recipient throws, for the same reason a Resend refusal does. Its spec runs the driver against a real in-process SMTP server, so delivery, authentication and refusal are exercised over an actual socket.
 
+## Managing mail from the admin
+
+`MailAdminController` contributes to the [admin panel](../guides/admin/) through the admin contract, so there is no mail page to install. Under a **Messaging** group the panel shows:
+
+- **Mail drivers**, one row per driver `hery.config.ts` declares, with the active one marked. Names only, never a credential.
+- **Recent sends**, the tenant's `MailLog` newest first: recipient, subject, status, the driver's error when it failed, and when it was queued and sent.
+- **Send test mail**, an action asking for an address and queuing a real message through the same path every mail takes. The row it leaves in Recent sends is the proof: `queued`, then `sent`, or `failed` with the transport's own error.
+
+All three are admin-only (`canReadMailLog`, `canSendTestMail`), behind the studio gate, and the test send is audited like any admin action. The controller is separate from `/mail` because that one carries a development-only route, and a controller that contributes to the admin has to exist in production too.
+
 ## Templates are a second, smaller path — and they do not escape
 
 `MailService.queue(to, template, data)` skips the mailable and renders a named template instead:

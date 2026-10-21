@@ -10,6 +10,8 @@ const ZOD_TYPES: Record<ScalarFieldType, string> = {
   datetime: 'z.coerce.date()',
   file: 'z.string().min(1).max(255)',
   encrypted: 'z.string().min(1).max(4096)',
+  // The view's rule: sanitising can leave nothing of what was sent.
+  richtext: 'z.string()',
 };
 
 const PRISMA_TYPES: Record<ScalarFieldType, string> = {
@@ -19,10 +21,24 @@ const PRISMA_TYPES: Record<ScalarFieldType, string> = {
   datetime: 'DateTime',
   file: 'String',
   encrypted: 'String',
+  richtext: 'String',
 };
 
+export const RICHTEXT_DEFAULT_MAX_LENGTH = 20000;
+
+export function richtextMaxLength(field: ScalarBlueprintField): number {
+  return field.maxLength ?? RICHTEXT_DEFAULT_MAX_LENGTH;
+}
+
+// The size limit is on what the client sends, before the sanitiser shrinks it.
+function inputRuleFor(field: ScalarBlueprintField): string {
+  return field.type === 'richtext'
+    ? `z.string().min(1).max(${richtextMaxLength(field)})`
+    : ZOD_TYPES[field.type];
+}
+
 export function zodTypeFor(field: ScalarBlueprintField): string {
-  const rule = ZOD_TYPES[field.type];
+  const rule = inputRuleFor(field);
   const base = field.translatable ? `translatableInputSchema(${rule})` : rule;
   return field.optional ? `${base}.optional()` : base;
 }
@@ -51,6 +67,8 @@ export function sampleValueFor(field: ScalarBlueprintField): string {
       return `'${field.name}-key.png'`;
     case 'encrypted':
       return `'${field.name}-secret-value'`;
+    case 'richtext':
+      return `'<p>${field.name}-value</p>'`;
   }
 }
 
@@ -61,6 +79,7 @@ const GRAPHQL_TYPES: Record<ScalarFieldType, string> = {
   datetime: 'GraphQLISODateTime',
   file: 'String',
   encrypted: 'String',
+  richtext: 'String',
 };
 
 export function graphqlTypeFor(field: ScalarBlueprintField): string {
@@ -74,6 +93,7 @@ const TS_TYPES: Record<ScalarFieldType, string> = {
   datetime: 'Date',
   file: 'string',
   encrypted: 'string',
+  richtext: 'string',
 };
 
 export function tsTypeFor(field: ScalarBlueprintField): string {
@@ -91,6 +111,7 @@ const FAKER_VALUES: Record<ScalarFieldType, string> = {
   datetime: 'faker.date.recent()',
   file: '`${faker.string.uuid()}.png`',
   encrypted: 'faker.string.alphanumeric(24)',
+  richtext: '`<p>${faker.lorem.sentence()}</p>`',
 };
 
 export function fakerValueFor(field: ScalarBlueprintField): string {

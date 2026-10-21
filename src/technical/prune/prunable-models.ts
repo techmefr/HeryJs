@@ -3,6 +3,14 @@ import { Prisma } from '@prisma/client';
 const REQUIRED_FIELDS = ['deletedAt', 'tenantId'];
 
 /**
+ * Snapshots are not soft-deleted, they simply age. Retention bounds them the
+ * same way it bounds a trashed row, under the model's own name, so a project
+ * that already configures prune sets how long history is kept in the same
+ * place -- and the admin's prune page lists it with nothing added there.
+ */
+export const HISTORY_MODEL = 'RecordSnapshot';
+
+/**
  * A model is prunable exactly when it carries `deletedAt` and `tenantId` --
  * the two reserved fields the blueprint schema stamps on every generated
  * resource. Reading them off Prisma's own DMMF, rather than maintaining
@@ -17,10 +25,13 @@ const REQUIRED_FIELDS = ['deletedAt', 'tenantId'];
  * than pruned unsafely.
  */
 export function prunableModels(): string[] {
-  return Prisma.dmmf.datamodel.models
-    .filter((model) => {
-      const names = new Set(model.fields.map((field) => field.name));
-      return REQUIRED_FIELDS.every((field) => names.has(field));
-    })
-    .map((model) => model.name);
+  return [
+    ...Prisma.dmmf.datamodel.models
+      .filter((model) => {
+        const names = new Set(model.fields.map((field) => field.name));
+        return REQUIRED_FIELDS.every((field) => names.has(field));
+      })
+      .map((model) => model.name),
+    HISTORY_MODEL,
+  ];
 }
