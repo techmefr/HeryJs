@@ -8,6 +8,7 @@ import { JobsService } from '#technical/jobs/jobs.service';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { MailProcessor } from '#modules/mail/mail.processor';
 import { MailService } from '#modules/mail/mail.service';
+import { NotifierModule } from '#modules/notifier/notifier.module';
 import { NotifierService } from '#modules/notifier/notifier.service';
 import { StorageService } from '#modules/storage/storage.service';
 import { actingAs, actingAsApiKey } from './acting-as';
@@ -101,6 +102,7 @@ describe('test support: seam fakes and the clock', () => {
     testApp = await bootTestApp({
       fakes: 'all',
       isolation: 'tenant',
+      imports: [NotifierModule],
     });
   });
 
