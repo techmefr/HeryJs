@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { TelemetryBus } from '#kernel/tracing/telemetry-bus';
 import type { Sendable, SmsMessage } from '#kernel/sms/sms-driver';
 import { SmsConsentService } from './sms.consent';
 import { SmsDriverRegistry } from './sms-driver.registry';
@@ -44,6 +45,27 @@ export class SmsService {
       hasConsent: decision.granted,
     });
 
-    await this.drivers.active.send(message);
+    try {
+      await this.drivers.active.send(message);
+    } catch (error) {
+      TelemetryBus.emit({
+        kind: 'message',
+        channel: 'sms',
+        status: 'failed',
+        recipient: message.to,
+        subject: null,
+        error: error instanceof Error ? error.message : 'unknown error',
+      });
+      throw error;
+    }
+
+    TelemetryBus.emit({
+      kind: 'message',
+      channel: 'sms',
+      status: 'sent',
+      recipient: message.to,
+      subject: null,
+      error: null,
+    });
   }
 }

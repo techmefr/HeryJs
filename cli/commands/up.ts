@@ -5,6 +5,7 @@ import type { Command } from 'commander';
 import pc from 'picocolors';
 import { replaceUrlPort, upsertEnvVar } from '../lib/env-file';
 import { runInfraChecks } from '../lib/infra-checks';
+import { openMaintenanceStore } from './down';
 
 const STARTUP_GRACE_MS = 30_000;
 
@@ -75,7 +76,35 @@ export function registerUpCommand(program: Command): void {
       '--start',
       'start the docker compose services first and resolve their dynamically assigned ports into .env',
     )
-    .action(async (options: { start?: boolean }) => {
+    .option(
+      '--lift',
+      'end the maintenance mode "hery down" started, and skip the dependency checks',
+    )
+    .action(async (options: { start?: boolean; lift?: boolean }) => {
+      if (options.lift) {
+        const store = openMaintenanceStore();
+
+        try {
+          const wasDown = await store.disable();
+          console.log(
+            wasDown
+              ? pc.green('✔ maintenance mode is off')
+              : pc.dim('maintenance mode was not on'),
+          );
+        } catch (error) {
+          console.error(
+            pc.red(
+              `could not reach Redis to end maintenance mode: ${(error as Error).message}`,
+            ),
+          );
+          process.exitCode = 1;
+        } finally {
+          store.close();
+        }
+
+        return;
+      }
+
       if (options.start) {
         console.log(pc.cyan('starting docker compose services...'));
         spawnSync('docker', ['compose', 'up', '-d', 'postgres', 'valkey'], {

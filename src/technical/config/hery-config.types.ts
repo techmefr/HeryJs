@@ -57,6 +57,32 @@ export interface HeryConfigI18n {
 }
 
 /**
+ * Logging is the one slice where every declared driver is active at once: each
+ * line goes to all of them, so `stdout` plus a collector is two entries rather
+ * than a choice. `default` names the driver the query route prefers to read
+ * from when more than one can answer, and `stdout` alone is what a project
+ * that declares nothing gets.
+ */
+export interface HeryConfigLogging extends HeryConfigDrivers {
+  retentionDays?: number;
+  maxEntriesPerTenant?: number;
+}
+
+/**
+ * Every field is optional because the defaults are the point: the dashboard
+ * records in development and in nothing else. `enabled: true` is the explicit
+ * opt-in for a deployed environment, and the routes are then behind an admin
+ * capability rather than gone.
+ */
+export interface HeryConfigDevDashboard {
+  enabled?: boolean;
+  retentionHours?: number;
+  maxEntriesPerTenant?: number;
+  slowQueryMs?: number;
+  nPlusOneThreshold?: number;
+}
+
+/**
  * `satisfies HeryConfig` at the config file's own export is the entire
  * contract mechanism: an unknown top-level key or a search engine missing
  * `driver` fails typecheck, not a schema loaded at runtime. Fields are kept
@@ -76,12 +102,15 @@ export interface HeryConfig {
   cache?: HeryConfigCache;
   rateLimit?: HeryConfigRateLimit;
   i18n?: HeryConfigI18n;
+  logging?: HeryConfigLogging;
+  devDashboard?: HeryConfigDevDashboard;
   mail?: HeryConfigDrivers;
   export?: HeryConfigDrivers;
   import?: HeryConfigDrivers;
   storage?: HeryConfigDrivers;
   httpClient?: HeryConfigDrivers;
   featureFlags?: HeryConfigDrivers;
+  errorReporter?: HeryConfigDrivers;
   sms?: HeryConfigDrivers;
   push?: HeryConfigDrivers;
   billing?: HeryConfigDrivers;

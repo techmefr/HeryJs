@@ -116,6 +116,49 @@ export function buildServerSchema(nodeEnv: string | undefined) {
       .int()
       .positive()
       .default(60 * 60),
+    AUTH_MAGIC_LINK_ENABLED: z
+      .string()
+      .default('false')
+      .transform((value) => value === 'true'),
+    AUTH_EMAIL_OTP_ENABLED: z
+      .string()
+      .default('false')
+      .transform((value) => value === 'true'),
+    AUTH_PHONE_OTP_ENABLED: z
+      .string()
+      .default('false')
+      .transform((value) => value === 'true'),
+    AUTH_ANONYMOUS_ENABLED: z
+      .string()
+      .default('false')
+      .transform((value) => value === 'true'),
+    AUTH_PASSKEY_ENABLED: z
+      .string()
+      .default('false')
+      .transform((value) => value === 'true'),
+    AUTH_PASSKEY_RP_ID: z.string().min(1).optional(),
+    AUTH_PASSKEY_RP_NAME: z.string().min(1).default('HeryJs'),
+    AUTH_PASSKEY_ORIGIN: z.string().min(1).optional(),
+    AUTH_PASSWORDLESS_ALLOW_SIGN_UP: z
+      .string()
+      .default('true')
+      .transform((value) => value === 'true'),
+    AUTH_MAGIC_LINK_EXPIRES_SECONDS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(5 * 60),
+    AUTH_OTP_EXPIRES_SECONDS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(5 * 60),
+    AUTH_OTP_LENGTH: z.coerce.number().int().min(4).max(10).default(6),
+    AUTH_OTP_MAX_ATTEMPTS: z.coerce.number().int().positive().default(3),
+    AUTH_ANONYMOUS_EMAIL_DOMAIN: z
+      .string()
+      .min(1)
+      .default('guest.heryjs.local'),
     // No devOnlySecret for these four: that helper covers secrets the
     // framework owns end to end, and an OAuth client secret is issued by
     // Google or GitHub, so a placeholder could only ever produce a login
@@ -141,6 +184,15 @@ export function buildServerSchema(nodeEnv: string | undefined) {
     OAUTH_GITHUB_CLIENT_SECRET: z.string().min(1).optional(),
     OAUTH_MICROSOFT_CLIENT_ID: z.string().min(1).optional(),
     OAUTH_MICROSOFT_CLIENT_SECRET: z.string().min(1).optional(),
+    OTEL_EXPORTER_OTLP_ENDPOINT: z.string().min(1).optional(),
+    OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: z.string().min(1).optional(),
+    OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: z.string().min(1).optional(),
+    OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: z.string().min(1).optional(),
+    OTEL_TRACES_EXPORTER: z.string().min(1).optional(),
+    OTEL_METRICS_EXPORTER: z.string().min(1).optional(),
+    OTEL_LOGS_EXPORTER: z.string().min(1).optional(),
+    OTEL_SDK_DISABLED: z.string().min(1).optional(),
+    OTEL_SERVICE_NAME: z.string().min(1).optional(),
   });
 }
 

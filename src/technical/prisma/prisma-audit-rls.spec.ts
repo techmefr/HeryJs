@@ -31,7 +31,12 @@ describe('audit logging under RLS_ENABLED=true (real database)', () => {
 
   afterAll(async () => {
     await rawClient.blogPost.deleteMany({ where: { ownerId } });
-    await rawClient.auditLog.deleteMany({ where: { model: 'BlogPost' } });
+    await rawClient.auditLog.deleteMany({
+      where: {
+        model: 'BlogPost',
+        tenantId: { startsWith: 'tenant-rls-audit-' },
+      },
+    });
     await rawClient.user.delete({ where: { id: ownerId } });
     await rawClient.$disconnect();
 

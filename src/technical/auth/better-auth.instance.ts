@@ -5,6 +5,7 @@ import { authEnv } from './auth.env';
 import { loginThrottle } from './login-throttle';
 import { sendAuthMail } from './auth-mailer';
 import { ResetPasswordMailable, VerifyEmailMailable } from './auth.mailables';
+import { buildPasswordlessPlugins } from './passwordless-plugins';
 import { buildSocialProviders } from './social-providers';
 
 const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
@@ -119,6 +120,7 @@ async function createAuth() {
       twoFactor({
         issuer: authEnv.AUTH_TWO_FACTOR_ISSUER,
       }),
+      ...(await buildPasswordlessPlugins(authEnv, authPrismaClient)),
     ],
   });
 

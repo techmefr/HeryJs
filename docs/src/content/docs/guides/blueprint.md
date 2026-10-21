@@ -68,6 +68,10 @@ With soft deletes on — the default — the generated resource has:
 
 With `softDeletes: false`, there is no `deletedAt` column, no restore route, no `mode` on delete, no bin (`withTrashed`/`onlyTrashed` are refused with `query.invalid` rather than silently answering with live rows), and nothing for prune to sweep — DELETE removes the row. Declaring the key on a `routed: false` resource, or naming `deletedAt` in `sorts`/`filters` while turning it off, is refused at load time.
 
+## Versioned resources
+
+Off by default. `versioned: true` adds an integer `version` column that every update, delete and restore increments, exposes it on the record, and makes the update route refuse an entry that does not say which version it read, or that read a stale one (`409`, or `412` through `If-Match`). `version` is reserved on a versioned resource and the key is refused on a `routed: false` one. See [Optimistic concurrency](../guides/optimistic-concurrency/).
+
 ## Permissions
 
 One preset per action, each resolved through the same capabilities engine described in the capabilities guide.

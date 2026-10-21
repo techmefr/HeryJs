@@ -2,6 +2,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import { DEFAULT_QUEUE } from '#technical/jobs/jobs.constants';
+import { TelemetryBus } from '#technical/tracing/telemetry-bus';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import { MAIL_SEND_JOB } from './mail.constants';
@@ -9,6 +10,7 @@ import { MailDriverRegistry } from './mail-driver.registry';
 
 interface MailSendJobData {
   mailLogId: string;
+  tenantId?: string;
   to: string;
   subject: string;
   html: string;
@@ -28,7 +30,8 @@ export class MailProcessor extends WorkerHost {
       return;
     }
 
-    const { mailLogId, to, subject, html } = job.data as MailSendJobData;
+    const { mailLogId, tenantId, to, subject, html } =
+      job.data as MailSendJobData;
 
     try {
       // Read through the registry per job rather than caching the driver in a
@@ -39,6 +42,17 @@ export class MailProcessor extends WorkerHost {
         where: { id: mailLogId },
         data: { status: 'sent', sentAt: new Date() },
       });
+      TelemetryBus.emit(
+        {
+          kind: 'message',
+          channel: 'mail',
+          status: 'sent',
+          recipient: to,
+          subject,
+          error: null,
+        },
+        { tenantId: tenantId ?? null },
+      );
     } catch (error) {
       await this.prisma.mailLog.update({
         where: { id: mailLogId },
@@ -47,6 +61,17 @@ export class MailProcessor extends WorkerHost {
           error: error instanceof Error ? error.message : 'unknown error',
         },
       });
+      TelemetryBus.emit(
+        {
+          kind: 'message',
+          channel: 'mail',
+          status: 'failed',
+          recipient: to,
+          subject,
+          error: error instanceof Error ? error.message : 'unknown error',
+        },
+        { tenantId: tenantId ?? null },
+      );
       throw error;
     }
   }

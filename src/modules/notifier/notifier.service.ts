@@ -1,19 +1,35 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { notifierMailChannel } from '#technical/notifier/notifier-mail-channel';
 import { notifierPushChannel } from '#technical/notifier/notifier-push-channel';
 import {
   notifierSmsChannel,
   notifierSmsConsent,
 } from '#technical/notifier/notifier-sms-channel';
+import { NOTIFICATION_PROVIDER } from '#technical/notifications/notification.types';
+import type { NotificationProvider } from '#technical/notifications/notification.types';
+import { runInTenant } from '#technical/tenancy/run-in-tenant';
+import { TenantContextStorage } from '#technical/tenancy/tenant-context';
+import { decideDelivery } from './delivery-policy';
+import type { DeliveryDecision } from './delivery-policy';
 import type {
   Notification,
   NotificationRecipient,
+  NotifierChannel,
   NotifierChannelResult,
 } from './notification';
+import { NotificationDigestService } from './notification-digest.service';
+import { NotificationPreferenceService } from './notification-preference.service';
+import type { NotificationRules } from './notification-rules';
 
 function errorReason(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
+
+function typeOf(notification: Notification): string {
+  return notification.type ?? notification.constructor.name;
+}
+
+const HELD_FOR_DIGEST = 'Held for the next digest.';
 
 /**
  * Notify this user, by whatever channel they have agreed to.
@@ -31,14 +47,46 @@ function errorReason(error: unknown): string {
  */
 @Injectable()
 export class NotifierService {
-  async send(
+  constructor(
+    private readonly preferences: NotificationPreferenceService,
+    private readonly digests: NotificationDigestService,
+    @Inject(NOTIFICATION_PROVIDER)
+    private readonly inApp: NotificationProvider,
+  ) {}
+
+  send(
     recipient: NotificationRecipient,
     notification: Notification,
   ): Promise<NotifierChannelResult[]> {
+    if (recipient.tenantId) {
+      return runInTenant(recipient.tenantId, () =>
+        this.dispatch(recipient, notification),
+      );
+    }
+
+    return this.dispatch(recipient, notification);
+  }
+
+  private async dispatch(
+    recipient: NotificationRecipient,
+    notification: Notification,
+  ): Promise<NotifierChannelResult[]> {
+    const rules = await this.rulesFor(recipient, notification);
+    const now = new Date();
+    const decide = (channel: NotifierChannel): DeliveryDecision =>
+      decideDelivery({
+        channel,
+        type: typeOf(notification),
+        isMandatory: notification.isMandatory === true,
+        rules,
+        now,
+      });
+
     const results = await Promise.all([
-      this.sendMail(recipient, notification),
-      this.sendSms(recipient, notification),
-      this.sendPush(recipient, notification),
+      this.sendMail(recipient, notification, decide('mail')),
+      this.sendSms(recipient, notification, decide('sms')),
+      this.sendPush(recipient, notification, decide('push')),
+      this.sendInApp(recipient, notification, decide('in-app')),
     ]);
 
     return results.filter(
@@ -46,9 +94,21 @@ export class NotifierService {
     );
   }
 
+  private async rulesFor(
+    recipient: NotificationRecipient,
+    notification: Notification,
+  ): Promise<NotificationRules | null> {
+    if (notification.isMandatory === true || !recipient.userId) {
+      return null;
+    }
+
+    return this.preferences.rulesFor(recipient.userId);
+  }
+
   private async sendMail(
     recipient: NotificationRecipient,
     notification: Notification,
+    decision: DeliveryDecision,
   ): Promise<NotifierChannelResult | null> {
     if (!notification.toMail) {
       return null;
@@ -72,8 +132,24 @@ export class NotifierService {
       };
     }
 
+    if (decision.action === 'skip') {
+      return { channel: 'mail', status: 'skipped', reason: decision.reason };
+    }
+
     try {
       const message = await notification.toMail(recipient);
+
+      if (decision.action === 'digest' && recipient.userId) {
+        await this.digests.hold({
+          tenantId: recipient.tenantId ?? TenantContextStorage.getTenantId(),
+          userId: recipient.userId,
+          email: recipient.email,
+          type: typeOf(notification),
+          subject: message.subject,
+        });
+
+        return { channel: 'mail', status: 'queued', reason: HELD_FOR_DIGEST };
+      }
 
       await channel.send({ to: recipient.email, build: () => message });
 
@@ -94,6 +170,7 @@ export class NotifierService {
   private async sendSms(
     recipient: NotificationRecipient,
     notification: Notification,
+    decision: DeliveryDecision,
   ): Promise<NotifierChannelResult | null> {
     if (!notification.toSms) {
       return null;
@@ -118,9 +195,13 @@ export class NotifierService {
       };
     }
 
-    const decision = await consent.decisionFor(recipient.phone);
+    if (decision.action === 'skip') {
+      return { channel: 'sms', status: 'skipped', reason: decision.reason };
+    }
 
-    if (!decision.granted) {
+    const consented = await consent.decisionFor(recipient.phone);
+
+    if (!consented.granted) {
       return {
         channel: 'sms',
         status: 'skipped',
@@ -142,6 +223,7 @@ export class NotifierService {
   private async sendPush(
     recipient: NotificationRecipient,
     notification: Notification,
+    decision: DeliveryDecision,
   ): Promise<NotifierChannelResult | null> {
     if (!notification.toPush) {
       return null;
@@ -163,6 +245,10 @@ export class NotifierService {
         status: 'skipped',
         reason: 'Recipient has no user id to look devices up for.',
       };
+    }
+
+    if (decision.action === 'skip') {
+      return { channel: 'push', status: 'skipped', reason: decision.reason };
     }
 
     try {
@@ -188,6 +274,46 @@ export class NotifierService {
       };
     } catch (error) {
       return { channel: 'push', status: 'failed', reason: errorReason(error) };
+    }
+  }
+
+  private async sendInApp(
+    recipient: NotificationRecipient,
+    notification: Notification,
+    decision: DeliveryDecision,
+  ): Promise<NotifierChannelResult | null> {
+    if (!notification.toInApp) {
+      return null;
+    }
+
+    if (!recipient.userId) {
+      return {
+        channel: 'in-app',
+        status: 'skipped',
+        reason: 'Recipient has no user id to store the notification for.',
+      };
+    }
+
+    if (decision.action === 'skip') {
+      return { channel: 'in-app', status: 'skipped', reason: decision.reason };
+    }
+
+    try {
+      const message = await notification.toInApp(recipient);
+
+      await this.inApp.send(
+        recipient.userId,
+        typeOf(notification),
+        message.payload,
+      );
+
+      return { channel: 'in-app', status: 'delivered' };
+    } catch (error) {
+      return {
+        channel: 'in-app',
+        status: 'failed',
+        reason: errorReason(error),
+      };
     }
   }
 }

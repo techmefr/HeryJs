@@ -12,6 +12,8 @@ import { z } from 'zod';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { TelemetryBus } from '#technical/tracing/telemetry-bus';
+import type { TelemetryRecord } from '#technical/tracing/telemetry-bus';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import { DomainExceptionFilter } from './domain-exception.filter';
 
@@ -121,6 +123,25 @@ describe('DomainExceptionFilter over a plain HttpException', () => {
       expect(logged.join('\n')).toContain(body.error.details.errorId);
       expect(logged.join('\n')).toContain('hunter2');
     } finally {
+      logger.mockRestore();
+    }
+  });
+
+  it('reports an unrecognised error to the telemetry bus', async () => {
+    const heard: TelemetryRecord[] = [];
+    const unsubscribe = TelemetryBus.subscribe((record) => heard.push(record));
+    const logger = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+
+    try {
+      await request(app.getHttpServer()).post('/validated/boom').expect(500);
+
+      expect(heard).toContainEqual(
+        expect.objectContaining({ kind: 'exception', status: 500 }),
+      );
+    } finally {
+      unsubscribe();
       logger.mockRestore();
     }
   });

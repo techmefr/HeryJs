@@ -53,9 +53,13 @@ describe('OutboxRelay (real database)', () => {
       data: { nextAttemptAt: new Date(Date.now() - 1000) },
     });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     registry = new OutboxRegistry();
     relay = new OutboxRelay(registry, locks);
+    await authPrismaClient.outboxMessage.updateMany({
+      where: { status: OUTBOX_STATUS_PENDING, id: { notIn: created } },
+      data: { status: OUTBOX_STATUS_DELIVERED, deliveredAt: new Date() },
+    });
   });
 
   afterAll(async () => {
@@ -110,8 +114,10 @@ describe('OutboxRelay (real database)', () => {
       registry.register({
         name: handlerName,
         names: [pattern],
-        handle: () => {
-          hits.push(handlerName);
+        handle: (delivery) => {
+          if (delivery.id === id) {
+            hits.push(handlerName);
+          }
         },
       });
     }
@@ -176,12 +182,13 @@ describe('OutboxRelay (real database)', () => {
     expect((await reload(id)).attempts).toBe(1);
 
     await makeDue(id);
+    const beforeSecond = Date.now();
     await relay.drain();
     const second = await reload(id);
 
     expect(second.attempts).toBe(2);
     expect(second.nextAttemptAt.getTime()).toBeGreaterThanOrEqual(
-      Date.now() + OUTBOX_BACKOFF_BASE_MS * 2 - 1000,
+      beforeSecond + OUTBOX_BACKOFF_BASE_MS * 2,
     );
   });
 
@@ -452,6 +459,11 @@ describe('OutboxModule relay worker (real database and Redis)', () => {
 
   it('delivers a staged message on its own, without anyone calling drain', async () => {
     const options: OutboxRelayOptions = { isEnabled: true, intervalMs: 100 };
+
+    await authPrismaClient.outboxMessage.updateMany({
+      where: { status: OUTBOX_STATUS_PENDING },
+      data: { status: OUTBOX_STATUS_DELIVERED, deliveredAt: new Date() },
+    });
 
     app = await Test.createTestingModule({ imports: [OutboxModule] })
       .overrideProvider(OUTBOX_RELAY_OPTIONS)

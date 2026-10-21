@@ -14,6 +14,57 @@ POST /auth/login      { email, password }
 
 Both return a bearer token backed by Better Auth. It expires the way any login session does, and it is the right credential for anything driven by a human: a browser tab, a mobile app, an admin panel.
 
+## Passwordless sign-in
+
+Five methods sit beside the password, each **off** until its flag is `true`. They are off by default because Better Auth is mounted wholesale under `/api/auth`: registering a plugin adds its routes to the public surface. `passwordless-routes.spec.ts` lists exactly what each one adds, so turning a flag on is a reviewed diff.
+
+| Flag                     | What it adds                                  | Delivered through       |
+| ------------------------ | --------------------------------------------- | ----------------------- |
+| `AUTH_MAGIC_LINK_ENABLED` | `POST /api/auth/sign-in/magic-link`          | the mail module         |
+| `AUTH_EMAIL_OTP_ENABLED`  | `POST /api/auth/email-otp/send-verification-otp`, `POST /api/auth/sign-in/email-otp` | the mail module |
+| `AUTH_PHONE_OTP_ENABLED`  | `POST /api/auth/phone-number/send-otp`, `POST /api/auth/phone-number/verify` | the sms module |
+| `AUTH_ANONYMOUS_ENABLED`  | `POST /api/auth/sign-in/anonymous`            | nothing to deliver      |
+| `AUTH_PASSKEY_ENABLED`    | `/api/auth/passkey/*`: register, list, rename, delete and sign in with a WebAuthn passkey | nothing to deliver |
+
+Delivery follows the same rule as the password-reset email: the kernel never imports `mail` or `sms`. It finds them by token (`AUTH_MAILER`, `AUTH_SMS_SENDER`), and with the module not installed the message is dropped with a logged warning telling you which `hery install` to run, instead of failing the request.
+
+```bash
+curl -X POST https://your-app/api/auth/email-otp/send-verification-otp \
+  -H "Content-Type: application/json" -d '{"email":"a@b.test","type":"sign-in"}'
+
+curl -X POST https://your-app/api/auth/sign-in/email-otp \
+  -H "Content-Type: application/json" -d '{"email":"a@b.test","otp":"123456"}'
+```
+
+The response carries the session token (`token`, and `set-auth-token` in the headers) used as the bearer token everywhere else.
+
+Settings, all optional:
+
+- `AUTH_PASSWORDLESS_ALLOW_SIGN_UP` (default `true`): when `false`, a link or code only signs in an existing account.
+- `AUTH_MAGIC_LINK_EXPIRES_SECONDS`, `AUTH_OTP_EXPIRES_SECONDS` (default 300), `AUTH_OTP_LENGTH` (default 6).
+- `AUTH_OTP_MAX_ATTEMPTS` (default 3): wrong guesses a code survives. The fourth try fails even with the right code, so six digits cannot be brute-forced inside the window. Codes and link tokens are stored hashed.
+- `AUTH_ANONYMOUS_EMAIL_DOMAIN`: the domain of the placeholder email a guest gets.
+
+Phone numbers must be E.164 (`+33612345678`); anything else is a 400 before a message is sent. A phone-only account gets a placeholder email on `phone.heryjs.local`.
+
+### Passkeys
+
+`AUTH_PASSKEY_ENABLED=true` also needs `AUTH_PASSKEY_RP_ID` (the domain the credential is bound to, e.g. `example.com`) and `AUTH_PASSKEY_ORIGIN` (the origin of the page that calls `navigator.credentials`, comma-separated for several); the app refuses to boot without them. `AUTH_PASSKEY_RP_NAME` is the label the browser shows (default `HeryJs`). Registration needs a session; `GET /api/auth/passkey/generate-authenticate-options` and `POST /api/auth/passkey/verify-authentication` run before one. A passkey belongs to a user, so signing in with it lands in that user's tenant like every other method.
+
+The WebAuthn ceremony itself happens in the browser; the specs here cover the server side (options, ownership, routes) and do not drive an authenticator.
+
+### Rate limits
+
+The whole mount is on the `auth` bucket, which counts one caller by IP. A link or a code goes to somebody else, so a second bucket, `auth-recipient` (3 per 600 seconds by default, retunable in `hery.config.ts` like the others), counts per tenant and per recipient on every route that sends one, however many addresses the requests come from. It fails closed with a 503 when the counter store is down.
+
+### Tenants
+
+A user created by any of these methods lands in the same tenant a password sign-up does, and the caller is still resolved from the database on every request. Nothing about the tenant comes from the client.
+
+### Guests
+
+`sign-in/anonymous` creates a real user and session. When the guest later signs in with a link, a code or a password, the rows the guest owns (blog posts, notifications, push tokens, team memberships) move to the account, and the guest user is deleted. This happens only inside one tenant: a guest that signs in to an account of another tenant has its rows dropped with it rather than carried across the boundary.
+
 ## API keys
 
 A session token is the wrong fit for CI, cron, or any script that runs unattended — nobody is there to log in again when it expires. API keys exist for exactly that case: a bearer token scoped to the same user who created it, with no expiry, revocable at will.

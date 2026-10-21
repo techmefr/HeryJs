@@ -1,9 +1,11 @@
+import { Logger } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Prisma, PrismaClient } from '@prisma/client';
 import {
   AUDITED_MODELS,
   AUDITED_OPERATIONS,
   writeAuditLog,
+  writeAuditLogInTransaction,
 } from '../audit/audit-log';
 import { env } from '../config/env';
 import {
@@ -15,7 +17,14 @@ import { defaultKeyring } from '../secrets/default-keyring';
 import { redactEncryptedColumns } from '../secrets/encrypted-columns';
 import { encryptedFieldsExtension } from '../secrets/encrypted-fields.extension';
 import { TenantContextStorage } from '../tenancy/tenant-context';
+import { TelemetryBus } from '../tracing/telemetry-bus';
 import { TraceContextStorage } from '../tracing/trace-context';
+import { AmbientTransactionStorage } from './transaction-context';
+import type { AfterCommitCallback } from './transaction-context';
+
+const logger = new Logger('AtomicTransaction');
+const ATOMIC_TRANSACTION_TIMEOUT_MS = 30_000;
+const ATOMIC_TRANSACTION_MAX_WAIT_MS = 10_000;
 
 interface PrismaQueryEvent {
   query: string;
@@ -39,6 +48,9 @@ const TENANT_SCOPED_MODELS = new Set<string>([
   'SmsConsent',
   'PushToken',
   'BillingSubscription',
+  'Snippet',
+  'NotificationPreference',
+  'NotificationSetting',
 ]);
 
 /**
@@ -166,6 +178,11 @@ export const TENANT_FREE_MODELS = new Set<string>([
   // Second-factor secrets and backup codes, hanging off a User like the rows
   // above and written only by better-auth's own adapter.
   'TwoFactor',
+  // WebAuthn credentials, hanging off a User and written only by better-auth's
+  // passkey plugin. A sign-in finds the row by its credential id before any
+  // session exists, so there is no tenant to scope the lookup by -- the user
+  // it resolves to carries the tenant.
+  'Passkey',
   // Email-verification and password-reset tokens, looked up by their own value
   // before any session exists, so there is no tenant to scope the lookup by.
   'Verification',
@@ -210,6 +227,18 @@ export const APP_ENFORCED_TENANT_MODELS = new Set<string>([
   // relay with no request behind it, so it can be neither stamped nor filtered
   // by the ambient tenant.
   'OutboxMessage',
+  'NotificationDigestEntry',
+  // Written from a buffer that flushes on a timer, long after the request that
+  // produced a line has ended, so there is no ambient tenant to stamp: each
+  // entry carries the tenant it was logged under, or `system` when it had none.
+  'LogEntry',
+  // Written in batches from a buffer that flushes on a timer, long after the
+  // request that produced an entry has ended, so there is no ambient tenant
+  // to stamp: each entry carries the tenant it was recorded under.
+  'DevtoolsEntry',
+  'SsoConnection',
+  'SsoDomain',
+  'SsoIdentity',
 ]);
 
 type TenantHandling =
@@ -266,6 +295,11 @@ export function createTenantScopedPrismaClient() {
       durationMs: event.duration,
       detail: { sql: event.query, params: event.params },
     });
+    TelemetryBus.emit({
+      kind: 'query',
+      sql: event.query,
+      durationMs: event.duration,
+    });
   });
 
   // Audit is applied first, so it stays the outer layer: the tenant extension
@@ -286,7 +320,7 @@ export function createTenantScopedPrismaClient() {
           if (AUDITED_MODELS.has(model) && AUDITED_OPERATIONS.has(operation)) {
             const record = result as { id?: string } | null;
 
-            await writeAuditLog(rawClient, {
+            const entry = {
               tenantId: TenantContextStorage.getTenantId(),
               model,
               operation,
@@ -294,7 +328,14 @@ export function createTenantScopedPrismaClient() {
               data: redactEncryptedColumns(model, result),
               userId: TenantContextStorage.getUserId(),
               impersonatedBy: TenantContextStorage.getImpersonatedBy(),
-            });
+            };
+            const ambient = AmbientTransactionStorage.current();
+
+            if (ambient) {
+              await writeAuditLogInTransaction(ambient.tx, entry);
+            } else {
+              await writeAuditLog(rawClient, entry);
+            }
           }
 
           return result;
@@ -360,33 +401,10 @@ export function createTenantScopedPrismaClient() {
 
           const emitsOutbox = outboxEmitsFor(model, operation);
 
-          if (!env.RLS_ENABLED && !emitsOutbox) {
-            return query(args);
-          }
-
-          // A write that has to be announced travels in one transaction with
-          // its outbox row: both commit or neither does. Row-level security
-          // relies on a session-local setting, which only survives for the
-          // lifetime of a single transaction (this also holds under
-          // pgBouncer's transaction pooling mode, since the whole block below
-          // runs on one pooled connection), so the same block carries it and
-          // the setting and the query it protects always travel together.
-          const delegateName = model.charAt(0).toLowerCase() + model.slice(1);
-          return rawClient.$transaction(async (tx) => {
-            if (env.RLS_ENABLED) {
-              await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
-            }
-            const delegates = tx as unknown as Record<
-              string,
-              Record<string, (opArgs: unknown) => unknown>
-            >;
-            const run = delegates[delegateName]?.[operation];
-            if (!run) {
-              throw new Error(
-                `No Prisma delegate for model "${model}" operation "${operation}"`,
-              );
-            }
-            const result = await run(args);
+          const runAndStage = async (
+            tx: Prisma.TransactionClient,
+          ): Promise<unknown> => {
+            const result = await runOnDelegate(tx, model, operation, args);
 
             if (emitsOutbox) {
               await stageOutboxMessages(
@@ -402,11 +420,94 @@ export function createTenantScopedPrismaClient() {
             }
 
             return result;
+          };
+
+          const ambient = AmbientTransactionStorage.current();
+
+          if (ambient) {
+            return runAndStage(ambient.tx);
+          }
+
+          if (!env.RLS_ENABLED && !emitsOutbox) {
+            return query(args);
+          }
+
+          // A write that has to be announced travels in one transaction with
+          // its outbox row: both commit or neither does. Row-level security
+          // relies on a session-local setting, which only survives for the
+          // lifetime of a single transaction (this also holds under
+          // pgBouncer's transaction pooling mode, since the whole block below
+          // runs on one pooled connection), so the same block carries it and
+          // the setting and the query it protects always travel together.
+          return rawClient.$transaction(async (tx) => {
+            if (env.RLS_ENABLED) {
+              await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
+            }
+
+            return runAndStage(tx);
           });
         },
       },
     },
+    client: {
+      async $atomic<T>(callback: () => Promise<T>): Promise<T> {
+        if (AmbientTransactionStorage.current()) {
+          return callback();
+        }
+
+        const afterCommit: AfterCommitCallback[] = [];
+        const tenantId = TenantContextStorage.getTenantId();
+
+        const result = await rawClient.$transaction(
+          async (tx) => {
+            if (env.RLS_ENABLED) {
+              await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
+            }
+
+            return AmbientTransactionStorage.run({ tx, afterCommit }, callback);
+          },
+          {
+            timeout: ATOMIC_TRANSACTION_TIMEOUT_MS,
+            maxWait: ATOMIC_TRANSACTION_MAX_WAIT_MS,
+          },
+        );
+
+        for (const callbackAfterCommit of afterCommit) {
+          try {
+            await callbackAfterCommit();
+          } catch (error) {
+            logger.warn(
+              `a side effect queued for after commit failed: ${(error as Error).message}`,
+            );
+          }
+        }
+
+        return result;
+      },
+    },
   });
+}
+
+function runOnDelegate(
+  tx: Prisma.TransactionClient,
+  model: string,
+  operation: string,
+  args: unknown,
+): Promise<unknown> {
+  const delegateName = model.charAt(0).toLowerCase() + model.slice(1);
+  const delegates = tx as unknown as Record<
+    string,
+    Record<string, (opArgs: unknown) => Promise<unknown>>
+  >;
+  const run = delegates[delegateName]?.[operation];
+
+  if (!run) {
+    throw new Error(
+      `No Prisma delegate for model "${model}" operation "${operation}"`,
+    );
+  }
+
+  return run(args);
 }
 
 export type TenantScopedPrismaClient = ReturnType<

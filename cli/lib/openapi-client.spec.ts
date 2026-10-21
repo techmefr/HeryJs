@@ -70,6 +70,11 @@ export async function run(): Promise<void> {
   await api.blogPosts.update([{ id: 'a', relations: { tags: { sync: ['t'] } } }]);
   await api.blogPosts.remove(['a'], { mode: 'hard' });
   await api.blogPosts.restore(['a'], { title: 'back' });
+  const batch = await api.blogPosts.create([{ title: 'a' }], { atomic: true });
+  const succeeded: number = batch.meta.succeeded;
+  void succeeded;
+  await api.blogPosts.remove(['a'], { mode: 'soft', atomic: true });
+  await api.blogPosts.restore(['a'], undefined, { atomic: true });
   const rows = await api.blogPosts.searchNotes('a', { limit: 5, sorts: [{ field: 'createdAt' }] });
   const rowTotal: number = rows.meta.total;
   const described = await api.blogPosts.describe();

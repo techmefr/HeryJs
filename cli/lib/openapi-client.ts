@@ -192,7 +192,7 @@ function mutationDeclarations(ctx: ResourceContext): string {
   return [
     `export interface ${name}CreateItem {\n${createFields.join('\n')}\n}`,
     `export interface ${name}Patch {\n${patchFields.join('\n')}\n}`,
-    `export interface ${name}UpdateItem extends ${name}Patch {\n  id: string;${relations}\n}`,
+    `export interface ${name}UpdateItem extends ${name}Patch {\n  id: string;${ctx.versioned ? '\n  version: number;' : ''}${relations}\n}`,
     `export type ${name}UpdateData = ${updateData};`,
   ].join('\n\n');
 }
@@ -202,6 +202,9 @@ function describeDeclaration(ctx: ResourceContext): string {
   const pagination = ctx.pagination
     ? `  limits: number[];\n  defaultLimit: number;\n  paginated: true;`
     : '  paginated: false;';
+  const versioned = ctx.versioned
+    ? `\n  versioned: { field: 'version'; header: 'If-Match' };`
+    : '';
 
   return `export interface ${name}Describe {
   version: ${ctx.version};
@@ -211,7 +214,7 @@ function describeDeclaration(ctx: ResourceContext): string {
   selects: string[];
   includes: Record<string, DescribedRelation>;
   aggregates: Record<string, DescribedRelation>;
-${pagination}
+${pagination}${versioned}
   rules: { create: Record<string, unknown>; update: Record<string, unknown> };
 }`;
 }
@@ -248,25 +251,24 @@ function clientFunction(ctx: ResourceContext): string {
   const name = typeNameOf(ctx);
   const route = `/${ctx.routePath}`;
   const mode = ctx.softDeletes
-    ? ", options: { mode?: 'soft' | 'hard' } = {}"
-    : '';
-  const modeBody = ctx.softDeletes ? ', ...options' : '';
+    ? ", options: BatchOptions & { mode?: 'soft' | 'hard' } = {}"
+    : ', options: BatchOptions = {}';
   const removeData = ctx.softDeletes ? `${name} | null` : 'null';
 
   const members = [
     `    search: <K extends ${name}SelectField = ${name}SelectField>(options: ${name}SearchOptions<K> = {}) =>
       request<Envelope<Array<${name}Hit<K>>, ${name}Meta & ResourceMeta>>('POST', '${route}/search', options),`,
-    `    create: (data: ${name}CreateItem[]) =>
-      request<Envelope<Array<Outcome<${name}>>>>('POST', '${route}/create', { data }),`,
-    `    update: (data: ${name}UpdateItem[]) =>
-      request<Envelope<Array<IdentifiedOutcome<${name}UpdateData>>>>('POST', '${route}/update', { data }),`,
+    `    create: (data: ${name}CreateItem[], options: BatchOptions = {}) =>
+      request<Envelope<Array<Outcome<${name}>>, BatchMeta>>('POST', '${route}/create', { data, ...options }),`,
+    `    update: (data: ${name}UpdateItem[], options: BatchOptions = {}) =>
+      request<Envelope<Array<IdentifiedOutcome<${name}UpdateData>>, BatchMeta>>('POST', '${route}/update', { data, ...options }),`,
     `    remove: (ids: string[]${mode}) =>
-      request<Envelope<Array<IdentifiedOutcome<${removeData}>>>>('POST', '${route}/delete', { ids${modeBody} }),`,
+      request<Envelope<Array<IdentifiedOutcome<${removeData}>>, BatchMeta>>('POST', '${route}/delete', { ids, ...options }),`,
   ];
 
   if (ctx.softDeletes) {
-    members.push(`    restore: (ids: string[], patch?: ${name}Patch) =>
-      request<Envelope<Array<IdentifiedOutcome<${name}>>>>('POST', '${route}/restore', { ids, patch }),`);
+    members.push(`    restore: (ids: string[], patch?: ${name}Patch, options: BatchOptions = {}) =>
+      request<Envelope<Array<IdentifiedOutcome<${name}>>, BatchMeta>>('POST', '${route}/restore', { ids, patch, ...options }),`);
   }
 
   for (const include of ownRouteIncludes(ctx)) {
@@ -312,6 +314,16 @@ export interface HeryError {
 export type Envelope<T, M = undefined> = { data: T; messages: string[] } & ([M] extends [undefined]
   ? unknown
   : { meta: M });
+
+export interface BatchMeta {
+  total: number;
+  succeeded: number;
+  failed: number;
+}
+
+export interface BatchOptions {
+  atomic?: boolean;
+}
 
 export type Outcome<T> =
   | { index: number; status: 'ok'; data: T }

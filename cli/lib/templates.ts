@@ -156,6 +156,7 @@ ${relationSchemaBlock(ctx)}
 // record, so the response shape never has to differ between one and many.
 export const create${ctx.pascalName}RequestSchema = z.object({
   data: z.array(create${ctx.pascalName}Schema).max(MAX_BATCH_ENTRIES),
+  atomic: z.boolean().default(false),
 });
 export type Create${ctx.pascalName}RequestBody = z.infer<
   typeof create${ctx.pascalName}RequestSchema
@@ -164,9 +165,10 @@ export type Create${ctx.pascalName}RequestBody = z.infer<
 export const update${ctx.pascalName}RequestSchema = z.object({
   data: z.array(
     ${ctx.camelName}UpdateFields.extend({
-      id: z.string(),${hasRelations ? `\n      relations: update${ctx.pascalName}RelationsSchema.optional(),` : ''}
+      id: z.string(),${ctx.versioned ? `\n      version: z.number().int().positive().optional(),` : ''}${hasRelations ? `\n      relations: update${ctx.pascalName}RelationsSchema.optional(),` : ''}
     }).superRefine(check${ctx.pascalName}),
   ).max(MAX_BATCH_ENTRIES),
+  atomic: z.boolean().default(false),
 });
 export type Update${ctx.pascalName}RequestBody = z.infer<
   typeof update${ctx.pascalName}RequestSchema
@@ -180,6 +182,7 @@ export type Delete${ctx.pascalName}Mode = (typeof DELETE_MODES)[number];
 export const delete${ctx.pascalName}RequestSchema = z.object({
   ids: z.array(z.string()).max(MAX_BATCH_ENTRIES),
   mode: z.enum(DELETE_MODES).default('soft'),
+  atomic: z.boolean().default(false),
 });
 export type Delete${ctx.pascalName}RequestBody = z.infer<
   typeof delete${ctx.pascalName}RequestSchema
@@ -191,6 +194,7 @@ export const restore${ctx.pascalName}RequestSchema = z.object({
   // it reuses the update schema's own field whitelist rather than inventing
   // a narrower one.
   patch: update${ctx.pascalName}Schema.optional(),
+  atomic: z.boolean().default(false),
 });
 export type Restore${ctx.pascalName}RequestBody = z.infer<
   typeof restore${ctx.pascalName}RequestSchema
@@ -202,6 +206,7 @@ export type Restore${ctx.pascalName}RequestBody = z.infer<
 // that are already gone.
 export const delete${ctx.pascalName}RequestSchema = z.object({
   ids: z.array(z.string()).max(MAX_BATCH_ENTRIES),
+  atomic: z.boolean().default(false),
 });
 export type Delete${ctx.pascalName}RequestBody = z.infer<
   typeof delete${ctx.pascalName}RequestSchema
@@ -232,6 +237,60 @@ export const canDetach${pascalRelation}From${ctx.pascalName}: PolicyCheck<${ctx.
 `;
     })
     .join('');
+}
+
+function recordCapabilityKeyList(ctx: ResourceContext): string[] {
+  const keys = ['update', 'delete'];
+
+  if (ctx.softDeletes) {
+    keys.push('restore');
+  }
+
+  for (const relation of ctx.relations) {
+    const pascalRelation = pascalRelationName(relation);
+    keys.push(`attach${pascalRelation}`, `detach${pascalRelation}`);
+  }
+
+  return keys;
+}
+
+function recordCapabilityKeys(ctx: ResourceContext): string {
+  return recordCapabilityKeyList(ctx)
+    .map((key) => `'${key}'`)
+    .join(' | ');
+}
+
+function metaCapabilityKeys(ctx: ResourceContext): string {
+  return ctx.softDeletes
+    ? "'create' | 'hardDelete' | 'listTrashed'"
+    : "'create'";
+}
+
+function recordCapabilityLines(ctx: ResourceContext): string {
+  const lines: string[] = [];
+
+  if (ctx.softDeletes) {
+    lines.push(`      restore: canRestore${ctx.pascalName}(subject, record),`);
+  }
+
+  for (const relation of ctx.relations) {
+    const pascalRelation = pascalRelationName(relation);
+    lines.push(
+      `      attach${pascalRelation}: canAttach${pascalRelation}To${ctx.pascalName}(subject, record),`,
+      `      detach${pascalRelation}: canDetach${pascalRelation}From${ctx.pascalName}(subject, record),`,
+    );
+  }
+
+  return lines.length > 0 ? '\n' + lines.join('\n') : '';
+}
+
+function resolvedCapabilityKeysLiteral(
+  ctx: ResourceContext,
+  sorted = false,
+): string {
+  const keys = recordCapabilityKeyList(ctx);
+
+  return (sorted ? [...keys].sort() : keys).map((key) => `'${key}'`).join(', ');
 }
 
 export function policyFile(ctx: ResourceContext): string {
@@ -332,18 +391,18 @@ export class ${ctx.pascalName}Policy {
   recordCapabilities(
     subject: CapabilitySubject,
     record: ${ctx.pascalName}RecordLike,
-  ): Record<'update' | 'delete', CapabilityDecision> {
+  ): Record<${recordCapabilityKeys(ctx)}, CapabilityDecision> {
     return {
       update: this.capabilities.resolve(${ctx.screamingSnakeName}_PRESETS.update, subject, record),
-      delete: this.capabilities.resolve(${ctx.screamingSnakeName}_PRESETS.delete, subject, record),
+      delete: this.capabilities.resolve(${ctx.screamingSnakeName}_PRESETS.delete, subject, record),${recordCapabilityLines(ctx)}
     };
   }
 
   metaCapabilities(
     subject: CapabilitySubject,
-  ): Record<'create', CapabilityDecision> {
+  ): Record<${metaCapabilityKeys(ctx)}, CapabilityDecision> {
     return {
-      create: canCreate${ctx.pascalName}(subject),
+      create: canCreate${ctx.pascalName}(subject),${ctx.softDeletes ? `\n      hardDelete: canHardDelete${ctx.pascalName}(subject),\n      listTrashed: canListTrashed${ctx.pascalName}(subject),` : ''}
     };
   }
 }
@@ -420,6 +479,7 @@ export function serviceFile(ctx: ResourceContext): string {
 import type { Prisma, ${ctx.modelPascalName} } from '@prisma/client';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
+import { AmbientTransactionStorage } from '#technical/prisma/transaction-context';
 import { CapabilitySubject } from '#technical/capabilities/capabilities.types';
 import { scopeWhereFor } from '#technical/capabilities/scope-where';
 import { env } from '#technical/config/env';${ownedByTeam(ctx) ? `\nimport { NoCurrentTeamException } from '#technical/errors/no-current-team.exception';` : ''}
@@ -430,7 +490,7 @@ import { writeAuditLog } from '#technical/audit/audit-log';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { resolveRelationInstructions } from '#technical/http/relation-resolver';
 import type { PrismaRelationClient } from '#technical/http/relation-resolver';
-import type { RelationInstruction${childIncludes.length > 0 ? ', ParsedListQuery' : ''} } from '#technical/http/list-query';${ctx.relations.length > 0 ? `\nimport { applyRelationMutation } from '#technical/http/relation-mutations';\nimport type { PivotDelegate, RelatedDelegate } from '#technical/http/relation-mutations';` : ''}
+${ctx.versioned ? `import { VersionConflictException } from '#technical/errors/version-conflict.exception';\nimport { assertVersionIsCurrent, isLostRaceError } from '#technical/http/record-version';\nimport type { ExpectedVersion } from '#technical/http/record-version';\n` : ''}import type { RelationInstruction${childIncludes.length > 0 ? ', ParsedListQuery' : ''} } from '#technical/http/list-query';${ctx.relations.length > 0 ? `\nimport { applyRelationMutation } from '#technical/http/relation-mutations';\nimport type { PivotDelegate, RelatedDelegate } from '#technical/http/relation-mutations';\nimport { MAX_BATCH_ENTRIES } from '#technical/http/batch';` : ''}
 import {
   Create${ctx.pascalName}Input,${ctx.relations.length > 0 ? `\n  RelationMutationInput,` : ''}
   Update${ctx.pascalName}Input,
@@ -472,9 +532,11 @@ export class ${ctx.pascalName}Service {
   ) {}
 
   private notify() {
-    void this.signal.publish(
-      \`\${TenantContextStorage.getTenantId()}:\${${ctx.screamingSnakeName}_SIGNAL_CHANNEL}\`,
-    );
+    const channel = \`\${TenantContextStorage.getTenantId()}:\${${ctx.screamingSnakeName}_SIGNAL_CHANNEL}\`;
+
+    void AmbientTransactionStorage.afterCommit(() => {
+      void this.signal.publish(channel);
+    });
   }
 
   // A search engine that is down must not turn into a failed write: the
@@ -485,7 +547,11 @@ export class ${ctx.pascalName}Service {
   // not just one -- search[engine] lets a later request read through any of
   // them, so a write has to reach all of them, and one engine being down
   // must not stop the others from getting the update.
-  private async syncSearchIndex(record: ${ctx.modelPascalName}) {${
+  private async syncSearchIndex(record: ${ctx.modelPascalName}) {
+    await AmbientTransactionStorage.afterCommit(() => this.indexRecord(record));
+  }
+
+  private async indexRecord(record: ${ctx.modelPascalName}) {${
     ctx.softDeletes
       ? `
     if (record.deletedAt) {
@@ -517,6 +583,10 @@ export class ${ctx.pascalName}Service {
   // ${ctx.softDeletes ? 'Shared by soft delete (via syncSearchIndex above) and hard delete: a\n  // hard-deleted' : 'A deleted'} row has no updated record to read deletedAt off, only the
   // id and tenant it used to have.
   private async removeFromSearchIndex(id: string, tenantId: string) {
+    await AmbientTransactionStorage.afterCommit(() => this.dropFromIndex(id, tenantId));
+  }
+
+  private async dropFromIndex(id: string, tenantId: string) {
     for (const driver of this.searchEngines.externalDrivers) {
       try {
         await driver.remove(SEARCH_COLLECTION, id, tenantId);
@@ -642,6 +712,52 @@ ${childIncludes
 `;
   })
   .join('')}
+${ctx.relations
+  .map((relation) => {
+    const pascalRelation = pascalRelationName(relation);
+    const select = `{ ${['id', ...relation.childFields.filter((name) => name !== 'id')].map((name) => `${name}: true`).join(', ')} }`;
+    const where =
+      relation.childSearchFields.length > 0
+        ? `term
+        ? {
+            OR: [${relation.childSearchFields.map((name) => `{ ${name}: { contains: term, mode: 'insensitive' } }`).join(', ')}],
+          }
+        : {}`
+        : '{}';
+
+    return `
+  async members${pascalRelation}(parentId: string) {
+    const pivots = await (this.prisma.${relation.pivotDelegate} as unknown as PivotDelegate).findMany({
+      where: { ${relation.foreignKey}: parentId },
+      select: { ${relation.relatedKey}: true },
+      take: MAX_BATCH_ENTRIES,
+    });
+    const ids = pivots.map((row) => row.${relation.relatedKey} as string);
+
+    if (ids.length === 0) {
+      return [];
+    }
+
+    return (this.prisma.${relation.childDelegate} as unknown as RelatedDelegate).findMany({
+      where: { id: { in: ids } },
+      select: ${select},
+    });
+  }
+
+  async options${pascalRelation}(term?: string) {
+    return (this.prisma.${relation.childDelegate} as unknown as RelatedDelegate).findMany({
+      where: ${where},
+      select: ${select},
+      take: MAX_BATCH_ENTRIES,
+    });
+  }
+`;
+  })
+  .join('')}
+  atomically<T>(callback: () => Promise<T>): Promise<T> {
+    return this.prisma.$atomic(callback);
+  }
+
   async create(subject: CapabilitySubject, data: Create${ctx.pascalName}Input) {
 ${
   ownedByTeam(ctx)
@@ -663,12 +779,38 @@ ${
     return record;
   }
 
-  async update(record: ${ctx.modelPascalName}, data: Update${ctx.pascalName}Input) {
+${
+  ctx.versioned
+    ? `  async update(
+    record: ${ctx.modelPascalName},
+    data: Update${ctx.pascalName}Input,
+    expected: ExpectedVersion,
+  ) {
+    assertVersionIsCurrent('${ctx.kebabName}', expected, record.version);
+
+    try {
+      const updated = await this.prisma.${ctx.modelCamelName}.update({
+        where: { id: record.id, version: expected.value },
+        data: { ...data, version: { increment: 1 } },
+      });
+      this.notify();
+      await this.syncSearchIndex(updated);
+      return updated;
+    } catch (error) {
+      if (isLostRaceError(error)) {
+        throw new VersionConflictException('${ctx.kebabName}', expected.value, null, expected.source);
+      }
+
+      throw error;
+    }
+  }`
+    : `  async update(record: ${ctx.modelPascalName}, data: Update${ctx.pascalName}Input) {
     const updated = await this.prisma.${ctx.modelCamelName}.update({ where: { id: record.id }, data });
     this.notify();
     await this.syncSearchIndex(updated);
     return updated;
-  }
+  }`
+}
 ${ctx.relations
   .map(
     (relation) => `
@@ -705,7 +847,7 @@ ${
   async softDelete(record: ${ctx.modelPascalName}) {
     const updated = await this.prisma.${ctx.modelCamelName}.update({
       where: { id: record.id },
-      data: { deletedAt: new Date() },
+      data: { deletedAt: new Date()${ctx.versioned ? ', version: { increment: 1 }' : ''} },
     });
     this.notify();
     await this.syncSearchIndex(updated);
@@ -715,7 +857,7 @@ ${
   async restore(record: ${ctx.modelPascalName}, patch?: Update${ctx.pascalName}Input) {
     const updated = await this.prisma.${ctx.modelCamelName}.update({
       where: { id: record.id },
-      data: { ...patch, deletedAt: null },
+      data: { ...patch, deletedAt: null${ctx.versioned ? ', version: { increment: 1 }' : ''} },
     });
     this.notify();
     await this.syncSearchIndex(updated);
@@ -993,8 +1135,10 @@ export function controllerFile(ctx: ResourceContext): string {
     'createdAt',
     'updatedAt',
     ...(ctx.softDeletes ? ['deletedAt'] : []),
+    ...(ctx.versioned ? ['version'] : []),
   ];
   const childIncludes = ownRouteIncludes(ctx);
+  const hasParentRoutes = childIncludes.length > 0 || ctx.relations.length > 0;
   // The child route loads its parent through the loader that refuses a trashed
   // row: without it, soft-deleting a parent would leave its children listable
   // through POST /<parent>/:id/<relation>/search, which is the record coming
@@ -1003,7 +1147,7 @@ export function controllerFile(ctx: ResourceContext): string {
     ? `${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER`
     : `${ctx.screamingSnakeName}_RECORD_LOADER`;
 
-  return `import { Body, Controller, Get, HttpCode, Inject, Post, Req, UseGuards } from '@nestjs/common';
+  return `import { Body, Controller, Get, ${ctx.versioned ? 'Headers, ' : ''}HttpCode, Inject, Post, Req, UseGuards } from '@nestjs/common';
 import type { ${ctx.modelPascalName} } from '@prisma/client';
 import { z } from 'zod';
 import { SessionGuard } from '#technical/auth/session.guard';
@@ -1011,14 +1155,16 @@ import type { RequestWithUser } from '#technical/auth/session.guard';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { subjectOf } from '#technical/capabilities/subject';
 import {
-  Capability,${childIncludes.length > 0 ? '\n  LoadRecordWith,' : ''}
+  Capability,${hasParentRoutes ? '\n  LoadRecordWith,' : ''}
 } from '#technical/capabilities/capability.decorator';
 import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
 import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
 ${ctx.softDeletes ? `import { AlreadyRestoredException } from '#technical/errors/already-restored.exception';\n` : `import { SoftDeletesNotOfferedException } from '#technical/errors/invalid-query.exception';\n`}import { resolveDomainError } from '#technical/errors/domain-exception.filter';
 import type { ResolvedError } from '#technical/errors/domain-exception.filter';
+import { executeBatch } from '#technical/http/batch-execution';
+import type { BatchEntry } from '#technical/http/batch-execution';
 import { ok } from '#technical/http/envelope';
-import { CacheableRead } from '#technical/http/etag.decorator';
+import { CacheableRead } from '#technical/http/etag.decorator';${ctx.versioned ? `\nimport { ifMatchVersionOf, resolveExpectedVersion } from '#technical/http/record-version';` : ''}
 import {${ctx.pagination || childIncludes.some((include) => include.pagination) ? '\n  nextCursorFor,' : ''}
   parseSearchRequest,
   searchRequestSchema,
@@ -1064,7 +1210,7 @@ ${
 `
     : ''
 }  canUpdate${ctx.pascalName},
-  canUpdateAny${ctx.pascalName},${childIncludes.length > 0 ? `\n  canView${ctx.pascalName},` : ''}
+  canUpdateAny${ctx.pascalName},${hasParentRoutes ? `\n  canView${ctx.pascalName},` : ''}
   canViewAny${ctx.pascalName},
   ${ctx.pascalName}Policy,
 } from './${ctx.kebabName}.policy';
@@ -1073,10 +1219,11 @@ import {
   ${ctx.pascalName}Service,
 } from './${ctx.kebabName}.service';
 import {
-  ${ctx.screamingSnakeName}_RECORD_LOADER,${childIncludes.length > 0 && ctx.softDeletes ? `\n  ${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER,` : ''}
+  ${ctx.screamingSnakeName}_RECORD_LOADER,${hasParentRoutes && ctx.softDeletes ? `\n  ${ctx.screamingSnakeName}_VISIBLE_RECORD_LOADER,` : ''}
 } from './${ctx.kebabName}-record.loader';
 import type { ${ctx.pascalName}RecordLoader } from './${ctx.kebabName}-record.loader';
 import { to${ctx.pascalName}View } from './${ctx.kebabName}.view';
+import type { ${ctx.pascalName}View } from './${ctx.kebabName}.view';
 
 // What the search route accepts, declared once. parseSearchRequest validates
 // against this object and GET /describe publishes it, so the endpoint cannot
@@ -1107,13 +1254,22 @@ ${ctx.fields.map((field) => `    { name: '${field.name}', type: '${field.type}',
   // knows the search route returns every match, and that asking for a page is
   // an error rather than a no-op.
   paginated: ${ctx.pagination ? 'true' : 'false'},
+  softDeletes: ${ctx.softDeletes ? 'true' : 'false'},${ctx.versioned ? `\n  versioned: { field: 'version', header: 'If-Match' },` : ''}
+  // The many-to-many relations the update route can attach to and detach from
+  // by id. A client builds its relation controls from this list and reads
+  // whether each is allowed from the record's own capabilities, so it neither
+  // guesses the relation names nor re-derives who may change them.
+  relations: [${ctx.relations.map((relation) => `'${relation.relation}'`).join(', ')}],
+  // A date has no JSON Schema form, and without this the whole module throws
+  // at load for any resource that declares a datetime field. The field list
+  // above still says which fields are dates.
   rules: {
-    create: z.toJSONSchema(create${ctx.pascalName}Schema),
-    update: z.toJSONSchema(update${ctx.pascalName}Schema),
+    create: z.toJSONSchema(create${ctx.pascalName}Schema, { unrepresentable: 'any' }),
+    update: z.toJSONSchema(update${ctx.pascalName}Schema, { unrepresentable: 'any' }),
   },
 };
 ${
-  childIncludes.length > 0
+  hasParentRoutes
     ? `\ntype RequestWith${ctx.pascalName} = RequestWithUser & { record: ${ctx.modelPascalName} };
 `
     : ''
@@ -1127,6 +1283,11 @@ const ${ctx.screamingSnakeName}_${screamingSnakeCase(include.relation)}_CONTRACT
 `,
     )
     .join('')}
+${
+  ctx.relations.length > 0
+    ? `\n// The picker for a relation asks for candidates by a free-text term; the\n// related resource has no search route of its own, so this is the whole contract.\nconst relationOptionsSchema = z.object({ q: z.string().max(255).optional() });\n`
+    : ''
+}
 @Controller('${ctx.routePath}')
 @UseGuards(SessionGuard, CapabilitiesGuard)
 export class ${ctx.pascalName}Controller {
@@ -1136,6 +1297,13 @@ export class ${ctx.pascalName}Controller {
     @Inject(${ctx.screamingSnakeName}_RECORD_LOADER)
     private readonly loader: ${ctx.pascalName}RecordLoader,
   ) {}
+
+  private runBatch<T>(entries: BatchEntry<T>[], atomic: boolean) {
+    return executeBatch(entries, {
+      atomic,
+      runAtomically: (callback) => this.${ctx.camelName}s.atomically(callback),
+    });
+  }
 
   // Reused by update/delete${ctx.softDeletes ? '/restore' : ''}: each id is loaded and checked on its
   // own, and a missing record or a denied one becomes that id's entry in the
@@ -1306,7 +1474,35 @@ ${paginationMetaLines(include.pagination)}      total,
   }
 `;
   })
-  .join('')}
+  .join('')}${ctx.relations
+    .map((relation) => {
+      const pascalRelation = pascalRelationName(relation);
+
+      return `
+  // Reading who is attached is reading the ${ctx.kebabName}, so the view
+  // capability gates it; the related resource has no route or capability of
+  // its own to ask instead.
+  @Post(':id/${relation.relation}/members')
+  @HttpCode(200)
+  @Capability(canView${ctx.pascalName})
+  @LoadRecordWith(${childRouteLoader}, '${ctx.kebabName}')
+  async members${pascalRelation}(@Req() req: RequestWith${ctx.pascalName}) {
+    return ok(await this.${ctx.camelName}s.members${pascalRelation}(req.record.id));
+  }
+
+  // Candidates to attach are offered only to a caller who may attach.
+  @Post(':id/${relation.relation}/options')
+  @HttpCode(200)
+  @Capability(canAttach${pascalRelation}To${ctx.pascalName})
+  @LoadRecordWith(${childRouteLoader}, '${ctx.kebabName}')
+  async options${pascalRelation}(
+    @Body(new ZodValidationPipe(relationOptionsSchema)) body: { q?: string },
+  ) {
+    return ok(await this.${ctx.camelName}s.options${pascalRelation}(body.q));
+  }
+`;
+    })
+    .join('')}
   @Post('create')
   @Capability(canCreate${ctx.pascalName})
   async create(
@@ -1315,18 +1511,16 @@ ${paginationMetaLines(include.pagination)}      total,
     body: Create${ctx.pascalName}RequestBody,
   ) {
     const subject = subjectOf(req.user);
-    const results = [];
+    const entries = body.data.map(
+      (item, index): BatchEntry<${ctx.pascalName}View> => ({
+        index,
+        run: async () => to${ctx.pascalName}View(await this.${ctx.camelName}s.create(subject, item)),
+      }),
+    );
 
-    for (const [index, item] of body.data.entries()) {
-      try {
-        const created = await this.${ctx.camelName}s.create(subject, item);
-        results.push({ index, status: 'ok' as const, data: to${ctx.pascalName}View(created) });
-      } catch (error) {
-        results.push({ index, status: 'error' as const, error: resolveDomainError(error) });
-      }
-    }
+    const { results, meta } = await this.runBatch(entries, body.atomic);
 
-    return ok(results);
+    return ok(results, meta);
   }
 
   @Post('update')
@@ -1334,27 +1528,27 @@ ${paginationMetaLines(include.pagination)}      total,
   async update(
     @Req() req: RequestWithUser,
     @Body(new ZodValidationPipe(update${ctx.pascalName}RequestSchema))
-    body: Update${ctx.pascalName}RequestBody,
+    body: Update${ctx.pascalName}RequestBody,${ctx.versioned ? `\n    @Headers('if-match') ifMatch?: string,` : ''}
   ) {
-    const subject = subjectOf(req.user);
+    const subject = subjectOf(req.user);${ctx.versioned ? `\n    const ifMatchVersion = ifMatchVersionOf(ifMatch, body.data.length);` : ''}
     const loaded = await this.loadAndAuthorize(
       body.data.map((item) => item.id),
       subject,
       (s, record) => canUpdate${ctx.pascalName}(s, record as never),
     );
 
-    const results = [];
-
-    for (const [index, entry] of loaded.entries()) {
+    const entries = loaded.map((entry, index): BatchEntry<${ctx.relations.length > 0 ? 'unknown' : `${ctx.pascalName}View`}> => {
       if (!entry.ok) {
-        results.push({ index, id: entry.id, status: 'error' as const, error: entry.error });
-        continue;
+        return { index, id: entry.id, failure: entry.error };
       }
 
-      const { id: _id,${ctx.relations.length > 0 ? ' relations,' : ''} ...data } = body.data[index]!;
+      const { id: _id,${ctx.versioned ? ' version,' : ''}${ctx.relations.length > 0 ? ' relations,' : ''} ...data } = body.data[index]!;
 
-      try {
-        const updated = await this.${ctx.camelName}s.update(entry.record, data);
+      return {
+        index,
+        id: entry.id,
+        run: async () => {
+${ctx.versioned ? `        const expected = resolveExpectedVersion('${ctx.kebabName}', version, ifMatchVersion);\n` : ''}        const updated = await this.${ctx.camelName}s.update(entry.record, data${ctx.versioned ? ', expected' : ''});
 ${
   ctx.relations.length === 0
     ? ''
@@ -1389,18 +1583,14 @@ ${ctx.relations
 `;
   })
   .join('')}`
-}        results.push({
-          index,
-          id: entry.id,
-          status: 'ok' as const,
-          data: { ...to${ctx.pascalName}View(updated)${ctx.relations.length > 0 ? ', ...relationResults' : ''} },
-        });
-      } catch (error) {
-        results.push({ index, id: entry.id, status: 'error' as const, error: resolveDomainError(error) });
-      }
-    }
+}        return { ...to${ctx.pascalName}View(updated)${ctx.relations.length > 0 ? ', ...relationResults' : ''} };
+        },
+      };
+    });
 
-    return ok(results);
+    const { results, meta } = await this.runBatch(entries, body.atomic);
+
+    return ok(results, meta);
   }
 
   @Post('delete')
@@ -1429,33 +1619,33 @@ ${
 
 `
     : ''
-}    const results = [];
-
-    for (const [index, entry] of loaded.entries()) {
+}    const entries = loaded.map((entry, index): BatchEntry<${ctx.pascalName}View | null> => {
       if (!entry.ok) {
-        results.push({ index, id: entry.id, status: 'error' as const, error: entry.error });
-        continue;
+        return { index, id: entry.id, failure: entry.error };
       }
 
-      try {
+      return {
+        index,
+        id: entry.id,
+        run: async () => {
 ${
   ctx.softDeletes
-    ? `        if (body.mode === 'hard') {
-          await this.${ctx.camelName}s.hardDelete(entry.record);
-          results.push({ index, id: entry.id, status: 'ok' as const, data: null });
-        } else {
-          const removed = await this.${ctx.camelName}s.softDelete(entry.record);
-          results.push({ index, id: entry.id, status: 'ok' as const, data: to${ctx.pascalName}View(removed) });
-        }`
-    : `        await this.${ctx.camelName}s.hardDelete(entry.record);
-        results.push({ index, id: entry.id, status: 'ok' as const, data: null });`
-}
-      } catch (error) {
-        results.push({ index, id: entry.id, status: 'error' as const, error: resolveDomainError(error) });
-      }
-    }
+    ? `          if (body.mode === 'hard') {
+            await this.${ctx.camelName}s.hardDelete(entry.record);
+            return null;
+          }
 
-    return ok(results);
+          return to${ctx.pascalName}View(await this.${ctx.camelName}s.softDelete(entry.record));`
+    : `          await this.${ctx.camelName}s.hardDelete(entry.record);
+          return null;`
+}
+        },
+      };
+    });
+
+    const { results, meta } = await this.runBatch(entries, body.atomic);
+
+    return ok(results, meta);
   }
 ${
   ctx.softDeletes
@@ -1478,27 +1668,27 @@ ${
       (s, record) => canRestore${ctx.pascalName}(s, record as never),
     );
 
-    const results = [];
-
-    for (const [index, entry] of loaded.entries()) {
+    const entries = loaded.map((entry, index): BatchEntry<${ctx.pascalName}View> => {
       if (!entry.ok) {
-        results.push({ index, id: entry.id, status: 'error' as const, error: entry.error });
-        continue;
+        return { index, id: entry.id, failure: entry.error };
       }
 
-      try {
-        if (!entry.record.deletedAt) {
-          throw new AlreadyRestoredException('${ctx.kebabName}');
-        }
+      return {
+        index,
+        id: entry.id,
+        run: async () => {
+          if (!entry.record.deletedAt) {
+            throw new AlreadyRestoredException('${ctx.kebabName}');
+          }
 
-        const restored = await this.${ctx.camelName}s.restore(entry.record, body.patch);
-        results.push({ index, id: entry.id, status: 'ok' as const, data: to${ctx.pascalName}View(restored) });
-      } catch (error) {
-        results.push({ index, id: entry.id, status: 'error' as const, error: resolveDomainError(error) });
-      }
-    }
+          return to${ctx.pascalName}View(await this.${ctx.camelName}s.restore(entry.record, body.patch));
+        },
+      };
+    });
 
-    return ok(results);
+    const { results, meta } = await this.runBatch(entries, body.atomic);
+
+    return ok(results, meta);
   }
 `
     : ''
@@ -1629,7 +1819,9 @@ export function resolverFile(ctx: ResourceContext): string {
       : []),
     'ID',
     'InputType',
-    ...(ctx.fields.some((field) => field.type === 'int') ? ['Int'] : []),
+    ...(ctx.versioned || ctx.fields.some((field) => field.type === 'int')
+      ? ['Int']
+      : []),
     'Mutation',
     'ObjectType',
     'Query',
@@ -1669,7 +1861,7 @@ export class ${ctx.pascalName}Type {
   @Field(() => ID)
   declare id: string;
 
-${objectFields}
+${objectFields}${ctx.versioned ? `\n\n  @Field(() => Int)\n  declare version: number;` : ''}
 }
 
 @InputType()
@@ -1748,7 +1940,7 @@ export class ${ctx.pascalName}Resolver {
   @Mutation(() => ${ctx.pascalName}Type, { name: 'update${ctx.pascalName}' })
   async update(
     @Args('id', { type: () => ID }) id: string,
-    @Args('input') input: Update${ctx.pascalName}Input,
+    @Args('input') input: Update${ctx.pascalName}Input,${ctx.versioned ? `\n    @Args('version', { type: () => Int }) version: number,` : ''}
     @CurrentGqlRequest() req: GqlRequestWithUser,
   ) {
     const record = await this.loader.load(id);
@@ -1763,7 +1955,7 @@ export class ${ctx.pascalName}Resolver {
     }
 
     return to${ctx.pascalName}View(
-      await this.${ctx.camelName}s.update(record, input),
+      await this.${ctx.camelName}s.update(record, input${ctx.versioned ? ", { value: version, source: 'body' }" : ''}),
     );
   }
 
@@ -1803,7 +1995,7 @@ export function mcpToolsFile(ctx: ResourceContext): string {
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Inject, Injectable } from '@nestjs/common';
 import type { CapabilitySubject } from '#technical/capabilities/capabilities.types';
-import type { McpToolRegistrar } from '#technical/mcp/mcp-tool-registrar';
+${ctx.versioned ? `import { VersionConflictException } from '#technical/errors/version-conflict.exception';\n` : ''}import type { McpToolRegistrar } from '#technical/mcp/mcp-tool-registrar';
 import { create${ctx.pascalName}Schema, update${ctx.pascalName}Schema } from './${ctx.kebabName}.dto';
 import {
   canCreate${ctx.pascalName},
@@ -1934,9 +2126,9 @@ export class ${ctx.pascalName}McpToolRegistrar implements McpToolRegistrar {
       'update_${ctx.kebabName}',
       {
         description: 'Update a ${ctx.kebabName} by id',
-        inputSchema: { id: z.string(), ...update${ctx.pascalName}Schema.shape },
+        inputSchema: { id: z.string(), ${ctx.versioned ? 'version: z.number().int().positive(), ' : ''}...update${ctx.pascalName}Schema.shape },
       },
-      async ({ id, ...input }) => {
+      async ({ id, ${ctx.versioned ? 'version, ' : ''}...input }) => {
         const record = await this.loader.load(id);
         if (!record) {
           return textResult({ error: 'not found' });
@@ -1947,8 +2139,21 @@ export class ${ctx.pascalName}McpToolRegistrar implements McpToolRegistrar {
           return deniedResult();
         }
 
-        const updated = await this.${ctx.camelName}s.update(record, input);
-        return textResult(to${ctx.pascalName}View(updated));
+${
+  ctx.versioned
+    ? `        try {
+          const updated = await this.${ctx.camelName}s.update(record, input, { value: version, source: 'body' });
+          return textResult(to${ctx.pascalName}View(updated));
+        } catch (error) {
+          if (error instanceof VersionConflictException) {
+            return textResult({ error: error.message });
+          }
+
+          throw error;
+        }`
+    : `        const updated = await this.${ctx.camelName}s.update(record, input);
+        return textResult(to${ctx.pascalName}View(updated));`
+}
       },
     );
 
@@ -2449,6 +2654,240 @@ function hardDeleteOnlySpec(ctx: ResourceContext, createBody: string): string {
 `;
 }
 
+function bulkSpecBlock(ctx: ResourceContext, createBody: string): string {
+  const route = `/${ctx.pluralKebabName}`;
+  const versionPart = ctx.versioned ? ' version: 1,' : '';
+  const bodyPart = createBody === '{}' ? '' : `...${createBody}`;
+
+  const rollbackTest = ctx.versioned
+    ? `
+  it('undoes the entries already written when a later entry of an atomic batch fails', async () => {
+    const first = await createOne();
+    const second = await createOne();
+
+    const response = await request(app.getHttpServer())
+      .post('${route}/update')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({
+        atomic: true,
+        data: [
+          { id: first, version: 1, ${bodyPart} },
+          { id: second, version: 99, ${bodyPart} },
+        ],
+      })
+      .expect(422);
+
+    const error = (
+      response.body as { error: { key: string; details: { results: { status: string }[] } } }
+    ).error;
+    expect(error.key).toBe('batch.atomicFailed');
+    expect(error.details.results.map((result) => result.status)).toEqual(['notApplied', 'error']);
+    expect((await readOne(first)).version).toBe(1);
+    expect((await readOne(second)).version).toBe(1);
+  });
+`
+    : '';
+
+  return `  async function createOne(): Promise<string> {
+    const created = await request(app.getHttpServer())
+      .post('${route}/create')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ data: [${createBody}] })
+      .expect(201);
+
+    return (created.body as { data: { data: { id: string } }[] }).data[0]!.data.id;
+  }
+
+  async function readOne(id: string): Promise<Record<string, unknown>> {
+    const found = await request(app.getHttpServer())
+      .post('${route}/search')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ filters: [{ field: 'id', value: id }] })
+      .expect(200);
+
+    return (found.body as { data: Record<string, unknown>[] }).data[0]!;
+  }
+
+  it('reports how many entries of a batch succeeded and failed', async () => {
+    const recordId = await createOne();
+
+    const response = await request(app.getHttpServer())
+      .post('${route}/update')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({
+        data: [
+          { id: recordId,${versionPart} ${bodyPart} },
+          { id: 'missing-record',${versionPart} ${bodyPart} },
+        ],
+      })
+      .expect(201);
+
+    const body = response.body as {
+      data: { status: string; error?: { status: number } }[];
+      meta: { total: number; succeeded: number; failed: number };
+    };
+    expect(body.meta).toEqual({ total: 2, succeeded: 1, failed: 1 });
+    expect(body.data.map((result) => result.status)).toEqual(['ok', 'error']);
+    expect(body.data[1]!.error!.status).toBe(404);
+  });
+
+  it('creates every entry of an atomic batch together', async () => {
+    const response = await request(app.getHttpServer())
+      .post('${route}/create')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ atomic: true, data: [${createBody}, ${createBody}] })
+      .expect(201);
+
+    const body = response.body as {
+      data: { status: string; data: { id: string } }[];
+      meta: { total: number; succeeded: number; failed: number };
+    };
+    expect(body.meta).toEqual({ total: 2, succeeded: 2, failed: 0 });
+
+    for (const result of body.data) {
+      expect(result.status).toBe('ok');
+      expect((await readOne(result.data.id)).id).toBe(result.data.id);
+    }
+  });
+
+  it('writes nothing when an entry of an atomic batch cannot be applied', async () => {
+    const recordId = await createOne();
+    const before = await readOne(recordId);
+
+    const response = await request(app.getHttpServer())
+      .post('${route}/update')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({
+        atomic: true,
+        data: [
+          { id: recordId,${versionPart} ${bodyPart} },
+          { id: 'missing-record',${versionPart} ${bodyPart} },
+        ],
+      })
+      .expect(422);
+
+    const error = (
+      response.body as {
+        error: {
+          key: string;
+          details: {
+            results: { status: string }[];
+            summary: { total: number; succeeded: number; failed: number };
+          };
+        };
+      }
+    ).error;
+    expect(error.key).toBe('batch.atomicFailed');
+    expect(error.details.results.map((result) => result.status)).toEqual(['notApplied', 'error']);
+    expect(error.details.summary).toEqual({ total: 2, succeeded: 0, failed: 1 });
+    expect(await readOne(recordId)).toEqual(before);
+  });
+${rollbackTest}`;
+}
+
+function versionedSpecBlock(ctx: ResourceContext, createBody: string): string {
+  const route = `/${ctx.pluralKebabName}/update`;
+
+  return `  it('rejects a stale write, accepts a current one, and bumps the version each time', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/create')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ data: [${createBody}] })
+      .expect(201);
+
+    const createdRecord = (
+      created.body as { data: { status: string; data: { id: string; version: number } }[] }
+    ).data[0]!.data;
+    expect(createdRecord.version).toBe(1);
+
+    type Outcome = {
+      status: string;
+      data?: { version: number };
+      error?: { status: number; key: string; details: { expected: number; current: number | null } };
+    };
+    const update = async (entry: Record<string, unknown>, ifMatch?: string): Promise<Outcome> => {
+      const call = request(app.getHttpServer())
+        .post('${route}')
+        .set('Authorization', \`Bearer \${ownerToken}\`);
+      const response = await (ifMatch ? call.set('If-Match', ifMatch) : call)
+        .send({ data: [{ id: createdRecord.id, ...${createBody}, ...entry }] })
+        .expect(201);
+
+      return (response.body as { data: Outcome[] }).data[0]!;
+    };
+
+    const first = await update({ version: 1 });
+    expect(first).toMatchObject({ status: 'ok', data: { version: 2 } });
+
+    const stale = await update({ version: 1 });
+    expect(stale).toMatchObject({
+      status: 'error',
+      error: { status: 409, key: 'record.versionConflict', details: { expected: 1, current: 2 } },
+    });
+
+    const viaHeader = await update({}, '"2"');
+    expect(viaHeader).toMatchObject({ status: 'ok', data: { version: 3 } });
+
+    const staleHeader = await update({}, 'W/"2"');
+    expect(staleHeader).toMatchObject({
+      status: 'error',
+      error: { status: 412, key: 'record.preconditionFailed', details: { expected: 2, current: 3 } },
+    });
+
+    const missing = await update({});
+    expect(missing).toMatchObject({
+      status: 'error',
+      error: { status: 428, key: 'record.versionRequired' },
+    });
+  });
+
+  it('lets exactly one of two concurrent writes at the same version through', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/create')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ data: [${createBody}] })
+      .expect(201);
+
+    const recordId = (
+      created.body as { data: { status: string; data: { id: string } }[] }
+    ).data[0]!.data.id;
+
+    const responses = await Promise.all(
+      [0, 1].map(() =>
+        request(app.getHttpServer())
+          .post('${route}')
+          .set('Authorization', \`Bearer \${ownerToken}\`)
+          .send({ data: [{ id: recordId, version: 1, ...${createBody} }] }),
+      ),
+    );
+
+    const statuses = responses.map(
+      (response) => (response.body as { data: { status: string }[] }).data[0]!.status,
+    );
+    expect(statuses.filter((status) => status === 'ok')).toHaveLength(1);
+    expect(statuses.filter((status) => status === 'error')).toHaveLength(1);
+  });
+
+  it('refuses an If-Match header on a request that carries several entries', async () => {
+    await request(app.getHttpServer())
+      .post('${route}')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .set('If-Match', '"1"')
+      .send({ data: [{ id: 'a', ${createBody === '{}' ? '' : `...${createBody}`} }, { id: 'b', ${createBody === '{}' ? '' : `...${createBody}`} }] })
+      .expect(400);
+  });
+
+  it('refuses a malformed If-Match header', async () => {
+    await request(app.getHttpServer())
+      .post('${route}')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .set('If-Match', '*')
+      .send({ data: [{ id: 'a', ${createBody === '{}' ? '' : `...${createBody}`} }] })
+      .expect(400);
+  });
+`;
+}
+
 function relationSpecBlock(ctx: ResourceContext, createBody: string): string {
   if (ctx.relations.length === 0) {
     return '';
@@ -2486,7 +2925,7 @@ function relationSpecBlock(ctx: ResourceContext, createBody: string): string {
       .post('/${ctx.pluralKebabName}/update')
       .set('Authorization', \`Bearer \${ownerToken}\`)
       .send({
-        data: [{ id: recordId, relations: { ${relation.relation}: { attach: [childA.id] } } }],
+        data: [{ id: recordId,${ctx.versioned ? ' version: 1,' : ''} relations: { ${relation.relation}: { attach: [childA.id] } } }],
       })
       .expect(201);
 
@@ -2495,11 +2934,30 @@ function relationSpecBlock(ctx: ResourceContext, createBody: string): string {
         .data[0]!.data.${relation.relation},
     ).toEqual([childA.id]);
 
+    const members = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/' + recordId + '/${relation.relation}/members')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .expect(200);
+
+    expect(
+      (members.body as { data: { id: string }[] }).data.map((row) => row.id),
+    ).toEqual([childA.id]);
+
+    const options = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/' + recordId + '/${relation.relation}/options')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({})
+      .expect(200);
+
+    expect(
+      (options.body as { data: { id: string }[] }).data.map((row) => row.id),
+    ).toEqual(expect.arrayContaining([childA.id, childB.id]));
+
     const synced = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}/update')
       .set('Authorization', \`Bearer \${ownerToken}\`)
       .send({
-        data: [{ id: recordId, relations: { ${relation.relation}: { sync: [childB.id] } } }],
+        data: [{ id: recordId,${ctx.versioned ? ' version: 2,' : ''} relations: { ${relation.relation}: { sync: [childB.id] } } }],
       })
       .expect(201);
 
@@ -2512,7 +2970,7 @@ function relationSpecBlock(ctx: ResourceContext, createBody: string): string {
       .post('/${ctx.pluralKebabName}/update')
       .set('Authorization', \`Bearer \${ownerToken}\`)
       .send({
-        data: [{ id: recordId, relations: { ${relation.relation}: { detach: [childB.id] } } }],
+        data: [{ id: recordId,${ctx.versioned ? ' version: 3,' : ''} relations: { ${relation.relation}: { detach: [childB.id] } } }],
       })
       .expect(201);
 
@@ -2588,22 +3046,17 @@ export function specFile(ctx: ResourceContext): string {
   const canCreateAny = ctx.permissions.create !== 'none';
   const canUpdateAny = ctx.permissions.update !== 'none';
   const canDeleteAny = ctx.permissions.delete !== 'none';
+  const hasRelations = ctx.relations.length > 0;
 
   return `import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '@prisma/client';
+import { Test } from '@nestjs/testing';${hasRelations ? `\nimport { PrismaPg } from '@prisma/adapter-pg';\nimport { PrismaClient } from '@prisma/client';` : ''}
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { AppModule } from '#app.module';
-import { env } from '#technical/config/env';
+import { AppModule } from '#app.module';${primarySearchField || hasRelations ? `\nimport { env } from '#technical/config/env';` : ''}
 import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
-import { registerAndLogin } from '#devtools/testing/register-and-login';
-
-const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
-const prisma = new PrismaClient({ adapter });
-
+import { actingAs, registerAndLogin } from '#devtools/test-support';
+${hasRelations ? `\nconst adapter = new PrismaPg({ connectionString: env.DATABASE_URL });\nconst prisma = new PrismaClient({ adapter });\n` : ''}
 describe('${ctx.pascalName} resource', () => {
   let app: INestApplication<App>;
   let ownerToken: string;
@@ -2642,8 +3095,7 @@ ${
 }  });
 
   afterAll(async () => {
-    await app.close();
-    await prisma.$disconnect();
+    await app.close();${hasRelations ? `\n    await prisma.$disconnect();` : ''}
   });
 
 ${
@@ -2677,6 +3129,8 @@ ${
         fields: Array<{ name: string }>;
         limits?: number[];
         paginated: boolean;
+        softDeletes: boolean;
+        relations: string[];
         rules: { create: { required?: string[] } };
       };
     };
@@ -2684,6 +3138,8 @@ ${
 ${ctx.fields.map((field) => `      '${field.name}',`).join('\n')}
     ]);
     expect(body.data.paginated).toBe(${ctx.pagination ? 'true' : 'false'});
+    expect(body.data.softDeletes).toBe(${ctx.softDeletes ? 'true' : 'false'});
+${ctx.versioned ? `    expect(body.data).toMatchObject({ versioned: { field: 'version', header: 'If-Match' } });\n` : ''}    expect(body.data.relations).toEqual([${ctx.relations.map((relation) => `'${relation.relation}'`).join(', ')}]);
     expect(body.data.limits).toEqual(${ctx.pagination ? `[${ctx.pagination.limits.join(', ')}]` : 'undefined'});
 ${
   requiredFields.length > 0
@@ -2705,20 +3161,28 @@ ${
 
     const response = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}/search')
-      .send({ capabilities: ['update'] })
+      .send({ capabilities: [${resolvedCapabilityKeysLiteral(ctx)}] })
       .set('Authorization', \`Bearer \${ownerToken}\`)
       .expect(200);
 
     const body = response.body as {
-      data: Array<{ capabilities: { update: { allowed: boolean } } }>;
+      data: Array<{ capabilities: Record<string, { allowed: boolean }> }>;
       meta: unknown;
     };
     expect(body.data.length).toBeGreaterThan(0);
-    expect(body.data[0]?.capabilities.update.allowed).toBe(true);
+    expect(body.data[0]?.capabilities.update?.allowed).toBe(true);
+    expect(Object.keys(body.data[0]?.capabilities ?? {}).sort()).toEqual([${resolvedCapabilityKeysLiteral(ctx, true)}]);
     expect(body.meta).toMatchObject({
       capabilities: { create: { allowed: true, scope: '${ctx.permissions.create}' } },
       channels: ['${ctx.camelName}'],
-    });
+    });${
+      ctx.softDeletes
+        ? `
+    expect(
+      (body.meta as { capabilities: Record<string, unknown> }).capabilities,
+    ).toHaveProperty('listTrashed');`
+        : ''
+    }
   });
 
 `
@@ -2752,7 +3216,8 @@ ${
     });
   });
 
-`
+${bulkSpecBlock(ctx, createBody)}
+${ctx.versioned ? `${versionedSpecBlock(ctx, createBody)}\n` : ''}`
       : ''
   }${
     !(canCreateAny && canDeleteAny)
@@ -2832,10 +3297,8 @@ ${
 
 `
   }  it('never lets a different tenant see this tenant records', async () => {
-    const outsider = await registerAndLogin(app);
-    await prisma.user.update({
-      where: { email: outsider.email },
-      data: { tenantId: \`tenant-\${randomUUID()}\` },
+    const outsider = await actingAs(app, {
+      tenantId: \`tenant-\${randomUUID()}\`,
     });
 
     const response = await request(app.getHttpServer())
@@ -2962,7 +3425,7 @@ export function viewFile(ctx: ResourceContext): string {
   ownerId: z.string(),${ownedByTeam(ctx) ? `\n  teamId: z.string(),` : ''}
 ${visibleFieldLines}
   createdAt: z.coerce.date(),
-  updatedAt: z.coerce.date(),${ctx.softDeletes ? `\n  deletedAt: z.coerce.date().nullable(),` : ''}
+  updatedAt: z.coerce.date(),${ctx.softDeletes ? `\n  deletedAt: z.coerce.date().nullable(),` : ''}${ctx.versioned ? `\n  version: z.number().int(),` : ''}
 });
 export type ${ctx.pascalName}View = z.infer<typeof ${ctx.camelName}ViewSchema>;
 `;
@@ -3055,7 +3518,7 @@ model ${ctx.pascalName} {
   ownerId   String${ownedByTeam(ctx) ? `\n  teamId    String` : ''}
 ${customFieldLines}
   createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt${ctx.softDeletes ? `\n  deletedAt DateTime?` : ''}
+  updatedAt DateTime  @updatedAt${ctx.softDeletes ? `\n  deletedAt DateTime?` : ''}${ctx.versioned ? `\n  version   Int       @default(1)` : ''}
 
   owner User @relation(fields: [ownerId], references: [id])${ownedByTeam(ctx) ? `\n  team  Team @relation(fields: [teamId], references: [id])` : ''}
 

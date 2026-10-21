@@ -10,6 +10,7 @@ import type { SmsMessage } from '#kernel/sms/sms-driver';
  */
 export interface NotificationRecipient {
   userId?: string;
+  tenantId?: string;
   email?: string;
   phone?: string;
 }
@@ -27,14 +28,26 @@ export interface NotificationRecipient {
  * and "how to say it" without inventing a fourth template language.
  */
 export interface Notification {
+  readonly type?: string;
+
+  readonly isMandatory?: boolean;
+
   toMail?(recipient: NotificationRecipient): MailMessage | Promise<MailMessage>;
 
   toSms?(recipient: NotificationRecipient): SmsMessage | Promise<SmsMessage>;
 
   toPush?(recipient: NotificationRecipient): PushMessage | Promise<PushMessage>;
+
+  toInApp?(
+    recipient: NotificationRecipient,
+  ): InAppMessage | Promise<InAppMessage>;
 }
 
-export type NotifierChannel = 'mail' | 'sms' | 'push';
+export interface InAppMessage {
+  payload: Record<string, unknown>;
+}
+
+export type NotifierChannel = 'mail' | 'sms' | 'push' | 'in-app';
 
 /**
  * `skipped` is its own outcome, not folded into `failed`: nothing was
@@ -42,7 +55,8 @@ export type NotifierChannel = 'mail' | 'sms' | 'push';
  * consented to it, and that is not the same fact as a provider refusing a
  * message it was actually given.
  */
-export type NotifierChannelStatus = 'delivered' | 'failed' | 'skipped';
+export type NotifierChannelStatus =
+  'delivered' | 'failed' | 'skipped' | 'queued';
 
 export interface NotifierChannelResult {
   channel: NotifierChannel;

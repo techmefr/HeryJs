@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
+import { TelemetryBus } from '#technical/tracing/telemetry-bus';
 import { TraceContextStorage } from '#technical/tracing/trace-context';
 import { translate, translateDomainException } from '#technical/i18n/translate';
 import { DomainException } from './domain.exception';
@@ -23,6 +24,30 @@ export interface ResolvedError {
 }
 
 const logger = new Logger('UnhandledError');
+
+export type UnhandledErrorListener = (error: Error, errorId: string) => void;
+
+let unhandledErrorListener: UnhandledErrorListener | null = null;
+
+export function onUnhandledError(
+  listener: UnhandledErrorListener | null,
+): void {
+  unhandledErrorListener = listener;
+}
+
+function notifyUnhandledErrorListener(error: Error, errorId: string): void {
+  if (unhandledErrorListener === null) {
+    return;
+  }
+
+  try {
+    unhandledErrorListener(error, errorId);
+  } catch (listenerError) {
+    logger.warn(
+      `[${errorId}] the unhandled error listener threw: ${String(listenerError)}`,
+    );
+  }
+}
 
 /**
  * An exception this framework does not recognise is the one case where the
@@ -45,12 +70,22 @@ function reportUnknownError(exception: unknown): ResolvedError {
 
   logger.error(`[${errorId}] ${error.name}: ${error.message}`, error.stack);
 
+  notifyUnhandledErrorListener(error, errorId);
+
   TraceContextStorage.pushStep({
     stage: 'controller',
     label: 'unhandled error',
     status: 'error',
     durationMs: 0,
     detail: { errorId, name: error.name, message: error.message },
+  });
+
+  TelemetryBus.emit({
+    kind: 'exception',
+    name: error.name,
+    message: error.message,
+    stack: error.stack ?? null,
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
   });
 
   return {

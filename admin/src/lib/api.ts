@@ -13,8 +13,28 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly details: unknown = null,
+    readonly serverMessage: string | null = null,
   ) {
     super(message);
+  }
+}
+
+async function failureOf(
+  response: Response,
+): Promise<{ details: unknown; message: string | null }> {
+  try {
+    const body = (await response.json()) as {
+      error?: { message?: unknown; details?: unknown };
+    };
+    const message = body.error?.message;
+
+    return {
+      details: body.error?.details ?? null,
+      message: typeof message === 'string' ? message : null,
+    };
+  } catch {
+    return { details: null, message: null };
   }
 }
 
@@ -48,7 +68,14 @@ export async function api<T>(
   }
 
   if (!response.ok) {
-    throw new ApiError('Request to ' + route + ' failed', response.status);
+    const failure = await failureOf(response);
+
+    throw new ApiError(
+      'Request to ' + route + ' failed',
+      response.status,
+      failure.details,
+      failure.message,
+    );
   }
 
   return (await response.json()) as Envelope<T>;
@@ -74,7 +101,8 @@ export interface AdminSection {
 }
 
 // The overview already reports these, and /signal/stream never ends.
-// /pipeline/traces gets its own dedicated page (pipeline.astro) rather than
+// /pipeline/traces and /devtools/* get dedicated pages (pipeline.astro,
+// devtools.astro) rather than
 // the generic flat table, so it's hidden from the auto-discovered sidebar
 // sections the same way /introspect and /health are. /expose is the mine's
 // own catalog route (see prune.astro for a page built on top of it), not a
@@ -84,8 +112,12 @@ const HIDDEN_PATHS = [
   '/introspect',
   '/expose',
   '/health',
+  '/health/live',
+  '/health/ready',
   '/metrics',
   '/pipeline/traces',
+  '/devtools/entries',
+  '/devtools/summary',
   '/signal/stream',
 ];
 
