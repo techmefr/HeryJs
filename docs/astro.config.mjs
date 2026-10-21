@@ -86,6 +86,7 @@ export default defineConfig({
                   slug: 'guides/generated-files',
                 },
                 { label: 'Testing conventions', slug: 'guides/testing' },
+                { label: 'OpenAPI and typed client', slug: 'guides/openapi' },
               ],
             },
             {
