@@ -13,6 +13,10 @@ category is called out here explicitly.
 
 First public release.
 
+### Production Dockerfile
+
+`hery new` writes a multi-stage `Dockerfile` (non-root, pnpm, Prisma client generated, a health check on `/health/live`) and a `.dockerignore`. Migrations are a separate one-shot target of the same file, `docker build --target migrate`, run once per release rather than on every container start. A new `GET /deployment` route, behind `canReadDeployment`, reports the version, which required environment variables are set (never their values), readiness and applied migrations, and the admin lists it. The [deployment guide](docs/src/content/docs/guides/deployment.md) holds the environment contract. A new project also no longer ships a `blogPost` reference in `guest-upgrade.ts`, which stopped `nest build` from compiling it.
+
 ### Vector fields and similarity search
 
 A blueprint field `type: vector` (with `dimensions` and a `source` string field) becomes a pgvector column, filled through the outbox whenever the source changes, and the search route accepts `search: { q, mode: 'similar' }`. The new `embeddings` module holds the driver contract (a deterministic `fake` driver and an `openai-compatible` one over the built-in `fetch`). Tenant, capability scope and soft-delete are part of the ranking query, which runs under the tenant's row-level security. The docker-compose and CI Postgres images are now `pgvector/pgvector:pg17` and a migration enables the extension: **upgrade note:** a project created before this must switch its Postgres image to `pgvector/pgvector:pg17` (compose and CI) before migrating, because the new migration runs `CREATE EXTENSION vector`. `hery embeddings:backfill <name>` embeds rows that existed before the field; `hery create:blueprint` can now declare a vector field. `hery generate` no longer corrupts `TENANT_SCOPED_MODELS` when the list ends with a trailing comma.
