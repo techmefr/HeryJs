@@ -76,7 +76,7 @@ export class DevDashboardJobWatcher implements OnModuleInit, OnModuleDestroy {
     private readonly settings: DevDashboardSettings,
   ) {}
 
-  async onModuleInit(): Promise<void> {
+  onModuleInit(): void {
     if (!this.settings.isEnabled) {
       return;
     }
