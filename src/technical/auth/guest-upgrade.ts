@@ -2,6 +2,37 @@ import type { PrismaClient } from '@prisma/client';
 
 type Transaction = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
+interface UserReference {
+  table: string;
+  column: string;
+}
+
+/**
+ * Every single-column foreign key that points at a user without cascading,
+ * read off the database catalog. A cascading reference goes with the guest on
+ * its own; one that does not makes the guest's delete fail, so it is the set
+ * this upgrade has to move or drop. Read rather than listed, so a generated
+ * resource with an owner is covered the moment its migration runs, and a
+ * project without the demo never names a table it does not have. Prisma's
+ * runtime DMMF carries neither the foreign key columns nor the delete rule,
+ * so the catalog is the source. Both names come back already quoted.
+ */
+async function userReferencesWithoutCascade(
+  transaction: Transaction,
+): Promise<UserReference[]> {
+  return transaction.$queryRaw<UserReference[]>`
+    SELECT constraints.conrelid::regclass::text AS "table",
+           quote_ident(columns.attname) AS "column"
+    FROM pg_constraint AS constraints
+    JOIN pg_attribute AS columns
+      ON columns.attrelid = constraints.conrelid
+     AND columns.attnum = constraints.conkey[1]
+    WHERE constraints.contype = 'f'
+      AND constraints.confrelid = '"User"'::regclass
+      AND constraints.confdeltype <> 'c'
+      AND cardinality(constraints.conkey) = 1`;
+}
+
 async function scopeToTenant(
   transaction: Transaction,
   tenantId: string,
@@ -14,10 +45,15 @@ async function moveRows(
   guestId: string,
   accountId: string,
 ): Promise<void> {
-  await transaction.blogPost.updateMany({
-    where: { ownerId: guestId },
-    data: { ownerId: accountId },
-  });
+  for (const { table, column } of await userReferencesWithoutCascade(
+    transaction,
+  )) {
+    await transaction.$executeRawUnsafe(
+      `UPDATE ${table} SET ${column} = $1 WHERE ${column} = $2`,
+      accountId,
+      guestId,
+    );
+  }
   await transaction.appNotification.updateMany({
     where: { userId: guestId },
     data: { userId: accountId },
@@ -45,7 +81,14 @@ async function dropRows(
   transaction: Transaction,
   guestId: string,
 ): Promise<void> {
-  await transaction.blogPost.deleteMany({ where: { ownerId: guestId } });
+  for (const { table, column } of await userReferencesWithoutCascade(
+    transaction,
+  )) {
+    await transaction.$executeRawUnsafe(
+      `DELETE FROM ${table} WHERE ${column} = $1`,
+      guestId,
+    );
+  }
 }
 
 /**

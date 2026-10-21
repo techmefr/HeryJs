@@ -398,6 +398,51 @@ function rewritePackageJson(destRoot: string, projectName: string): void {
 }
 
 /**
+ * Each module package lists `heryjs@workspace:*` so this repository builds it
+ * against the kernel sitting next to it. A project renames that root package,
+ * so the specifier names a workspace member that no longer exists and the
+ * first `pnpm install` refuses to resolve. The dependency only ever carried
+ * the `ModuleDefinition` type, which every package's tsconfig already maps to
+ * cli/module-contract.ts by path, so inside a project it is dropped.
+ */
+export function withoutKernelDependency(
+  manifest: Record<string, unknown>,
+): Record<string, unknown> {
+  const copy = structuredClone(manifest);
+
+  for (const field of ['dependencies', 'devDependencies', 'peerDependencies']) {
+    const entries = copy[field] as Record<string, string> | undefined;
+
+    if (entries) {
+      delete entries.heryjs;
+    }
+  }
+
+  return copy;
+}
+
+function rewriteModuleManifests(destRoot: string): void {
+  const packagesDir = path.join(destRoot, 'packages');
+
+  for (const entry of readdirSync(packagesDir, { withFileTypes: true })) {
+    const file = path.join(packagesDir, entry.name, 'package.json');
+
+    if (!entry.isDirectory() || !existsSync(file)) {
+      continue;
+    }
+
+    const manifest = JSON.parse(readFileSync(file, 'utf8')) as Record<
+      string,
+      unknown
+    >;
+    writeFileSync(
+      file,
+      `${JSON.stringify(withoutKernelDependency(manifest), null, 2)}\n`,
+    );
+  }
+}
+
+/**
  * 'admin' and 'docs' are this repository's own workspace members. Neither
  * ships: the admin is opt-in (`hery install admin-astro` adds it back to this
  * same file), and the doc site is specific to the framework itself.
@@ -559,6 +604,7 @@ export function registerNewCommand(program: Command): void {
       );
       rewriteWorkflows(destRoot);
       rewritePackageJson(destRoot, name);
+      rewriteModuleManifests(destRoot);
       rewriteWorkspaceFile(destRoot);
       writeReadme(destRoot, name);
       writeGitignore(destRoot);
