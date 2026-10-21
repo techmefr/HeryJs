@@ -77,6 +77,17 @@ export function buildServerSchema(nodeEnv: string | undefined) {
       .transform((value) => value === 'true'),
     OUTBOX_RELAY_INTERVAL_MS: z.coerce.number().int().positive().default(2000),
     SEARCH_MATCH_LIMIT: z.coerce.number().int().positive().default(1000),
+    // The most rows a similarity search ranks and returns. Nearest-neighbour
+    // search never runs out of matches -- every embedded row has a distance --
+    // so without a ceiling a caller asking for "similar" would be handed the
+    // whole table, ranked. Reported in meta.search once it is the reason a
+    // page is short.
+    VECTOR_SEARCH_LIMIT: z.coerce
+      .number()
+      .int()
+      .positive()
+      .max(1000)
+      .default(50),
     /**
      * Turning the global rate-limit guard off used to ride on NODE_ENV alone,
      * which is the most-copied variable in any deployment: a staging or CI env

@@ -30,6 +30,7 @@ import { registerModuleValidateCommand } from './commands/module-validate';
 import { registerNewCommand } from './commands/new';
 import { registerOpenApiCommand } from './commands/openapi';
 import { registerOpenApiClientCommand } from './commands/openapi-client';
+import { registerEmbeddingsBackfillCommand } from './commands/embeddings-backfill';
 import { registerRoutesCommand } from './commands/routes';
 import { registerSearchReindexCommand } from './commands/search-reindex';
 import { registerSecretsCommands } from './commands/secrets';
@@ -73,6 +74,7 @@ registerOpenApiClientCommand(program);
 registerRoutesCommand(program);
 registerSearchReindexCommand(program);
 registerSecretsCommands(program);
+registerEmbeddingsBackfillCommand(program);
 registerUninstallCommand(program);
 registerUpCommand(program);
 

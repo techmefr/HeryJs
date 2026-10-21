@@ -12,6 +12,8 @@ POST /blog-posts/search
 
 With no config and no module installed, that runs against Prisma — a case-insensitive substring match, the right answer for most projects for a long time. When it stops being the right answer, an engine drops in behind the same contract, selected by name rather than by which module happens to be installed.
 
+Searching by meaning rather than by words is a separate mode, `search: { q, mode: 'similar' }`, covered in [Vector search](../guides/vector-search/).
+
 ## `hery.config.ts` is the closed list of engines
 
 A project-root config file, typed against `HeryConfig` via `satisfies` — an unknown key or a malformed engine fails at typecheck, not at boot:

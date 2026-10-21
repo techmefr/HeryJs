@@ -112,6 +112,7 @@ export interface HeryConfig {
   featureFlags?: HeryConfigDrivers;
   errorReporter?: HeryConfigDrivers;
   sms?: HeryConfigDrivers;
+  embeddings?: HeryConfigDrivers;
   push?: HeryConfigDrivers;
   billing?: HeryConfigDrivers;
   billingQuotas?: HeryConfigBillingQuotas;

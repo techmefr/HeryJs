@@ -115,6 +115,7 @@ export default defineConfig({
                   slug: 'guides/publishing-a-module',
                 },
                 { label: 'Full-text search', slug: 'guides/search' },
+                { label: 'Vector search', slug: 'guides/vector-search' },
                 { label: 'Realtime', slug: 'guides/realtime' },
                 {
                   label: 'Peer-to-peer signalling',
