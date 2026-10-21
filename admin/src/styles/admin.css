@@ -1087,6 +1087,62 @@ fieldset.relation > div {
   cursor: default;
 }
 
+/* Webhooks */
+
+.wh-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.wh-tabs button[aria-current='page'] {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.wh-form {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem 1.125rem;
+}
+
+.wh-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.875rem 1.125rem;
+  font-size: 0.75rem;
+}
+
+.wh-row .path {
+  font-family: var(--mono);
+  color: var(--text);
+}
+
+.wh-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.wh-secret {
+  padding: 0.875rem 1.125rem;
+  font-size: 0.75rem;
+}
+
+.wh-secret code {
+  font-family: var(--mono);
+  word-break: break-all;
+}
+
+.wh-problem {
+  color: var(--danger, #c0392b);
+  font-size: 0.75rem;
+}
+
 button.inline-edit {
   margin-left: 0.5rem;
   padding: 0 0.375rem;
@@ -1103,6 +1159,8 @@ button.inline-edit:focus-visible {
   display: block;
   color: var(--danger);
   font-size: 0.75rem;
+}
+
 .toolbar {
   display: flex;
   flex-wrap: wrap;

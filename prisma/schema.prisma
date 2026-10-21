@@ -336,6 +336,57 @@ model WebhookEvent {
   @@index([endpointId])
 }
 
+// A customer's own URL receiving signed events. The secret is sealed with the
+// kernel's SecretsService: signing needs the plaintext back, so it cannot be a
+// one-way hash, but it does not have to sit readable in the table. During a
+// rotation the previous secret stays valid until previousSecretExpiresAt, and
+// every delivery in that window carries a signature for both.
+model WebhookSubscription {
+  id                      String    @id @default(cuid())
+  tenantId                String
+  url                     String
+  description             String?
+  events                  String[]
+  secret                  String
+  previousSecret          String?
+  previousSecretExpiresAt DateTime?
+  active                  Boolean   @default(true)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  deliveries WebhookDelivery[]
+
+  @@index([tenantId])
+}
+
+// One row per (subscription, outbox message): the delivery log and the dead
+// letter in the same table. The unique pair is what makes the fan-out
+// idempotent when the relay hands the same message over twice. round counts
+// manual redeliveries, so each run gets a queue job id of its own.
+model WebhookDelivery {
+  id             String    @id @default(cuid())
+  subscriptionId String
+  tenantId       String
+  messageId      String
+  event          String
+  payload        Json
+  status         String    @default("pending")
+  attempts       Int       @default(0)
+  round          Int       @default(0)
+  lastStatusCode Int?
+  lastError      String?
+  lastAttemptAt  DateTime?
+  deliveredAt    DateTime?
+  deadAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  subscription WebhookSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionId, messageId])
+  @@index([tenantId, status])
+  @@index([subscriptionId])
+}
+
 // Written in the same transaction as the change it describes, then relayed to
 // handlers by a worker. tenantId is nullable because a message can be staged
 // outside any request, and the relay reads across tenants, so the table sits

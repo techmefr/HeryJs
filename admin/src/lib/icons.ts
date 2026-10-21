@@ -56,6 +56,7 @@ export const ICONS = {
   quotas: Gauge,
   refresh: RefreshCw,
   signOut: LogOut,
+  webhooks: Webhook,
   yes: Check,
 };
 

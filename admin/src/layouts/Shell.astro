@@ -43,6 +43,7 @@ const { title, bare = false } = Astro.props;
               <a class="item" href="/privacy" id="privacy-link" />
               <a class="item" href="/quotas" id="quotas-link" />
               <a class="item" href="/backups" id="backups-link" />
+              <a class="item" href="/webhooks" id="webhooks-link" />
             </nav>
 
             <nav class="group scrolls" id="sections" aria-label="Sections" />
@@ -130,6 +131,11 @@ const { title, bare = false } = Astro.props;
       label(document.getElementById('privacy-link'), ICONS.privacy, 'Privacy');
       label(document.getElementById('quotas-link'), ICONS.quotas, 'Quotas');
       label(document.getElementById('backups-link'), ICONS.backups, 'Backups');
+      label(
+        document.getElementById('webhooks-link'),
+        ICONS.webhooks,
+        'Webhooks',
+      );
       label(document.getElementById('sign-out'), ICONS.signOut, 'Sign out');
 
       const apiUrl = document.getElementById('api-url');

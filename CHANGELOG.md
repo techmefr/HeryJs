@@ -13,6 +13,9 @@ category is called out here explicitly.
 
 First public release.
 
+### Outbound webhooks
+
+The `webhooks` module also delivers to your tenants. An admin subscribes an https URL to named events (`webhook.*` names you stage with the outbox, and the `model.*` change messages), each delivery is signed with HMAC-SHA256 (`v1=<hex>` per valid secret), retried ten times with doubling backoff on its own queue, and lands in a visible `dead` state you can replay. Rotating a secret keeps the old one valid for a grace window and signs with both, so no event is dropped. Subscription URLs must be public https addresses. New tables `WebhookSubscription` and `WebhookDelivery` (migration `add_outbound_webhooks`), a `heryjs-webhook-deliveries` queue in the kernel, routes under `/webhook-subscriptions` and `/webhook-deliveries`, and a Webhooks page in the admin panel. A project that already installed the module applies the kernel queue constants and the new runtime files by hand, and sets `SECRETS_KEYS` in production because secrets are sealed with it.
 ### Job chains and batches with resume
 
 `JobFlowsService` runs a chain (step B after step A) or a batch (a set of jobs with a progress count and a completion callback) on BullMQ flows. A flow survives a worker restart, and a failed step is retried on its own: the steps that finished are not run again. Steps run on the new `heryjs-flows` queue through handlers registered with `JobFlowHandlers`, or on any existing queue, so exports and imports chain onto their own processors. Operators get capability-gated routes under `/job-flows` (list, detail, start a defined flow, retry, cancel) and a **Job flows** admin page. New `JobFlow` table (migration included). **Upgrade note:** an existing admin copies the page, the nav link and the icon by hand.
