@@ -220,6 +220,10 @@ export const APP_ENFORCED_TENANT_MODELS = new Set<string>([
   // by the ambient tenant.
   'OutboxMessage',
   'NotificationDigestEntry',
+  // Written from a buffer that flushes on a timer, long after the request that
+  // produced a line has ended, so there is no ambient tenant to stamp: each
+  // entry carries the tenant it was logged under, or `system` when it had none.
+  'LogEntry',
   // Written in batches from a buffer that flushes on a timer, long after the
   // request that produced an entry has ended, so there is no ambient tenant
   // to stamp: each entry carries the tenant it was recorded under.
