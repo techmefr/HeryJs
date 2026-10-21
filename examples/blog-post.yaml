@@ -7,6 +7,10 @@ fields:
     type: string
     optional: true
     translatable: true
+  - name: body
+    type: richtext
+    optional: true
+    maxLength: 20000
   - name: privateNote
     type: encrypted
     optional: true

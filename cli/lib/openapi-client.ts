@@ -26,6 +26,7 @@ const FIELD_TS_TYPES: Record<RecordProperty['type'], string> = {
   datetime: 'string',
   file: 'string',
   encrypted: 'string',
+  richtext: 'string',
   id: 'string',
   timestamp: 'string',
   translations: 'Record<string, string>',
@@ -211,7 +212,7 @@ function describeDeclaration(ctx: ResourceContext): string {
 
   return `export interface ${name}Describe {
   version: ${ctx.version};
-  fields: Array<{ name: string; type: 'string' | 'int' | 'boolean' | 'datetime' | 'file'; optional: boolean; translatable?: boolean }>;
+  fields: Array<{ name: string; type: 'string' | 'int' | 'boolean' | 'datetime' | 'file' | 'richtext'; optional: boolean; translatable?: boolean; richtext?: { maxLength: number; allow: { tags: string[]; attributes: Record<string, string[]>; schemes: string[] } } }>;
   locales?: { supported: string[]; default: string; fallbacks: Record<string, string[]> };
   sorts: string[];
   filters: string[];

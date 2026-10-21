@@ -13,6 +13,10 @@ category is called out here explicitly.
 
 First public release.
 
+### Rich text fields
+
+A blueprint field `type: richtext` (with an optional `maxLength` and an `allow` list of tags, attributes per tag and link schemes) stores HTML that the service sanitises on every write and the view sanitises again on every read, using `sanitize-html`. Script, style, embedding and form tags, event-handler and style attributes and code-carrying schemes can never be allowed, and a blueprint that names one is refused. The field cannot be filtered, sorted or translated. OpenAPI and the typed client expose a `string` with `format: html`, `GET /describe` publishes the limit and the resolved allow-list, the generated suite proves eighteen XSS payloads stripped, and the admin form shows a textarea with a safe live preview. The new `src/technical/richtext` module and the `sanitize-html` dependency are kernel additions: in an existing project copy the module, add the dependency, and copy the admin runtime files `form.ts`, `form-schema.ts`, `query.ts`, `resource.ts` and `safe-html.ts` by hand.
+
 ### SMTP mail driver
 
 A new `mail-smtp` package adds an SMTP driver beside the log and Resend ones. `hery install mail-smtp` lands it in `src/modules/mail`; import `SmtpMailModule`, declare `smtp: { driver: 'smtp' }` under `mail.drivers` in `hery.config.ts`, and set `MAIL_SMTP_HOST` and `MAIL_SMTP_FROM` (plus `MAIL_SMTP_PORT`, `MAIL_SMTP_TLS`, `MAIL_SMTP_USER` and `MAIL_SMTP_PASSWORD` as the server needs). `MAIL_DRIVER=smtp` switches to it. The driver sends through nodemailer, refuses a half-written credential and a refused recipient rather than recording the mail as sent, and its spec delivers over a real socket to an in-process SMTP server. That makes twenty-nine installable modules.

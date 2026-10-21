@@ -101,6 +101,7 @@ describe('BlogPost resource', () => {
     expect(body.data.fields.map((field) => field.name)).toEqual([
       'title',
       'summary',
+      'body',
       'privateNote',
     ]);
     expect(body.data.paginated).toBe(true);
@@ -955,6 +956,154 @@ describe('BlogPost resource', () => {
         'b-' + marker,
         'a-' + marker,
       ]);
+    });
+  });
+
+  describe('richtext field body', () => {
+    const XSS_PAYLOADS: string[] = [
+      '<script>alert(1)</script><p>ok</p>',
+      '<img src=x onerror=alert(1)>',
+      '<a href="javascript:alert(1)">x</a>',
+      '<a href="JaVaScRiPt:alert(1)">x</a>',
+      '<a href="&#106;avascript:alert(1)">x</a>',
+      '<a href="data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==">x</a>',
+      '<p onclick="alert(1)">x</p>',
+      '<p style="background:url(javascript:alert(1))">x</p>',
+      '<svg onload=alert(1)>',
+      '<svg><script>alert(1)</script></svg>',
+      '<iframe src="javascript:alert(1)"></iframe>',
+      '<iframe srcdoc="<script>alert(1)</script>"></iframe>',
+      '<object data="data:text/html,<script>alert(1)</script>"></object>',
+      '<form action="javascript:alert(1)"><input type=submit></form>',
+      '<body onload=alert(1)>',
+      '<style>*{background:url(javascript:alert(1))}</style>',
+      '<scr<script>ipt>alert(1)</scr</script>ipt>',
+      '<math><mi xlink:href="javascript:alert(1)">x</mi></math>',
+    ];
+    const DANGEROUS =
+      /<\s*(script|iframe|svg|math|style|object|embed|form|input|link|meta|body)|javascript:|data:|\son[a-z]+\s*=|\sstyle\s*=|srcdoc/i;
+
+    async function createWith(html: string): Promise<Record<string, unknown>> {
+      const response = await request(app.getHttpServer())
+        .post('/blog-posts/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ ...{ title: 'title-value' }, body: html }] })
+        .expect(201);
+
+      return (response.body as { data: { data: Record<string, unknown> }[] })
+        .data[0]!.data;
+    }
+
+    async function readBack(id: unknown): Promise<Record<string, unknown>> {
+      const response = await request(app.getHttpServer())
+        .post('/blog-posts/search')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ filters: [{ field: 'id', value: id }] })
+        .expect(200);
+
+      return (response.body as { data: Record<string, unknown>[] }).data[0]!;
+    }
+
+    it('publishes the size limit and the allow-list', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/blog-posts/describe')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      const body = response.body as {
+        data: {
+          fields: Array<{
+            name: string;
+            type: string;
+            richtext?: {
+              maxLength: number;
+              allow: {
+                tags: string[];
+                attributes: Record<string, string[]>;
+                schemes: string[];
+              };
+            };
+          }>;
+        };
+      };
+      const described = body.data.fields.find((entry) => entry.name === 'body');
+      expect(described?.type).toBe('richtext');
+      expect(described?.richtext?.maxLength).toBe(20000);
+      expect(described?.richtext?.allow.tags).toContain('p');
+      expect(described?.richtext?.allow.tags).not.toContain('script');
+      expect(described?.richtext?.allow.schemes).not.toContain('javascript');
+    });
+
+    it('strips every XSS payload on write', async () => {
+      for (const payload of XSS_PAYLOADS) {
+        const created = await createWith(payload);
+
+        expect(String(created.body)).not.toMatch(DANGEROUS);
+        expect(JSON.stringify(await readBack(created.id))).not.toMatch(
+          DANGEROUS,
+        );
+      }
+    });
+
+    it('keeps the formatting the allow-list names and hardens a link', async () => {
+      const created = await createWith(
+        '<h2>Title</h2><p>a <strong>b</strong> <a href="https://example.com/x">go</a></p>',
+      );
+
+      expect(created.body).toBe(
+        '<h2>Title</h2><p>a <strong>b</strong> <a href="https://example.com/x" rel="noopener noreferrer nofollow">go</a></p>',
+      );
+    });
+
+    it('refuses more than 20000 characters of HTML, counted before sanitising', async () => {
+      await request(app.getHttpServer())
+        .post('/blog-posts/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({
+          data: [
+            {
+              ...{ title: 'title-value' },
+              body: '<p>' + 'a'.repeat(20000) + '</p>',
+            },
+          ],
+        })
+        .expect(400);
+    });
+
+    it('strips a payload sent on update as well', async () => {
+      const created = await createWith('<p>clean</p>');
+
+      const response = await request(app.getHttpServer())
+        .post('/blog-posts/update')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({
+          data: [
+            {
+              id: created.id,
+              body: '<img src=x onerror=alert(1)><p>after</p>',
+            },
+          ],
+        })
+        .expect(201);
+
+      const updated = (
+        response.body as { data: { data: Record<string, unknown> }[] }
+      ).data[0]!.data;
+      expect(updated.body).toBe('<p>after</p>');
+    });
+
+    it('never trusts what the column holds: a row written past the service is sanitised on read', async () => {
+      const created = await createWith('<p>fine</p>');
+      await prisma.blogPost.update({
+        where: { id: created.id as string },
+        data: {
+          body: '<script>alert(1)</script><p onclick="alert(1)">stored</p>',
+        },
+      });
+
+      const read = await readBack(created.id);
+
+      expect(read.body).toBe('<p>stored</p>');
     });
   });
 });

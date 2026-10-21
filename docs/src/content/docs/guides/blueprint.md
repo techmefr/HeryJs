@@ -32,13 +32,39 @@ This is the one casing convention in the project, and it is deliberately the onl
 
 ## Fields
 
-Each field has a `type` (`string`, `int`, `boolean`, `datetime`, `file`, `encrypted`, `vector`), whether it's `optional`, and whether it's `hidden` — a hidden field is stripped from every API response by the generated `<name>.view.ts`, no matter which endpoint returns the record.
+Each field has a `type` (`string`, `int`, `boolean`, `datetime`, `file`, `encrypted`, `vector`, `richtext`), whether it's `optional`, and whether it's `hidden` — a hidden field is stripped from every API response by the generated `<name>.view.ts`, no matter which endpoint returns the record.
 
 `file` is a plain string column underneath — the storage key `POST /storage/upload` already returned, not the bytes themselves. See [Storage](../guides/storage/) for the upload flow it pairs with.
 
 `encrypted` is a text column sealed with AES-256-GCM, hidden from responses unless the field says `reveal: true`, and refused in `filters` and `sorts`. See [Secrets](../guides/secrets/).
 
 `vector` is not data a client sends: it is the embedding of another string field, written by a queued job and read only by `search: { mode: 'similar' }`. It takes a `dimensions` and a `source`, and is never returned or writable. See [Vector search](../guides/vector-search/).
+
+### Rich text fields
+
+`richtext` stores HTML a person wrote, sanitised by an allow-list:
+
+```yaml
+fields:
+  - name: body
+    type: richtext
+    optional: true
+    maxLength: 20000 # characters of HTML a client may send, 20000 by default
+    allow: # optional, each key replaces its default
+      tags: [p, strong, em, ul, ol, li, a]
+      attributes:
+        a: [href, title]
+      schemes: [https, mailto]
+```
+
+- **Sanitised on write, never trusted on read.** The service sanitises every create, update and restore, and the view sanitises again on every read, so a row that reached the table another way (an import, a script, a column that was text before, an allow-list narrowed since) still comes out clean. A tag outside the list is dropped but its text stays, except script, style and the like, whose content goes with them. A link whose scheme is not listed loses its `href`, and every link gets `rel="noopener noreferrer nofollow"`.
+- **The allow-list.** Left out, it keeps `p br hr strong b em i u s code pre blockquote ul ol li h1 h2 h3 h4 a`, `href` and `title` on links, and the schemes `http https mailto`. A key you set replaces its default. Some things can never be allowed, and `hery generate` refuses a blueprint that names one: the tags `script style iframe frame object embed applet form input button textarea select svg math link meta base template noscript`, any `on*` attribute, `style` and `srcdoc`, and the schemes `javascript data vbscript file`. The sanitiser enforces the same list even for a spec edited by hand.
+- **Size limit.** `maxLength` is checked on the HTML as sent, before sanitising, and refused with a 400. The sanitised value is what is stored.
+- **A column, not a search target.** The value is plain text in a `String` column. It cannot be listed in `filters` or `sorts`, cannot be `translatable`, and is not part of `search.q`.
+- **Contract.** OpenAPI and the typed client expose a `string` with `format: html` and the limit; `GET /describe` publishes `richtext: { maxLength, allow }` for the field with the allow-list resolved.
+- **Proven.** The generated suite sends eighteen XSS payloads (script tags, event handlers, `javascript:` and `data:` links in several spellings, SVG, math, iframes, forms, split tags) on create and on update and checks none survives in the response or on a later read, checks the formatting the list names is kept, that the limit is enforced, and that a row written past the service is cleaned on read.
+
+The admin shows the field as a textarea with a live preview of what the API will keep, drawn from the published allow-list, and a count against the limit. The preview is rebuilt from DOM nodes in an inert document, never from the markup, so it cannot run script in the admin; the API stays the authority.
 
 ### Reserved fields
 
