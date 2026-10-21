@@ -181,7 +181,9 @@ describe('StorageService admin operations', () => {
   it('refuses to delete a key of another tenant, and leaves the file', async () => {
     const key = await uploadAs('admin-b');
 
-    await expect(inTenant('admin-a', () => service.removeOwn(key))).rejects.toThrow(StorageNotInTenantException);
+    await expect(
+      inTenant('admin-a', () => service.removeOwn(key)),
+    ).rejects.toThrow(StorageNotInTenantException);
     await expect(driver.stat(key)).resolves.not.toBeNull();
   });
 });

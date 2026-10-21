@@ -94,9 +94,7 @@ export class S3StorageDriver implements StorageDriver {
   async remove(key: string): Promise<void> {
     const { bucket, client } = this.connect();
 
-    await client.send(
-      new DeleteObjectCommand({ Bucket: bucket, Key: key }),
-    );
+    await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
   }
 
   async signedUrl(

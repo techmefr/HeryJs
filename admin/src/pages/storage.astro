@@ -48,7 +48,11 @@ import Shell from '../layouts/Shell.astro';
 
   function denied(error: unknown, what: string): HTMLElement {
     return error instanceof ApiError && error.status === 403
-      ? state('Not available', 'Managing files is an admin-only operation.', 'denied')
+      ? state(
+          'Not available',
+          'Managing files is an admin-only operation.',
+          'denied',
+        )
       : state('Could not load ' + what, 'The request failed.', 'denied');
   }
 
