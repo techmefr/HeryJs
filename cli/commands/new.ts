@@ -209,37 +209,6 @@ function exampleModelNames(): Set<string> {
   );
 }
 
-/**
- * `moveGuestOwnership` moves or deletes the rows a guest owned, and it names
- * the demo's BlogPost to do it. With the model gone from the schema the client
- * has no such delegate, so a scaffolded project failed `nest build` -- which
- * is the first thing its production image does.
- */
-function dropGuestRowsOfRemovedModels(
-  destRoot: string,
-  removed: string[],
-): void {
-  const file = path.join(destRoot, 'src/technical/auth/guest-upgrade.ts');
-
-  if (!existsSync(file)) {
-    return;
-  }
-
-  let source = readFileSync(file, 'utf8');
-
-  removed.forEach((name) => {
-    const delegate = name.charAt(0).toLowerCase() + name.slice(1);
-    const statement = new RegExp(
-      `  await transaction\\.${delegate}\\.[a-zA-Z]+\\([^;]*?\\);\\n`,
-      'g',
-    );
-
-    source = source.replace(statement, '');
-  });
-
-  writeFileSync(file, source);
-}
-
 function dropExampleModels(destRoot: string): string[] {
   const names = exampleModelNames();
 
@@ -253,8 +222,6 @@ function dropExampleModels(destRoot: string): string[] {
     names,
   );
   writeFileSync(schemaFile, schema);
-
-  dropGuestRowsOfRemovedModels(destRoot, removed);
 
   const gone = new Set(removed);
 
