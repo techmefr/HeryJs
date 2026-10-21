@@ -654,3 +654,19 @@ model LogEntry {
   @@index([tenantId, loggedAt])
   @@index([loggedAt])
 }
+
+model JobFlow {
+  id          String    @id @default(cuid())
+  tenantId    String
+  kind        String
+  name        String
+  queue       String
+  rootJobId   String
+  steps       Json
+  createdById String?
+  createdAt   DateTime  @default(now())
+  cancelledAt DateTime?
+
+  @@index([tenantId, createdAt])
+  @@index([createdAt])
+}
