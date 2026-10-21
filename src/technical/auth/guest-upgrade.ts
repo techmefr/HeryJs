@@ -1,59 +1,36 @@
-import { Prisma, type PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 
 type Transaction = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
-interface OwnedRowsDelegate {
-  updateMany(args: {
-    where: Record<string, string>;
-    data: Record<string, string>;
-  }): Promise<unknown>;
-  deleteMany(args: { where: Record<string, string> }): Promise<unknown>;
-}
-
 interface UserReference {
-  delegate: string;
+  table: string;
   column: string;
 }
 
 /**
- * Every column that points at a user without cascading, read off Prisma's own
- * DMMF. A cascading reference goes with the guest on its own; one that does
- * not makes the guest's delete fail, so it is the set this upgrade has to
- * move or drop. Read rather than listed, so a generated resource with an
- * owner is covered the moment it exists, and a project without the demo does
- * not compile against a model it never had.
+ * Every single-column foreign key that points at a user without cascading,
+ * read off the database catalog. A cascading reference goes with the guest on
+ * its own; one that does not makes the guest's delete fail, so it is the set
+ * this upgrade has to move or drop. Read rather than listed, so a generated
+ * resource with an owner is covered the moment its migration runs, and a
+ * project without the demo never names a table it does not have. Prisma's
+ * runtime DMMF carries neither the foreign key columns nor the delete rule,
+ * so the catalog is the source. Both names come back already quoted.
  */
-export function userReferencesWithoutCascade(): UserReference[] {
-  return Prisma.dmmf.datamodel.models.flatMap((model) =>
-    model.fields
-      .filter(
-        (field) =>
-          field.kind === 'object' &&
-          field.type === 'User' &&
-          field.relationOnDelete !== 'Cascade',
-      )
-      .flatMap((field) =>
-        (field.relationFromFields ?? []).map((column) => ({
-          delegate: model.name.charAt(0).toLowerCase() + model.name.slice(1),
-          column,
-        })),
-      ),
-  );
-}
-
-function delegateOf(
+async function userReferencesWithoutCascade(
   transaction: Transaction,
-  reference: UserReference,
-): OwnedRowsDelegate {
-  const delegate = (
-    transaction as unknown as Record<string, OwnedRowsDelegate | undefined>
-  )[reference.delegate];
-
-  if (!delegate) {
-    throw new Error(`The Prisma client has no ${reference.delegate} delegate.`);
-  }
-
-  return delegate;
+): Promise<UserReference[]> {
+  return transaction.$queryRaw<UserReference[]>`
+    SELECT constraints.conrelid::regclass::text AS "table",
+           quote_ident(columns.attname) AS "column"
+    FROM pg_constraint AS constraints
+    JOIN pg_attribute AS columns
+      ON columns.attrelid = constraints.conrelid
+     AND columns.attnum = constraints.conkey[1]
+    WHERE constraints.contype = 'f'
+      AND constraints.confrelid = '"User"'::regclass
+      AND constraints.confdeltype <> 'c'
+      AND cardinality(constraints.conkey) = 1`;
 }
 
 async function scopeToTenant(
@@ -68,11 +45,14 @@ async function moveRows(
   guestId: string,
   accountId: string,
 ): Promise<void> {
-  for (const reference of userReferencesWithoutCascade()) {
-    await delegateOf(transaction, reference).updateMany({
-      where: { [reference.column]: guestId },
-      data: { [reference.column]: accountId },
-    });
+  for (const { table, column } of await userReferencesWithoutCascade(
+    transaction,
+  )) {
+    await transaction.$executeRawUnsafe(
+      `UPDATE ${table} SET ${column} = $1 WHERE ${column} = $2`,
+      accountId,
+      guestId,
+    );
   }
   await transaction.appNotification.updateMany({
     where: { userId: guestId },
@@ -101,10 +81,13 @@ async function dropRows(
   transaction: Transaction,
   guestId: string,
 ): Promise<void> {
-  for (const reference of userReferencesWithoutCascade()) {
-    await delegateOf(transaction, reference).deleteMany({
-      where: { [reference.column]: guestId },
-    });
+  for (const { table, column } of await userReferencesWithoutCascade(
+    transaction,
+  )) {
+    await transaction.$executeRawUnsafe(
+      `DELETE FROM ${table} WHERE ${column} = $1`,
+      guestId,
+    );
   }
 }
 
