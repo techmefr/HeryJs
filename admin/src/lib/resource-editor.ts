@@ -1,6 +1,8 @@
 import { buildForm } from './form';
 import { formFieldsOf, payloadOf, valuesOf, validate } from './form-schema';
 import type { FormMode } from './form-schema';
+import { isDisabled } from './extensions';
+import type { ResourceExtension } from './extensions';
 import { buildRelationsPanel } from './relations-panel';
 import {
   failureMessages,
@@ -14,6 +16,7 @@ export interface EditorContext {
   root: HTMLElement;
   base: string;
   description: ResourceDescription;
+  extension: ResourceExtension;
   childRelations: string[];
   resourceBases: string[];
   refreshRow: (id: string) => Promise<ResourceRow | null>;
@@ -83,7 +86,11 @@ function formFor(
   row: ResourceRow | null,
   close: () => void,
 ): HTMLElement {
-  const fields = formFieldsOf(context.description, mode);
+  const fields = formFieldsOf(
+    context.description,
+    mode,
+    context.extension.fields,
+  );
   const initial = valuesOf(fields, row);
 
   const handle = buildForm({
@@ -155,8 +162,9 @@ function notAllowed(): HTMLElement {
 
 function hasRelations(context: EditorContext): boolean {
   return (
-    context.description.relations.length > 0 ||
-    context.childRelations.length > 0
+    !isDisabled(context.extension, 'relations') &&
+    (context.description.relations.length > 0 ||
+      context.childRelations.length > 0)
   );
 }
 
@@ -174,10 +182,11 @@ export async function openEdit(
     }
 
     const parts: HTMLElement[] = [];
+    const canUpdate =
+      isAllowed(row.capabilities, 'update') &&
+      !isDisabled(context.extension, 'update');
     parts.push(
-      isAllowed(row.capabilities, 'update')
-        ? formFor(context, 'update', row, close)
-        : notAllowed(),
+      canUpdate ? formFor(context, 'update', row, close) : notAllowed(),
     );
 
     if (hasRelations(context)) {

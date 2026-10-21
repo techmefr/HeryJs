@@ -1,4 +1,5 @@
 import { writeCell } from './render';
+import type { ResourceExtension } from './extensions';
 import type { QueryState } from './query';
 import type { ResourceRow } from './resource';
 
@@ -12,6 +13,7 @@ export interface RowButton {
 export interface ResourceTableOptions {
   rows: ResourceRow[];
   columns: string[];
+  extension: ResourceExtension;
   sortable: string[];
   sort: QueryState['sort'];
   selectable: boolean;
@@ -26,10 +28,15 @@ export const DENIED_HINT = 'Your account is not allowed to do this';
 
 const HIDDEN_KEYS = new Set(['capabilities']);
 
-export function columnsOf(rows: ResourceRow[]): string[] {
+export function columnsOf(
+  rows: ResourceRow[],
+  extension: ResourceExtension,
+): string[] {
   const keys = [...new Set(rows.flatMap((row) => Object.keys(row)))];
 
-  return keys.filter((key) => !HIDDEN_KEYS.has(key));
+  return keys.filter(
+    (key) => !HIDDEN_KEYS.has(key) && extension.columns?.[key]?.hidden !== true,
+  );
 }
 
 function checkbox(label: string, isChecked: boolean): HTMLInputElement {
@@ -46,9 +53,10 @@ function headingOf(
   options: ResourceTableOptions,
 ): HTMLTableCellElement {
   const heading = document.createElement('th');
+  const label = options.extension.columns?.[column]?.label ?? column;
 
   if (!options.sortable.includes(column)) {
-    heading.textContent = column;
+    heading.textContent = label;
     return heading;
   }
 
@@ -57,8 +65,7 @@ function headingOf(
   button.type = 'button';
   button.className = 'sort';
   button.textContent =
-    column +
-    (isSorted ? (options.sort?.direction === 'asc' ? ' ↑' : ' ↓') : '');
+    label + (isSorted ? (options.sort?.direction === 'asc' ? ' ↑' : ' ↓') : '');
   button.addEventListener('click', () => options.onSort(column));
   heading.setAttribute(
     'aria-sort',
@@ -73,8 +80,20 @@ function headingOf(
   return heading;
 }
 
-function cellOf(row: ResourceRow, column: string): HTMLTableCellElement {
+function cellOf(
+  row: ResourceRow,
+  column: string,
+  extension: ResourceExtension,
+): HTMLTableCellElement {
   const cell = document.createElement('td');
+  const format = extension.columns?.[column]?.format;
+
+  if (format) {
+    cell.className = 'mono';
+    cell.textContent = format(row[column], row);
+    return cell;
+  }
+
   writeCell(cell, column, row[column]);
 
   return cell;
@@ -144,7 +163,7 @@ export function resourceTable(options: ResourceTableOptions): HTMLElement {
     }
 
     for (const column of options.columns) {
-      line.appendChild(cellOf(row, column));
+      line.appendChild(cellOf(row, column, options.extension));
     }
 
     line.appendChild(actionsOf(options.buttonsOf(row)));

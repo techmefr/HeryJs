@@ -13,8 +13,10 @@ import Shell from '../layouts/Shell.astro';
   import { api, labelOf } from '../lib/api';
   import type { DescribedController } from '../lib/api';
   import { tintOf } from '../lib/icons';
+  import { extensionFor } from '../lib/extensions';
   import { state } from '../lib/render';
   import { mountResource } from '../lib/resource-view';
+  import extensions from '../extensions';
 
   const heading = document.getElementById('heading')!;
   const output = document.getElementById('output')!;
@@ -26,7 +28,7 @@ import Shell from '../layouts/Shell.astro';
       state('No resource selected', 'Pick one in the sidebar to manage it.'),
     );
   } else {
-    const label = labelOf(base);
+    const label = extensionFor(extensions, base).label ?? labelOf(base);
     heading.textContent = label;
     document.title = label + ' — HeryJs admin';
     document.body.classList.add(tintOf(base));
@@ -38,6 +40,7 @@ import Shell from '../layouts/Shell.astro';
     await mountResource(output, {
       base,
       controllers: data,
+      extensions,
       editId: params.get('edit'),
     });
   }

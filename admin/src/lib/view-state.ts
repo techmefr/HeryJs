@@ -1,3 +1,4 @@
+import type { ResourceExtension, AdminExtensions } from './extensions';
 import type { DescribedController } from './api';
 import type { QueryState } from './query';
 import type { ResourceDescription, SearchOutcome } from './resource';
@@ -5,6 +6,7 @@ import type { ResourceDescription, SearchOutcome } from './resource';
 export interface MountOptions {
   base: string;
   controllers: DescribedController[];
+  extensions: AdminExtensions;
   editId?: string | null;
   confirm?: (message: string) => boolean;
 }
@@ -12,6 +14,7 @@ export interface MountOptions {
 export interface View {
   options: MountOptions;
   description: ResourceDescription;
+  extension: ResourceExtension;
   capabilityKeys: string[];
   query: QueryState;
   outcome: SearchOutcome;

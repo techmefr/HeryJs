@@ -1,6 +1,13 @@
 import { ApiError } from './api';
 import { drawBulk } from './bulk-bar';
 import type { BulkKind } from './bulk';
+import {
+  extensionFor,
+  extraCapabilityKeys,
+  isDisabled,
+  requiredButHidden,
+  unknownOverrides,
+} from './extensions';
 import { initialState, nextSort, searchBody } from './query';
 import type { QueryState } from './query';
 import { drawPager } from './pager';
@@ -56,9 +63,10 @@ async function refreshRow(view: View, id: string): Promise<ResourceRow | null> {
 
 function buttonsOf(view: View, row: ResourceRow): RowButton[] {
   const buttons: RowButton[] = [];
-  const { query } = view;
+  const { extension, query } = view;
+  const reload = (): Promise<void> => load(view);
 
-  if (!query.trashed) {
+  if (!query.trashed && !isDisabled(extension, 'update')) {
     buttons.push({
       id: 'edit',
       label: 'Edit',
@@ -76,12 +84,23 @@ function buttonsOf(view: View, row: ResourceRow): RowButton[] {
     });
   }
 
-  if (!query.trashed) {
+  if (!query.trashed && !isDisabled(extension, 'delete')) {
     buttons.push({
       id: 'delete',
       label: 'Delete',
       isAllowed: isAllowed(row.capabilities, 'delete'),
       onClick: () => void runRowChange(view, 'delete', row),
+    });
+  }
+
+  for (const action of extension.rowActions ?? []) {
+    buttons.push({
+      id: action.id,
+      label: action.label,
+      isAllowed:
+        action.capability === undefined ||
+        isAllowed(row.capabilities, action.capability),
+      onClick: () => void action.run(row, { base: view.options.base, reload }),
     });
   }
 
@@ -133,10 +152,11 @@ function drawTable(view: View): void {
   view.table.replaceChildren(
     resourceTable({
       rows,
-      columns: columnsOf(rows),
+      columns: columnsOf(rows, view.extension),
+      extension: view.extension,
       sortable: view.description.sorts,
       sort: view.query.sort,
-      selectable: true,
+      selectable: !isDisabled(view.extension, 'bulk'),
       selected: view.selected,
       buttonsOf: (row) => buttonsOf(view, row),
       onSort: (field) => {
@@ -197,6 +217,7 @@ function editorOf(view: View): EditorContext {
     root: view.root,
     base,
     description: view.description,
+    extension: view.extension,
     childRelations: childRelationsOf(controllers, base),
     resourceBases: resourcesOf(controllers).map((item) => item.base),
     refreshRow: (id) => refreshRow(view, id),
@@ -230,6 +251,31 @@ function drawHeader(view: View): void {
   slot.replaceChildren(button);
 }
 
+function warnAboutOverrides(view: View): void {
+  const unknown = unknownOverrides(view.extension, view.description);
+  const hidden = requiredButHidden(view.extension, view.description);
+
+  if (unknown.length > 0) {
+    console.warn(
+      'The admin extension for ' +
+        view.options.base +
+        ' mentions fields the API no longer describes: ' +
+        unknown.join(', ') +
+        '.',
+    );
+  }
+
+  if (hidden.length > 0) {
+    console.warn(
+      'The admin extension for ' +
+        view.options.base +
+        ' hides or locks required fields (' +
+        hidden.join(', ') +
+        '); they stay editable because the API would refuse a record without them.',
+    );
+  }
+}
+
 export async function mountResource(
   root: HTMLElement,
   options: MountOptions,
@@ -242,13 +288,13 @@ export async function mountResource(
 
   try {
     description = await describeResource(options.base);
+    const extension = extensionFor(options.extensions, options.base);
     first = await searchResource(
       options.base + '/search',
-      searchBody(
-        description,
-        query(description),
-        capabilityKeysOf(description),
-      ),
+      searchBody(description, query(description), [
+        ...capabilityKeysOf(description),
+        ...extraCapabilityKeys(extension),
+      ]),
     );
   } catch (error) {
     root.replaceChildren(
@@ -267,10 +313,15 @@ export async function mountResource(
     return;
   }
 
+  const extension = extensionFor(options.extensions, options.base);
   const view: View = {
     options,
     description,
-    capabilityKeys: capabilityKeysOf(description),
+    extension,
+    capabilityKeys: [
+      ...capabilityKeysOf(description),
+      ...extraCapabilityKeys(extension),
+    ],
     query: query(description),
     outcome: first,
     selected: new Set(),
@@ -293,6 +344,8 @@ export async function mountResource(
   const toolbar = buildToolbar({
     description,
     state: view.query,
+    hasSearch: !isDisabled(extension, 'search'),
+    hasFilters: !isDisabled(extension, 'filters'),
     canListTrash: isAllowed(first.meta.capabilities, 'listTrashed'),
     onChange: (patch) => {
       Object.assign(view.query, patch);
@@ -309,6 +362,7 @@ export async function mountResource(
     view.table,
     view.pager,
   );
+  warnAboutOverrides(view);
   drawTable(view);
   drawBulk(view, () => load(view));
   drawPager(view, (page) => goTo(view, page));
@@ -318,7 +372,7 @@ export async function mountResource(
     announce(view, message, false);
   }
 
-  if (options.editId) {
+  if (options.editId && !isDisabled(extension, 'update')) {
     await openEdit(editorOf(view), options.editId);
   }
 }

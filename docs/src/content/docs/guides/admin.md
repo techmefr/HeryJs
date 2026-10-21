@@ -117,6 +117,44 @@ Three habits keep this true over time:
 
 Every value is written with `textContent` or an input's `value`, never as markup, so a hostile record cannot run script in the admin origin.
 
+### Customising a resource without losing it
+
+The panel is installed once and then belongs to you, which is the problem with changing it: edit a generated page and the change is gone, or conflicts, the next time the module updates. So the panel has a surface that is yours from the start, `admin/src/extensions.ts`. The installer never overwrites a file that already exists, so reinstalling or updating the module leaves it alone, and it is keyed by the resource's route and field names, not by generated code, so regenerating a resource on the API keeps working.
+
+```ts
+import { defineExtensions } from './lib/extensions';
+
+export default defineExtensions({
+  resources: {
+    '/blog-posts': {
+      label: 'Articles',
+      columns: {
+        id: { hidden: true },
+        title: { label: 'Headline', format: (value) => String(value).toUpperCase() },
+      },
+      fields: {
+        title: { help: 'Shown on the front page' },
+        views: { readonly: true },
+      },
+      rowActions: [
+        {
+          id: 'feature',
+          label: 'Feature',
+          capability: 'feature',
+          run: async (row, { reload }) => {
+            await fetch(`/blog-posts/${row.id}/feature`, { method: 'POST' });
+            await reload();
+          },
+        },
+      ],
+      disable: ['bulk'],
+    },
+  },
+});
+```
+
+The surface can relabel, hide, lock, format and add, and it can switch a feature off (`create`, `update`, `delete`, `bulk`, `filters`, `search`, `relations`). It can never grant: a button is still enabled only by the API's decision, and a custom row action names the capability key it needs, which the panel adds to the keys it asks the API to resolve, and is disabled for a row where that decision is not `allowed`. Formatted values are plain text, never markup. Two mistakes are caught at load and reported in the browser console rather than failing quietly: an override naming a field the API no longer describes, and an override hiding or locking a required field (which stays editable, since the API would refuse a record without it).
+
 Point it at another API with `PUBLIC_API_URL` if yours is not on `http://localhost:3000`.
 
 ## Before you deploy any of this

@@ -97,6 +97,7 @@ export async function mount(
   await mountResource(root, {
     base: '/blog-posts',
     controllers: mockControllers,
+    extensions: {},
     confirm: () => true,
     ...overrides,
   });

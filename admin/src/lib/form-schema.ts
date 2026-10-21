@@ -1,4 +1,5 @@
 import type { ResourceDescription, ResourceRow } from './resource';
+import type { FieldOverride } from './extensions';
 
 export type FieldKind = 'text' | 'number' | 'checkbox' | 'datetime' | 'select';
 export type FormMode = 'create' | 'update';
@@ -12,6 +13,8 @@ export interface FormField {
   required: boolean;
   integer: boolean;
   readonly: boolean;
+  help?: string;
+  placeholder?: string;
   options?: string[];
   minLength?: number;
   maxLength?: number;
@@ -45,6 +48,7 @@ export function humanize(name: string): string {
 export function formFieldsOf(
   description: ResourceDescription,
   mode: FormMode,
+  overrides: Record<string, FieldOverride> = {},
 ): FormField[] {
   const rules = description.rules[mode];
   const required = new Set(mode === 'create' ? (rules.required ?? []) : []);
@@ -57,18 +61,25 @@ export function formFieldsOf(
       continue;
     }
 
+    const override = overrides[field.name] ?? {};
     const isRequired = required.has(field.name);
     const options = Array.isArray(schema.enum)
       ? schema.enum.map((option) => String(option))
       : undefined;
 
+    if (override.hidden === true && !isRequired) {
+      continue;
+    }
+
     fields.push({
       name: field.name,
-      label: humanize(field.name),
+      label: override.label ?? humanize(field.name),
       kind: options ? 'select' : KIND_BY_TYPE[field.type],
       required: isRequired,
       integer: field.type === 'int',
-      readonly: false,
+      readonly: override.readonly === true && !isRequired,
+      help: override.help,
+      placeholder: override.placeholder,
       options,
       minLength: schema.minLength,
       maxLength: schema.maxLength,

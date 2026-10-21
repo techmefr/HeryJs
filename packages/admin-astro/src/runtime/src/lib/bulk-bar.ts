@@ -1,5 +1,6 @@
 import { describeOutcome, planBulk, runBulk } from './bulk';
 import type { BulkKind } from './bulk';
+import { isDisabled } from './extensions';
 import { announce, confirmed } from './view-state';
 import type { View } from './view-state';
 
@@ -56,7 +57,7 @@ function bulkButton(
 }
 
 export function drawBulk(view: View, reload: () => Promise<void>): void {
-  if (view.selected.size === 0) {
+  if (view.selected.size === 0 || isDisabled(view.extension, 'bulk')) {
     view.bulk.replaceChildren();
     return;
   }

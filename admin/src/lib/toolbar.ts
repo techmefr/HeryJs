@@ -5,6 +5,8 @@ import type { ResourceDescription } from './resource';
 export interface ToolbarOptions {
   description: ResourceDescription;
   state: QueryState;
+  hasSearch: boolean;
+  hasFilters: boolean;
   canListTrash: boolean;
   onChange: (patch: Partial<QueryState>) => void;
   debounceMs?: number;
@@ -199,7 +201,7 @@ export function buildToolbar(options: ToolbarOptions): HTMLElement {
   const bar = document.createElement('div');
   bar.className = 'toolbar';
 
-  if (isSearchable(options.description)) {
+  if (options.hasSearch && isSearchable(options.description)) {
     bar.appendChild(searchBox(options));
   }
 
@@ -213,7 +215,7 @@ export function buildToolbar(options: ToolbarOptions): HTMLElement {
     bar.appendChild(trashToggle(options));
   }
 
-  if (options.description.filters.length > 0) {
+  if (options.hasFilters && options.description.filters.length > 0) {
     bar.appendChild(filterPanel(options));
   }
 

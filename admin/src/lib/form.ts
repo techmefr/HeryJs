@@ -70,6 +70,10 @@ function controlOf(
     }
   }
 
+  if (field.placeholder) {
+    input.placeholder = field.placeholder;
+  }
+
   return input;
 }
 
@@ -107,6 +111,13 @@ function rowOf(
   control.setAttribute('aria-describedby', error.id);
 
   row.append(label, control);
+
+  if (field.help) {
+    const help = document.createElement('p');
+    help.className = 'form-help';
+    help.textContent = field.help;
+    row.appendChild(help);
+  }
 
   row.appendChild(error);
 

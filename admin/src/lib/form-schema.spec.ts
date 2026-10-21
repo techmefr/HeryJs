@@ -77,6 +77,38 @@ describe('form fields from the described rules', () => {
   });
 });
 
+describe('overrides on a form', () => {
+  it('relabels and hides an optional field', () => {
+    const fields = formFieldsOf(mockDescription, 'create', {
+      views: { hidden: true },
+      title: { label: 'Headline', help: 'Shown on the front page' },
+    });
+
+    expect(fields.map((field) => field.name)).not.toContain('views');
+    expect(fields[0]?.label).toBe('Headline');
+    expect(fields[0]?.help).toBe('Shown on the front page');
+  });
+
+  it('refuses to hide or lock a required field, since the api would refuse the record', () => {
+    const fields = formFieldsOf(mockDescription, 'create', {
+      title: { hidden: true, readonly: true },
+    });
+
+    const title = fields.find((field) => field.name === 'title');
+
+    expect(title).toBeDefined();
+    expect(title?.readonly).toBe(false);
+  });
+
+  it('locks an optional field', () => {
+    const fields = formFieldsOf(mockDescription, 'update', {
+      views: { readonly: true },
+    });
+
+    expect(fields.find((field) => field.name === 'views')?.readonly).toBe(true);
+  });
+});
+
 describe('client validation mirrors the server rules', () => {
   it('requires a required field, and counts a blank as present like the server does', () => {
     expect(validate(createFields, { title: '' })).toEqual({
@@ -216,6 +248,17 @@ describe('the payload', () => {
     );
 
     expect(payload).toEqual({ title: 'Hello again' });
+  });
+
+  it('never sends a locked field', () => {
+    const fields = formFieldsOf(mockDescription, 'update', {
+      views: { readonly: true },
+    });
+    const initial = valuesOf(fields, mockRow('1', 'Hello'));
+
+    expect(
+      payloadOf(fields, { ...initial, views: '99' }, initial, 'update'),
+    ).toEqual({});
   });
 });
 
