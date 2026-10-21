@@ -2,7 +2,13 @@ import {
   verificationRecordName,
   verificationRecordValue,
 } from './sso-domain-verifier';
-import type { SsoConnectionRecord, SsoLinkPolicy } from './sso.types';
+import { samlAcsUri } from './sso-saml-uri';
+import { certificateFingerprints } from './sso-saml-certificate';
+import type {
+  SsoConnectionRecord,
+  SsoLinkPolicy,
+  SsoProtocol,
+} from './sso.types';
 
 export interface SsoDomainView {
   domain: string;
@@ -11,12 +17,21 @@ export interface SsoDomainView {
   dnsRecord: { type: 'TXT'; name: string; value: string } | null;
 }
 
+export interface SsoSamlView {
+  entryPoint: string | null;
+  spEntityId: string;
+  acsUrl: string;
+  certificateFingerprints: string[];
+}
+
 export interface SsoConnectionView {
   id: string;
   name: string;
+  protocol: SsoProtocol;
   issuer: string;
   clientId: string;
-  hasClientSecret: true;
+  hasClientSecret: boolean;
+  saml: SsoSamlView | null;
   linkPolicy: SsoLinkPolicy;
   isEnabled: boolean;
   createdAt: Date;
@@ -31,9 +46,21 @@ export function toConnectionView(
   return {
     id: record.id,
     name: record.name,
+    protocol: record.protocol,
     issuer: record.issuer,
     clientId: record.clientId,
-    hasClientSecret: true,
+    hasClientSecret: record.clientSecret !== null,
+    saml:
+      record.protocol === 'saml'
+        ? {
+            entryPoint: record.samlEntryPoint,
+            spEntityId: record.clientId,
+            acsUrl: samlAcsUri(redirectUri),
+            certificateFingerprints: record.samlCertificate
+              ? certificateFingerprints(record.samlCertificate)
+              : [],
+          }
+        : null,
     linkPolicy: record.linkPolicy,
     isEnabled: record.isEnabled,
     createdAt: record.createdAt,

@@ -20,6 +20,7 @@ import { SsoProvisioningService } from './sso-provisioning.service';
 import { ssoRedirectUri } from './sso-redirect';
 import { SSO_REDIRECT_URI } from './sso.types';
 import { SsoRouterService } from './sso-router.service';
+import { SsoSamlService } from './sso-saml.service';
 import { SsoSecretService } from './sso-secret.service';
 import { SsoStateService } from './sso-state.service';
 import { SSO_HOST_RESOLVER, systemHostResolver } from './sso-url-guard';
@@ -42,6 +43,7 @@ import { SsoController } from './sso.controller';
     SsoRouterService,
     SsoProvisioningService,
     SsoLoginService,
+    SsoSamlService,
     SsoConnectionService,
   ],
   exports: [SsoConnectionService, SsoRouterService, SSO_LOGIN_HANDLER],

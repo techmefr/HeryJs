@@ -3,16 +3,23 @@ import { Inject, Injectable } from '@nestjs/common';
 import { SsoConnectionConflictException } from './sso-connection-conflict.exception';
 import { SsoConnectionNotFoundException } from './sso-connection-not-found.exception';
 import { SSO_CONNECTION_STORE } from './sso-connection.store';
-import type { SsoConnectionStore } from './sso-connection.store';
+import type {
+  NewSsoConnection,
+  SsoConnectionStore,
+} from './sso-connection.store';
 import { toConnectionView } from './sso-connection.view';
 import type { SsoConnectionView } from './sso-connection.view';
 import { SsoDiscoveryService } from './sso-discovery.service';
 import { normalizeDomain } from './sso-domain';
 import { SsoDomainVerifier } from './sso-domain-verifier';
+import { normalizeCertificates } from './sso-saml-certificate';
 import { SsoSecretService } from './sso-secret.service';
+import { ssoEnv } from './sso.env';
 import type {
   AddDomainInput,
   CreateConnectionInput,
+  CreateOidcConnectionInput,
+  CreateSamlConnectionInput,
   UpdateConnectionInput,
 } from './sso.dto';
 import { SSO_REDIRECT_URI } from './sso.types';
@@ -20,6 +27,19 @@ import type { SsoConnectionRecord, SsoLinkPolicy } from './sso.types';
 
 export const MAX_CONNECTIONS_PER_TENANT = 10;
 const VERIFICATION_TOKEN_BYTES = 24;
+const SAML_ENTITY_PATH = '/sso/saml/';
+
+type ProtocolFields = Pick<
+  NewSsoConnection,
+  | 'protocol'
+  | 'issuer'
+  | 'clientId'
+  | 'sealedClientSecret'
+  | 'samlEntryPoint'
+  | 'samlCertificate'
+>;
+type OidcFields = ProtocolFields;
+type SamlFields = ProtocolFields;
 
 function newVerificationToken(): string {
   return randomBytes(VERIFICATION_TOKEN_BYTES).toString('hex');
@@ -45,9 +65,11 @@ export class SsoConnectionService {
       throw new SsoConnectionConflictException('connection-limit');
     }
 
-    await this.discovery.discover(input.issuer);
-
     const id = randomUUID();
+    const protocolFields =
+      input.protocol === 'saml'
+        ? this.samlFields(id, input)
+        : await this.oidcFields(id, input);
     const domains = [
       ...new Set(input.domains.map((domain) => this.requireDomain(domain))),
     ];
@@ -55,14 +77,12 @@ export class SsoConnectionService {
       id,
       tenantId,
       name: input.name,
-      issuer: input.issuer,
-      clientId: input.clientId,
-      sealedClientSecret: this.secrets.seal(input.clientSecret, id),
       linkPolicy: input.linkPolicy as SsoLinkPolicy,
       domains: domains.map((domain) => ({
         domain,
         verificationToken: newVerificationToken(),
       })),
+      ...protocolFields,
     });
 
     return this.view(record);
@@ -83,9 +103,19 @@ export class SsoConnectionService {
     id: string,
     input: UpdateConnectionInput,
   ): Promise<SsoConnectionView> {
-    await this.require(tenantId, id);
+    const existing = await this.require(tenantId, id);
+    const { clientSecret, linkPolicy, entryPoint, certificate, ...rest } =
+      input;
+    const isSaml = existing.protocol === 'saml';
+    const isMismatch = isSaml
+      ? clientSecret !== undefined
+      : rest.issuer !== undefined ||
+        entryPoint !== undefined ||
+        certificate !== undefined;
 
-    const { clientSecret, linkPolicy, ...rest } = input;
+    if (isMismatch) {
+      throw new SsoConnectionConflictException('protocol-mismatch');
+    }
 
     await this.store.update(tenantId, id, {
       ...rest,
@@ -95,6 +125,12 @@ export class SsoConnectionService {
       ...(clientSecret === undefined
         ? {}
         : { sealedClientSecret: this.secrets.seal(clientSecret, id) }),
+      ...(entryPoint === undefined
+        ? {}
+        : { samlEntryPoint: this.requireEntryPoint(entryPoint) }),
+      ...(certificate === undefined
+        ? {}
+        : { samlCertificate: this.requireCertificate(certificate) }),
     });
 
     return this.view(await this.require(tenantId, id));
@@ -187,6 +223,58 @@ export class SsoConnectionService {
     }
 
     return record;
+  }
+
+  private async oidcFields(
+    id: string,
+    input: CreateOidcConnectionInput,
+  ): Promise<OidcFields> {
+    await this.discovery.discover(input.issuer);
+
+    return {
+      protocol: 'oidc',
+      issuer: input.issuer,
+      clientId: input.clientId,
+      sealedClientSecret: this.secrets.seal(input.clientSecret, id),
+      samlEntryPoint: null,
+      samlCertificate: null,
+    };
+  }
+
+  private samlFields(id: string, input: CreateSamlConnectionInput): SamlFields {
+    return {
+      protocol: 'saml',
+      issuer: input.issuer,
+      clientId:
+        input.spEntityId ??
+        `${new URL(this.redirectUri).origin}${SAML_ENTITY_PATH}${id}`,
+      sealedClientSecret: null,
+      samlEntryPoint: this.requireEntryPoint(input.entryPoint),
+      samlCertificate: this.requireCertificate(input.certificate),
+    };
+  }
+
+  private requireEntryPoint(value: string): string {
+    const { protocol } = new URL(value);
+    const isSecure =
+      protocol === 'https:' ||
+      (protocol === 'http:' && ssoEnv.SSO_ALLOW_PRIVATE_ISSUERS);
+
+    if (!isSecure) {
+      throw new SsoConnectionConflictException('saml-entry-point-insecure');
+    }
+
+    return value;
+  }
+
+  private requireCertificate(value: string): string {
+    const bundle = normalizeCertificates(value);
+
+    if (!bundle) {
+      throw new SsoConnectionConflictException('saml-certificate-invalid');
+    }
+
+    return bundle;
   }
 
   private requireDomain(value: string): string {

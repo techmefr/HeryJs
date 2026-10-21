@@ -1,7 +1,7 @@
 {
   "name": "@heryjs/sso",
   "version": "0.1.0",
-  "description": "Enterprise SSO per tenant: OIDC connections owned by a tenant, DNS-verified domain routing and just-in-time provisioning.",
+  "description": "Enterprise SSO per tenant: OIDC and SAML 2.0 connections owned by a tenant, DNS-verified domain routing and just-in-time provisioning.",
   "author": "Gaetan Compigni",
   "license": "MIT",
   "publishConfig": {
@@ -39,8 +39,10 @@
   },
   "devDependencies": {
     "@nestjs/common": "^12.0.1",
+    "@node-saml/node-saml": "^5.1.0",
     "heryjs": "workspace:*",
     "picocolors": "^1.1.1",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "xml-crypto": "^6.4.0"
   }
 }

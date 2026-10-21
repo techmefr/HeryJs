@@ -13,7 +13,8 @@ export type SsoRefusalReason =
   | 'account-exists'
   | 'identity-linked-elsewhere'
   | 'user-banned'
-  | 'untrusted-issuer';
+  | 'untrusted-issuer'
+  | 'invalid-assertion';
 
 const STATUS_BY_REASON: Record<SsoRefusalReason, HttpStatus> = {
   'no-connection': HttpStatus.NOT_FOUND,
@@ -28,6 +29,7 @@ const STATUS_BY_REASON: Record<SsoRefusalReason, HttpStatus> = {
   'identity-linked-elsewhere': HttpStatus.CONFLICT,
   'user-banned': HttpStatus.FORBIDDEN,
   'untrusted-issuer': HttpStatus.UNPROCESSABLE_ENTITY,
+  'invalid-assertion': HttpStatus.BAD_REQUEST,
 };
 
 export class SsoRefusedException extends DomainException {

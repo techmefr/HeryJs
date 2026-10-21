@@ -1,5 +1,9 @@
 export const SSO_REDIRECT_URI = Symbol('SSO_REDIRECT_URI');
 
+export type SsoProtocol = 'oidc' | 'saml';
+
+export const SSO_PROTOCOLS: readonly SsoProtocol[] = ['oidc', 'saml'];
+
 export type SsoLinkPolicy = 'refuse' | 'link-verified';
 
 export const SSO_LINK_POLICIES: readonly SsoLinkPolicy[] = [
@@ -20,22 +24,16 @@ export interface SsoConnectionRecord {
   id: string;
   tenantId: string;
   name: string;
+  protocol: SsoProtocol;
   issuer: string;
   clientId: string;
-  clientSecret: string;
+  clientSecret: string | null;
+  samlEntryPoint: string | null;
+  samlCertificate: string | null;
   linkPolicy: SsoLinkPolicy;
   isEnabled: boolean;
   createdAt: Date;
   domains: SsoDomainRecord[];
-}
-
-export interface SsoConnectionInput {
-  name: string;
-  issuer: string;
-  clientId: string;
-  clientSecret: string;
-  linkPolicy: SsoLinkPolicy;
-  domains: string[];
 }
 
 export interface SsoDiscoveryDocument {

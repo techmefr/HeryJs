@@ -220,7 +220,11 @@ installable with `hery install` and removable with `hery uninstall`.
   AES-256-GCM), proves the email domains it claims with a DNS TXT record, and
   its users are provisioned just in time into that tenant. Linking an existing
   local account is a declared per-connection policy, `refuse` by default.
-  SAML is not covered.
+  A connection speaks OpenID Connect or SAML 2.0 (`protocol: 'saml'`): the
+  assertion must be signed, answer the request this browser started, and name
+  an address on a domain the tenant proved. SAML adds three columns to
+  `SsoConnection` and makes `clientSecret` nullable; `@node-saml/node-saml`
+  does the XML signature checking.
 
 - `oauth` adds social sign-in (Google, GitHub, Microsoft) behind a provider
   contract, with PKCE, a signed single-use state cookie and verified emails

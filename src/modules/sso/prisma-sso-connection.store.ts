@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
-import { SSO_LINK_POLICIES } from './sso.types';
+import { SSO_LINK_POLICIES, SSO_PROTOCOLS } from './sso.types';
 import type {
   NewSsoConnection,
   SsoConnectionChanges,
@@ -11,6 +11,7 @@ import type {
   SsoConnectionRecord,
   SsoDomainRecord,
   SsoLinkPolicy,
+  SsoProtocol,
 } from './sso.types';
 
 const UNIQUE_VIOLATION = 'P2002';
@@ -19,9 +20,12 @@ interface ConnectionRow {
   id: string;
   tenantId: string;
   name: string;
+  protocol: string;
   issuer: string;
   clientId: string;
-  clientSecret: string;
+  clientSecret: string | null;
+  samlEntryPoint: string | null;
+  samlCertificate: string | null;
   linkPolicy: string;
   isEnabled: boolean;
   createdAt: Date;
@@ -44,8 +48,16 @@ function toLinkPolicy(value: string): SsoLinkPolicy {
   return SSO_LINK_POLICIES.find((policy) => policy === value) ?? 'refuse';
 }
 
+function toProtocol(value: string): SsoProtocol {
+  return SSO_PROTOCOLS.find((protocol) => protocol === value) ?? 'oidc';
+}
+
 function toRecord(row: ConnectionRow): SsoConnectionRecord {
-  return { ...row, linkPolicy: toLinkPolicy(row.linkPolicy) };
+  return {
+    ...row,
+    protocol: toProtocol(row.protocol),
+    linkPolicy: toLinkPolicy(row.linkPolicy),
+  };
 }
 
 function isUniqueViolation(error: unknown): boolean {
@@ -67,9 +79,12 @@ export class PrismaSsoConnectionStore implements SsoConnectionStore {
         id: connection.id,
         tenantId: connection.tenantId,
         name: connection.name,
+        protocol: connection.protocol,
         issuer: connection.issuer,
         clientId: connection.clientId,
         clientSecret: connection.sealedClientSecret,
+        samlEntryPoint: connection.samlEntryPoint,
+        samlCertificate: connection.samlCertificate,
         linkPolicy: connection.linkPolicy,
         domains: {
           create: connection.domains.map((entry) => ({
