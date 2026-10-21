@@ -8,6 +8,7 @@ import { JobsService } from '#technical/jobs/jobs.service';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { MailProcessor } from '#modules/mail/mail.processor';
 import { MailService } from '#modules/mail/mail.service';
+import { runInTenant } from '#technical/tenancy/run-in-tenant';
 import { NotifierModule } from '#modules/notifier/notifier.module';
 import { NotifierService } from '#modules/notifier/notifier.service';
 import { StorageService } from '#modules/storage/storage.service';
@@ -158,12 +159,20 @@ describe('test support: seam fakes and the clock', () => {
   });
 
   it('records notifier deliveries per channel', async () => {
-    await testApp.app.get(NotifierService).send(
-      { email: 'a@example.test', userId: 'u-1' },
-      {
-        toMail: () => ({ to: 'a@example.test', subject: 'Hi', html: '' }),
-        toPush: () => ({ title: 'Hi', body: 'There' }),
-      },
+    const tenantId = testApp.tenantId;
+
+    if (tenantId === null) {
+      throw new Error('This suite boots an app isolated to its own tenant.');
+    }
+
+    await runInTenant(tenantId, () =>
+      testApp.app.get(NotifierService).send(
+        { email: 'a@example.test', userId: 'u-1' },
+        {
+          toMail: () => ({ to: 'a@example.test', subject: 'Hi', html: '' }),
+          toPush: () => ({ title: 'Hi', body: 'There' }),
+        },
+      ),
     );
 
     testApp.fakes.notifier.assertSent(
