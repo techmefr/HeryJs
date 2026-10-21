@@ -23,4 +23,5 @@ import '../src/technical/config/load-env';
 export default function loadEnvBeforeTests(): void {
   process.env.RATE_LIMIT_DISABLED = 'true';
   process.env.OUTBOX_RELAY_ENABLED = 'false';
+  process.env.AUDIT_STREAM_ENABLED = 'false';
 }

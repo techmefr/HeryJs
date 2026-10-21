@@ -87,6 +87,10 @@ export const CATALOGUE: Catalogue = {
     fr: (details) =>
       `Valeur invalide pour "${String(details.param)}". Autorisées : ${(details.allowed as unknown[]).join(', ')}.`,
   },
+  'audit.sink.refused': {
+    fr: (details) =>
+      `Cette destination d'audit est refusée : ${String(details.reason)}`,
+  },
   'query.invalid.value': {
     fr: "Une des valeurs de cette requête ne correspond pas au type du champ sur lequel elle est utilisée. Vérifiez chaque valeur de filtre, d'agrégat et de mutation par rapport aux types indiqués par le point de terminaison describe.",
   },

@@ -76,6 +76,25 @@ export function buildServerSchema(nodeEnv: string | undefined) {
       .default('true')
       .transform((value) => value === 'true'),
     OUTBOX_RELAY_INTERVAL_MS: z.coerce.number().int().positive().default(2000),
+    // The audit stream walks every tenant's sinks on this interval and hands
+    // new entries to the outbox. Off in the test suite, which drives it by hand.
+    AUDIT_STREAM_ENABLED: z
+      .string()
+      .default('true')
+      .transform((value) => value === 'true'),
+    AUDIT_STREAM_INTERVAL_SECONDS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(59)
+      .default(10),
+    // An audit sink is an operator-supplied URL the server calls with the
+    // tenant's audit entries. Private and loopback addresses are refused unless
+    // this is set, so a sink cannot be pointed at the internal network.
+    AUDIT_SINK_ALLOW_PRIVATE_HOSTS: z
+      .string()
+      .default('false')
+      .transform((value) => value === 'true'),
     SEARCH_MATCH_LIMIT: z.coerce.number().int().positive().default(1000),
     // The most rows a similarity search ranks and returns. Nearest-neighbour
     // search never runs out of matches -- every embedded row has a distance --

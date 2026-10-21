@@ -305,6 +305,17 @@ describe('section discovery', () => {
 
   // A route taking an argument is a detail view, not something the nav can
   // link to without inventing an id.
+  it('hides the audit export, a file download the Audit page owns', () => {
+    expect(
+      sectionsOf([
+        controller('/audit-logs', [
+          ['GET', '/'],
+          ['GET', '/export'],
+        ]),
+      ]).map((section) => section.path),
+    ).toEqual(['/audit-logs']);
+  });
+
   it('skips a get route that takes an argument', () => {
     expect(sectionsOf([controller('/blog-posts', [['GET', '/:id']])])).toEqual(
       [],

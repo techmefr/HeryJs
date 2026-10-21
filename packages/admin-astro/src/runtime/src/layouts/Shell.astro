@@ -38,6 +38,7 @@ const { title, bare = false } = Astro.props;
               <a class="item" href="/pipeline" id="pipeline-link" />
               <a class="item" href="/devtools" id="devtools-link" />
               <a class="item" href="/prune" id="prune-link" />
+              <a class="item" href="/audit" id="audit-link" />
             </nav>
 
             <nav class="group scrolls" id="sections">
@@ -118,6 +119,7 @@ const { title, bare = false } = Astro.props;
         'Dev dashboard',
       );
       label(document.getElementById('prune-link'), ICONS.prune, 'Prune');
+      label(document.getElementById('audit-link'), ICONS.audit, 'Audit');
       label(document.getElementById('sign-out'), ICONS.signOut, 'Sign out');
 
       const apiUrl = document.getElementById('api-url');

@@ -34,6 +34,7 @@ export const ICONS = {
   no: X,
   overview: LayoutDashboard,
   pipeline: Workflow,
+  audit: ScrollText,
   prune: Trash2,
   refresh: RefreshCw,
   signOut: LogOut,

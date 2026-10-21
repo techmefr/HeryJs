@@ -213,6 +213,10 @@ export const APP_ENFORCED_TENANT_MODELS = new Set<string>([
   // extension chain so an audit entry cannot be scoped away by the boundary it
   // is recording a crossing of.
   'AuditLog',
+  // Read by a streamer that walks every tenant's sinks with no request behind
+  // it, and written by the sink routes with the caller's tenantId passed
+  // explicitly, the way AuditLog itself is.
+  'AuditSink',
   // Global rows are the point of a feature flag: tenantId is nullable, and the
   // extension would stamp the current tenant onto a flag meant for everyone.
   'FeatureFlag',
