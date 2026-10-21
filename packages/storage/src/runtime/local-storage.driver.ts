@@ -1,13 +1,16 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { env } from '#kernel/config/env';
 import { InvalidStorageKeyException } from './invalid-storage-key.exception';
 import { StorageBodyTooLargeException } from './storage-body-too-large.exception';
+import { StoragePresignUnsupportedException } from './storage-presign-unsupported.exception';
 import type {
+  PresignedUpload,
   StorageDriver,
   StoredObject,
+  StoredObjectStat,
 } from '#kernel/storage/storage-driver';
 
 const ROOT = path.resolve(process.cwd(), 'storage');
@@ -123,6 +126,21 @@ export class LocalStorageDriver implements StorageDriver {
 
   async read(key: string): Promise<Buffer> {
     return this.get(key);
+  }
+
+  presignPut(): Promise<PresignedUpload> {
+    return Promise.reject(new StoragePresignUnsupportedException('local'));
+  }
+
+  async stat(key: string): Promise<StoredObjectStat | null> {
+    try {
+      const target = insideRoot(key);
+      const info = await stat(target);
+      const contentType = await this.contentTypeOf(key);
+      return { size: info.size, contentType };
+    } catch {
+      return null;
+    }
   }
 
   private sign(key: string, exp: number): string {
