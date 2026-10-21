@@ -11,6 +11,12 @@ The `hery` CLI is the only thing in this project that reads a blueprint. It is a
 | `create:blueprint <Name>`    | Writes a blueprint from prompts or defaults.                                            |
 | `generate <Name>`            | Writes a full resource from that blueprint.                                             |
 | `migrate --name <name>`      | Runs `prisma migrate dev`, then emits and applies any missing row-level policy.         |
+| `migrate:status`             | Lists every migration as applied, pending, failed or missing.                           |
+| `migrate:down`               | Prints the SQL that reverts the last migration.                                         |
+| `migrate:fresh`              | Drops everything and replays the history. Refuses in production.                        |
+| `db:seed`                    | Runs `prisma/seed.ts`; `--fresh` resets first.                                          |
+| `db:diff`                    | Prints the SQL that would bring the database to `schema.prisma`.                        |
+| `db:branch <action> [name]`  | Creates, drops or lists throwaway copies of the database.                               |
 | `install [modules...]`       | Installs optional modules.                                                              |
 | `uninstall <module>`         | Removes a module and reverses what installing it did.                                   |
 | `make:mail <Name>`           | Writes a `Mailable` into `src/functional/<domain>`.                                     |
@@ -208,6 +214,41 @@ POST    /webhooks/:id  public (signed by its sender)  exempt (sender is trusted)
 `--unguarded` keeps only the routes with no capability or no rate-limit bucket, `--json` prints the rows. A route that is deliberately public or unthrottled shows its stated reason instead of a blank.
 
 There is deliberately no `module:add`: `hery install` already does that.
+
+## The database workflow
+
+`migrate` and `migrate:down` were the whole of it. The rest of what Laravel's
+`migrate:*` and `db:*` commands do now exists under the same names:
+
+```bash
+pnpm hery migrate:status            # applied / pending / failed / missing, per migration
+pnpm hery migrate:fresh --seed      # drop everything, replay, seed
+pnpm hery db:seed --fresh           # the same reset, seeding always
+pnpm hery db:diff                   # SQL from the live database to schema.prisma
+pnpm hery db:branch create risky    # a copy of the database to try a migration on
+```
+
+`migrate:status` reads `_prisma_migrations` rather than guessing from the disk,
+which is how it can say **missing** for a migration that was applied and then
+deleted from the repository, and **failed** for one that stopped halfway. `--check`
+exits 1 unless everything is applied, for CI.
+
+`migrate:fresh` and `db:seed --fresh` refuse when `NODE_ENV` is `production`, and
+`--force` does not change that. They also refuse a database that is not on this
+machine unless you pass `--force`: a command that deletes a database has to be
+harder to run by accident than on purpose.
+
+`db:diff` is read-only. It prints what the next `migrate` would do; `--check` exits
+1 when the database and the schema differ.
+
+`db:branch` is Supabase branching for a local database. `create <name>` runs
+`CREATE DATABASE ... TEMPLATE`, so the copy has the schema and the rows, and
+prints the `DATABASE_URL` to export. Postgres cannot copy a database somebody is
+connected to, so a source with open connections is reported as that, not as a raw
+Postgres error. `drop <name>` can only drop a database this command made: the name
+is always `<database>_branch_<name>`, and a branch name is limited to lowercase
+letters, digits and underscores because it ends up in DDL, where parameters are not
+allowed.
 
 ## `hery uninstall <module>`
 

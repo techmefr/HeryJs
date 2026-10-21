@@ -90,15 +90,16 @@ export function registerMigrateDownCommand(program: Command): void {
           'prisma',
           'migrate',
           'diff',
-          '--from-schema-datasource',
-          path.join('prisma', 'schema.prisma'),
+          '--from-config-datasource',
           '--to-migrations',
           target,
-          '--shadow-database-url',
-          shadowUrl,
           '--script',
         ],
-        { encoding: 'utf8', shell: process.platform === 'win32' },
+        {
+          encoding: 'utf8',
+          shell: process.platform === 'win32',
+          env: { ...process.env, SHADOW_DATABASE_URL: shadowUrl },
+        },
       );
 
       rmSync(path.dirname(target), { recursive: true, force: true });
