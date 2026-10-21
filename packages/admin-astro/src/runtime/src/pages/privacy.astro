@@ -177,7 +177,11 @@ import Shell from '../layouts/Shell.astro';
       );
     } catch {
       output.replaceChildren(
-        state('Could not load requests', 'GET /privacy/requests failed.', 'denied'),
+        state(
+          'Could not load requests',
+          'GET /privacy/requests failed.',
+          'denied',
+        ),
       );
     }
   }
