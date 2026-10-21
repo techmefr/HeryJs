@@ -5,3 +5,7 @@ import type { PolicyCheck } from '#technical/capabilities/capability-check';
 // that is the tenant's whole correspondence, not the caller's own, so it asks
 // the same question canReadAuditLog does rather than falling back to a scope.
 export const canReadMailLog: PolicyCheck = adminAbility;
+
+// A test send puts a real message on the configured transport, to an address
+// the caller chose, so it is an operator's action and not a user's.
+export const canSendTestMail: PolicyCheck = adminAbility;

@@ -16,10 +16,21 @@ First public release.
 ### Workflow for a resource's status
 
 A blueprint can declare a `workflow`: an initial state, the transitions between states, a permission preset per transition and `requires` guards naming fields that must hold a value. The resource gains a state column (`status` by default, added with a default of the initial state) that clients cannot write, and a `POST /<resource>/transition` route, a batch route like the others, that moves a record along a declared edge. Each transition is its own capability, resolved per record and reported in `capabilities`. An illegal move is refused with a typed `409` (`<resource>.illegalTransition`), an unmet guard with a `422` (`<resource>.transitionGuard`); the write repeats the state it read in its own `where`, so two concurrent callers cannot both fire from the same state. Every transition writes one audit entry (operation `transition`) and stages one `workflow.transitioned` outbox message in the same transaction as the new state. `GET /describe` publishes the machine, the OpenAPI document and the typed client carry the route and the transition names, the generated suite proves transitions, refusals and permissions, and the admin shows a button per available transition. The `Snippet` example now declares one. Existing projects need a migration adding the column; `hery generate` patches the schema. See [Workflow](https://github.com/techmefr/HeryJs/blob/main/docs/src/content/docs/guides/workflow.md).
+### A fresh project installs, migrates and builds
+
+`hery new` produced a project whose first `pnpm install` failed: every module package depended on `heryjs@workspace:*`, and the scaffold renames the root package. That dependency only carried the `ModuleDefinition` type, already mapped by path in each package's tsconfig, so `hery new` now drops it from the copied manifests. The project then failed `nest build` because the guest upgrade named the demo's `blogPost`; it now reads every non-cascading reference to a user off Prisma's DMMF, which also covers `Snippet` and any generated resource with an owner. Its first `hery migrate` failed too: the row-level policy migration was named after every table it covers, past the filesystem's limit on a directory name, and is now named by a count once the names would not fit. A new `scaffold` CI job runs `hery new`, install, `hery migrate`, typecheck and build on every push.
+
+### Admin studio contract and production access
+
+A kernel feature or module contributes to the admin by decorating its own routes: `@AdminSection({ id, title, icon, group, columns })` on a list route and `@AdminAction({ id, title, icon, section, scope, confirm, danger, fields })` on a mutating one. Introspection reports them (`admin` on each route), the sidebar groups by `group`, tables take their columns, and row, bulk and global actions get a button and a generated confirmation or form. `@AdminAction` audits every call itself (field names, never values) and `lint:conventions admin-contract` fails a contribution with no `@Capability`, an unknown icon, a duplicate id, a GET action, a row action without `:id` or an unknown section. `/introspect` now sits behind `@AdminStudio()` instead of `DevOnlyGuard`: development is unchanged, production is a 404 until `ADMIN_STUDIO_ENABLED=true`, then reachable by a platform admin (`canUseAdminStudio`), optionally restricted by `ADMIN_STUDIO_ALLOWED_IPS` and `ADMIN_STUDIO_REQUIRE_2FA`. Nothing a request carries can bypass it.
 
 ### Per-tenant quotas and usage metering
 
 `quotas` in `hery.config.ts` declares a named limit with a default and a period (`month`, `day` or `total`), and `QuotasService` gives resources `check`, `consume` and `usage`. A tenant's limit can be overridden in the database (`PUT /quotas/:name/override`, admin only), and `GET /quotas` lists each quota's limit and use behind a capability, so the admin panel shows it as a section with no wiring. The count is kept in Postgres in one conditional `UPDATE`, so racing requests cannot overshoot, and the two new tables (`QuotaOverride`, `QuotaUsage`) are tenant scoped under row-level security. A rate-limit bucket can also be retuned for one tenant with an override named `rate-limit:<bucket>`; per plan is not covered. It is independent of `billingQuotas`, and usage-based billing is the next step. **Upgrade note:** a project that already exists needs the two new migrations, and has to add `QuotasModule` to its `AppModule` by hand.
+
+### Mail in the admin
+
+The admin panel gains a Messaging group for the mail module: the declared drivers with the active one marked, the tenant's recent sends with their status and error, and a "Send test mail" action that queues a real message to an address you type. They are declared through the admin contract on a new `MailAdminController`, behind the studio gate and admin-only capabilities. In a project that already has the mail module, copy the new controller files and register `MailAdminController` in `MailModule` by hand.
 
 ### SMTP mail driver
 
@@ -236,7 +247,15 @@ installable with `hery install` and removable with `hery uninstall`.
   AES-256-GCM), proves the email domains it claims with a DNS TXT record, and
   its users are provisioned just in time into that tenant. Linking an existing
   local account is a declared per-connection policy, `refuse` by default.
-  SAML is not covered.
+  A connection speaks OpenID Connect or SAML 2.0 (`protocol: 'saml'`): the
+  assertion must be signed, answer the request this browser started, and name
+  an address on a domain the tenant proved. SAML adds three columns to
+  `SsoConnection` and makes `clientSecret` nullable; `@node-saml/node-saml`
+  does the XML signature checking. The provider can be configured from its
+  metadata (a URL or pasted XML) with an attribute mapping, and
+  `GET /sso/connections/checks` tests every connection (certificate expiry,
+  reachability, verified domain, discovery) so the admin panel, which builds
+  itself from introspection, gets a section for it.
 
 - `oauth` adds social sign-in (Google, GitHub, Microsoft) behind a provider
   contract, with PKCE, a signed single-use state cookie and verified emails

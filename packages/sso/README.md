@@ -1,6 +1,6 @@
 # @heryjs/sso
 
-Enterprise single sign-on (OIDC) configured per tenant: the tenant owns its identity provider, proves the email domains it claims, and users are provisioned just in time.
+Enterprise single sign-on (OpenID Connect and SAML 2.0) configured per tenant: the tenant owns its identity provider, proves the email domains it claims, and users are provisioned just in time.
 
 An [official HeryJs module](https://techmefr.github.io/HeryJs/guides/modules/). It is
 already installable from any HeryJs project, so there is nothing to add to your
