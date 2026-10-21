@@ -13,6 +13,7 @@ import {
   liveGatewayFile,
   mcpToolsFile,
   moduleFile,
+  personalDataFiles,
   policyFile,
   presetsFile,
   recordLoaderFile,
@@ -105,6 +106,7 @@ export function registerGenerateCommand(program: Command): void {
           [`${ctx.kebabName}.change-feed.ts`]: changeFeedFile(ctx),
           [`${ctx.kebabName}.module.ts`]: moduleFile(ctx),
           [`${ctx.kebabName}.spec.ts`]: specFile(ctx),
+          ...personalDataFiles(ctx),
         };
 
         if (options.graphql) {

@@ -32,6 +32,8 @@ export interface ResourceContext {
   fields: ScalarBlueprintField[];
   /** The embedding column, when the resource declares one: derived from `source`, never client-writable and never returned. */
   vector: VectorBlueprintField | null;
+  /** How a privacy request treats this resource's rows: present only when the blueprint declares an `erasure` and owns the model. */
+  personalData: { erase: NonNullable<Blueprint['erasure']> } | null;
   permissions: Blueprint['permissions'];
   pagination: Blueprint['pagination'];
   sorts: Blueprint['sorts'];
@@ -66,6 +68,10 @@ export function buildResourceContext(blueprint: Blueprint): ResourceContext {
     versioned: blueprint.versioned,
     fields: blueprint.fields.filter(isScalarField),
     vector: blueprint.fields.find(isVectorField) ?? null,
+    personalData:
+      blueprint.erasure !== undefined && modelPascalName === pascalName
+        ? { erase: blueprint.erasure }
+        : null,
     permissions: blueprint.permissions,
     pagination: blueprint.pagination,
     sorts: blueprint.sorts,
