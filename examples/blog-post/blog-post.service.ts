@@ -22,6 +22,12 @@ import {
   sortByResolvedTranslations,
 } from '#technical/i18n/translatable-query';
 import type { TranslatableRow } from '#technical/i18n/translatable-query';
+import {
+  SLUG_LOOKUP_LIMIT,
+  resolveSlugs,
+  withSlugRetry,
+} from '#technical/slug/slug';
+import type { SlugDelegate, SlugFieldSpec } from '#technical/slug/slug';
 import { resolveRelationInstructions } from '#technical/http/relation-resolver';
 import type { PrismaRelationClient } from '#technical/http/relation-resolver';
 import type {
@@ -43,6 +49,9 @@ import { BLOG_POST_PRESETS } from './blog-post.presets';
 
 const SEARCHABLE_FIELDS = ['title', 'summary'] as const;
 const SEARCH_COLLECTION = 'blog-post';
+const SLUG_FIELDS: readonly SlugFieldSpec[] = [
+  { name: 'slug', source: 'title', stable: false },
+];
 const TRANSLATABLE_FIELDS: readonly TranslatableFieldSpec[] = [
   { name: 'summary', optional: true },
 ];
@@ -350,24 +359,64 @@ export class BlogPostService {
     return this.prisma.$atomic(callback);
   }
 
-  async create(subject: CapabilitySubject, data: CreateBlogPostInput) {
-    const record = await this.prisma.blogPost.create({
-      // tenantId is injected by the tenant-scoping Prisma extension, invisible to callers by design.
-      data: {
-        ...normalizeTranslatableWrite(data, TRANSLATABLE_FIELDS),
-        ownerId: subject.id,
-      } as unknown as Prisma.BlogPostCreateInput,
+  private slugs(data: object, previous: BlogPost | null, attempt: number) {
+    return resolveSlugs(
+      data as Record<string, unknown>,
+      SLUG_FIELDS,
+      { taken: (field, base) => this.takenSlugs(field, base) },
+      previous as Record<string, unknown> | null,
+      attempt,
+    );
+  }
+
+  // Trashed rows are not filtered out: they keep their slug and the unique
+  // index still counts them.
+  private async takenSlugs(field: string, base: string) {
+    const rows = await (
+      this.prisma.blogPost as unknown as SlugDelegate
+    ).findMany({
+      where: { [field]: { startsWith: base } },
+      select: { [field]: true },
+      take: SLUG_LOOKUP_LIMIT,
     });
+
+    return new Set(rows.map((row) => row[field] as string));
+  }
+
+  async create(subject: CapabilitySubject, data: CreateBlogPostInput) {
+    const record = await withSlugRetry(
+      SLUG_FIELDS,
+      data,
+      (attempt) => this.slugs(data, null, attempt),
+      (slugs) =>
+        this.prisma.blogPost.create({
+          // tenantId is injected by the tenant-scoping Prisma extension, invisible to callers by design.
+          data: {
+            ...normalizeTranslatableWrite(data, TRANSLATABLE_FIELDS),
+            ...slugs,
+            ownerId: subject.id,
+          } as unknown as Prisma.BlogPostCreateInput,
+        }),
+    );
     this.notify();
     await this.syncSearchIndex(record);
     return record;
   }
 
   async update(record: BlogPost, data: UpdateBlogPostInput) {
-    const updated = await this.prisma.blogPost.update({
-      where: { id: record.id },
-      data: normalizeTranslatableWrite(data, TRANSLATABLE_FIELDS, record),
-    });
+    const updated = await withSlugRetry(
+      SLUG_FIELDS,
+      data,
+      (attempt) => this.slugs(data, record, attempt),
+      (slugs) =>
+        this.prisma.blogPost.update({
+          where: { id: record.id },
+          data: {
+            ...normalizeTranslatableWrite(data, TRANSLATABLE_FIELDS, record),
+            ...slugs,
+          },
+        }),
+    );
     this.notify();
     await this.syncSearchIndex(updated);
     return updated;
@@ -410,13 +459,24 @@ export class BlogPostService {
   }
 
   async restore(record: BlogPost, patch?: UpdateBlogPostInput) {
-    const updated = await this.prisma.blogPost.update({
-      where: { id: record.id },
-      data: {
-        ...normalizeTranslatableWrite(patch ?? {}, TRANSLATABLE_FIELDS, record),
-        deletedAt: null,
-      },
-    });
+    const updated = await withSlugRetry(
+      SLUG_FIELDS,
+      patch ?? {},
+      (attempt) => this.slugs(patch ?? {}, record, attempt),
+      (slugs) =>
+        this.prisma.blogPost.update({
+          where: { id: record.id },
+          data: {
+            ...normalizeTranslatableWrite(
+              patch ?? {},
+              TRANSLATABLE_FIELDS,
+              record,
+            ),
+            ...slugs,
+            deletedAt: null,
+          },
+        }),
+    );
     this.notify();
     await this.syncSearchIndex(updated);
     return updated;

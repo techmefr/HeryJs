@@ -13,6 +13,10 @@ category is called out here explicitly.
 
 First public release.
 
+### Slug fields
+
+A blueprint field `type: slug` with a `source` string field (and an optional `stable: true`) is generated on write: lowercase ASCII words, unique per tenant, numbered (`base-2`) when taken, retried with a random suffix when a concurrent write wins the race, and filterable so the read route can look a record up by it. The column carries `@@unique([tenantId, slug])` and a default that keeps writes past the service valid. A slug sent by the client is kept, or refused with `409 slug.taken`. OpenAPI, the typed client, `GET /describe`, the generated suite and the admin form (a slug input that suggests from its source) all know it. The new `src/technical/slug` module and `SlugTakenException` are kernel files: in an existing project copy them by hand, add the `slug.taken` entry to `src/technical/i18n/catalogue.ts`, and add the migration of the field by hand. The admin runtime changed too (`form.ts`, `form-schema.ts`, `query.ts`, `resource.ts` and the new `slug.ts`), copy those by hand.
+
 ### Vector fields and similarity search
 
 A blueprint field `type: vector` (with `dimensions` and a `source` string field) becomes a pgvector column, filled through the outbox whenever the source changes, and the search route accepts `search: { q, mode: 'similar' }`. The new `embeddings` module holds the driver contract (a deterministic `fake` driver and an `openai-compatible` one over the built-in `fetch`). Tenant, capability scope and soft-delete are part of the ranking query, which runs under the tenant's row-level security. The docker-compose and CI Postgres images are now `pgvector/pgvector:pg17` and a migration enables the extension: **upgrade note:** a project created before this must switch its Postgres image to `pgvector/pgvector:pg17` (compose and CI) before migrating, because the new migration runs `CREATE EXTENSION vector`. `hery embeddings:backfill <name>` embeds rows that existed before the field; `hery create:blueprint` can now declare a vector field. `hery generate` no longer corrupts `TENANT_SCOPED_MODELS` when the list ends with a trailing comma.

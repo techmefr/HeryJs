@@ -3,6 +3,9 @@ name: BlogPost
 fields:
   - name: title
     type: string
+  - name: slug
+    type: slug
+    source: title
   - name: summary
     type: string
     optional: true
@@ -23,6 +26,7 @@ sorts:
 
 filters:
   - title
+  - slug
   - summary
 
 includes:

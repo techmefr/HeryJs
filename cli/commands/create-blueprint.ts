@@ -68,6 +68,57 @@ async function promptVector(
   };
 }
 
+async function promptSlug(
+  name: string,
+  fields: BlueprintField[],
+): Promise<BlueprintField | null> {
+  const sources = fields.filter(
+    (field) =>
+      field.type === 'string' &&
+      !field.optional &&
+      !field.hidden &&
+      !field.translatable,
+  );
+
+  if (sources.length === 0) {
+    console.log(
+      pc.yellow(
+        `"${name}" needs a required string field to be made from: add one first, then declare the slug.`,
+      ),
+    );
+    return null;
+  }
+
+  const sourceResponse = (await prompts({
+    type: 'select',
+    name: 'source',
+    message: `String field "${name}" is made from`,
+    choices: sources.map((field) => ({ title: field.name, value: field.name })),
+  })) as { source?: string };
+
+  const stableResponse = (await prompts({
+    type: 'confirm',
+    name: 'stable',
+    message: 'Keep the slug as created when that field changes?',
+    initial: false,
+  })) as { stable?: boolean };
+
+  if (!sourceResponse.source) {
+    return null;
+  }
+
+  return {
+    name,
+    type: 'slug',
+    optional: false,
+    hidden: false,
+    translatable: false,
+    reveal: false,
+    source: sourceResponse.source,
+    stable: stableResponse.stable ?? false,
+  };
+}
+
 async function promptFields(): Promise<BlueprintField[]> {
   const fields: BlueprintField[] = [];
 
@@ -108,6 +159,11 @@ async function promptFields(): Promise<BlueprintField[]> {
             'vector (an embedding of another string field, for similarity search)',
           value: 'vector',
         },
+        {
+          title:
+            'slug (a unique URL-safe handle made from another string field)',
+          value: 'slug',
+        },
       ],
     })) as { type?: BlueprintField['type'] };
 
@@ -116,6 +172,16 @@ async function promptFields(): Promise<BlueprintField[]> {
 
       if (vector) {
         fields.push(vector);
+      }
+
+      continue;
+    }
+
+    if (typeResponse.type === 'slug') {
+      const slug = await promptSlug(nameResponse.name, fields);
+
+      if (slug) {
+        fields.push(slug);
       }
 
       continue;
@@ -287,7 +353,7 @@ function allOptionsTemplate(name: string): string {
 name: ${name}
 
 fields:
-  # type: string | int | boolean | datetime
+  # type: string | int | boolean | datetime | slug (slug also takes source: <string field>)
   # optional: true if the field can be null
   # hidden: true to strip the field from every API response (see <name>.view.ts)
   # translatable: true (string only) keeps one value per locale in a Json column

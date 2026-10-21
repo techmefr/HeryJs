@@ -44,6 +44,9 @@ export const MAX_CAPABILITIES = 50;
 export const MAX_INCLUDE_LIMIT = 1000;
 export const MAX_PAGE = 100_000;
 export const MAX_STRING_LENGTH = 255;
+// Written out in the generated DTO as well, see ZOD_TYPES in field-types.ts.
+export const SLUG_MAX_LENGTH = 100;
+export const SLUG_PATTERN = '^[a-z0-9]+(?:-[a-z0-9]+)*$';
 export const ALIAS_PATTERN = '^[A-Za-z_][A-Za-z0-9_]*$';
 
 export interface RecordProperty {

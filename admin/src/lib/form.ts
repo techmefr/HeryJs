@@ -1,4 +1,5 @@
 import type { FormField, FormValue, FormValues } from './form-schema';
+import { slugify } from './slug';
 
 export interface FormHandle {
   element: HTMLFormElement;
@@ -20,6 +21,7 @@ const TEXT_INPUT_TYPES = {
   text: 'text',
   number: 'number',
   datetime: 'datetime-local',
+  slug: 'text',
 } as const;
 
 function controlOf(
@@ -85,11 +87,37 @@ function valueOf(field: FormField, control: HTMLElement): FormValue {
   return (control as HTMLInputElement | HTMLSelectElement).value;
 }
 
-function rowOf(
-  field: FormField,
-  value: FormValue,
-  index: number,
-): { row: HTMLElement; control: HTMLElement; error: HTMLElement } {
+interface BuiltRow {
+  row: HTMLElement;
+  control: HTMLElement;
+  error: HTMLElement;
+  suggest?: HTMLButtonElement;
+}
+
+// The slug the API would start from, offered as the placeholder of the empty
+// input and as a button that fills it in. An empty slug is still the better
+// choice on create: the API then numbers it when the tenant already has one.
+function wireSlugSuggestion(
+  input: HTMLInputElement,
+  source: HTMLInputElement,
+  suggest: HTMLButtonElement,
+): void {
+  const refresh = (): void => {
+    const suggested = slugify(source.value);
+    input.placeholder = suggested;
+    suggest.hidden = suggested === '' || suggested === input.value;
+  };
+
+  source.addEventListener('input', refresh);
+  input.addEventListener('input', refresh);
+  suggest.addEventListener('click', () => {
+    input.value = slugify(source.value);
+    refresh();
+  });
+  refresh();
+}
+
+function rowOf(field: FormField, value: FormValue, index: number): BuiltRow {
   const row = document.createElement('div');
   row.className = 'form-row';
 
@@ -112,6 +140,22 @@ function rowOf(
 
   row.append(label, control);
 
+  let suggest: HTMLButtonElement | undefined;
+
+  if (field.slug) {
+    suggest = document.createElement('button');
+    suggest.type = 'button';
+    suggest.className = 'form-suggest';
+    suggest.textContent = 'Use suggestion';
+    suggest.hidden = true;
+
+    if (field.readonly) {
+      suggest.disabled = true;
+    }
+
+    row.appendChild(suggest);
+  }
+
   if (field.help) {
     const help = document.createElement('p');
     help.className = 'form-help';
@@ -121,7 +165,7 @@ function rowOf(
 
   row.appendChild(error);
 
-  return { row, control, error };
+  return { row, control, error, suggest };
 }
 
 export function buildForm(options: FormOptions): FormHandle {
@@ -136,13 +180,33 @@ export function buildForm(options: FormOptions): FormHandle {
 
   const controls = new Map<string, HTMLElement>();
   const errors = new Map<string, HTMLElement>();
+  const suggestions = new Map<string, HTMLButtonElement>();
 
   options.fields.forEach((field, index) => {
     const built = rowOf(field, options.initial[field.name] ?? '', index);
     controls.set(field.name, built.control);
     errors.set(field.name, built.error);
+
+    if (built.suggest) {
+      suggestions.set(field.name, built.suggest);
+    }
+
     element.appendChild(built.row);
   });
+
+  for (const field of options.fields) {
+    const input = controls.get(field.name);
+    const source = field.slug ? controls.get(field.slug.source) : undefined;
+    const suggest = suggestions.get(field.name);
+
+    if (
+      input instanceof HTMLInputElement &&
+      source instanceof HTMLInputElement &&
+      suggest
+    ) {
+      wireSlugSuggestion(input, source, suggest);
+    }
+  }
 
   const actions = document.createElement('div');
   actions.className = 'form-actions';

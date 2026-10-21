@@ -1,12 +1,19 @@
 import { ApiError, api, labelOf } from './api';
 import type { DescribedController } from './api';
 
-export type FieldType = 'string' | 'int' | 'boolean' | 'datetime' | 'file';
+export type FieldType =
+  'string' | 'int' | 'boolean' | 'datetime' | 'file' | 'slug';
+
+export interface DescribedSlug {
+  source: string;
+  stable: boolean;
+}
 
 export interface DescribedField {
   name: string;
   type: FieldType;
   optional: boolean;
+  slug?: DescribedSlug;
 }
 
 export interface JsonSchemaProperty {

@@ -22,6 +22,7 @@ export const blueprintFieldSchema = z.strictObject({
     'file',
     'encrypted',
     'vector',
+    'slug',
   ]),
   optional: z.boolean().default(false),
   hidden: z.boolean().default(false),
@@ -32,6 +33,9 @@ export const blueprintFieldSchema = z.strictObject({
     .string()
     .regex(/^[a-z][a-zA-Z0-9]*$/)
     .optional(),
+  // Slug only, whose `source` is the string field its text is made from: true
+  // keeps the slug it got at creation, false lets it follow the source.
+  stable: z.boolean().optional(),
 });
 
 const fieldNameSchema = z.string().regex(/^[a-z][a-zA-Z0-9]*$/);
@@ -411,7 +415,10 @@ function assertVectorFieldsAreCoherent(
 
   for (const field of blueprint.fields) {
     if (field.type !== 'vector') {
-      if (field.dimensions !== undefined || field.source !== undefined) {
+      if (
+        field.dimensions !== undefined ||
+        (field.source !== undefined && field.type !== 'slug')
+      ) {
         report(
           `field "${field.name}" declares dimensions/source, which only apply to a vector field`,
         );
@@ -477,6 +484,56 @@ function assertTranslatableIsCoherent(
     if (!blueprint.routed) {
       report(
         `field "${field.name}" is translatable, which only applies to a routed resource`,
+      );
+    }
+  }
+}
+
+/**
+ * A slug is always filled in by the service, from a string field that is
+ * itself always there: an optional or translated source would leave it with
+ * nothing to read, and a hidden one would publish its text in the URL-safe
+ * form. The slug is unique per tenant and returned to the client, so it cannot
+ * be hidden, optional or translated either. Like the other derived fields it
+ * needs the service a routed resource has.
+ */
+function assertSlugFieldsAreCoherent(
+  blueprint: RawBlueprint,
+  report: (message: string) => void,
+): void {
+  for (const field of blueprint.fields) {
+    if (field.type !== 'slug') {
+      if (field.stable !== undefined) {
+        report(
+          `field "${field.name}" declares stable, which only applies to a slug field`,
+        );
+      }
+      continue;
+    }
+
+    if (field.optional || field.hidden || field.translatable || field.reveal) {
+      report(
+        `slug field "${field.name}" is always set and always returned, so optional/hidden/translatable/reveal must not be declared`,
+      );
+    }
+
+    const source = blueprint.fields.find(
+      (candidate) => candidate.name === field.source,
+    );
+
+    if (!source || source.type !== 'string') {
+      report(
+        `slug field "${field.name}" needs a source naming a declared string field`,
+      );
+    } else if (source.optional || source.hidden || source.translatable) {
+      report(
+        `slug field "${field.name}" needs a source that is required, visible and not translatable, "${source.name}" is not`,
+      );
+    }
+
+    if (!blueprint.routed) {
+      report(
+        `slug field "${field.name}" needs a routed resource: an unrouted one has no service to derive it on write`,
       );
     }
   }
@@ -796,6 +853,7 @@ export function loadBlueprint(filePath: string): Blueprint {
   );
   assertSoftDeletesIsCoherent(blueprint, (message) => problems.push(message));
   assertTranslatableIsCoherent(blueprint, (message) => problems.push(message));
+  assertSlugFieldsAreCoherent(blueprint, (message) => problems.push(message));
   assertVectorFieldsAreCoherent(blueprint, (message) => problems.push(message));
   assertVersionedIsCoherent(blueprint, (message) => problems.push(message));
   assertRelationsAreUnique(blueprint, (message) => problems.push(message));

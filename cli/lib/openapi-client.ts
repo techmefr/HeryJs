@@ -4,6 +4,7 @@ import type {
   ResolvedInclude,
 } from './blueprint';
 import type { ResourceContext } from './resource-context';
+import { isOptionalOnInput } from './field-types';
 import {
   AGGREGATE_TYPES_NEEDING_FIELD,
   AGGREGATE_TYPES_WITHOUT_FIELD,
@@ -26,6 +27,7 @@ const FIELD_TS_TYPES: Record<RecordProperty['type'], string> = {
   datetime: 'string',
   file: 'string',
   encrypted: 'string',
+  slug: 'string',
   id: 'string',
   timestamp: 'string',
   translations: 'Record<string, string>',
@@ -177,7 +179,7 @@ function mutationDeclarations(ctx: ResourceContext): string {
   const name = typeNameOf(ctx);
   const createFields = ctx.fields.map(
     (field) =>
-      `  ${field.name}${field.optional ? '?' : ''}: ${inputType(field)};`,
+      `  ${field.name}${isOptionalOnInput(field) ? '?' : ''}: ${inputType(field)};`,
   );
   const patchFields = ctx.fields.map(
     (field) => `  ${field.name}?: ${inputType(field)};`,
@@ -211,7 +213,7 @@ function describeDeclaration(ctx: ResourceContext): string {
 
   return `export interface ${name}Describe {
   version: ${ctx.version};
-  fields: Array<{ name: string; type: 'string' | 'int' | 'boolean' | 'datetime' | 'file'; optional: boolean; translatable?: boolean }>;
+  fields: Array<{ name: string; type: 'string' | 'int' | 'boolean' | 'datetime' | 'file' | 'slug'; optional: boolean; translatable?: boolean; slug?: { source: string; stable: boolean } }>;
   locales?: { supported: string[]; default: string; fallbacks: Record<string, string[]> };
   sorts: string[];
   filters: string[];

@@ -5,6 +5,7 @@ export interface BlogPostFactoryOverrides {
   ownerId: string;
   tenantId?: string;
   title?: string;
+  slug?: string;
   summary?: Record<string, string>;
   privateNote?: string;
   trashed?: boolean;
@@ -17,6 +18,9 @@ export interface BlogPostFactoryOptions {
 function buildBlogPost(overrides: BlogPostFactoryOverrides) {
   return {
     title: overrides.title ?? faker.lorem.words(3),
+    slug:
+      overrides.slug ??
+      `${faker.lorem.slug(3)}-${faker.string.alphanumeric({ length: 6, casing: 'lower' })}`,
     summary: overrides.summary ?? {
       [resolveDefaultLocale()]: faker.lorem.words(3),
     },

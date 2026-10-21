@@ -1,7 +1,12 @@
-import type { ResourceDescription, ResourceRow } from './resource';
+import type {
+  DescribedSlug,
+  ResourceDescription,
+  ResourceRow,
+} from './resource';
 import type { FieldOverride } from './extensions';
 
-export type FieldKind = 'text' | 'number' | 'checkbox' | 'datetime' | 'select';
+export type FieldKind =
+  'text' | 'number' | 'checkbox' | 'datetime' | 'select' | 'slug';
 export type FormMode = 'create' | 'update';
 export type FormValue = string | boolean;
 export type FormValues = Record<string, FormValue>;
@@ -21,15 +26,17 @@ export interface FormField {
   minimum?: number;
   maximum?: number;
   pattern?: string;
+  slug?: DescribedSlug;
 }
 
-const KIND_BY_TYPE = {
+const KIND_BY_TYPE: Record<string, FieldKind> = {
   string: 'text',
   file: 'text',
+  slug: 'slug',
   int: 'number',
   boolean: 'checkbox',
   datetime: 'datetime',
-} as const;
+};
 
 function boundOf(value: number | undefined): number | undefined {
   if (value === undefined || Math.abs(value) >= Number.MAX_SAFE_INTEGER) {
@@ -43,6 +50,22 @@ export function humanize(name: string): string {
   const spaced = name.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
 
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+function slugHelp(
+  slug: DescribedSlug,
+  mode: FormMode,
+  overrides: Record<string, FieldOverride>,
+): string {
+  const source = overrides[slug.source]?.label ?? humanize(slug.source);
+
+  if (mode === 'create') {
+    return 'Left empty, it is derived from ' + source + ' and made unique.';
+  }
+
+  return slug.stable
+    ? 'Kept when ' + source + ' changes.'
+    : 'Follows ' + source + ' when it changes, unless you set it here.';
 }
 
 export function formFieldsOf(
@@ -74,11 +97,13 @@ export function formFieldsOf(
     fields.push({
       name: field.name,
       label: override.label ?? humanize(field.name),
-      kind: options ? 'select' : KIND_BY_TYPE[field.type],
+      kind: options ? 'select' : (KIND_BY_TYPE[field.type] ?? 'text'),
       required: isRequired,
       integer: field.type === 'int',
       readonly: override.readonly === true && !isRequired,
-      help: override.help,
+      help:
+        override.help ??
+        (field.slug ? slugHelp(field.slug, mode, overrides) : undefined),
       placeholder: override.placeholder,
       options,
       minLength: schema.minLength,
@@ -86,6 +111,7 @@ export function formFieldsOf(
       minimum: boundOf(schema.minimum),
       maximum: boundOf(schema.maximum),
       pattern: schema.pattern,
+      slug: field.slug,
     });
   }
 
