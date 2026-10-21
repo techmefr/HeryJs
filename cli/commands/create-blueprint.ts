@@ -330,6 +330,12 @@ softDeletes: true
 # overwriting what someone else just wrote.
 versioned: false
 
+# Off unless you say so. Turn it on and every write stores a snapshot of the
+# record (never of a hidden or encrypted field), and the resource gains routes to
+# list its history, diff an entry against the record as it is now, and restore
+# one through the normal update path. Snapshots age out with prune.
+history: false
+
 # Off unless you say so. Turn it on and the owner can grant a user or a team read or
 # write access to a single record: the resource gets share routes and a share
 # capability, and shared records join the list scope without a query per row.

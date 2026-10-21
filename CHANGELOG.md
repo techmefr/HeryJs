@@ -13,6 +13,9 @@ category is called out here explicitly.
 
 First public release.
 
+### Row history, with diff and restore
+
+`history: true` in a blueprint stores a snapshot of the record after every create, update, soft delete and restore, in the new `RecordSnapshot` table (a migration ships with it). The generated resource gains `POST /:id/history`, `POST /:id/history/diff` and `POST /:id/history/restore`, each behind its own capability (`history` and `revert` are also resolved per record on search). A restore writes the old fields back through the normal update path, so the update policy, the version check and the audit entry apply, and it becomes the newest entry. Hidden and encrypted fields are never snapshotted. Retention is bounded by prune: `RecordSnapshot` is listed on the prune page and ages out per record while always keeping the newest snapshot. The admin resource page shows a History button that lists entries, diffs and restores. A hard delete, purge or prune of a row removes its history. Bulk writes (`updateMany`, `deleteMany`) are not snapshotted. `history` is refused on a translatable resource for now. **Existing projects:** apply the migration and copy `src/technical/history/`; the registry `HISTORY_COLUMNS` is filled by `hery generate`.
 ### Admin table editor: inline edit
 
 A generated resource's table edits a plain cell in place (text, number, checkbox, enum): an Edit button on the cell, Enter to save through the resource's `update` route with the form's validation and version check, Escape to cancel, and the server's refusal shown in the cell. It follows the row's `update` capability and is switched off by `disable: ['update']`.

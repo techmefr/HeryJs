@@ -342,7 +342,16 @@ describe('Snippet resource', () => {
 
     const response = await request(app.getHttpServer())
       .post('/snippets/search')
-      .send({ capabilities: ['update', 'delete', 'share', 'restore'] })
+      .send({
+        capabilities: [
+          'update',
+          'delete',
+          'share',
+          'restore',
+          'history',
+          'revert',
+        ],
+      })
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(200);
 
@@ -354,7 +363,9 @@ describe('Snippet resource', () => {
     expect(body.data[0]?.capabilities.update?.allowed).toBe(true);
     expect(Object.keys(body.data[0]?.capabilities ?? {}).sort()).toEqual([
       'delete',
+      'history',
       'restore',
+      'revert',
       'share',
       'update',
     ]);
@@ -657,6 +668,309 @@ describe('Snippet resource', () => {
       .set('If-Match', '*')
       .send({ data: [{ id: 'a', ...{ title: 'title-value' } }] })
       .expect(400);
+  });
+
+  describe('history', () => {
+    interface Entry {
+      id: string;
+      operation: string;
+      snapshot: Record<string, unknown>;
+    }
+
+    it('stores a snapshot per write, newest first, without a hidden or encrypted field', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/snippets/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ title: 'title-value' }] })
+        .expect(201);
+
+      const recordId = (
+        created.body as { data: { status: string; data: { id: string } }[] }
+      ).data[0]!.data.id;
+
+      await request(app.getHttpServer())
+        .post('/snippets/update')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({
+          data: [
+            {
+              id: recordId,
+              version: 1,
+              ...{ title: 'title-value' },
+              title: 'title-changed',
+            },
+          ],
+        })
+        .expect(201);
+
+      const listed = await request(app.getHttpServer())
+        .post(`/snippets/${recordId}/history`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({})
+        .expect(200);
+
+      const entries = (listed.body as { data: Entry[] }).data;
+      expect(entries.map((entry) => entry.operation)).toEqual([
+        'update',
+        'create',
+      ]);
+      expect(entries[0]!.snapshot).toMatchObject({ title: 'title-changed' });
+    });
+
+    it('pages with limit and before', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/snippets/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ title: 'title-value' }] })
+        .expect(201);
+
+      const recordId = (
+        created.body as { data: { status: string; data: { id: string } }[] }
+      ).data[0]!.data.id;
+
+      await request(app.getHttpServer())
+        .post('/snippets/update')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({
+          data: [
+            {
+              id: recordId,
+              version: 1,
+              ...{ title: 'title-value' },
+              title: 'title-changed',
+            },
+          ],
+        })
+        .expect(201);
+
+      const first = await request(app.getHttpServer())
+        .post(`/snippets/${recordId}/history`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ limit: 1 })
+        .expect(200);
+
+      const firstPage = first.body as {
+        data: Entry[];
+        meta: { nextBefore: number | null };
+      };
+      expect(firstPage.data).toHaveLength(1);
+      expect(firstPage.meta.nextBefore).not.toBeNull();
+
+      const second = await request(app.getHttpServer())
+        .post(`/snippets/${recordId}/history`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ before: firstPage.meta.nextBefore })
+        .expect(200);
+
+      expect(
+        (second.body as { data: Entry[] }).data.map((entry) => entry.operation),
+      ).toEqual(['create']);
+    });
+
+    it('refuses an entry that does not exist', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/snippets/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ title: 'title-value' }] })
+        .expect(201);
+
+      const recordId = (
+        created.body as { data: { status: string; data: { id: string } }[] }
+      ).data[0]!.data.id;
+
+      await request(app.getHttpServer())
+        .post(`/snippets/${recordId}/history/diff`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ from: 'not-an-entry' })
+        .expect(404);
+    });
+
+    it('diffs an entry against the record as it is now', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/snippets/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ title: 'title-value' }] })
+        .expect(201);
+
+      const recordId = (
+        created.body as { data: { status: string; data: { id: string } }[] }
+      ).data[0]!.data.id;
+
+      await request(app.getHttpServer())
+        .post('/snippets/update')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({
+          data: [
+            {
+              id: recordId,
+              version: 1,
+              ...{ title: 'title-value' },
+              title: 'title-changed',
+            },
+          ],
+        })
+        .expect(201);
+
+      const listed = await request(app.getHttpServer())
+        .post(`/snippets/${recordId}/history`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({})
+        .expect(200);
+      const original = (listed.body as { data: Entry[] }).data[1]!;
+
+      const diff = await request(app.getHttpServer())
+        .post(`/snippets/${recordId}/history/diff`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ from: original.id })
+        .expect(200);
+
+      const changes = (
+        diff.body as {
+          data: {
+            changes: { field: string; before: unknown; after: unknown }[];
+          };
+        }
+      ).data.changes;
+      expect(changes).toContainEqual({
+        field: 'title',
+        before: original.snapshot.title,
+        after: 'title-changed',
+      });
+    });
+
+    it('restores an entry through the update path and records the restore', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/snippets/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ title: 'title-value' }] })
+        .expect(201);
+
+      const recordId = (
+        created.body as { data: { status: string; data: { id: string } }[] }
+      ).data[0]!.data.id;
+
+      await request(app.getHttpServer())
+        .post('/snippets/update')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({
+          data: [
+            {
+              id: recordId,
+              version: 1,
+              ...{ title: 'title-value' },
+              title: 'title-changed',
+            },
+          ],
+        })
+        .expect(201);
+
+      const listed = await request(app.getHttpServer())
+        .post(`/snippets/${recordId}/history`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({})
+        .expect(200);
+      const original = (listed.body as { data: Entry[] }).data[1]!;
+
+      const restored = await request(app.getHttpServer())
+        .post(`/snippets/${recordId}/history/restore`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ snapshotId: original.id, version: 2 })
+        .expect(201);
+
+      expect(
+        (restored.body as { data: Record<string, unknown> }).data.title,
+      ).toEqual(original.snapshot.title);
+
+      const after = await request(app.getHttpServer())
+        .post(`/snippets/${recordId}/history`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({})
+        .expect(200);
+      expect(
+        (after.body as { data: Entry[] }).data.map((entry) => entry.operation),
+      ).toEqual(['revert', 'update', 'create']);
+    });
+
+    it('refuses a restore made against a stale version', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/snippets/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ title: 'title-value' }] })
+        .expect(201);
+
+      const recordId = (
+        created.body as { data: { status: string; data: { id: string } }[] }
+      ).data[0]!.data.id;
+
+      await request(app.getHttpServer())
+        .post('/snippets/update')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({
+          data: [
+            {
+              id: recordId,
+              version: 1,
+              ...{ title: 'title-value' },
+              title: 'title-changed',
+            },
+          ],
+        })
+        .expect(201);
+
+      const listed = await request(app.getHttpServer())
+        .post(`/snippets/${recordId}/history`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({})
+        .expect(200);
+      const original = (listed.body as { data: Entry[] }).data[1]!;
+
+      await request(app.getHttpServer())
+        .post(`/snippets/${recordId}/history/restore`)
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ snapshotId: original.id, version: 1 })
+        .expect(409);
+    });
+
+    it('refuses history to someone who cannot see the record', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/snippets/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ title: 'title-value' }] })
+        .expect(201);
+
+      const recordId = (
+        created.body as { data: { status: string; data: { id: string } }[] }
+      ).data[0]!.data.id;
+
+      await request(app.getHttpServer())
+        .post(`/snippets/${recordId}/history`)
+        .set('Authorization', `Bearer ${strangerToken}`)
+        .send({})
+        .expect(403);
+      await request(app.getHttpServer())
+        .post(`/snippets/${recordId}/history/diff`)
+        .set('Authorization', `Bearer ${strangerToken}`)
+        .send({ from: 'anything' })
+        .expect(403);
+    });
+
+    it('refuses a restore to someone who cannot update the record', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/snippets/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ title: 'title-value' }] })
+        .expect(201);
+
+      const recordId = (
+        created.body as { data: { status: string; data: { id: string } }[] }
+      ).data[0]!.data.id;
+
+      await request(app.getHttpServer())
+        .post(`/snippets/${recordId}/history/restore`)
+        .set('Authorization', `Bearer ${strangerToken}`)
+        .send({ snapshotId: 'anything' })
+        .expect(403);
+    });
   });
 
   it('hides a soft-deleted record from every default read, and only from those', async () => {
