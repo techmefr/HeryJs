@@ -9,6 +9,7 @@ const ZOD_TYPES: Record<BlueprintField['type'], string> = {
   boolean: 'z.boolean()',
   datetime: 'z.coerce.date()',
   file: 'z.string().min(1).max(255)',
+  encrypted: 'z.string().min(1).max(4096)',
 };
 
 const PRISMA_TYPES: Record<BlueprintField['type'], string> = {
@@ -17,6 +18,7 @@ const PRISMA_TYPES: Record<BlueprintField['type'], string> = {
   boolean: 'Boolean',
   datetime: 'DateTime',
   file: 'String',
+  encrypted: 'String',
 };
 
 export function zodTypeFor(field: BlueprintField): string {
@@ -46,6 +48,8 @@ export function sampleValueFor(field: BlueprintField): string {
       return 'new Date().toISOString()';
     case 'file':
       return `'${field.name}-key.png'`;
+    case 'encrypted':
+      return `'${field.name}-secret-value'`;
   }
 }
 
@@ -55,6 +59,7 @@ const GRAPHQL_TYPES: Record<BlueprintField['type'], string> = {
   boolean: 'Boolean',
   datetime: 'GraphQLISODateTime',
   file: 'String',
+  encrypted: 'String',
 };
 
 export function graphqlTypeFor(field: BlueprintField): string {
@@ -67,6 +72,7 @@ const TS_TYPES: Record<BlueprintField['type'], string> = {
   boolean: 'boolean',
   datetime: 'Date',
   file: 'string',
+  encrypted: 'string',
 };
 
 export function tsTypeFor(field: BlueprintField): string {
@@ -79,6 +85,7 @@ const FAKER_VALUES: Record<BlueprintField['type'], string> = {
   boolean: 'faker.datatype.boolean()',
   datetime: 'faker.date.recent()',
   file: '`${faker.string.uuid()}.png`',
+  encrypted: 'faker.string.alphanumeric(24)',
 };
 
 export function fakerValueFor(field: BlueprintField): string {

@@ -2481,6 +2481,49 @@ function relationSpecBlock(ctx: ResourceContext, createBody: string): string {
     .join('');
 }
 
+function encryptedFieldTests(ctx: ResourceContext, createBody: string): string {
+  return ctx.fields
+    .filter((field) => field.type === 'encrypted')
+    .map((field) => {
+      const revealed = !field.hidden;
+      const leak = revealed ? 'toContain' : 'not.toContain';
+      const searchCheck =
+        ctx.permissions.view === 'none'
+          ? ''
+          : `
+    const listed = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/search')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({})
+      .expect(200);
+    expect(JSON.stringify(listed.body)).${leak}(secret);
+`;
+
+      return `  it('stores ${field.name} sealed and ${revealed ? 'returns it decrypted' : 'never returns it'}', async () => {
+    const secret = \`${field.name}-\${randomUUID()}\`;
+    const created = await request(app.getHttpServer())
+      .post('/${ctx.pluralKebabName}/create')
+      .set('Authorization', \`Bearer \${ownerToken}\`)
+      .send({ data: [{ ...${createBody}, ${field.name}: secret }] })
+      .expect(201);
+
+    expect(JSON.stringify(created.body)).${leak}(secret);
+${searchCheck}
+    const recordId = (
+      created.body as { data: { status: string; data: { id: string } }[] }
+    ).data[0]!.data.id;
+    const stored = await prisma.${ctx.modelCamelName}.findUniqueOrThrow({
+      where: { id: recordId },
+    });
+    expect(stored.${field.name}).toMatch(/^enc:/);
+    expect(stored.${field.name}).not.toContain(secret);
+  });
+
+`;
+    })
+    .join('');
+}
+
 export function specFile(ctx: ResourceContext): string {
   const requiredFields = ctx.fields.filter((field) => !field.optional);
   const createBody =
@@ -2578,7 +2621,7 @@ ${
 
 `
     : ''
-}  it('describes its fields and create/update rules for a frontend to consume', async () => {
+}${canCreateAny ? encryptedFieldTests(ctx, createBody) : ''}  it('describes its fields and create/update rules for a frontend to consume', async () => {
     const response = await request(app.getHttpServer())
       .get('/${ctx.pluralKebabName}/describe')
       .set('Authorization', \`Bearer \${ownerToken}\`)

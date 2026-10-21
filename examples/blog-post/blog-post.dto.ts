@@ -3,6 +3,7 @@ import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
 
 const blogPostFields = z.object({
   title: z.string().min(1).max(255),
+  privateNote: z.string().min(1).max(4096).optional(),
 });
 
 /**

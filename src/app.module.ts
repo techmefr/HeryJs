@@ -23,6 +23,7 @@ import { NotificationsModule } from '#technical/notifications/notifications.modu
 import { PruneModule } from '#technical/prune/prune.module';
 import { RateLimitModule } from '#technical/rate-limit/rate-limit.module';
 import { SchedulerModule } from '#technical/scheduler/scheduler.module';
+import { SecretsModule } from '#technical/secrets/secrets.module';
 import { SecurityHeadersMiddleware } from '#technical/http/security-headers.middleware';
 import { EtagModule } from '#technical/http/etag.module';
 import { SeedersModule } from '#technical/seeders/seeders.module';
@@ -97,6 +98,7 @@ import { redactedRequestSerializer } from '#technical/logging/redacted-request-s
     RateLimitModule,
     OAuthModule.forRoot(),
     SchedulerModule,
+    SecretsModule,
     SeedersModule.forRoot([]),
     SignalModule,
     SseModule,
