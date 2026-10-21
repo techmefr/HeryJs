@@ -94,12 +94,13 @@ describe('QuotasService against a real database', () => {
   });
 
   it('resets one tenant counter and leaves the others alone', async () => {
-    await asTenant(tenantA, () => service.consume('seats', 2));
+    const before = await asTenant(tenantA, () => service.check('seats'));
     await service.resetUsage(tenantA, 'seats');
 
     const a = await asTenant(tenantA, () => service.check('seats'));
     const b = await asTenant(tenantB, () => service.check('seats'));
 
+    expect(before.used).toBe(8);
     expect(a.used).toBe(0);
     expect(b.used).toBe(1);
   });
