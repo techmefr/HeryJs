@@ -9,6 +9,10 @@ import { AppModule } from '#app.module';
 import { BlogPostModule } from './blog-post.module';
 import { env } from '#technical/config/env';
 import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
+import {
+  resolveDefaultLocale,
+  resolveSupportedLocales,
+} from '#technical/i18n/locale.config';
 import { actingAs, registerAndLogin } from '#devtools/test-support';
 
 const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
@@ -96,6 +100,7 @@ describe('BlogPost resource', () => {
     };
     expect(body.data.fields.map((field) => field.name)).toEqual([
       'title',
+      'summary',
       'privateNote',
     ]);
     expect(body.data.paginated).toBe(true);
@@ -719,5 +724,237 @@ describe('BlogPost resource', () => {
       (detached.body as { data: { data: { tags: string[] } }[] }).data[0]!.data
         .tags,
     ).toEqual([]);
+  });
+
+  describe('translatable field summary', () => {
+    const defaultLocale = resolveDefaultLocale();
+    const otherLocale = resolveSupportedLocales().find(
+      (locale) => locale !== defaultLocale,
+    );
+    const itWithAnotherLocale = otherLocale ? it : it.skip;
+
+    async function createWith(
+      value: unknown,
+    ): Promise<Record<string, unknown>> {
+      const response = await request(app.getHttpServer())
+        .post('/blog-posts/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ data: [{ ...{ title: 'title-value' }, summary: value }] })
+        .expect(201);
+
+      return (response.body as { data: { data: Record<string, unknown> }[] })
+        .data[0]!.data;
+    }
+
+    async function searchAs(
+      locale: string,
+      body: Record<string, unknown>,
+    ): Promise<Record<string, unknown>[]> {
+      const response = await request(app.getHttpServer())
+        .post('/blog-posts/search')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .set('Accept-Language', locale)
+        .send(body)
+        .expect(200);
+
+      return (response.body as { data: Record<string, unknown>[] }).data;
+    }
+
+    it('publishes which fields are translatable and the locales it serves', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/blog-posts/describe')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+
+      const body = response.body as {
+        data: {
+          fields: Array<{ name: string; translatable?: boolean }>;
+          locales: { supported: string[]; default: string };
+        };
+      };
+      expect(
+        body.data.fields.find((entry) => entry.name === 'summary')
+          ?.translatable,
+      ).toBe(true);
+      expect(body.data.locales.default).toBe(defaultLocale);
+      expect(body.data.locales.supported).toContain(defaultLocale);
+    });
+
+    it('writes a plain string to the locale of the request', async () => {
+      const created = await createWith('plain-' + randomUUID());
+
+      expect(created.summaryTranslations).toEqual({
+        [defaultLocale]: created.summary,
+      });
+    });
+
+    itWithAnotherLocale(
+      'stores several locales at once and answers in the requested one',
+      async () => {
+        const marker = randomUUID();
+        const created = await createWith({
+          [defaultLocale]: 'default-' + marker,
+          [otherLocale!]: 'other-' + marker,
+        });
+
+        expect(created.summary).toBe('default-' + marker);
+        expect(created.summaryTranslations).toEqual({
+          [defaultLocale]: 'default-' + marker,
+          [otherLocale!]: 'other-' + marker,
+        });
+
+        const rows = await searchAs(otherLocale!, {
+          filters: [{ field: 'id', value: created.id }],
+        });
+        expect(rows[0]!.summary).toBe('other-' + marker);
+      },
+    );
+
+    itWithAnotherLocale(
+      'falls back along the declared chain when a locale has no value',
+      async () => {
+        const marker = randomUUID();
+        const created = await createWith({ [defaultLocale]: 'only-' + marker });
+
+        const rows = await searchAs(otherLocale!, {
+          filters: [{ field: 'id', value: created.id }],
+        });
+        expect(rows[0]!.summary).toBe('only-' + marker);
+      },
+    );
+
+    itWithAnotherLocale(
+      'merges the locales of an update into the stored ones and removes a null one',
+      async () => {
+        const marker = randomUUID();
+        const created = await createWith({
+          [defaultLocale]: 'first-' + marker,
+        });
+
+        await request(app.getHttpServer())
+          .post('/blog-posts/update')
+          .set('Authorization', `Bearer ${ownerToken}`)
+          .send({
+            data: [
+              {
+                id: created.id,
+                summary: { [otherLocale!]: 'second-' + marker },
+              },
+            ],
+          })
+          .expect(201);
+
+        const merged = await searchAs(defaultLocale, {
+          filters: [{ field: 'id', value: created.id }],
+        });
+        expect(merged[0]!.summaryTranslations).toEqual({
+          [defaultLocale]: 'first-' + marker,
+          [otherLocale!]: 'second-' + marker,
+        });
+
+        await request(app.getHttpServer())
+          .post('/blog-posts/update')
+          .set('Authorization', `Bearer ${ownerToken}`)
+          .send({
+            data: [{ id: created.id, summary: { [otherLocale!]: null } }],
+          })
+          .expect(201);
+
+        const removed = await searchAs(defaultLocale, {
+          filters: [{ field: 'id', value: created.id }],
+        });
+        expect(removed[0]!.summaryTranslations).toEqual({
+          [defaultLocale]: 'first-' + marker,
+        });
+      },
+    );
+
+    it('rejects a locale the project does not support', async () => {
+      await request(app.getHttpServer())
+        .post('/blog-posts/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({
+          data: [{ ...{ title: 'title-value' }, summary: { xx: 'nope' } }],
+        })
+        .expect(400);
+    });
+
+    it('rejects a value that breaks the field rule in any locale', async () => {
+      await request(app.getHttpServer())
+        .post('/blog-posts/create')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({
+          data: [
+            { ...{ title: 'title-value' }, summary: { [defaultLocale]: '' } },
+          ],
+        })
+        .expect(400);
+    });
+
+    itWithAnotherLocale(
+      'finds a record by text in the resolved locale only',
+      async () => {
+        const marker = randomUUID();
+        const created = await createWith({
+          [defaultLocale]: 'alpha-' + marker,
+          [otherLocale!]: 'beta-' + marker,
+        });
+
+        const hit = await searchAs(otherLocale!, {
+          search: { q: 'beta-' + marker, engine: 'prisma' },
+        });
+        expect(hit.map((row) => row.id)).toContain(created.id);
+
+        const miss = await searchAs(defaultLocale, {
+          search: { q: 'beta-' + marker, engine: 'prisma' },
+        });
+        expect(miss.map((row) => row.id)).not.toContain(created.id);
+      },
+    );
+
+    itWithAnotherLocale(
+      'filters on the value resolved for the request locale',
+      async () => {
+        const marker = randomUUID();
+        const created = await createWith({
+          [defaultLocale]: 'left-' + marker,
+          [otherLocale!]: 'right-' + marker,
+        });
+        const filters = [
+          { field: 'summary', operator: '=', value: 'right-' + marker },
+        ];
+
+        const hit = await searchAs(otherLocale!, { filters });
+        expect(hit.map((row) => row.id)).toEqual([created.id]);
+
+        const miss = await searchAs(defaultLocale, { filters });
+        expect(miss).toEqual([]);
+      },
+    );
+
+    it('refuses an operator that has no meaning on translated text', async () => {
+      await request(app.getHttpServer())
+        .post('/blog-posts/search')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ filters: [{ field: 'summary', operator: '>', value: 'a' }] })
+        .expect(400);
+    });
+
+    it('sorts on the value resolved for the request locale', async () => {
+      const marker = randomUUID();
+      await createWith({ [defaultLocale]: 'b-' + marker });
+      await createWith({ [defaultLocale]: 'a-' + marker });
+      await createWith({ [defaultLocale]: 'c-' + marker });
+
+      const rows = await searchAs(defaultLocale, {
+        filters: [{ field: 'summary', operator: 'like', value: marker }],
+        sorts: [{ field: 'summary', direction: 'desc' }],
+      });
+      expect(rows.map((row) => row.summary)).toEqual([
+        'c-' + marker,
+        'b-' + marker,
+        'a-' + marker,
+      ]);
+    });
   });
 });

@@ -64,6 +64,7 @@ describe('EtagInterceptor over a real HTTP round trip', () => {
     expect(response.headers['cache-control']).toBe('private, no-cache');
     expect(response.headers.vary).toContain('Authorization');
     expect(response.headers.vary).toContain('Cookie');
+    expect(response.headers.vary).toContain('Accept-Language');
   });
 
   it('never computes our own caller-scoped ETag on a route not marked @CacheableRead()', async () => {

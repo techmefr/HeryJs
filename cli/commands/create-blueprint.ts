@@ -61,6 +61,7 @@ async function promptVector(
     type: 'vector',
     optional: false,
     hidden: false,
+    translatable: false,
     reveal: false,
     dimensions: dimensionsResponse.dimensions,
     source: sourceResponse.source,
@@ -134,11 +135,23 @@ async function promptFields(): Promise<BlueprintField[]> {
       initial: false,
     })) as { hidden?: boolean };
 
+    const type = typeResponse.type ?? 'string';
+    const translatableResponse =
+      type === 'string'
+        ? ((await prompts({
+            type: 'confirm',
+            name: 'translatable',
+            message: 'Translatable (one value per locale)?',
+            initial: false,
+          })) as { translatable?: boolean })
+        : {};
+
     fields.push({
       name: nameResponse.name,
-      type: typeResponse.type ?? 'string',
+      type,
       optional: optionalResponse.optional ?? false,
       hidden: hiddenResponse.hidden ?? false,
+      translatable: translatableResponse.translatable ?? false,
       reveal: false,
     });
   }
@@ -151,6 +164,7 @@ async function promptFields(): Promise<BlueprintField[]> {
           type: 'string',
           optional: false,
           hidden: false,
+          translatable: false,
           reveal: false,
         },
       ];
@@ -276,6 +290,7 @@ fields:
   # type: string | int | boolean | datetime
   # optional: true if the field can be null
   # hidden: true to strip the field from every API response (see <name>.view.ts)
+  # translatable: true (string only) keeps one value per locale in a Json column
   - name: title
     type: string
     optional: false

@@ -38,6 +38,7 @@ import type {
   ListQueryContract,
   SearchRequestBody,
 } from '#technical/http/list-query';
+import { describeLocales } from '#technical/i18n/translatable';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import {
   createBlogPostRequestSchema,
@@ -84,9 +85,19 @@ import type { BlogPostView } from './blog-post.view';
 // Two literals disagreed on id, which is filterable and used to be missing
 // from describe.
 const BLOG_POST_CONTRACT = {
-  sorts: ['createdAt'],
-  filters: ['id', 'title'],
-  selects: ['id', 'ownerId', 'title', 'createdAt', 'updatedAt', 'deletedAt'],
+  sorts: ['createdAt', 'summary'],
+  filters: ['id', 'title', 'summary'],
+  selects: [
+    'id',
+    'ownerId',
+    'title',
+    'summary',
+    'summaryTranslations',
+    'createdAt',
+    'updatedAt',
+    'deletedAt',
+  ],
+  translatable: ['summary'],
   includes: {
     notes: {
       type: 'hasMany',
@@ -139,8 +150,10 @@ const BLOG_POST_DESCRIBE = {
   version: 1,
   fields: [
     { name: 'title', type: 'string', optional: false },
+    { name: 'summary', type: 'string', optional: true, translatable: true },
     { name: 'privateNote', type: 'encrypted', optional: true },
   ],
+  locales: describeLocales(),
   ...BLOG_POST_CONTRACT,
   // Stated rather than implied by the absence of limits: a client reading this
   // knows the search route returns every match, and that asking for a page is

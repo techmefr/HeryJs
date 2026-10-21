@@ -25,6 +25,7 @@ export const blueprintFieldSchema = z.strictObject({
   ]),
   optional: z.boolean().default(false),
   hidden: z.boolean().default(false),
+  translatable: z.boolean().default(false),
   reveal: z.boolean().default(false),
   dimensions: z.number().int().positive().max(VECTOR_MAX_DIMENSIONS).optional(),
   source: z
@@ -453,6 +454,35 @@ function assertVectorFieldsAreCoherent(
 }
 
 /**
+ * A translatable field is stored as one JSON object per locale, which only a
+ * string has a meaning for, and which only a routed resource's generated view,
+ * service and search know how to read back: an unrouted one is reached through
+ * another resource's raw include, where the JSON would come out untranslated.
+ */
+function assertTranslatableIsCoherent(
+  blueprint: RawBlueprint,
+  report: (message: string) => void,
+): void {
+  for (const field of blueprint.fields) {
+    if (!field.translatable) {
+      continue;
+    }
+
+    if (field.type !== 'string') {
+      report(
+        `field "${field.name}" is translatable, which only applies to a string field`,
+      );
+    }
+
+    if (!blueprint.routed) {
+      report(
+        `field "${field.name}" is translatable, which only applies to a routed resource`,
+      );
+    }
+  }
+}
+
+/**
  * Soft deletes are on unless a routed blueprint says otherwise, so `undefined`
  * and `true` mean the same thing everywhere past `loadBlueprint`.
  */
@@ -765,6 +795,7 @@ export function loadBlueprint(filePath: string): Blueprint {
     problems.push(message),
   );
   assertSoftDeletesIsCoherent(blueprint, (message) => problems.push(message));
+  assertTranslatableIsCoherent(blueprint, (message) => problems.push(message));
   assertVectorFieldsAreCoherent(blueprint, (message) => problems.push(message));
   assertVersionedIsCoherent(blueprint, (message) => problems.push(message));
   assertRelationsAreUnique(blueprint, (message) => problems.push(message));
