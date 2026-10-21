@@ -1,6 +1,7 @@
 import {
   Activity,
   Bell,
+  Bug,
   Check,
   ChevronRight,
   Clock,
@@ -27,6 +28,7 @@ type IconNode = Parameters<typeof createElement>[0];
 export const ICONS = {
   brand: Zap,
   crumb: ChevronRight,
+  devtools: Bug,
   empty: Inbox,
   lock: LockKeyhole,
   no: X,

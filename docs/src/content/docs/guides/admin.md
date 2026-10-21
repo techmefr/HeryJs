@@ -66,7 +66,7 @@ pnpm --filter admin dev
 
 Astro on port 4322, in its own pnpm workspace. Statically built on purpose: every page authenticates from the browser with the session token, so there is nothing to render on a server and no adapter to deploy — the pages are files.
 
-Six pages. An overview counting controllers, routes and how many sit behind a capability; a browse page rendering one plain route as a table; a resource page managing a generated resource; a login form; the [Pipeline](../guides/debugging/) page, one card per traced request with the blocked step outlined; and a [Prune](../guides/prune/#the-admin-page) page, one row per configured model with a button that triggers a run. Sign in with any account of your API — it posts to the same `/auth/login` the rest of the world uses and keeps the token in the browser.
+Seven pages. An overview counting controllers, routes and how many sit behind a capability; a browse page rendering one plain route as a table; a resource page managing a generated resource; a login form; the [Pipeline](../guides/debugging/) page, one card per traced request with the blocked step outlined; a [Dev dashboard](../guides/dev-dashboard/) page, the persisted requests, slow queries, N+1 findings, jobs, messages and exceptions of your tenant, one tab per kind; and a [Prune](../guides/prune/#the-admin-page) page, one row per configured model with a button that triggers a run. Sign in with any account of your API — it posts to the same `/auth/login` the rest of the world uses and keeps the token in the browser.
 
 ### Every argument-free GET, and every POST search route, becomes a section
 

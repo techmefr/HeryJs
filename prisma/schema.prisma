@@ -577,3 +577,18 @@ model NotificationDigestEntry {
   @@index([tenantId])
   @@index([userId])
 }
+
+model DevtoolsEntry {
+  id         String   @id @default(cuid())
+  tenantId   String
+  kind       String
+  label      String
+  status     String?
+  durationMs Float?
+  requestId  String?
+  detail     Json?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, kind, createdAt])
+  @@index([createdAt])
+}

@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
+import { TelemetryBus } from '#technical/tracing/telemetry-bus';
 import { TraceContextStorage } from '#technical/tracing/trace-context';
 import { translate, translateDomainException } from '#technical/i18n/translate';
 import { DomainException } from './domain.exception';
@@ -77,6 +78,14 @@ function reportUnknownError(exception: unknown): ResolvedError {
     status: 'error',
     durationMs: 0,
     detail: { errorId, name: error.name, message: error.message },
+  });
+
+  TelemetryBus.emit({
+    kind: 'exception',
+    name: error.name,
+    message: error.message,
+    stack: error.stack ?? null,
+    status: HttpStatus.INTERNAL_SERVER_ERROR,
   });
 
   return {
