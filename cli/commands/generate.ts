@@ -6,6 +6,7 @@ import { loadBlueprint, resolveBlueprintPath } from '../lib/blueprint';
 import { buildResourceContext } from '../lib/resource-context';
 import { patchModelSet, patchPrismaSchema } from '../lib/schema-patch';
 import {
+  changeFeedFile,
   controllerFile,
   dtoFile,
   factoryFile,
@@ -101,6 +102,7 @@ export function registerGenerateCommand(program: Command): void {
           [`${ctx.kebabName}-record.loader.ts`]: recordLoaderFile(ctx),
           [`${ctx.kebabName}.service.ts`]: serviceFile(ctx),
           [`${ctx.kebabName}.controller.ts`]: controllerFile(ctx),
+          [`${ctx.kebabName}.change-feed.ts`]: changeFeedFile(ctx),
           [`${ctx.kebabName}.module.ts`]: moduleFile(ctx),
           [`${ctx.kebabName}.spec.ts`]: specFile(ctx),
         };
@@ -144,6 +146,14 @@ export function registerGenerateCommand(program: Command): void {
           'audit-log.ts',
         );
 
+        const encryptedColumnsPath = path.join(
+          root,
+          'src',
+          'technical',
+          'secrets',
+          'encrypted-columns.ts',
+        );
+
         // A resource declaring another resource's model -- a second version of
         // a contract over the same table -- owns none of the schema. Emitting
         // the model again would duplicate a table that already exists, and
@@ -157,6 +167,15 @@ export function registerGenerateCommand(program: Command): void {
             ctx.pascalName,
           );
           patchModelSet(auditLogPath, 'AUDITED_MODELS', ctx.pascalName);
+          for (const field of ctx.fields.filter(
+            (candidate) => candidate.type === 'encrypted',
+          )) {
+            patchModelSet(
+              encryptedColumnsPath,
+              'ENCRYPTED_COLUMNS',
+              `${ctx.modelPascalName}.${field.name}`,
+            );
+          }
           console.log(
             schemaPatched
               ? pc.green(`✔ patched ${schemaPath}`)
@@ -183,6 +202,12 @@ export function registerGenerateCommand(program: Command): void {
         console.log(
           `  2. Run "pnpm hery migrate --name add_${ctx.kebabName}" to create the migration — it also emits the row-level security policy for the new table`,
         );
+
+        if (ctx.vector) {
+          console.log(
+            `  - ${ctx.pascalName} embeds "${ctx.vector.source}" into "${ctx.vector.name}" on every write: run "pnpm hery install embeddings" and import ${pc.bold('EmbeddingsModule')} into src/app.module.ts, or the resource cannot boot`,
+          );
+        }
 
         if (options.graphql) {
           console.log(

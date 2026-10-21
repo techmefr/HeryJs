@@ -31,9 +31,20 @@ export function patchModelSet(
     return;
   }
 
-  const separator =
-    source.slice(start + marker.length, end).trim() === '' ? '' : ', ';
-  const patched = `${source.slice(0, end)}${separator}'${pascalName}'${source.slice(end)}`;
+  const body = source.slice(start + marker.length, end);
+  const items = body.trimEnd();
+  const trailing = body.slice(items.length);
+  const hasTrailingComma = items.endsWith(',');
+  const entry = `'${pascalName}'`;
+  let patchedBody = `${items}, ${entry}`;
+
+  if (items.trim() === '') {
+    patchedBody = entry;
+  } else if (hasTrailingComma) {
+    patchedBody = `${items} ${entry},`;
+  }
+
+  const patched = `${source.slice(0, start + marker.length)}${patchedBody}${trailing}${source.slice(end)}`;
   writeFileSync(filePath, patched);
 }
 

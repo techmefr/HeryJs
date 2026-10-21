@@ -1,11 +1,59 @@
 import { createHmac, randomUUID } from 'node:crypto';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, Injectable } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
+import type { PolicyCheck } from '#technical/capabilities/capability-check';
+import {
+  ExposeAction,
+  ExposeField,
+} from '#technical/exposition/exposition.decorators';
+import { TenantContextStorage } from '#technical/tenancy/tenant-context';
+
+const allowEveryone: PolicyCheck = () => ({ allowed: true, scope: 'all' });
+const allowNoOne: PolicyCheck = () => ({ allowed: false });
+
+const webhookRuns: { amount: number; tenantId: string }[] = [];
+
+@Injectable()
+class WebhookActionFixture {
+  @ExposeAction('webhookfixture.record', {
+    capability: allowEveryone,
+    triggers: { webhook: true },
+  })
+  record(
+    @ExposeField('webhookfixture.record.amount', {
+      kind: 'number',
+      min: 1,
+      max: 100,
+      default: 1,
+    })
+    amount: number,
+  ): void {
+    webhookRuns.push({ amount, tenantId: TenantContextStorage.getTenantId() });
+  }
+
+  @ExposeAction('webhookfixture.closed', {
+    capability: allowNoOne,
+    triggers: { webhook: true },
+  })
+  closed(): void {
+    webhookRuns.push({ amount: -1, tenantId: 'closed' });
+  }
+
+  @ExposeAction('webhookfixture.optedOut', { capability: allowEveryone })
+  optedOut(): void {
+    webhookRuns.push({ amount: -2, tenantId: 'optedOut' });
+  }
+}
+import {
+  clearWebhookHandlers,
+  registerWebhookHandler,
+} from '#technical/webhooks/webhook-handler';
+import type { WebhookEventRecord } from '#technical/webhooks/webhook-handler';
 
 function sign(secret: string, timestamp: string, body: string): string {
   return createHmac('sha256', secret)
@@ -43,6 +91,7 @@ describe('Webhooks', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
+      providers: [WebhookActionFixture],
     }).compile();
     app = moduleRef.createNestApplication({ rawBody: true });
     await app.init();
@@ -181,5 +230,117 @@ describe('Webhooks', () => {
       where: { model: 'WebhookEvent', recordId: eventId },
     });
     expect(auditEntry?.operation).toBe('process');
+  });
+
+  async function mintEndpoint(source: string, expectedStatus: number) {
+    const admin = await registerAndLogin(app);
+    await promoteToAdmin(admin.id);
+
+    const response = await request(app.getHttpServer())
+      .post('/webhooks/endpoints')
+      .set('Authorization', `Bearer ${admin.token}`)
+      .send({ source })
+      .expect(expectedStatus);
+
+    return {
+      admin,
+      endpoint: (response.body as { data: { id: string; secret: string } })
+        .data,
+    };
+  }
+
+  async function post(
+    endpoint: { id: string; secret: string },
+    payload: unknown,
+  ): Promise<string> {
+    const body = JSON.stringify(payload);
+    const timestamp = String(Date.now());
+
+    const accepted = await request(app.getHttpServer())
+      .post(`/webhooks/${endpoint.id}`)
+      .set('x-webhook-signature', sign(endpoint.secret, timestamp, body))
+      .set('x-webhook-timestamp', timestamp)
+      .set('Content-Type', 'application/json')
+      .send(body)
+      .expect(202);
+
+    return (accepted.body as { data: { eventId: string } }).data.eventId;
+  }
+
+  it('runs a bound exposed action with the payload as params, in the endpoint tenant', async () => {
+    const { admin, endpoint } = await mintEndpoint(
+      'expose:webhookfixture.record',
+      201,
+    );
+    webhookRuns.length = 0;
+
+    const eventId = await post(endpoint, {
+      'webhookfixture.record.amount': 7,
+    });
+
+    expect((await waitForProcessed(eventId))?.processedAt).toBeInstanceOf(Date);
+    expect(webhookRuns).toEqual([{ amount: 7, tenantId: 'default' }]);
+
+    const notification = await authPrismaClient.appNotification.findFirst({
+      where: { userId: admin.id, type: 'webhook.received' },
+    });
+    expect(notification).toBeNull();
+  });
+
+  it('closes an event whose payload the action refuses without running it', async () => {
+    const { endpoint } = await mintEndpoint(
+      'expose:webhookfixture.record',
+      201,
+    );
+    webhookRuns.length = 0;
+
+    const eventId = await post(endpoint, {
+      'webhookfixture.record.amount': 9999,
+    });
+
+    expect((await waitForProcessed(eventId))?.processedAt).toBeInstanceOf(Date);
+    expect(webhookRuns).toEqual([]);
+  });
+
+  it('refuses to bind an endpoint to an action that did not opt in', async () => {
+    await mintEndpoint('expose:webhookfixture.optedOut', 400);
+    await mintEndpoint('expose:webhookfixture.doesNotExist', 400);
+  });
+
+  it('refuses to bind an endpoint to an action the creator may not run', async () => {
+    await mintEndpoint('expose:webhookfixture.closed', 403);
+  });
+
+  it('hands an event to the handler registered for its source and to no other', async () => {
+    const { endpoint } = await mintEndpoint('handled-source', 201);
+    const handled: WebhookEventRecord[] = [];
+    const ignored: WebhookEventRecord[] = [];
+    registerWebhookHandler({
+      source: 'handled-source',
+      handle: (event) => {
+        handled.push(event);
+        return Promise.resolve();
+      },
+    });
+    registerWebhookHandler({
+      source: 'other-source',
+      handle: (event) => {
+        ignored.push(event);
+        return Promise.resolve();
+      },
+    });
+
+    const eventId = await post(endpoint, { event: 'ping' });
+
+    await waitForProcessed(eventId);
+    clearWebhookHandlers();
+
+    expect(handled).toHaveLength(1);
+    expect(handled[0]).toMatchObject({
+      id: eventId,
+      source: 'handled-source',
+      payload: { event: 'ping' },
+    });
+    expect(ignored).toHaveLength(0);
   });
 });

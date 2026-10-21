@@ -71,7 +71,7 @@ export function withoutSetEntries(
     ...source.slice(start + marker.length, end).matchAll(/'([^']+)'/g),
   ]
     .map((entry) => entry[1]!)
-    .filter((entry) => !names.has(entry));
+    .filter((entry) => !names.has(entry) && !names.has(entry.split('.')[0]!));
 
   return `${source.slice(0, start)}${marker}${kept
     .map((entry) => `'${entry}'`)

@@ -73,9 +73,13 @@ function mutation(
       responses: {
         '201': response(
           'One outcome per submitted entry, in the same order. A failed entry carries its own error and does not fail the others.',
-          envelope(batchOutcomeSchema(data, withId)),
+          envelope(batchOutcomeSchema(data, withId), ref('BatchMeta')),
         ),
         ...errorResponses(),
+        '422': response(
+          'Only with atomic: true: at least one entry failed, so nothing was written. error.details.results lists every entry, the failed ones with their own error and the rest as notApplied; error.details.summary counts them.',
+          ref('ErrorResponse'),
+        ),
       },
     }),
   };

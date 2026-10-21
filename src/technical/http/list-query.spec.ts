@@ -1,12 +1,16 @@
 import {
   InvalidQueryException,
   PaginationNotOfferedException,
+  SimilarSearchNotOfferedException,
+  SimilarSearchRejectedException,
 } from '#technical/errors/invalid-query.exception';
 import {
   nextCursorFor,
   parseSearchRequest,
+  searchRequestSchema,
   withIncludesAndAggregates,
   type ListQueryContract,
+  type SearchRequestBody,
 } from './list-query';
 
 const contract: ListQueryContract = {
@@ -1051,5 +1055,93 @@ describe('translatable fields in a list query', () => {
         1,
       ),
     ).toBeNull();
+  });
+});
+
+describe('mode: similar', () => {
+  const similarContract: ListQueryContract = { ...contract, similar: true };
+
+  it('is a text search unless the request says otherwise', () => {
+    const query = parseSearchRequest(
+      { search: { q: 'squat' } },
+      similarContract,
+    );
+
+    expect(query.similar).toBeUndefined();
+    expect(query.search).toBe('squat');
+  });
+
+  it('carries the text, the metric and the flag to the service', () => {
+    const query = parseSearchRequest(
+      { search: { q: ' squat rack ', mode: 'similar', metric: 'l2' } },
+      similarContract,
+    );
+
+    expect(query).toMatchObject({
+      similar: true,
+      similarMetric: 'l2',
+      search: 'squat rack',
+    });
+  });
+
+  it('leaves the metric to the service default when none is named', () => {
+    const query = parseSearchRequest(
+      { search: { q: 'squat', mode: 'similar' } },
+      similarContract,
+    );
+
+    expect(query.similarMetric).toBeUndefined();
+  });
+
+  it('refuses it on a resource that declares no vector field', () => {
+    expect(() =>
+      parseSearchRequest({ search: { q: 'squat', mode: 'similar' } }, contract),
+    ).toThrow(SimilarSearchNotOfferedException);
+  });
+
+  it.each([undefined, '', '   '])(
+    'refuses a similarity search with no text (%p)',
+    (q) => {
+      expect(() =>
+        parseSearchRequest({ search: { q, mode: 'similar' } }, similarContract),
+      ).toThrow(/needs the text to compare against/);
+    },
+  );
+
+  it.each([
+    [
+      'a text engine',
+      { search: { q: 'x', mode: 'similar', engine: 'prisma' } },
+    ],
+    ['a cursor', { search: { q: 'x', mode: 'similar' }, cursor: 'abc' }],
+    [
+      'a sort',
+      {
+        search: { q: 'x', mode: 'similar' },
+        sorts: [{ field: 'title', direction: 'asc' }],
+      },
+    ],
+  ] as const)('refuses %s, which a ranking cannot use', (_name, body) => {
+    expect(() =>
+      parseSearchRequest(body as SearchRequestBody, similarContract),
+    ).toThrow(SimilarSearchRejectedException);
+  });
+
+  it('refuses a metric on a text search', () => {
+    expect(() =>
+      parseSearchRequest(
+        { search: { q: 'x', metric: 'cosine' } },
+        similarContract,
+      ),
+    ).toThrow(SimilarSearchRejectedException);
+  });
+
+  it('refuses a mode or metric it does not know at the schema', () => {
+    expect(
+      searchRequestSchema.safeParse({ search: { mode: 'fuzzy' } }).success,
+    ).toBe(false);
+    expect(
+      searchRequestSchema.safeParse({ search: { metric: 'hamming' } }).success,
+    ).toBe(false);
   });
 });

@@ -10,30 +10,41 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  emailVerified Boolean   @default(false)
-  name          String?
-  image         String?
-  tenantId      String    @default("default")
-  currentTeamId String?
-  role          String?
-  banned        Boolean   @default(false)
-  banReason     String?
-  banExpires    DateTime?
-  twoFactorEnabled Boolean @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  email            String    @unique
+  emailVerified    Boolean   @default(false)
+  name             String?
+  image            String?
+  tenantId         String    @default("default")
+  currentTeamId    String?
+  role             String?
+  banned           Boolean   @default(false)
+  banReason        String?
+  banExpires       DateTime?
+  twoFactorEnabled Boolean   @default(false)
+  phoneNumber      String?   @unique
+  phoneNumberVerified Boolean @default(false)
+  isAnonymous      Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  sessions      Session[]
-  accounts      Account[]
-  blogPosts     BlogPost[]
-  notifications AppNotification[]
-  memberships   TeamMember[]
-  apiKeys       ApiKey[]
-  twoFactors    TwoFactor[]
-  pushTokens    PushToken[]
-  currentTeam   Team?             @relation("CurrentTeam", fields: [currentTeamId], references: [id], onDelete: SetNull)
+  sessions                  Session[]
+  accounts                  Account[]
+  blogPosts                 BlogPost[]
+  snippets                  Snippet[]
+  notifications             AppNotification[]
+  memberships               TeamMember[]
+  apiKeys                   ApiKey[]
+  twoFactors                TwoFactor[]
+  passkeys                  Passkey[]
+  pushTokens                PushToken[]
+  notificationPreferences   NotificationPreference[]
+  notificationSetting       NotificationSetting?
+  notificationDigestEntries NotificationDigestEntry[]
+  twoFactorEnrolment        TwoFactorEnrolment?
+  twoFactorRecoveryCodes    TwoFactorRecoveryCode[]
+  twoFactorVerifiedSessions TwoFactorVerifiedSession[]
+  currentTeam               Team?                      @relation("CurrentTeam", fields: [currentTeamId], references: [id], onDelete: SetNull)
 }
 
 model ApiKey {
@@ -139,7 +150,7 @@ model AppNotification {
 }
 
 model AuditLog {
-  id String @id @default(cuid())
+  id             String   @id @default(cuid())
   // createdAt is a millisecond timestamp, so two entries written in the same
   // millisecond -- routine under load -- have no order at all. Reading the
   // chain by it can hand the verifier a legitimate chain in the wrong order,
@@ -161,12 +172,12 @@ model AuditLog {
   previousHash   String
   createdAt      DateTime @default(now())
 
-  @@index([tenantId, sequence])
   // Two entries in the same tenant's chain can never claim the same
   // predecessor -- that is a fork, and the linear verifier can never accept
   // one. With previousHash non-null this also caps a tenant at exactly one
   // genesis entry.
   @@unique([tenantId, previousHash])
+  @@index([tenantId, sequence])
 }
 
 model BlogPost {
@@ -175,6 +186,7 @@ model BlogPost {
   ownerId   String
   title     String
   summary   Json?
+  privateNote String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
@@ -290,6 +302,43 @@ model WebhookEvent {
   @@index([endpointId])
 }
 
+// Written in the same transaction as the change it describes, then relayed to
+// handlers by a worker. tenantId is nullable because a message can be staged
+// outside any request, and the relay reads across tenants, so the table sits
+// outside the row-level policies the way MailLog does.
+model OutboxMessage {
+  id            String    @id @default(cuid())
+  tenantId      String?
+  name          String
+  payload       Json
+  status        String    @default("pending")
+  attempts      Int       @default(0)
+  nextAttemptAt DateTime  @default(now())
+  lastError     String?
+  createdAt     DateTime  @default(now())
+  deliveredAt   DateTime?
+  deadAt        DateTime?
+
+  receipts OutboxReceipt[]
+
+  @@index([status, nextAttemptAt])
+  @@index([status, deliveredAt])
+  @@index([status, deadAt])
+}
+
+// One row per handler that finished a message, so a retry after a partial
+// failure reruns only the handlers that did not.
+model OutboxReceipt {
+  id          String   @id @default(cuid())
+  messageId   String
+  handler     String
+  completedAt DateTime @default(now())
+
+  message OutboxMessage @relation(fields: [messageId], references: [id])
+
+  @@unique([messageId, handler])
+}
+
 // Shape taken from better-auth's own two-factor plugin schema, not invented
 // here: the adapter checks every field at boot and refuses the whole instance
 // on a mismatch, which turns a missing column into "every registration returns
@@ -307,6 +356,25 @@ model TwoFactor {
 
   @@index([secret])
   @@index([userId])
+}
+
+model Passkey {
+  id           String    @id @default(cuid())
+  name         String?
+  publicKey    String
+  userId       String
+  credentialID String
+  counter      Int
+  deviceType   String
+  backedUp     Boolean
+  transports   String?
+  createdAt    DateTime? @default(now())
+  aaguid       String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([credentialID])
 }
 
 // Consent is recorded per number rather than per user: a number does not always
@@ -365,17 +433,17 @@ model BillingSubscription {
 }
 
 model IdempotencyKey {
-  id           String    @id @default(cuid())
-  tenantId     String
-  key          String
-  route        String
-  bodyHash     String
-  status       String    @default("pending")
-  statusCode   Int?
-  responseBody Json?
+  id              String    @id @default(cuid())
+  tenantId        String
+  key             String
+  route           String
+  bodyHash        String
+  status          String    @default("pending")
+  statusCode      Int?
+  responseBody    Json?
   responseHeaders Json?
-  createdAt    DateTime  @default(now())
-  deletedAt    DateTime?
+  createdAt       DateTime  @default(now())
+  deletedAt       DateTime?
 
   @@unique([tenantId, key])
   @@index([tenantId])
@@ -391,4 +459,198 @@ model OauthIdentity {
 
   @@unique([provider, providerUserId])
   @@index([userId])
+}
+
+model TwoFactorEnrolment {
+  id             String    @id @default(cuid())
+  tenantId       String
+  userId         String    @unique
+  secret         String
+  confirmedAt    DateTime?
+  lastUsedStep   Int?
+  failedAttempts Int       @default(0)
+  lockedUntil    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+model TwoFactorRecoveryCode {
+  id        String    @id @default(cuid())
+  tenantId  String
+  userId    String
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId])
+}
+
+model TwoFactorRoleRequirement {
+  id        String   @id @default(cuid())
+  tenantId  String
+  role      String
+  createdAt DateTime @default(now())
+
+  @@unique([tenantId, role])
+}
+
+model TwoFactorVerifiedSession {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId])
+}
+
+model Snippet {
+  id        String    @id @default(cuid())
+  tenantId  String
+  ownerId   String
+  title     String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  version   Int       @default(1)
+
+  owner User @relation(fields: [ownerId], references: [id])
+
+  @@index([tenantId])
+  // Every default read filters on these two together, so the composite keeps
+  // the "not deleted" clause from scanning the whole tenant.
+  @@index([tenantId, deletedAt])
+}
+
+model NotificationPreference {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  channel   String
+  type      String
+  enabled   Boolean  @default(true)
+  digest    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, channel, type])
+  @@index([tenantId])
+}
+
+model NotificationSetting {
+  id              String   @id @default(cuid())
+  tenantId        String
+  userId          String   @unique
+  timezone        String   @default("UTC")
+  quietHoursStart String?
+  quietHoursEnd   String?
+  digestHour      Int      @default(8)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+model NotificationDigestEntry {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  email     String
+  type      String
+  subject   String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([userId])
+}
+
+model DevtoolsEntry {
+  id         String   @id @default(cuid())
+  tenantId   String
+  kind       String
+  label      String
+  status     String?
+  durationMs Float?
+  requestId  String?
+  detail     Json?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, kind, createdAt])
+  @@index([createdAt])
+}
+
+model SsoConnection {
+  id           String   @id @default(cuid())
+  tenantId     String
+  name         String
+  issuer       String
+  clientId     String
+  clientSecret String
+  linkPolicy   String   @default("refuse")
+  isEnabled    Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  domains    SsoDomain[]
+  identities SsoIdentity[]
+
+  @@index([tenantId])
+}
+
+model SsoDomain {
+  id                String    @id @default(cuid())
+  tenantId          String
+  connectionId      String
+  domain            String
+  verificationToken String
+  verifiedAt        DateTime?
+  createdAt         DateTime  @default(now())
+
+  connection SsoConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, domain])
+  @@index([tenantId])
+  @@index([domain])
+}
+
+model SsoIdentity {
+  id           String   @id @default(cuid())
+  tenantId     String
+  connectionId String
+  subject      String
+  userId       String
+  createdAt    DateTime @default(now())
+
+  connection SsoConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, subject])
+  @@index([tenantId])
+  @@index([userId])
+}
+
+model LogEntry {
+  id       String   @id @default(cuid())
+  tenantId String
+  level    String
+  message  String
+  fields   Json?
+  loggedAt DateTime @default(now())
+
+  @@index([tenantId, loggedAt])
+  @@index([loggedAt])
 }

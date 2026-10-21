@@ -16,7 +16,6 @@ export const blogPostViewSchema = z.object({
 export type BlogPostView = z.infer<typeof blogPostViewSchema>;
 
 export function toBlogPostView(record: BlogPost): BlogPostView {
-  return blogPostViewSchema.parse(
-    withResolvedTranslations(record, ['summary']),
-  );
+  const { privateNote, ...view } = record;
+  return blogPostViewSchema.parse(withResolvedTranslations(view, ['summary']));
 }

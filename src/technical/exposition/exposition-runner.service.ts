@@ -7,14 +7,10 @@ import { CapabilityForbiddenException } from '#technical/errors/capability-forbi
 import { ExpositionEnvironmentBlockedException } from '#technical/errors/exposition-environment-blocked.exception';
 import { InvalidQueryException } from '#technical/errors/invalid-query.exception';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
-import type { ExposedEnvironment, RegisteredAction } from './exposition.types';
+import type { RegisteredAction } from './exposition.types';
 import { ExpositionRegistry } from './exposition.registry';
+import { isAllowedHere } from './exposition-environment';
 import { schemaFor } from './exposition-validation';
-
-function currentEnvironment(): ExposedEnvironment {
-  const raw = process.env.NODE_ENV;
-  return raw === 'production' || raw === 'test' ? raw : 'development';
-}
 
 @Injectable()
 export class ExpositionRunner {
@@ -26,6 +22,10 @@ export class ExpositionRunner {
     user: AuthenticatedUser,
   ): Promise<unknown> {
     const action = this.checkEnvironment(actionName);
+
+    if (action.triggers?.http === false) {
+      throw new NotFoundException();
+    }
 
     const decision = action.capability(subjectOf(user));
 
@@ -64,10 +64,7 @@ export class ExpositionRunner {
       throw new NotFoundException();
     }
 
-    if (
-      action.environments &&
-      !action.environments.includes(currentEnvironment())
-    ) {
+    if (!isAllowedHere(action)) {
       throw new ExpositionEnvironmentBlockedException(actionName);
     }
 

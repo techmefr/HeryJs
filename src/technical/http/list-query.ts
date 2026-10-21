@@ -2,12 +2,16 @@ import { z } from 'zod';
 import {
   InvalidQueryException,
   PaginationNotOfferedException,
+  SimilarSearchNotOfferedException,
+  SimilarSearchRejectedException,
 } from '#technical/errors/invalid-query.exception';
 import {
   TRANSLATABLE_FILTER_KEY,
   TRANSLATABLE_FILTER_OPERATORS,
 } from '#technical/i18n/translatable-query';
 import type { TranslatableFilterOperator } from '#technical/i18n/translatable-query';
+import { VECTOR_METRICS } from '#technical/vector/vector-target';
+import type { VectorMetric } from '#technical/vector/vector-target';
 import { buildCursorWhere, decodeCursor, encodeCursor } from './cursor';
 
 export const FILTER_OPERATORS = [
@@ -161,6 +165,8 @@ const includeEntrySchema: z.ZodType<IncludeEntry> = z.lazy(() =>
   }),
 );
 
+const SEARCH_MODES = ['text', 'similar'] as const;
+
 export const searchRequestSchema = z.object({
   page: z.number().int().positive().max(MAX_PAGE).optional(),
   limit: z.number().int().optional(),
@@ -171,7 +177,12 @@ export const searchRequestSchema = z.object({
   includes: z.array(includeEntrySchema).max(MAX_RELATIONS).optional(),
   aggregates: z.array(aggregateEntrySchema).max(MAX_RELATIONS).optional(),
   search: z
-    .object({ q: z.string().optional(), engine: z.string().optional() })
+    .object({
+      q: z.string().optional(),
+      engine: z.string().optional(),
+      mode: z.enum(SEARCH_MODES).optional(),
+      metric: z.enum(VECTOR_METRICS).optional(),
+    })
     .optional(),
   withTrashed: z.boolean().optional(),
   onlyTrashed: z.boolean().optional(),
@@ -230,6 +241,7 @@ export interface ListQueryContract extends FieldContract {
   defaultLimit?: number;
   includes?: Record<string, IncludeContract>;
   aggregates?: Record<string, AggregateContract>;
+  similar?: boolean;
 }
 
 interface RelationInstructionBase {
@@ -295,6 +307,8 @@ export interface ParsedListQuery {
   aggregateManifest?: AggregateManifestEntry[];
   search?: string;
   searchEngine?: string;
+  similar?: boolean;
+  similarMetric?: VectorMetric;
   // null on a resource that declared no pagination: the query has no page to
   // be on, and the service takes every row the filters left.
   page: number | null;
@@ -849,10 +863,64 @@ function resolvePagination(
   return { page: body.page ?? 1, limit };
 }
 
+function resolveSimilarSearch(
+  body: SearchRequestBody,
+  contract: ListQueryContract,
+): { similar: boolean; metric?: VectorMetric } {
+  const mode = body.search?.mode ?? 'text';
+  const metric = body.search?.metric;
+
+  if (mode === 'text') {
+    if (metric !== undefined) {
+      throw new SimilarSearchRejectedException(
+        'search.metric',
+        'a metric ranks a similarity search, and this one is a text search',
+      );
+    }
+
+    return { similar: false };
+  }
+
+  if (!contract.similar) {
+    throw new SimilarSearchNotOfferedException();
+  }
+
+  if (!body.search?.q?.trim()) {
+    throw new SimilarSearchRejectedException(
+      'search.q',
+      'a similarity search needs the text to compare against',
+    );
+  }
+
+  if (body.search.engine?.trim()) {
+    throw new SimilarSearchRejectedException(
+      'search.engine',
+      'the engine selects a text search, and similarity is ranked in the database',
+    );
+  }
+
+  if (body.cursor !== undefined) {
+    throw new SimilarSearchRejectedException(
+      'cursor',
+      'results are ranked by similarity, which a cursor cannot follow; use page',
+    );
+  }
+
+  if (body.sorts !== undefined) {
+    throw new SimilarSearchRejectedException(
+      'sorts',
+      'results are ranked by similarity',
+    );
+  }
+
+  return { similar: true, metric };
+}
+
 export function parseSearchRequest(
   body: SearchRequestBody,
   contract: ListQueryContract,
 ): ParsedListQuery {
+  const { similar, metric } = resolveSimilarSearch(body, contract);
   const { page, limit } = resolvePagination(body, contract);
   const { sorts, cursorWhere } = resolvePaginatedSorts(body, contract);
   const select = parseSelects(body.selects, contract);
@@ -908,6 +976,7 @@ export function parseSearchRequest(
     aggregateManifest: aggregateResult?.manifest,
     search: search ? search : undefined,
     searchEngine: searchEngine ? searchEngine : undefined,
+    ...(similar ? { similar: true, similarMetric: metric } : {}),
     page,
     limit,
   };

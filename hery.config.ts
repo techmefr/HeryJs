@@ -31,6 +31,12 @@ export default {
       log: { driver: 'log' },
     },
   },
+  logging: {
+    default: 'stdout',
+    drivers: {
+      stdout: { driver: 'stdout' },
+    },
+  },
   export: {
     default: 'csv',
     drivers: {

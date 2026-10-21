@@ -32,9 +32,13 @@ This is the one casing convention in the project, and it is deliberately the onl
 
 ## Fields
 
-Each field has a `type` (`string`, `int`, `boolean`, `datetime`, `file`), whether it's `optional`, and whether it's `hidden` — a hidden field is stripped from every API response by the generated `<name>.view.ts`, no matter which endpoint returns the record.
+Each field has a `type` (`string`, `int`, `boolean`, `datetime`, `file`, `encrypted`, `vector`), whether it's `optional`, and whether it's `hidden` — a hidden field is stripped from every API response by the generated `<name>.view.ts`, no matter which endpoint returns the record.
 
 `file` is a plain string column underneath — the storage key `POST /storage/upload` already returned, not the bytes themselves. See [Storage](../guides/storage/) for the upload flow it pairs with.
+
+`encrypted` is a text column sealed with AES-256-GCM, hidden from responses unless the field says `reveal: true`, and refused in `filters` and `sorts`. See [Secrets](../guides/secrets/).
+
+`vector` is not data a client sends: it is the embedding of another string field, written by a queued job and read only by `search: { mode: 'similar' }`. It takes a `dimensions` and a `source`, and is never returned or writable. See [Vector search](../guides/vector-search/).
 
 ### Reserved fields
 
@@ -65,6 +69,10 @@ With soft deletes on — the default — the generated resource has:
 - **prune.** Nothing in the resource ever removes a flagged row; `deletedAt` + `tenantId` is exactly what makes a model prunable, so the retention sweep is what eventually hard-deletes it. See [Prune](../guides/prune/).
 
 With `softDeletes: false`, there is no `deletedAt` column, no restore route, no `mode` on delete, no bin (`withTrashed`/`onlyTrashed` are refused with `query.invalid` rather than silently answering with live rows), and nothing for prune to sweep — DELETE removes the row. Declaring the key on a `routed: false` resource, or naming `deletedAt` in `sorts`/`filters` while turning it off, is refused at load time.
+
+## Versioned resources
+
+Off by default. `versioned: true` adds an integer `version` column that every update, delete and restore increments, exposes it on the record, and makes the update route refuse an entry that does not say which version it read, or that read a stale one (`409`, or `412` through `If-Match`). `version` is reserved on a versioned resource and the key is refused on a `routed: false` one. See [Optimistic concurrency](../guides/optimistic-concurrency/).
 
 ## Permissions
 

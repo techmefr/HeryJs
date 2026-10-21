@@ -15,6 +15,7 @@ import { loadBlueprint } from '../cli/lib/blueprint';
 import { buildResourceContext } from '../cli/lib/resource-context';
 import type { ResourceContext } from '../cli/lib/resource-context';
 import {
+  changeFeedFile,
   controllerFile,
   dtoFile,
   factoryFile,
@@ -50,6 +51,7 @@ function generatedFiles(ctx: ResourceContext): Record<string, string> {
     [`${ctx.kebabName}.presets.ts`]: presetsFile(ctx),
     [`${ctx.kebabName}.policy.ts`]: policyFile(ctx),
     [`${ctx.kebabName}-record.loader.ts`]: recordLoaderFile(ctx),
+    [`${ctx.kebabName}.change-feed.ts`]: changeFeedFile(ctx),
     [`${ctx.kebabName}.service.ts`]: serviceFile(ctx),
     [`${ctx.kebabName}.controller.ts`]: controllerFile(ctx),
     [`${ctx.kebabName}.module.ts`]: moduleFile(ctx),

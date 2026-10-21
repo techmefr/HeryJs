@@ -23,6 +23,8 @@ import { RecordNotFoundException } from '#technical/errors/record-not-found.exce
 import { AlreadyRestoredException } from '#technical/errors/already-restored.exception';
 import { resolveDomainError } from '#technical/errors/domain-exception.filter';
 import type { ResolvedError } from '#technical/errors/domain-exception.filter';
+import { executeBatch } from '#technical/http/batch-execution';
+import type { BatchEntry } from '#technical/http/batch-execution';
 import { ok } from '#technical/http/envelope';
 import { CacheableRead } from '#technical/http/etag.decorator';
 import {
@@ -75,6 +77,7 @@ import {
 } from './blog-post-record.loader';
 import type { BlogPostRecordLoader } from './blog-post-record.loader';
 import { toBlogPostView } from './blog-post.view';
+import type { BlogPostView } from './blog-post.view';
 
 // What the search route accepts, declared once. parseSearchRequest validates
 // against this object and GET /describe publishes it, so the endpoint cannot
@@ -148,6 +151,7 @@ const BLOG_POST_DESCRIBE = {
   fields: [
     { name: 'title', type: 'string', optional: false },
     { name: 'summary', type: 'string', optional: true, translatable: true },
+    { name: 'privateNote', type: 'encrypted', optional: true },
   ],
   locales: describeLocales(),
   ...BLOG_POST_CONTRACT,
@@ -155,9 +159,18 @@ const BLOG_POST_DESCRIBE = {
   // knows the search route returns every match, and that asking for a page is
   // an error rather than a no-op.
   paginated: true,
+  softDeletes: true,
+  // The many-to-many relations the update route can attach to and detach from
+  // by id. A client builds its relation controls from this list and reads
+  // whether each is allowed from the record's own capabilities, so it neither
+  // guesses the relation names nor re-derives who may change them.
+  relations: ['tags'],
+  // A date has no JSON Schema form, and without this the whole module throws
+  // at load for any resource that declares a datetime field. The field list
+  // above still says which fields are dates.
   rules: {
-    create: z.toJSONSchema(createBlogPostSchema),
-    update: z.toJSONSchema(updateBlogPostSchema),
+    create: z.toJSONSchema(createBlogPostSchema, { unrepresentable: 'any' }),
+    update: z.toJSONSchema(updateBlogPostSchema, { unrepresentable: 'any' }),
   },
 };
 
@@ -175,6 +188,10 @@ const BLOG_POST_NOTES_CONTRACT = {
   defaultLimit: 5,
 } as const satisfies ListQueryContract;
 
+// The picker for a relation asks for candidates by a free-text term; the
+// related resource has no search route of its own, so this is the whole contract.
+const relationOptionsSchema = z.object({ q: z.string().max(255).optional() });
+
 @Controller('blog-posts')
 @UseGuards(SessionGuard, CapabilitiesGuard)
 export class BlogPostController {
@@ -184,6 +201,13 @@ export class BlogPostController {
     @Inject(BLOG_POST_RECORD_LOADER)
     private readonly loader: BlogPostRecordLoader,
   ) {}
+
+  private runBatch<T>(entries: BatchEntry<T>[], atomic: boolean) {
+    return executeBatch(entries, {
+      atomic,
+      runAtomically: (callback) => this.blogPosts.atomically(callback),
+    });
+  }
 
   // Reused by update/delete/restore: each id is loaded and checked on its
   // own, and a missing record or a denied one becomes that id's entry in the
@@ -362,6 +386,28 @@ export class BlogPostController {
     return ok(records, meta);
   }
 
+  // Reading who is attached is reading the blog-post, so the view
+  // capability gates it; the related resource has no route or capability of
+  // its own to ask instead.
+  @Post(':id/tags/members')
+  @HttpCode(200)
+  @Capability(canViewBlogPost)
+  @LoadRecordWith(BLOG_POST_VISIBLE_RECORD_LOADER, 'blog-post')
+  async membersTags(@Req() req: RequestWithBlogPost) {
+    return ok(await this.blogPosts.membersTags(req.record.id));
+  }
+
+  // Candidates to attach are offered only to a caller who may attach.
+  @Post(':id/tags/options')
+  @HttpCode(200)
+  @Capability(canAttachTagsToBlogPost)
+  @LoadRecordWith(BLOG_POST_VISIBLE_RECORD_LOADER, 'blog-post')
+  async optionsTags(
+    @Body(new ZodValidationPipe(relationOptionsSchema)) body: { q?: string },
+  ) {
+    return ok(await this.blogPosts.optionsTags(body.q));
+  }
+
   @Post('create')
   @Capability(canCreateBlogPost)
   async create(
@@ -370,26 +416,15 @@ export class BlogPostController {
     body: CreateBlogPostRequestBody,
   ) {
     const subject = subjectOf(req.user);
-    const results = [];
+    const entries = body.data.map((item, index): BatchEntry<BlogPostView> => ({
+      index,
+      run: async () =>
+        toBlogPostView(await this.blogPosts.create(subject, item)),
+    }));
 
-    for (const [index, item] of body.data.entries()) {
-      try {
-        const created = await this.blogPosts.create(subject, item);
-        results.push({
-          index,
-          status: 'ok' as const,
-          data: toBlogPostView(created),
-        });
-      } catch (error) {
-        results.push({
-          index,
-          status: 'error' as const,
-          error: resolveDomainError(error),
-        });
-      }
-    }
+    const { results, meta } = await this.runBatch(entries, body.atomic);
 
-    return ok(results);
+    return ok(results, meta);
   }
 
   @Post('update')
@@ -406,65 +441,51 @@ export class BlogPostController {
       (s, record) => canUpdateBlogPost(s, record as never),
     );
 
-    const results = [];
-
-    for (const [index, entry] of loaded.entries()) {
+    const entries = loaded.map((entry, index): BatchEntry<unknown> => {
       if (!entry.ok) {
-        results.push({
-          index,
-          id: entry.id,
-          status: 'error' as const,
-          error: entry.error,
-        });
-        continue;
+        return { index, id: entry.id, failure: entry.error };
       }
 
       const { id: _id, relations, ...data } = body.data[index]!;
 
-      try {
-        const updated = await this.blogPosts.update(entry.record, data);
-        const relationResults: Record<string, string[]> = {};
+      return {
+        index,
+        id: entry.id,
+        run: async () => {
+          const updated = await this.blogPosts.update(entry.record, data);
+          const relationResults: Record<string, string[]> = {};
 
-        if (relations?.tags) {
-          const { attach, detach, sync } = relations.tags;
+          if (relations?.tags) {
+            const { attach, detach, sync } = relations.tags;
 
-          if ((attach && attach.length > 0) || sync) {
-            const decision = canAttachTagsToBlogPost(subject, entry.record);
-            if (!decision.allowed) {
-              throw new CapabilityForbiddenException(decision);
+            if ((attach && attach.length > 0) || sync) {
+              const decision = canAttachTagsToBlogPost(subject, entry.record);
+              if (!decision.allowed) {
+                throw new CapabilityForbiddenException(decision);
+              }
             }
+
+            if ((detach && detach.length > 0) || sync) {
+              const decision = canDetachTagsFromBlogPost(subject, entry.record);
+              if (!decision.allowed) {
+                throw new CapabilityForbiddenException(decision);
+              }
+            }
+
+            relationResults.tags = await this.blogPosts.syncTags(
+              entry.record,
+              relations.tags,
+            );
           }
 
-          if ((detach && detach.length > 0) || sync) {
-            const decision = canDetachTagsFromBlogPost(subject, entry.record);
-            if (!decision.allowed) {
-              throw new CapabilityForbiddenException(decision);
-            }
-          }
+          return { ...toBlogPostView(updated), ...relationResults };
+        },
+      };
+    });
 
-          relationResults.tags = await this.blogPosts.syncTags(
-            entry.record,
-            relations.tags,
-          );
-        }
+    const { results, meta } = await this.runBatch(entries, body.atomic);
 
-        results.push({
-          index,
-          id: entry.id,
-          status: 'ok' as const,
-          data: { ...toBlogPostView(updated), ...relationResults },
-        });
-      } catch (error) {
-        results.push({
-          index,
-          id: entry.id,
-          status: 'error' as const,
-          error: resolveDomainError(error),
-        });
-      }
-    }
-
-    return ok(results);
+    return ok(results, meta);
   }
 
   @Post('delete')
@@ -487,48 +508,32 @@ export class BlogPostController {
       }
     }
 
-    const results = [];
-
-    for (const [index, entry] of loaded.entries()) {
-      if (!entry.ok) {
-        results.push({
-          index,
-          id: entry.id,
-          status: 'error' as const,
-          error: entry.error,
-        });
-        continue;
-      }
-
-      try {
-        if (body.mode === 'hard') {
-          await this.blogPosts.hardDelete(entry.record);
-          results.push({
-            index,
-            id: entry.id,
-            status: 'ok' as const,
-            data: null,
-          });
-        } else {
-          const removed = await this.blogPosts.softDelete(entry.record);
-          results.push({
-            index,
-            id: entry.id,
-            status: 'ok' as const,
-            data: toBlogPostView(removed),
-          });
+    const entries = loaded.map(
+      (entry, index): BatchEntry<BlogPostView | null> => {
+        if (!entry.ok) {
+          return { index, id: entry.id, failure: entry.error };
         }
-      } catch (error) {
-        results.push({
+
+        return {
           index,
           id: entry.id,
-          status: 'error' as const,
-          error: resolveDomainError(error),
-        });
-      }
-    }
+          run: async () => {
+            if (body.mode === 'hard') {
+              await this.blogPosts.hardDelete(entry.record);
+              return null;
+            }
 
-    return ok(results);
+            return toBlogPostView(
+              await this.blogPosts.softDelete(entry.record),
+            );
+          },
+        };
+      },
+    );
+
+    const { results, meta } = await this.runBatch(entries, body.atomic);
+
+    return ok(results, meta);
   }
 
   // A route rather than a service method alone: restore is the only way back
@@ -547,41 +552,28 @@ export class BlogPostController {
       canRestoreBlogPost(s, record as never),
     );
 
-    const results = [];
-
-    for (const [index, entry] of loaded.entries()) {
+    const entries = loaded.map((entry, index): BatchEntry<BlogPostView> => {
       if (!entry.ok) {
-        results.push({
-          index,
-          id: entry.id,
-          status: 'error' as const,
-          error: entry.error,
-        });
-        continue;
+        return { index, id: entry.id, failure: entry.error };
       }
 
-      try {
-        if (!entry.record.deletedAt) {
-          throw new AlreadyRestoredException('blog-post');
-        }
+      return {
+        index,
+        id: entry.id,
+        run: async () => {
+          if (!entry.record.deletedAt) {
+            throw new AlreadyRestoredException('blog-post');
+          }
 
-        const restored = await this.blogPosts.restore(entry.record, body.patch);
-        results.push({
-          index,
-          id: entry.id,
-          status: 'ok' as const,
-          data: toBlogPostView(restored),
-        });
-      } catch (error) {
-        results.push({
-          index,
-          id: entry.id,
-          status: 'error' as const,
-          error: resolveDomainError(error),
-        });
-      }
-    }
+          return toBlogPostView(
+            await this.blogPosts.restore(entry.record, body.patch),
+          );
+        },
+      };
+    });
 
-    return ok(results);
+    const { results, meta } = await this.runBatch(entries, body.atomic);
+
+    return ok(results, meta);
   }
 }

@@ -5,6 +5,7 @@ import { translatableInputSchema } from '#technical/i18n/translatable';
 const blogPostFields = z.object({
   title: z.string().min(1).max(255),
   summary: translatableInputSchema(z.string().min(1).max(255)).optional(),
+  privateNote: z.string().min(1).max(4096).optional(),
 });
 
 /**
@@ -81,6 +82,7 @@ export type UpdateBlogPostRelationsInput = z.infer<
 // record, so the response shape never has to differ between one and many.
 export const createBlogPostRequestSchema = z.object({
   data: z.array(createBlogPostSchema).max(MAX_BATCH_ENTRIES),
+  atomic: z.boolean().default(false),
 });
 export type CreateBlogPostRequestBody = z.infer<
   typeof createBlogPostRequestSchema
@@ -97,6 +99,7 @@ export const updateBlogPostRequestSchema = z.object({
         .superRefine(checkBlogPost),
     )
     .max(MAX_BATCH_ENTRIES),
+  atomic: z.boolean().default(false),
 });
 export type UpdateBlogPostRequestBody = z.infer<
   typeof updateBlogPostRequestSchema
@@ -108,6 +111,7 @@ export type DeleteBlogPostMode = (typeof DELETE_MODES)[number];
 export const deleteBlogPostRequestSchema = z.object({
   ids: z.array(z.string()).max(MAX_BATCH_ENTRIES),
   mode: z.enum(DELETE_MODES).default('soft'),
+  atomic: z.boolean().default(false),
 });
 export type DeleteBlogPostRequestBody = z.infer<
   typeof deleteBlogPostRequestSchema
@@ -119,6 +123,7 @@ export const restoreBlogPostRequestSchema = z.object({
   // it reuses the update schema's own field whitelist rather than inventing
   // a narrower one.
   patch: updateBlogPostSchema.optional(),
+  atomic: z.boolean().default(false),
 });
 export type RestoreBlogPostRequestBody = z.infer<
   typeof restoreBlogPostRequestSchema

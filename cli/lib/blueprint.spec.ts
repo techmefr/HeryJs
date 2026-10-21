@@ -449,6 +449,96 @@ sorts: []
     );
   });
 
+  it('leaves versioning off for a blueprint that says nothing about it', () => {
+    writeBlueprint(
+      dir,
+      'note',
+      `
+name: Note
+fields:
+  - name: body
+    type: string
+sorts: []
+`,
+    );
+
+    expect(loadBlueprint(path.join(dir, 'note.yaml')).versioned).toBe(false);
+  });
+
+  it('carries versioned: true through to the resolved blueprint', () => {
+    writeBlueprint(
+      dir,
+      'note',
+      `
+name: Note
+versioned: true
+fields:
+  - name: body
+    type: string
+sorts: [version]
+`,
+    );
+
+    expect(loadBlueprint(path.join(dir, 'note.yaml')).versioned).toBe(true);
+  });
+
+  it('refuses versioned on an unrouted resource', () => {
+    writeBlueprint(
+      dir,
+      'note',
+      `
+name: Note
+routed: false
+versioned: true
+fields:
+  - name: body
+    type: string
+sorts: []
+`,
+    );
+
+    expect(() => loadBlueprint(path.join(dir, 'note.yaml'))).toThrow(
+      /versioned only applies to a routed resource/,
+    );
+  });
+
+  it('refuses a field named version on a versioned resource', () => {
+    writeBlueprint(
+      dir,
+      'note',
+      `
+name: Note
+versioned: true
+fields:
+  - name: version
+    type: int
+sorts: []
+`,
+    );
+
+    expect(() => loadBlueprint(path.join(dir, 'note.yaml'))).toThrow(
+      /field "version" is the column versioned: true adds/,
+    );
+  });
+
+  it('refuses sorting by version when the resource is not versioned', () => {
+    writeBlueprint(
+      dir,
+      'note',
+      `
+name: Note
+fields:
+  - name: body
+    type: string
+sorts: [version]
+`,
+    );
+
+    expect(() => loadBlueprint(path.join(dir, 'note.yaml'))).toThrow(
+      /sort "version" names no declared field/,
+    );
+  });
+
   it('refuses a filter on deletedAt when soft deletes are turned off', () => {
     writeBlueprint(
       dir,
@@ -679,5 +769,103 @@ sorts: []
     expect(() => loadBlueprint(path.join(dir, 'page.yaml'))).toThrow(
       /only applies to a routed resource/,
     );
+  });
+});
+
+describe('loadBlueprint with a vector field', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(tmpdir(), 'hery-blueprint-vector-'));
+  });
+
+  function load(fields: string, extra = ''): ReturnType<typeof loadBlueprint> {
+    writeBlueprint(
+      dir,
+      'note',
+      `name: Note\nfields:\n  - name: body\n    type: string\n${fields}\n${extra}`,
+    );
+
+    return loadBlueprint(path.join(dir, 'note.yaml'));
+  }
+
+  const embedding = `  - name: embedding\n    type: vector\n    dimensions: 8\n    source: body`;
+
+  it('accepts a vector field naming a width and a string source', () => {
+    const blueprint = load(embedding);
+
+    expect(blueprint.fields.map((field) => field.type)).toEqual([
+      'string',
+      'vector',
+    ]);
+  });
+
+  it('refuses a vector field with no dimensions', () => {
+    expect(() =>
+      load(`  - name: embedding\n    type: vector\n    source: body`),
+    ).toThrow(/needs dimensions/);
+  });
+
+  it('refuses a vector field whose source is not a declared string field', () => {
+    expect(() =>
+      load(
+        `  - name: embedding\n    type: vector\n    dimensions: 8\n    source: missing`,
+      ),
+    ).toThrow(/needs a source naming a declared string field/);
+  });
+
+  it('refuses a source that is itself not text', () => {
+    writeBlueprint(
+      dir,
+      'note',
+      `name: Note\nfields:\n  - name: reps\n    type: int\n  - name: embedding\n    type: vector\n    dimensions: 8\n    source: reps\n`,
+    );
+
+    expect(() => loadBlueprint(path.join(dir, 'note.yaml'))).toThrow(
+      /declared string field/,
+    );
+  });
+
+  it('refuses a second vector field, which mode: similar could not tell apart', () => {
+    expect(() =>
+      load(
+        `${embedding}\n  - name: other\n    type: vector\n    dimensions: 8\n    source: body`,
+      ),
+    ).toThrow(/only one vector field/);
+  });
+
+  it('refuses optional or hidden on a vector field, which is always both', () => {
+    expect(() => load(`${embedding}\n    optional: true`)).toThrow(
+      /always optional and never returned/,
+    );
+  });
+
+  it('refuses dimensions or source on any other field', () => {
+    expect(() =>
+      load(`  - name: title\n    type: string\n    dimensions: 8`),
+    ).toThrow(/only apply to a vector field/);
+  });
+
+  it('refuses to sort or filter on a vector field', () => {
+    expect(() => load(embedding, 'sorts:\n  - embedding\n')).toThrow(
+      /names a vector field/,
+    );
+    expect(() => load(embedding, 'filters:\n  - embedding\n')).toThrow(
+      /names a vector field/,
+    );
+  });
+
+  it('refuses a vector field on a resource that is not routed', () => {
+    expect(() => load(embedding, 'routed: false\nsorts: []\n')).toThrow(
+      /needs a routed resource/,
+    );
+  });
+
+  it('refuses a width past what a vector column can hold', () => {
+    expect(() =>
+      load(
+        `  - name: embedding\n    type: vector\n    dimensions: 20000\n    source: body`,
+      ),
+    ).toThrow();
   });
 });

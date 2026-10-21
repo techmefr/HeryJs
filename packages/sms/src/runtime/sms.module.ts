@@ -3,6 +3,7 @@ import { HeryConfigModule } from '#kernel/config/hery-config.module';
 import { DriversModule } from '#kernel/drivers/drivers.module';
 import { NOTIFIER_SMS_CONSENT } from '#kernel/notifier/notifier-sms-channel';
 import { PrismaModule } from '#kernel/prisma/prisma.module';
+import { AUTH_SMS_SENDER_PROVIDER } from './auth-sms.adapter';
 import { LogSmsDriver } from './log-sms.driver';
 import { SmsConsentService } from './sms.consent';
 import { SmsDriverRegistry } from './sms-driver.registry';
@@ -20,12 +21,14 @@ import { SmsService } from './sms.service';
     // `#kernel/notifier/notifier-sms-channel` for why these are tokens rather
     // than exports.
     SMS_NOTIFIER_CHANNEL_PROVIDER,
+    AUTH_SMS_SENDER_PROVIDER,
     { provide: NOTIFIER_SMS_CONSENT, useExisting: SmsConsentService },
   ],
   exports: [
     SmsService,
     SmsConsentService,
     SMS_NOTIFIER_CHANNEL_PROVIDER.provide,
+    AUTH_SMS_SENDER_PROVIDER.provide,
     NOTIFIER_SMS_CONSENT,
   ],
 })

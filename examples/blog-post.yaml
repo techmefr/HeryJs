@@ -7,6 +7,9 @@ fields:
     type: string
     optional: true
     translatable: true
+  - name: privateNote
+    type: encrypted
+    optional: true
 
 permissions:
   view: own
