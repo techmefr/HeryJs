@@ -60,7 +60,10 @@ function build(connection = connectionRecord({ issuer: ISSUER })): Harness {
       );
     }
 
-    requests.push({ url, body: String(init?.body ?? '') });
+    requests.push({
+      url,
+      body: typeof init?.body === 'string' ? init.body : '',
+    });
 
     return Promise.resolve(new Response(JSON.stringify(tokenResponse)));
   };
