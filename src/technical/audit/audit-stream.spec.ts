@@ -163,11 +163,11 @@ describe('audit streaming to a sink (real database)', () => {
       where: { id: admin.id },
       data: { role: 'admin' },
     });
-    tenantId = (
-      await authPrismaClient.user.findUniqueOrThrow({
-        where: { id: admin.id },
-      })
-    ).tenantId;
+    tenantId = `audit-stream-${randomUUID()}`;
+    await authPrismaClient.user.update({
+      where: { id: admin.id },
+      data: { tenantId },
+    });
   });
 
   afterAll(async () => {

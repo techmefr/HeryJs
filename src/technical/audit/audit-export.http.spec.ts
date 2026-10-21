@@ -91,12 +91,18 @@ describe('audit export, verification and sinks', () => {
       where: { id: admin.id },
       data: { role: 'admin' },
     });
-    tenantId = (
-      await authPrismaClient.user.findUniqueOrThrow({
-        where: { id: admin.id },
-      })
-    ).tenantId;
+    // Every registered user lands in the shared "default" tenant, so a tenant
+    // of this spec's own is what keeps its chain and its sinks to itself.
+    tenantId = `audit-${randomUUID()}`;
+    await authPrismaClient.user.update({
+      where: { id: admin.id },
+      data: { tenantId },
+    });
     member = await registerAndLogin(app);
+    await authPrismaClient.user.update({
+      where: { id: member.id },
+      data: { tenantId },
+    });
 
     await record('=SUM(1)', '2026-01-10T10:00:00.000Z');
     await record('post-feb', '2026-02-10T10:00:00.000Z');
@@ -196,7 +202,7 @@ describe('audit export, verification and sinks', () => {
       const other = await registerAndLogin(app);
       await authPrismaClient.user.update({
         where: { id: other.id },
-        data: { role: 'admin' },
+        data: { role: 'admin', tenantId: `audit-other-${randomUUID()}` },
       });
 
       const res = await request(app.getHttpServer())
@@ -399,7 +405,7 @@ describe('audit export, verification and sinks', () => {
       const other = await registerAndLogin(app);
       await authPrismaClient.user.update({
         where: { id: other.id },
-        data: { role: 'admin' },
+        data: { role: 'admin', tenantId: `audit-other-${randomUUID()}` },
       });
 
       await request(app.getHttpServer())
