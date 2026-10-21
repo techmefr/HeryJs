@@ -20,6 +20,7 @@ import {
   LockKeyhole,
   LogOut,
   Mail,
+  Network,
   RefreshCw,
   ScrollText,
   Settings,
@@ -42,6 +43,7 @@ type IconNode = Parameters<typeof createElement>[0];
 export const ICONS = {
   backups: Database,
   brand: Zap,
+  circuits: Network,
   crumb: ChevronRight,
   devtools: Bug,
   empty: Inbox,

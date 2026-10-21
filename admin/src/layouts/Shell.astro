@@ -37,6 +37,7 @@ const { title, bare = false } = Astro.props;
               <a class="item" href="/" id="overview-link" />
               <a class="item" href="/pipeline" id="pipeline-link" />
               <a class="item" href="/devtools" id="devtools-link" />
+              <a class="item" href="/http-circuits" id="circuits-link" />
               <a class="item" href="/prune" id="prune-link" />
               <a class="item" href="/audit" id="audit-link" />
               <a class="item" href="/job-flows" id="job-flows-link" />
@@ -117,6 +118,11 @@ const { title, bare = false } = Astro.props;
         document.getElementById('devtools-link'),
         ICONS.devtools,
         'Dev dashboard',
+      );
+      label(
+        document.getElementById('circuits-link'),
+        ICONS.circuits,
+        'HTTP circuits',
       );
       label(document.getElementById('prune-link'), ICONS.prune, 'Prune');
       label(document.getElementById('audit-link'), ICONS.audit, 'Audit');
