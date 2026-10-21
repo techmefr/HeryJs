@@ -4,6 +4,7 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { ScimException } from './scim.exception';
@@ -19,6 +20,8 @@ import { SCIM_CONTENT_TYPE, SCIM_ERROR_SCHEMA } from './scim.types';
  */
 @Catch()
 export class ScimExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger('Scim');
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const response = host.switchToHttp().getResponse<Response>();
     const body = this.bodyOf(exception);
@@ -46,6 +49,8 @@ export class ScimExceptionFilter implements ExceptionFilter {
             : 'The SCIM service failed.',
       };
     }
+
+    this.logger.error(exception);
 
     return {
       schemas: [SCIM_ERROR_SCHEMA],

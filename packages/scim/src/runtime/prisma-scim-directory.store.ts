@@ -182,9 +182,7 @@ export class PrismaScimDirectoryStore implements ScimDirectoryStore {
           orderBy: ORDER,
           skip: query.startIndex - 1,
           take: query.count,
-          include: {
-            members: { include: { user: { select: { email: true } } } },
-          },
+          include: { members: true },
         }),
         this.prisma.team.count({ where }),
       ]);
@@ -193,10 +191,11 @@ export class PrismaScimDirectoryStore implements ScimDirectoryStore {
         'group',
         records.map((record) => record.id),
       );
+      const emails = await this.memberEmails(records);
 
       return {
         rows: records.map((record) =>
-          this.toGroup(record, identities.get(record.id)),
+          this.toGroup(record, emails, identities.get(record.id)),
         ),
         total,
       };
@@ -380,15 +379,39 @@ export class PrismaScimDirectoryStore implements ScimDirectoryStore {
   ): Promise<ScimGroupRow | null> {
     const record = await this.prisma.team.findUnique({
       where: { id },
-      include: { members: { include: { user: { select: { email: true } } } } },
+      include: { members: true },
     });
 
     return record
       ? this.toGroup(
           record,
+          await this.memberEmails([record]),
           (await this.identities(tenantId, 'group', [id])).get(id),
         )
       : null;
+  }
+
+  private async memberEmails(
+    records: Array<{ members: Array<{ userId: string }> }>,
+  ): Promise<Map<string, string>> {
+    const ids = [
+      ...new Set(
+        records.flatMap((record) =>
+          record.members.map((member) => member.userId),
+        ),
+      ),
+    ];
+
+    if (ids.length === 0) {
+      return new Map();
+    }
+
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, email: true },
+    });
+
+    return new Map(users.map((user) => [user.id, user.email]));
   }
 
   private toGroup(
@@ -397,8 +420,9 @@ export class PrismaScimDirectoryStore implements ScimDirectoryStore {
       name: string;
       createdAt: Date;
       updatedAt: Date;
-      members: Array<{ userId: string; user: { email: string } }>;
+      members: Array<{ userId: string }>;
     },
+    emails: Map<string, string>,
     identity?: IdentityRecord,
   ): ScimGroupRow {
     return {
@@ -407,7 +431,7 @@ export class PrismaScimDirectoryStore implements ScimDirectoryStore {
       externalId: identity?.externalId ?? null,
       members: record.members.map((member) => ({
         id: member.userId,
-        email: member.user.email,
+        email: emails.get(member.userId) ?? '',
       })),
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
