@@ -1,0 +1,237 @@
+---
+import Shell from '../layouts/Shell.astro';
+---
+
+<Shell title="Backups">
+  <h1>Backups</h1>
+  <p class="lede">
+    Dumps of this database, the schedule that makes them and how many are kept.
+    A restore overwrites the live database, so it asks you to type the backup's
+    name first.
+  </p>
+
+  <div class="output" id="schedule"></div>
+  <div class="output" id="output"></div>
+</Shell>
+
+<script>
+  import { API_URL, ApiError, api } from '../lib/api';
+  import { icon, ICONS } from '../lib/icons';
+  import { pill, skeleton, state } from '../lib/render';
+  import { token } from '../lib/session';
+
+  interface BackupRow {
+    name: string;
+    createdAt: string;
+    sizeBytes: number;
+    status: string;
+  }
+
+  interface Schedule {
+    enabled: boolean;
+    cron: string;
+    keep: number;
+    lastRun: { status: string; lastRunAt: string } | null;
+  }
+
+  const schedule = document.getElementById('schedule')!;
+  const output = document.getElementById('output')!;
+  const note = document.createElement('p');
+  note.className = 'mono';
+
+  function sizeOf(bytes: number): string {
+    return bytes < 1024 * 1024
+      ? (bytes / 1024).toFixed(1) + ' KiB'
+      : (bytes / (1024 * 1024)).toFixed(1) + ' MiB';
+  }
+
+  function failure(error: unknown): string {
+    return error instanceof ApiError
+      ? (error.serverMessage ?? 'Failed (' + error.status + ')')
+      : 'Failed';
+  }
+
+  async function download(name: string): Promise<void> {
+    const response = await fetch(
+      API_URL + '/backups/' + encodeURIComponent(name) + '/download',
+      { headers: { Authorization: 'Bearer ' + (token() ?? '') } },
+    );
+
+    if (!response.ok) {
+      throw new Error('Download failed (' + response.status + ')');
+    }
+
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(await response.blob());
+    link.download = name;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
+  async function restore(name: string): Promise<void> {
+    const typed = window.prompt(
+      'Restoring overwrites the live database with ' +
+        name +
+        '.\nType the backup name to confirm.',
+    );
+
+    if (typed === null) {
+      return;
+    }
+
+    await api('/backups/' + encodeURIComponent(name) + '/restore', {
+      method: 'POST',
+      body: JSON.stringify({ confirm: typed }),
+    });
+    note.textContent = 'Restored ' + name;
+  }
+
+  function button(label: string, run: () => Promise<void>): HTMLButtonElement {
+    const element = document.createElement('button');
+    element.type = 'button';
+    element.textContent = label;
+    element.addEventListener('click', async () => {
+      element.disabled = true;
+      note.textContent = 'Working…';
+
+      try {
+        await run();
+      } catch (error) {
+        note.textContent = failure(error);
+      } finally {
+        element.disabled = false;
+      }
+    });
+
+    return element;
+  }
+
+  function field(label: string, input: HTMLInputElement): HTMLLabelElement {
+    const wrapper = document.createElement('label');
+    wrapper.append(document.createTextNode(label + ' '), input);
+
+    return wrapper;
+  }
+
+  function scheduleForm(current: Schedule): HTMLElement {
+    const form = document.createElement('div');
+    form.className = 'card';
+
+    const enabled = document.createElement('input');
+    enabled.type = 'checkbox';
+    enabled.checked = current.enabled;
+    const cron = document.createElement('input');
+    cron.value = current.cron;
+    const keep = document.createElement('input');
+    keep.type = 'number';
+    keep.min = '1';
+    keep.value = String(current.keep);
+
+    const save = button('Save schedule', async () => {
+      await api('/backups/schedule', {
+        method: 'PUT',
+        body: JSON.stringify({
+          enabled: enabled.checked,
+          cron: cron.value,
+          keep: Number(keep.value),
+        }),
+      });
+      note.textContent = 'Schedule saved';
+    });
+    save.className = 'primary';
+
+    const last = current.lastRun
+      ? pill(
+          'last run ' + current.lastRun.status,
+          current.lastRun.status === 'success' ? 'ok' : 'danger',
+        )
+      : pill('never run', 'neutral');
+
+    form.append(
+      field('Scheduled', enabled),
+      field('Cron', cron),
+      field('Keep', keep),
+      save,
+      last,
+    );
+
+    return form;
+  }
+
+  function backupRow(entry: BackupRow): HTMLElement {
+    const row = document.createElement('div');
+    row.className = 'card prune-row';
+
+    const name = document.createElement('span');
+    name.className = 'path';
+    name.textContent = entry.name;
+
+    const when = document.createElement('span');
+    when.className = 'mono';
+    when.textContent = new Date(entry.createdAt).toLocaleString();
+
+    const size = document.createElement('span');
+    size.className = 'mono';
+    size.textContent = sizeOf(entry.sizeBytes);
+
+    row.append(
+      name,
+      when,
+      size,
+      pill(entry.status, 'ok'),
+      button('Download', () => download(entry.name)),
+      button('Restore', async () => {
+        await restore(entry.name);
+        await load();
+      }),
+    );
+
+    return row;
+  }
+
+  async function load(): Promise<void> {
+    const [{ data: current }, { data: rows }] = await Promise.all([
+      api<Schedule>('/backups/schedule'),
+      api<BackupRow[]>('/backups'),
+    ]);
+
+    const create = button('Back up now', async () => {
+      await api('/backups', { method: 'POST' });
+      note.textContent = 'Backup created';
+      await load();
+    });
+    create.className = 'primary';
+    create.prepend(icon(ICONS.refresh, 14));
+
+    const list = document.createElement('div');
+    list.className = 'traces';
+    list.append(...rows.map(backupRow));
+
+    schedule.replaceChildren(scheduleForm(current), create, note);
+    output.replaceChildren(
+      rows.length === 0
+        ? state('No backups yet', 'Create one, or enable the schedule.')
+        : list,
+    );
+  }
+
+  output.appendChild(skeleton(3));
+
+  try {
+    await load();
+  } catch (error) {
+    output.replaceChildren(
+      error instanceof ApiError && error.status === 403
+        ? state(
+            'Not available',
+            'Backups are an admin-only operation.',
+            'denied',
+          )
+        : state(
+            'Could not load backups',
+            'The request to /backups failed.',
+            'denied',
+          ),
+    );
+  }
+</script>

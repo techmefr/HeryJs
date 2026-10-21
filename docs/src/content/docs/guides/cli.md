@@ -17,6 +17,9 @@ The `hery` CLI is the only thing in this project that reads a blueprint. It is a
 | `db:seed`                    | Runs `prisma/seed.ts`; `--fresh` resets first.                                          |
 | `db:diff`                    | Prints the SQL that would bring the database to `schema.prisma`.                        |
 | `db:branch <action> [name]`  | Creates, drops or lists throwaway copies of the database.                               |
+| `db:backup`                  | Dumps the database with `pg_dump`, keeping the newest N dumps.                          |
+| `db:backups`                 | Lists the dumps of this database.                                                       |
+| `db:restore <file>`          | Restores a dump; refuses a database that has data without `--force`.                    |
 | `install [modules...]`       | Installs optional modules.                                                              |
 | `uninstall <module>`         | Removes a module and reverses what installing it did.                                   |
 | `make:mail <Name>`           | Writes a `Mailable` into `src/functional/<domain>`.                                     |
@@ -226,6 +229,8 @@ pnpm hery migrate:fresh --seed      # drop everything, replay, seed
 pnpm hery db:seed --fresh           # the same reset, seeding always
 pnpm hery db:diff                   # SQL from the live database to schema.prisma
 pnpm hery db:branch create risky    # a copy of the database to try a migration on
+pnpm hery db:backup                 # a pg_dump in backups/, newest 7 kept
+pnpm hery db:restore latest         # refuses a database that already has data
 ```
 
 `migrate:status` reads `_prisma_migrations` rather than guessing from the disk,
