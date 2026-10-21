@@ -114,8 +114,10 @@ describe('OutboxRelay (real database)', () => {
       registry.register({
         name: handlerName,
         names: [pattern],
-        handle: () => {
-          hits.push(handlerName);
+        handle: (delivery) => {
+          if (delivery.id === id) {
+            hits.push(handlerName);
+          }
         },
       });
     }
