@@ -25,6 +25,7 @@ import {
 import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { env as appEnv } from '#technical/config/env';
 import { MetricsInterceptor } from '#technical/monitoring/metrics.interceptor';
 import { TraceContextStorage } from '#technical/tracing/trace-context';
 import { TelemetryMiddleware } from './telemetry.middleware';
@@ -74,7 +75,7 @@ describe('Telemetry over a real HTTP round trip', () => {
   const contextManager = new AsyncLocalStorageContextManager();
 
   beforeAll(async () => {
-    process.env.OTEL_EXPORTER_OTLP_ENDPOINT = 'http://127.0.0.1:1';
+    appEnv.OTEL_EXPORTER_OTLP_ENDPOINT = 'http://127.0.0.1:1';
     contextManager.enable();
     context.setGlobalContextManager(contextManager);
     propagation.setGlobalPropagator(new W3CTraceContextPropagator());
@@ -98,7 +99,7 @@ describe('Telemetry over a real HTTP round trip', () => {
   });
 
   afterAll(async () => {
-    delete process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
+    delete appEnv.OTEL_EXPORTER_OTLP_ENDPOINT;
     await app.close();
     await reader.shutdown();
     contextManager.disable();

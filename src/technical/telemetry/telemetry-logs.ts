@@ -1,3 +1,4 @@
+import { env as appEnv } from '#technical/config/env';
 import { trace } from '@opentelemetry/api';
 import { SeverityNumber, logs } from '@opentelemetry/api-logs';
 import type { AnyValueMap } from '@opentelemetry/api-logs';
@@ -101,7 +102,7 @@ export interface TelemetryPinoOptions {
 }
 
 export function telemetryPinoOptions(
-  env: TelemetryEnv = process.env,
+  env: TelemetryEnv = appEnv,
 ): TelemetryPinoOptions {
   const mixin = (): Record<string, string> => {
     const span = trace.getActiveSpan();

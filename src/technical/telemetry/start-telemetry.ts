@@ -1,3 +1,4 @@
+import { env as appEnv } from '#technical/config/env';
 import { isTelemetryEnabled, telemetryServiceName } from './telemetry-config';
 import type { TelemetryEnv } from './telemetry-config';
 
@@ -8,7 +9,7 @@ interface TelemetryHandle {
 let handle: TelemetryHandle | null = null;
 
 export async function startTelemetry(
-  env: TelemetryEnv = process.env,
+  env: TelemetryEnv = appEnv,
 ): Promise<boolean> {
   if (handle !== null || !isTelemetryEnabled(env)) {
     return handle !== null;
