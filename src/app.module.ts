@@ -40,6 +40,7 @@ import { PipelineMiddleware } from '#devtools/pipeline/pipeline.middleware';
 import { SignalModule } from '#technical/signal/signal.module';
 import { SseModule } from '#modules/sse/sse.module';
 import { OAuthModule } from '#modules/oauth/oauth.module';
+import { SsoModule } from '#modules/sso/sso.module';
 import { LocaleMiddleware } from '#technical/i18n/locale.middleware';
 import { TenantMiddleware } from '#technical/tenancy/tenant.middleware';
 import { DomainExceptionFilter } from '#technical/errors/domain-exception.filter';
@@ -114,6 +115,7 @@ import { redactedRequestSerializer } from '#technical/logging/redacted-request-s
     SeedersModule.forRoot([]),
     SignalModule,
     SseModule,
+    SsoModule.forRoot(),
     StorageModule,
     TeamsModule,
     TelemetryModule,

@@ -592,3 +592,52 @@ model DevtoolsEntry {
   @@index([tenantId, kind, createdAt])
   @@index([createdAt])
 }
+
+model SsoConnection {
+  id           String   @id @default(cuid())
+  tenantId     String
+  name         String
+  issuer       String
+  clientId     String
+  clientSecret String
+  linkPolicy   String   @default("refuse")
+  isEnabled    Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  domains    SsoDomain[]
+  identities SsoIdentity[]
+
+  @@index([tenantId])
+}
+
+model SsoDomain {
+  id                String    @id @default(cuid())
+  tenantId          String
+  connectionId      String
+  domain            String
+  verificationToken String
+  verifiedAt        DateTime?
+  createdAt         DateTime  @default(now())
+
+  connection SsoConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, domain])
+  @@index([tenantId])
+  @@index([domain])
+}
+
+model SsoIdentity {
+  id           String   @id @default(cuid())
+  tenantId     String
+  connectionId String
+  subject      String
+  userId       String
+  createdAt    DateTime @default(now())
+
+  connection SsoConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, subject])
+  @@index([tenantId])
+  @@index([userId])
+}

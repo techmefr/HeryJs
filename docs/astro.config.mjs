@@ -120,6 +120,7 @@ export default defineConfig({
                 },
                 { label: 'Server-Sent Events', slug: 'guides/sse' },
                 { label: 'Social sign-in', slug: 'guides/oauth' },
+                { label: 'Enterprise SSO', slug: 'guides/sso' },
                 { label: 'Mail', slug: 'guides/mail' },
                 { label: 'Notifier', slug: 'guides/notifier' },
                 { label: 'Storage', slug: 'guides/storage' },
