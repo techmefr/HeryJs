@@ -1,3 +1,4 @@
+import type { AdminColumn } from './api';
 import { ICONS, icon } from './icons';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}T/;
@@ -86,17 +87,93 @@ export function writeCell(
   target.title = text;
 }
 
-export function table(rows: Record<string, unknown>[]): HTMLElement {
+export interface TableOptions {
+  // What a feature declared with @AdminSection: the order, the label and the
+  // way to show each column. A key it does not name keeps its default.
+  columns?: AdminColumn[];
+  // Fills the trailing cell of a row, the home of its actions.
+  actions?: (row: Record<string, unknown>) => HTMLElement;
+  actionsLabel?: string;
+}
+
+function writeFormatted(
+  target: HTMLTableCellElement,
+  column: AdminColumn,
+  value: unknown,
+): void {
+  if (value === null || value === undefined || column.format === undefined) {
+    writeCell(target, column.key, value);
+    return;
+  }
+
+  if (column.format === 'badge') {
+    target.appendChild(pill(String(value), 'neutral'));
+    return;
+  }
+
+  if (column.format === 'json') {
+    target.className = 'mono';
+    target.textContent = JSON.stringify(value);
+    return;
+  }
+
+  if (column.format === 'date') {
+    const text = String(value);
+    target.className = 'mono';
+    target.textContent = ISO_DATE.test(text)
+      ? text.replace('T', ' ').slice(0, 19)
+      : text;
+    target.title = text;
+    return;
+  }
+
+  if (column.format === 'boolean') {
+    writeCell(target, column.key, Boolean(value));
+    return;
+  }
+
+  target.className = column.format === 'number' ? 'mono' : '';
+  target.textContent = String(value);
+}
+
+export function columnsOf(
+  rows: Record<string, unknown>[],
+  declared: AdminColumn[] | undefined,
+): AdminColumn[] {
   // Columns come from the payload itself, so a field the resource view strips
-  // never reaches this table in the first place.
-  const columns = [...new Set(rows.flatMap((row) => Object.keys(row)))];
+  // never reaches this table in the first place. A declaration only orders,
+  // renames and formats what the payload really carries.
+  const present = [...new Set(rows.flatMap((row) => Object.keys(row)))];
+  const named = (declared ?? []).filter((column) =>
+    present.includes(column.key),
+  );
+  const rest = present
+    .filter((key) => !named.some((column) => column.key === key))
+    .map((key) => ({ key, label: key }));
+
+  return [...named, ...rest].filter((column) => column.hidden !== true);
+}
+
+export function table(
+  rows: Record<string, unknown>[],
+  options: TableOptions = {},
+): HTMLElement {
+  const columns = columnsOf(rows, options.columns);
 
   const element = document.createElement('table');
   const head = element.createTHead().insertRow();
 
   for (const column of columns) {
     const heading = document.createElement('th');
-    heading.textContent = column;
+    heading.scope = 'col';
+    heading.textContent = column.label;
+    head.appendChild(heading);
+  }
+
+  if (options.actions) {
+    const heading = document.createElement('th');
+    heading.scope = 'col';
+    heading.textContent = options.actionsLabel ?? 'Actions';
     head.appendChild(heading);
   }
 
@@ -106,7 +183,11 @@ export function table(rows: Record<string, unknown>[]): HTMLElement {
     const line = body.insertRow();
 
     for (const column of columns) {
-      writeCell(line.insertCell(), column, row[column]);
+      writeFormatted(line.insertCell(), column, row[column.key]);
+    }
+
+    if (options.actions) {
+      line.insertCell().appendChild(options.actions(row));
     }
   }
 
@@ -116,7 +197,6 @@ export function table(rows: Record<string, unknown>[]): HTMLElement {
 
   return card;
 }
-
 export function skeleton(lines = 6): HTMLElement {
   const card = document.createElement('div');
   card.className = 'card skeleton';
