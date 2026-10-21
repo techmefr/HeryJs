@@ -26,6 +26,7 @@ Every subclass follows that shape: an HTTP status, a stable machine-readable `ke
 | `MissingSessionException`      | 401    | `auth.session.missing`    |
 | `InvalidSessionException`      | 401    | `auth.session.invalid`    |
 | `InvalidCredentialsException`  | 401    | `auth.invalidCredentials` |
+| `AccountLockedException`       | 429    | `auth.accountLocked`      |
 | `CapabilityForbiddenException` | 403    | `capability.forbidden`    |
 | `ApiKeyEscalationException`    | 403    | `apiKey.forbidden`        |
 | `RecordNotFoundException`      | 404    | `<resource>.notFound`     |

@@ -32,6 +32,15 @@ export const CATALOGUE: Catalogue = {
   'auth.invalidCredentials': {
     fr: 'Identifiants invalides.',
   },
+  'auth.accountLocked': {
+    fr: 'Trop de tentatives de connexion échouées. Réessayez plus tard.',
+  },
+  'auth.currentPasswordInvalid': {
+    fr: 'Le mot de passe actuel est incorrect.',
+  },
+  'apiKey.sessionsForbidden': {
+    fr: 'Une clé API ne peut pas gérer les sessions ni les mots de passe.',
+  },
   'apiKey.forbidden': {
     fr: 'Une clé API ne peut pas gérer les clés API.',
   },
