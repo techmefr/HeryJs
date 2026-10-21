@@ -162,16 +162,23 @@ An actor carries `id`, `email`, `token`, `tenantId`, `role` and a ready `authori
 
 For an in-process test that talks to Prisma directly rather than over HTTP, `inRolledBackTransaction(client, async tx => { ... })` runs the work in a transaction and rolls it back afterwards, returning whatever the work returned. It cannot isolate a request that goes over HTTP, for the reason given below.
 
-There is no per-worker database. Each query path builds its adapter from `DATABASE_URL` when it is imported, so the tenant is the isolation boundary the suite relies on.
+The framework's own suite gives each jest worker a database and a Redis keyspace of its own (see below). That is the framework's test infrastructure, not something a generated project gets: your project's specs still share `DATABASE_URL`, so the tenant is the isolation boundary they rely on.
 
 ## Running them
 
 ```bash
 pnpm test              # the whole suite, including architecture.spec.ts
 pnpm test:cov          # with coverage
+pnpm test:serial       # one worker against the one shared database
 ```
 
 Specs need a reachable Postgres, since nothing is mocked. `pnpm hery up` checks that before you find out from a failure.
+
+### How the framework suite isolates its workers
+
+`test/parallel-setup.ts` applies the migrations once into a template database named `<database>_tpl_<hash of the migrations>`, then creates `<database>_w1`, `<database>_w2`, and so on as copies of it with `CREATE DATABASE ... TEMPLATE`, one per worker, recreating them on every run and dropping them afterwards. A setup file (`test/parallel-env.ts`) points each test file's `DATABASE_URL` at its worker's database and its `REDIS_URL` at the worker's logical Redis database, before the spec imports anything. A worker that crashes mid-write leaves nothing for another to trip over.
+
+`pnpm test:serial`, or `JEST_SHARED_DB=true` on any jest command, skips all of it and runs against `DATABASE_URL` as the suite did before: the way back if the isolation is ever suspected. The database user must be allowed to create databases, and Postgres must be reachable as the `postgres` maintenance database.
 
 ## Isolating a test you wrote yourself
 
