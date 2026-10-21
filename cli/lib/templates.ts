@@ -449,6 +449,7 @@ export interface ${ctx.pascalName}SearchOptions {${
   }
   sorts?: { field: string; direction: 'asc' | 'desc' }[];
   where?: Record<string, unknown>;
+  cursorWhere?: Record<string, unknown>;
   include?: Record<string, unknown>;
   relationInstructions?: RelationInstruction[];
   search?: string;
@@ -578,7 +579,9 @@ ${
 
     const [records, total] = await Promise.all([
       this.prisma.${ctx.modelCamelName}.findMany({
-        where,
+        where: options.cursorWhere
+          ? { AND: [where, options.cursorWhere] }
+          : where,
         orderBy:
           options.sorts && options.sorts.length > 0
             ? options.sorts.map((sort) => ({ [sort.field]: sort.direction }))
@@ -620,7 +623,9 @@ ${childIncludes
 
     const [records, total] = await Promise.all([
       this.prisma.${childDelegate}.findMany({
-        where,
+        where: query.cursorWhere
+          ? { AND: [where, query.cursorWhere] }
+          : where,
         orderBy:
           query.sorts && query.sorts.length > 0
             ? query.sorts.map((sort) => ({ [sort.field]: sort.direction }))
@@ -879,6 +884,7 @@ function paginationMetaLines(
   return `      page: query.page ?? 1,
       limit: pageLimit,
       last_page: Math.max(1, Math.ceil(total / pageLimit)),
+      next_cursor: nextCursorFor(records, query.sorts, pageLimit),
 `;
 }
 
@@ -1012,7 +1018,8 @@ import { RecordNotFoundException } from '#technical/errors/record-not-found.exce
 ${ctx.softDeletes ? `import { AlreadyRestoredException } from '#technical/errors/already-restored.exception';\n` : `import { SoftDeletesNotOfferedException } from '#technical/errors/invalid-query.exception';\n`}import { resolveDomainError } from '#technical/errors/domain-exception.filter';
 import type { ResolvedError } from '#technical/errors/domain-exception.filter';
 import { ok } from '#technical/http/envelope';
-import {
+import { CacheableRead } from '#technical/http/etag.decorator';
+import {${ctx.pagination || childIncludes.some((include) => include.pagination) ? '\n  nextCursorFor,' : ''}
   parseSearchRequest,
   searchRequestSchema,
   withIncludesAndAggregates,${childIncludes.length > 0 ? '\n  declaredSelect,' : ''}
@@ -1177,6 +1184,7 @@ export class ${ctx.pascalName}Controller {
   @Post('search')
   @HttpCode(200)
   @Capability(canViewAny${ctx.pascalName})
+  @CacheableRead()
   async search(
     @Req() req: RequestWithUser,
     @Body(new ZodValidationPipe(searchRequestSchema)) body: SearchRequestBody,
@@ -1262,6 +1270,7 @@ ${paginationMetaLines(ctx.pagination)}      total,
 
   @Get('describe')
   @Capability(canViewAny${ctx.pascalName})
+  @CacheableRead()
   describe() {
     return ok(${ctx.screamingSnakeName}_DESCRIBE);
   }
@@ -1277,6 +1286,7 @@ ${childIncludes
   @Post(':id/${include.relation}/search')
   @HttpCode(200)
   @Capability(canView${ctx.pascalName})
+  @CacheableRead()
   @LoadRecordWith(${childRouteLoader}, '${ctx.kebabName}')
   async search${pascalRelation}(
     @Req() req: RequestWith${ctx.pascalName},

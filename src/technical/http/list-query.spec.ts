@@ -3,6 +3,7 @@ import {
   PaginationNotOfferedException,
 } from '#technical/errors/invalid-query.exception';
 import {
+  nextCursorFor,
   parseSearchRequest,
   withIncludesAndAggregates,
   type ListQueryContract,
@@ -115,7 +116,10 @@ describe('parseSearchRequest', () => {
       contract,
     );
 
-    expect(query.sorts).toEqual([{ field: 'title', direction: 'asc' }]);
+    expect(query.sorts).toEqual([
+      { field: 'title', direction: 'asc' },
+      { field: 'id', direction: 'asc' },
+    ]);
   });
 
   it('preserves the order and direction of multiple sorts', () => {
@@ -132,6 +136,7 @@ describe('parseSearchRequest', () => {
     expect(query.sorts).toEqual([
       { field: 'createdAt', direction: 'desc' },
       { field: 'title', direction: 'asc' },
+      { field: 'id', direction: 'asc' },
     ]);
   });
 
@@ -756,5 +761,220 @@ describe('a contract that declares no pagination', () => {
         unpaginated,
       ),
     ).toThrow(InvalidQueryException);
+  });
+
+  it('rejects a cursor: there is no page for it to key into', () => {
+    expect(() =>
+      parseSearchRequest({ cursor: 'anything' }, unpaginated),
+    ).toThrow(PaginationNotOfferedException);
+  });
+});
+
+describe('cursor pagination', () => {
+  function encode(
+    sorts: { field: string; direction: 'asc' | 'desc'; value: unknown }[],
+  ) {
+    return Buffer.from(JSON.stringify({ sorts }), 'utf8').toString('base64url');
+  }
+
+  it('always carries an id tiebreaker on a paginated contract, even with no declared sort', () => {
+    const query = parseSearchRequest({}, contract);
+    expect(query.sorts).toEqual([
+      { field: 'createdAt', direction: 'desc' },
+      { field: 'id', direction: 'desc' },
+    ]);
+  });
+
+  it('appends the id tiebreaker after a caller-declared sort, in the same direction', () => {
+    const query = parseSearchRequest(
+      { sorts: [{ field: 'title', direction: 'asc' }] },
+      contract,
+    );
+    expect(query.sorts).toEqual([
+      { field: 'title', direction: 'asc' },
+      { field: 'id', direction: 'asc' },
+    ]);
+  });
+
+  it('turns a cursor into a keyset where clause matching the resolved sort', () => {
+    const cursor = encode([
+      {
+        field: 'createdAt',
+        direction: 'desc',
+        value: '2024-01-01T00:00:00.000Z',
+      },
+      { field: 'id', direction: 'desc', value: 'row-1' },
+    ]);
+
+    const query = parseSearchRequest({ cursor }, contract);
+
+    expect(query.cursorWhere).toEqual({
+      OR: [
+        { AND: [{ createdAt: { lt: '2024-01-01T00:00:00.000Z' } }] },
+        {
+          AND: [
+            { createdAt: { equals: '2024-01-01T00:00:00.000Z' } },
+            { id: { lt: 'row-1' } },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('keeps a declared filter in where and the keyset apart, so a total never counts the keyset', () => {
+    const cursor = encode([
+      {
+        field: 'createdAt',
+        direction: 'desc',
+        value: '2024-01-01T00:00:00.000Z',
+      },
+      { field: 'id', direction: 'desc', value: 'row-1' },
+    ]);
+
+    const query = parseSearchRequest(
+      {
+        cursor,
+        filters: [{ field: 'title', operator: '=', value: 'kept' }],
+      },
+      contract,
+    );
+
+    expect(query.where).toEqual({ title: { equals: 'kept' } });
+    expect(query.cursorWhere).toBeDefined();
+  });
+
+  it('rejects a cursor that is not valid base64url JSON', () => {
+    expect(() =>
+      parseSearchRequest({ cursor: '!!not-a-cursor!!' }, contract),
+    ).toThrow(InvalidQueryException);
+  });
+
+  it('rejects a cursor combined with a page number', () => {
+    const cursor = encode([
+      {
+        field: 'createdAt',
+        direction: 'desc',
+        value: '2024-01-01T00:00:00.000Z',
+      },
+      { field: 'id', direction: 'desc', value: 'row-1' },
+    ]);
+
+    expect(() => parseSearchRequest({ cursor, page: 2 }, contract)).toThrow(
+      InvalidQueryException,
+    );
+  });
+
+  it('rejects a cursor built against a different sort than the one requested', () => {
+    const cursor = encode([
+      {
+        field: 'createdAt',
+        direction: 'desc',
+        value: '2024-01-01T00:00:00.000Z',
+      },
+      { field: 'id', direction: 'desc', value: 'row-1' },
+    ]);
+
+    expect(() =>
+      parseSearchRequest(
+        { cursor, sorts: [{ field: 'title', direction: 'asc' }] },
+        contract,
+      ),
+    ).toThrow(InvalidQueryException);
+  });
+
+  it('rejects a cursor naming a field the contract does not allow sorting on', () => {
+    const cursor = encode([
+      { field: 'reps', direction: 'asc', value: 3 },
+      { field: 'id', direction: 'asc', value: 'row-1' },
+    ]);
+
+    expect(() => parseSearchRequest({ cursor }, contract)).toThrow(
+      InvalidQueryException,
+    );
+  });
+
+  it('rejects a cursor whose last step is not the id tiebreaker', () => {
+    const cursor = encode([
+      {
+        field: 'createdAt',
+        direction: 'desc',
+        value: '2024-01-01T00:00:00.000Z',
+      },
+    ]);
+
+    expect(() => parseSearchRequest({ cursor }, contract)).toThrow(
+      InvalidQueryException,
+    );
+  });
+});
+
+describe('cursor with a null sort value', () => {
+  it('is not offered, and a hand-built one is refused', () => {
+    const sorts = [
+      { field: 'createdAt', direction: 'desc' as const },
+      { field: 'id', direction: 'desc' as const },
+    ];
+    expect(
+      nextCursorFor([{ id: 'row-1', createdAt: null }], sorts, 1),
+    ).toBeNull();
+
+    const cursor = Buffer.from(
+      JSON.stringify({
+        sorts: [
+          { field: 'createdAt', direction: 'desc', value: null },
+          { field: 'id', direction: 'desc', value: 'row-1' },
+        ],
+      }),
+    ).toString('base64url');
+    expect(() => parseSearchRequest({ cursor }, contract)).toThrow(
+      InvalidQueryException,
+    );
+  });
+});
+
+describe('nextCursorFor', () => {
+  const sorts = [
+    { field: 'createdAt', direction: 'desc' as const },
+    { field: 'id', direction: 'desc' as const },
+  ];
+
+  it('is null when the contract has no pagination sorts to key on', () => {
+    expect(nextCursorFor([{ id: 'row-1' }], undefined, 1)).toBeNull();
+  });
+
+  it('is null when there are no records', () => {
+    expect(nextCursorFor([], sorts, 5)).toBeNull();
+  });
+
+  it('is null on a short page: there is nothing after it', () => {
+    expect(
+      nextCursorFor([{ id: 'row-1', createdAt: '2024-01-01' }], sorts, 5),
+    ).toBeNull();
+  });
+
+  it('is null when the record lacks a sort field, rather than keying on undefined', () => {
+    expect(nextCursorFor([{ id: 'row-1' }], sorts, 1)).toBeNull();
+  });
+
+  it('encodes the last record of a full page under the resolved sort', () => {
+    const cursor = nextCursorFor(
+      [
+        { id: 'row-1', createdAt: '2024-01-01' },
+        { id: 'row-2', createdAt: '2024-01-02' },
+      ],
+      sorts,
+      2,
+    );
+
+    expect(cursor).not.toBeNull();
+    const decoded = JSON.parse(
+      Buffer.from(cursor!, 'base64url').toString('utf8'),
+    ) as {
+      sorts: { field: string; value: unknown }[];
+    };
+    expect(decoded.sorts).toEqual([
+      { field: 'createdAt', direction: 'desc', value: '2024-01-02' },
+      { field: 'id', direction: 'desc', value: 'row-2' },
+    ]);
   });
 });

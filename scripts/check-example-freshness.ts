@@ -89,6 +89,7 @@ function handOwned(ctx: ResourceContext): Set<string> {
     `${ctx.kebabName}.seeder.ts`,
     'doc-examples.spec.ts',
     'blog-post-notes-route.spec.ts',
+    'blog-post-pagination.spec.ts',
   ]);
 }
 
