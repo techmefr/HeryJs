@@ -182,6 +182,21 @@ describe('StorageUploadIntentService', () => {
     ).rejects.toThrow(StorageUploadIntentNotFoundException);
   });
 
+  it('lets only one of several concurrent confirms succeed', async () => {
+    const intent = await inTenant('tenant-a', () =>
+      service.create({ contentType: 'image/png', size: 4 }),
+    );
+    driver.simulateUpload(intent.key, Buffer.from('kept'), 'image/png');
+
+    const results = await Promise.allSettled(
+      Array.from({ length: 5 }, () =>
+        inTenant('tenant-a', () => service.confirm(intent.key)),
+      ),
+    );
+
+    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
+  });
+
   it('refuses to confirm once the intent has expired', async () => {
     const intent = await inTenant('tenant-a', () =>
       service.create({ contentType: 'image/png', size: 4 }),
@@ -203,7 +218,7 @@ describe('StorageUploadIntentService', () => {
     expect(setSpy).toHaveBeenCalledWith(
       expect.stringContaining('upload-intent:'),
       expect.anything(),
-      900,
+      300,
     );
     setSpy.mockRestore();
   });

@@ -17,6 +17,7 @@ import type {
 } from '#kernel/storage/storage-driver';
 
 const DEFAULT_TTL_SECONDS = 900;
+const PRESIGN_PUT_TTL_SECONDS = 300;
 
 // Works against real S3 or any S3-compatible endpoint (self-hosted MinIO
 // included) -- only STORAGE_S3_ENDPOINT changes between the two.
@@ -95,7 +96,7 @@ export class S3StorageDriver implements StorageDriver {
         ContentType: contentType,
         ContentLength: sizeBytes,
       }),
-      { expiresIn: DEFAULT_TTL_SECONDS },
+      { expiresIn: PRESIGN_PUT_TTL_SECONDS },
     );
 
     return {

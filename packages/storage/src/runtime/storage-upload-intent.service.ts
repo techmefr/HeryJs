@@ -13,7 +13,7 @@ import { StorageUploadRejectedException } from './storage-upload-rejected.except
 import { StorageDriverRegistry } from './storage-driver.registry';
 
 const INTENT_CACHE_PREFIX = 'upload-intent:';
-const INTENT_TTL_SECONDS = 900;
+const INTENT_TTL_SECONDS = 300;
 
 export interface UploadIntentRequest {
   contentType: string;
@@ -78,7 +78,7 @@ export class StorageUploadIntentService {
 
   async confirm(key: string): Promise<UploadIntent> {
     const cacheKey = `${INTENT_CACHE_PREFIX}${key}`;
-    const intent = await this.cache.get<StoredIntent>(cacheKey);
+    const intent = await this.cache.take<StoredIntent>(cacheKey);
 
     if (!intent) {
       throw new StorageUploadIntentNotFoundException(key);
@@ -117,8 +117,6 @@ export class StorageUploadIntentService {
         },
       );
     }
-
-    await this.cache.del(cacheKey);
 
     const url = await this.drivers.active.signedUrl(key);
     return { key, url };
