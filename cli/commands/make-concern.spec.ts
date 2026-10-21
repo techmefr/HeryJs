@@ -81,3 +81,67 @@ describe('make:scheduled-task', () => {
     ).toBe('auth');
   });
 });
+
+describe('make:policy', () => {
+  it('writes a named capability that defaults to admin only', () => {
+    const policy = buildConcern(kind('policy'), 'ManageInvoicesPolicy');
+
+    expect(policy.fileName).toBe('manage-invoices.policy.ts');
+    expect(policy.domain).toBe('manage-invoices');
+    expect(policy.source).toContain(
+      'export const canManageInvoices: PolicyCheck = adminAbility;',
+    );
+  });
+});
+
+describe('make:seeder', () => {
+  it('exposes one bounded action restricted to development and test', () => {
+    const seeder = buildConcern(kind('seeder'), 'InvoiceSeeder');
+
+    expect(seeder.fileName).toBe('invoice.seeder.ts');
+    expect(seeder.source).toContain("@ExposeAction('invoice.seed'");
+    expect(seeder.source).toContain("environments: ['development', 'test']");
+    expect(seeder.source).toContain('max: 500');
+    expect(seeder.source).toContain('class InvoiceSeeder');
+  });
+
+  it('camel-cases a multi-word action name', () => {
+    expect(buildConcern(kind('seeder'), 'BlogPostSeeder').source).toContain(
+      "'blogPost.seed'",
+    );
+  });
+});
+
+describe('make:notification', () => {
+  it('declares every channel against the notifier contract', () => {
+    const notification = buildConcern(kind('notification'), 'OrderShipped');
+
+    expect(notification.fileName).toBe('order-shipped.notification.ts');
+    expect(notification.source).toContain(
+      'class OrderShippedNotification implements Notification',
+    );
+    expect(notification.source).toContain('toMail(');
+    expect(notification.source).toContain('toSms(');
+    expect(notification.source).toContain('toPush(');
+  });
+});
+
+describe('make:webhook-handler', () => {
+  it('derives the source from the name without its suffix', () => {
+    const handler = buildConcern(
+      kind('webhook-handler'),
+      'StripeWebhookHandler',
+    );
+
+    expect(handler.fileName).toBe('stripe.webhook-handler.ts');
+    expect(handler.source).toContain("STRIPE_WEBHOOK_SOURCE = 'stripe'");
+    expect(handler.source).toContain('class StripeWebhookHandler');
+  });
+
+  it('registers itself so the webhook processor can find it', () => {
+    const source = buildConcern(kind('webhook-handler'), 'Stripe').source;
+
+    expect(source).toContain('registerWebhookHandler(this)');
+    expect(source).toContain('implements WebhookHandler, OnModuleInit');
+  });
+});

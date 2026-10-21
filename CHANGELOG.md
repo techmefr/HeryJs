@@ -13,6 +13,16 @@ category is called out here explicitly.
 
 First public release.
 
+### More scaffolding, and a route table
+
+`make:policy`, `make:seeder`, `make:driver`, `make:notification` and
+`make:webhook-handler` join the existing `make:*` commands, and `hery routes`
+prints every route with its capability and rate-limit bucket. A webhook source
+can now have its own handler: a kernel `WebhookHandler` contract that the
+webhook processor calls per event, inside the event's tenant. In a project
+that already has the webhooks module, copy
+`src/technical/webhooks/webhook-handler.ts` and the processor change by hand.
+
 ### OpenAPI and a typed client
 
 `hery openapi` emits an OpenAPI 3.1 document and `hery openapi:client` a typed

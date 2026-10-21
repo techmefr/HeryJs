@@ -3,12 +3,20 @@ import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { DiscoveryService, MetadataScanner } from '@nestjs/core';
 import { CAPABILITY_CHECK } from '#technical/capabilities/capability.decorator';
 import type { PolicyCheck } from '#technical/capabilities/capability-check';
+import { PUBLIC_ROUTE_REASON } from '#technical/capabilities/public-route.decorator';
+import {
+  RATE_LIMIT_BUCKET,
+  RATE_LIMIT_EXEMPT,
+} from '#technical/rate-limit/rate-limit.decorator';
 
 export interface DescribedRoute {
   method: string;
   path: string;
   handler: string;
   capability?: string;
+  publicReason?: string;
+  rateLimit?: string;
+  rateLimitExemption?: string;
 }
 
 export interface DescribedController {
@@ -43,12 +51,18 @@ export class IntrospectionService {
 
     const routes = this.scanner
       .getAllMethodNames(target.prototype)
-      .flatMap((handler) => this.describeRoute(target.prototype, handler));
+      .flatMap((handler) =>
+        this.describeRoute(target, target.prototype, handler),
+      );
 
     return { name: target.name, basePath: normalize(basePath), routes };
   }
 
-  private describeRoute(prototype: object, handler: string): DescribedRoute[] {
+  private describeRoute(
+    controller: object,
+    prototype: object,
+    handler: string,
+  ): DescribedRoute[] {
     const target = (prototype as Record<string, unknown>)[handler];
 
     if (typeof target !== 'function') {
@@ -69,8 +83,31 @@ export class IntrospectionService {
         path: normalize(this.metadata<string>(PATH_METADATA, target) ?? ''),
         handler,
         capability: check?.name ? check.name : undefined,
+        publicReason: this.inherited<string>(
+          PUBLIC_ROUTE_REASON,
+          target,
+          controller,
+        ),
+        rateLimit: this.inherited<string>(
+          RATE_LIMIT_BUCKET,
+          target,
+          controller,
+        ),
+        rateLimitExemption: this.inherited<string>(
+          RATE_LIMIT_EXEMPT,
+          target,
+          controller,
+        ),
       },
     ];
+  }
+
+  private inherited<T>(
+    key: string,
+    handler: object,
+    controller: object,
+  ): T | undefined {
+    return this.metadata<T>(key, handler) ?? this.metadata<T>(key, controller);
   }
 
   private metadata<T>(key: string, target: object): T | undefined {
