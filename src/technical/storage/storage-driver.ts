@@ -22,9 +22,25 @@ export interface StoredObject {
   contentType: string;
 }
 
+export interface PresignedUpload {
+  url: string;
+  headers?: Record<string, string>;
+}
+
+export interface StoredObjectStat {
+  size: number;
+  contentType: string;
+}
+
 export interface StorageDriver {
   put(key: string, body: Buffer, contentType: string): Promise<StoredObject>;
   get(key: string): Promise<Buffer>;
   remove(key: string): Promise<void>;
   signedUrl(key: string, expiresInSeconds?: number): Promise<string>;
+  presignPut(
+    key: string,
+    contentType: string,
+    sizeBytes: number,
+  ): Promise<PresignedUpload>;
+  stat(key: string): Promise<StoredObjectStat | null>;
 }
