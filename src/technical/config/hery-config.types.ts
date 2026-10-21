@@ -35,6 +35,20 @@ export interface HeryConfigDrivers {
  */
 export type HeryConfigBillingQuotas = Record<string, Record<string, number>>;
 
+export type HeryConfigQuotaPeriod = 'total' | 'day' | 'month';
+
+/**
+ * A named limit every tenant gets unless a `QuotaOverride` row says otherwise.
+ * `period` says when the count starts again: `month` and `day` follow the UTC
+ * calendar, `total` never does (a gauge of what a tenant holds, rather than
+ * what it did this month). Independent of `billingQuotas`, which grants a
+ * limit per plan; this one is per tenant and needs no billing provider.
+ */
+export interface HeryConfigQuota {
+  limit: number;
+  period?: HeryConfigQuotaPeriod;
+}
+
 export interface HeryConfigPruneRule {
   retentionDays: number;
   lock?: boolean;
@@ -119,6 +133,7 @@ export interface HeryConfig {
   push?: HeryConfigDrivers;
   billing?: HeryConfigDrivers;
   billingQuotas?: HeryConfigBillingQuotas;
+  quotas?: Record<string, HeryConfigQuota>;
   /**
    * A plan name granted to a tenant with no subscription at all, for the
    * common freemium shape. Absent by default: a tenant with no matching
