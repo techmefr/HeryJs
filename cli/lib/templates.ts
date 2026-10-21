@@ -234,6 +234,60 @@ export const canDetach${pascalRelation}From${ctx.pascalName}: PolicyCheck<${ctx.
     .join('');
 }
 
+function recordCapabilityKeyList(ctx: ResourceContext): string[] {
+  const keys = ['update', 'delete'];
+
+  if (ctx.softDeletes) {
+    keys.push('restore');
+  }
+
+  for (const relation of ctx.relations) {
+    const pascalRelation = pascalRelationName(relation);
+    keys.push(`attach${pascalRelation}`, `detach${pascalRelation}`);
+  }
+
+  return keys;
+}
+
+function recordCapabilityKeys(ctx: ResourceContext): string {
+  return recordCapabilityKeyList(ctx)
+    .map((key) => `'${key}'`)
+    .join(' | ');
+}
+
+function metaCapabilityKeys(ctx: ResourceContext): string {
+  return ctx.softDeletes
+    ? "'create' | 'hardDelete' | 'listTrashed'"
+    : "'create'";
+}
+
+function recordCapabilityLines(ctx: ResourceContext): string {
+  const lines: string[] = [];
+
+  if (ctx.softDeletes) {
+    lines.push(`      restore: canRestore${ctx.pascalName}(subject, record),`);
+  }
+
+  for (const relation of ctx.relations) {
+    const pascalRelation = pascalRelationName(relation);
+    lines.push(
+      `      attach${pascalRelation}: canAttach${pascalRelation}To${ctx.pascalName}(subject, record),`,
+      `      detach${pascalRelation}: canDetach${pascalRelation}From${ctx.pascalName}(subject, record),`,
+    );
+  }
+
+  return lines.length > 0 ? '\n' + lines.join('\n') : '';
+}
+
+function resolvedCapabilityKeysLiteral(
+  ctx: ResourceContext,
+  sorted = false,
+): string {
+  const keys = recordCapabilityKeyList(ctx);
+
+  return (sorted ? [...keys].sort() : keys).map((key) => `'${key}'`).join(', ');
+}
+
 export function policyFile(ctx: ResourceContext): string {
   return `import { Injectable } from '@nestjs/common';
 import { CapabilitiesService } from '#technical/capabilities/capabilities.service';
@@ -332,18 +386,18 @@ export class ${ctx.pascalName}Policy {
   recordCapabilities(
     subject: CapabilitySubject,
     record: ${ctx.pascalName}RecordLike,
-  ): Record<'update' | 'delete', CapabilityDecision> {
+  ): Record<${recordCapabilityKeys(ctx)}, CapabilityDecision> {
     return {
       update: this.capabilities.resolve(${ctx.screamingSnakeName}_PRESETS.update, subject, record),
-      delete: this.capabilities.resolve(${ctx.screamingSnakeName}_PRESETS.delete, subject, record),
+      delete: this.capabilities.resolve(${ctx.screamingSnakeName}_PRESETS.delete, subject, record),${recordCapabilityLines(ctx)}
     };
   }
 
   metaCapabilities(
     subject: CapabilitySubject,
-  ): Record<'create', CapabilityDecision> {
+  ): Record<${metaCapabilityKeys(ctx)}, CapabilityDecision> {
     return {
-      create: canCreate${ctx.pascalName}(subject),
+      create: canCreate${ctx.pascalName}(subject),${ctx.softDeletes ? `\n      hardDelete: canHardDelete${ctx.pascalName}(subject),\n      listTrashed: canListTrashed${ctx.pascalName}(subject),` : ''}
     };
   }
 }
@@ -1100,9 +1154,18 @@ ${ctx.fields.map((field) => `    { name: '${field.name}', type: '${field.type}',
   // knows the search route returns every match, and that asking for a page is
   // an error rather than a no-op.
   paginated: ${ctx.pagination ? 'true' : 'false'},
+  softDeletes: ${ctx.softDeletes ? 'true' : 'false'},
+  // The many-to-many relations the update route can attach to and detach from
+  // by id. A client builds its relation controls from this list and reads
+  // whether each is allowed from the record's own capabilities, so it neither
+  // guesses the relation names nor re-derives who may change them.
+  relations: [${ctx.relations.map((relation) => `'${relation.relation}'`).join(', ')}],
+  // A date has no JSON Schema form, and without this the whole module throws
+  // at load for any resource that declares a datetime field. The field list
+  // above still says which fields are dates.
   rules: {
-    create: z.toJSONSchema(create${ctx.pascalName}Schema),
-    update: z.toJSONSchema(update${ctx.pascalName}Schema),
+    create: z.toJSONSchema(create${ctx.pascalName}Schema, { unrepresentable: 'any' }),
+    update: z.toJSONSchema(update${ctx.pascalName}Schema, { unrepresentable: 'any' }),
   },
 };
 ${
@@ -2579,6 +2642,8 @@ ${
         fields: Array<{ name: string }>;
         limits?: number[];
         paginated: boolean;
+        softDeletes: boolean;
+        relations: string[];
         rules: { create: { required?: string[] } };
       };
     };
@@ -2586,6 +2651,8 @@ ${
 ${ctx.fields.map((field) => `      '${field.name}',`).join('\n')}
     ]);
     expect(body.data.paginated).toBe(${ctx.pagination ? 'true' : 'false'});
+    expect(body.data.softDeletes).toBe(${ctx.softDeletes ? 'true' : 'false'});
+    expect(body.data.relations).toEqual([${ctx.relations.map((relation) => `'${relation.relation}'`).join(', ')}]);
     expect(body.data.limits).toEqual(${ctx.pagination ? `[${ctx.pagination.limits.join(', ')}]` : 'undefined'});
 ${
   requiredFields.length > 0
@@ -2607,20 +2674,28 @@ ${
 
     const response = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}/search')
-      .send({ capabilities: ['update'] })
+      .send({ capabilities: [${resolvedCapabilityKeysLiteral(ctx)}] })
       .set('Authorization', \`Bearer \${ownerToken}\`)
       .expect(200);
 
     const body = response.body as {
-      data: Array<{ capabilities: { update: { allowed: boolean } } }>;
+      data: Array<{ capabilities: Record<string, { allowed: boolean }> }>;
       meta: unknown;
     };
     expect(body.data.length).toBeGreaterThan(0);
-    expect(body.data[0]?.capabilities.update.allowed).toBe(true);
+    expect(body.data[0]?.capabilities.update?.allowed).toBe(true);
+    expect(Object.keys(body.data[0]?.capabilities ?? {}).sort()).toEqual([${resolvedCapabilityKeysLiteral(ctx, true)}]);
     expect(body.meta).toMatchObject({
       capabilities: { create: { allowed: true, scope: '${ctx.permissions.create}' } },
       channels: ['${ctx.camelName}'],
-    });
+    });${
+      ctx.softDeletes
+        ? `
+    expect(
+      (body.meta as { capabilities: Record<string, unknown> }).capabilities,
+    ).toHaveProperty('listTrashed');`
+        : ''
+    }
   });
 
 `

@@ -146,6 +146,8 @@ Every generated resource exposes one search route instead of a detail route: the
     }
     ```
 
+    The keys a record can resolve are `update` and `delete`, plus `restore` on a resource with soft deletes and an `attach<Relation>` and `detach<Relation>` pair for each many-to-many relation (`attachTags`, `detachTags`). When capabilities are requested, `meta.capabilities` also carries the ones that belong to the collection rather than a record: `create`, and on a resource with soft deletes `hardDelete` and `listTrashed`. `GET /describe` lists the relations and says whether the resource has a bin, so a client knows which keys to ask for.
+
     There is no `view` key: seeing the record in this response already answered that question. `scope` names which rule let the write through (`own`, `team` or `all`), and is absent when `allowed` is `false`. Use this to decide whether to render an edit button, not as a substitute for handling the 403 the server still returns if you ignore it.
   </Fragment>
 

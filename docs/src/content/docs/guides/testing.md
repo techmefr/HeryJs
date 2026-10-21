@@ -44,10 +44,10 @@ A fresh random email per call is also what keeps specs isolated: there is no tru
 Seventeen cases for the default permission presets, with two users — an owner and a stranger. Request bodies are built from the blueprint's required fields with sample values, so the spec compiles and runs against whatever fields you declared.
 
 1. **Creates a record owned by the current user, scoped to the current tenant** — asserts the created record's `tenantId`, proving the boundary is stamped without the caller mentioning it.
-2. **Describes its fields and create/update rules for a frontend to consume** — the `/describe` route reports the same fields and required list the blueprint declares.
+2. **Describes its fields and create/update rules for a frontend to consume** — the `/describe` route reports the same fields and required list the blueprint declares, plus whether the resource has a bin and which relations it can attach to.
 3. **Scope parity** — see below.
 4. **Trash parity** — see below.
-5. **Resolves the capabilities the request named** — a search body carrying `capabilities: ['update']` gets each row and `meta` back with the resolved `{ allowed, scope }` decisions, not a plain boolean.
+5. **Resolves the capabilities the request named** — a search body carrying `capabilities: ['update', ...]` gets each row and `meta` back with the resolved `{ allowed, scope }` decisions, not a plain boolean. Beyond `update` and `delete`, a row also resolves `restore` on a resource with a bin and an `attach` and `detach` decision per relation, and `meta.capabilities` carries `create`, plus `hardDelete` and `listTrashed` on a resource with a bin.
 6. **Returns a real 403 when someone other than the owner tries to update it** — the stranger gets a 403, not a silently filtered response.
 7. **Soft-deletes then restores a record** — delete, confirm a read no longer finds it, restore, confirm it is back. The gap in the middle is the interesting assertion: a trashed record must not resurface through a plain read.
 8. **Refuses to restore a record that is not trashed** — restoring a live row is an error, not a no-op that reports success.

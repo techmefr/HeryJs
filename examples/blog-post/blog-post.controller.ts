@@ -138,9 +138,18 @@ const BLOG_POST_DESCRIBE = {
   // knows the search route returns every match, and that asking for a page is
   // an error rather than a no-op.
   paginated: true,
+  softDeletes: true,
+  // The many-to-many relations the update route can attach to and detach from
+  // by id. A client builds its relation controls from this list and reads
+  // whether each is allowed from the record's own capabilities, so it neither
+  // guesses the relation names nor re-derives who may change them.
+  relations: ['tags'],
+  // A date has no JSON Schema form, and without this the whole module throws
+  // at load for any resource that declares a datetime field. The field list
+  // above still says which fields are dates.
   rules: {
-    create: z.toJSONSchema(createBlogPostSchema),
-    update: z.toJSONSchema(updateBlogPostSchema),
+    create: z.toJSONSchema(createBlogPostSchema, { unrepresentable: 'any' }),
+    update: z.toJSONSchema(updateBlogPostSchema, { unrepresentable: 'any' }),
   },
 };
 
