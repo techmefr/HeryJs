@@ -17,6 +17,7 @@ import { ok } from '#kernel/http/envelope';
 import { UnpaginatedRoute } from '#kernel/http/unpaginated-route.decorator';
 import { RateLimit } from '#kernel/rate-limit/rate-limit.decorator';
 import { ZodValidationPipe } from '#kernel/validation/zod-validation.pipe';
+import { SsoConnectionTestService } from './sso-connection-test.service';
 import { SsoConnectionService } from './sso-connection.service';
 import {
   addDomainSchema,
@@ -33,7 +34,10 @@ import { canManageSso } from './sso.policy';
 @Controller('sso/connections')
 @UseGuards(SessionGuard, CapabilitiesGuard)
 export class SsoConnectionController {
-  constructor(private readonly connections: SsoConnectionService) {}
+  constructor(
+    private readonly connections: SsoConnectionService,
+    private readonly tests: SsoConnectionTestService,
+  ) {}
 
   @UnpaginatedRoute(
     'a tenant holds a handful of identity providers, capped at creation',
@@ -43,6 +47,23 @@ export class SsoConnectionController {
   @Capability(canManageSso)
   async list(@Req() req: RequestWithUser) {
     return ok(await this.connections.list(req.user.tenantId));
+  }
+
+  @UnpaginatedRoute(
+    'the health of the handful of identity providers a tenant holds, capped at creation',
+  )
+  @RateLimit('read')
+  @Get('checks')
+  @Capability(canManageSso)
+  async checks(@Req() req: RequestWithUser) {
+    return ok(await this.tests.testAll(req.user.tenantId));
+  }
+
+  @RateLimit('write')
+  @Post(':id/test')
+  @Capability(canManageSso)
+  async test(@Req() req: RequestWithUser, @Param('id') id: string) {
+    return ok(await this.tests.test(req.user.tenantId, id));
   }
 
   @RateLimit('read')
