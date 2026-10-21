@@ -11,6 +11,7 @@ export const blueprintFieldSchema = z.strictObject({
   type: z.enum(['string', 'int', 'boolean', 'datetime', 'file']),
   optional: z.boolean().default(false),
   hidden: z.boolean().default(false),
+  translatable: z.boolean().default(false),
 });
 
 const fieldNameSchema = z.string().regex(/^[a-z][a-zA-Z0-9]*$/);
@@ -284,6 +285,35 @@ function assertSortsAndFiltersAreKnownFields(
       if (!fieldNames.has(entry) && !knownTargets.has(entry)) {
         report(`${kind} "${entry}" names no declared field`);
       }
+    }
+  }
+}
+
+/**
+ * A translatable field is stored as one JSON object per locale, which only a
+ * string has a meaning for, and which only a routed resource's generated view,
+ * service and search know how to read back: an unrouted one is reached through
+ * another resource's raw include, where the JSON would come out untranslated.
+ */
+function assertTranslatableIsCoherent(
+  blueprint: RawBlueprint,
+  report: (message: string) => void,
+): void {
+  for (const field of blueprint.fields) {
+    if (!field.translatable) {
+      continue;
+    }
+
+    if (field.type !== 'string') {
+      report(
+        `field "${field.name}" is translatable, which only applies to a string field`,
+      );
+    }
+
+    if (!blueprint.routed) {
+      report(
+        `field "${field.name}" is translatable, which only applies to a routed resource`,
+      );
     }
   }
 }
@@ -570,6 +600,7 @@ export function loadBlueprint(filePath: string): Blueprint {
     problems.push(message),
   );
   assertSoftDeletesIsCoherent(blueprint, (message) => problems.push(message));
+  assertTranslatableIsCoherent(blueprint, (message) => problems.push(message));
   assertRelationsAreUnique(blueprint, (message) => problems.push(message));
   assertOwnRouteOnlyOnIncludes(blueprint, (message) => problems.push(message));
 

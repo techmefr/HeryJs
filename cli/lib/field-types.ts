@@ -20,7 +20,8 @@ const PRISMA_TYPES: Record<BlueprintField['type'], string> = {
 };
 
 export function zodTypeFor(field: BlueprintField): string {
-  const base = ZOD_TYPES[field.type];
+  const rule = ZOD_TYPES[field.type];
+  const base = field.translatable ? `translatableInputSchema(${rule})` : rule;
   return field.optional ? `${base}.optional()` : base;
 }
 
@@ -30,7 +31,7 @@ export function zodOutputTypeFor(field: BlueprintField): string {
 }
 
 export function prismaTypeFor(field: BlueprintField): string {
-  const base = PRISMA_TYPES[field.type];
+  const base = field.translatable ? 'Json' : PRISMA_TYPES[field.type];
   return field.optional ? `${base}?` : base;
 }
 
@@ -73,6 +74,10 @@ export function tsTypeFor(field: BlueprintField): string {
   return TS_TYPES[field.type];
 }
 
+export function storedTsTypeFor(field: BlueprintField): string {
+  return field.translatable ? 'Record<string, string>' : TS_TYPES[field.type];
+}
+
 const FAKER_VALUES: Record<BlueprintField['type'], string> = {
   string: 'faker.lorem.words(3)',
   int: 'faker.number.int({ min: 1, max: 1000 })',
@@ -82,5 +87,6 @@ const FAKER_VALUES: Record<BlueprintField['type'], string> = {
 };
 
 export function fakerValueFor(field: BlueprintField): string {
-  return FAKER_VALUES[field.type];
+  const value = FAKER_VALUES[field.type];
+  return field.translatable ? `{ [resolveDefaultLocale()]: ${value} }` : value;
 }

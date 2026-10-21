@@ -617,3 +617,67 @@ describe('a polymorphic child declaring its morph once', () => {
     expect(aggregate?.discriminatorValue).toBe('BlogPost');
   });
 });
+
+describe('loadBlueprint translatable fields', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(tmpdir(), 'hery-blueprint-'));
+  });
+
+  it('accepts a translatable string on a routed resource', () => {
+    writeBlueprint(
+      dir,
+      'page',
+      `
+name: Page
+fields:
+  - name: title
+    type: string
+    translatable: true
+`,
+    );
+
+    const blueprint = loadBlueprint(path.join(dir, 'page.yaml'));
+
+    expect(blueprint.fields[0]?.translatable).toBe(true);
+  });
+
+  it('refuses a translatable field that is not a string', () => {
+    writeBlueprint(
+      dir,
+      'page',
+      `
+name: Page
+fields:
+  - name: views
+    type: int
+    translatable: true
+`,
+    );
+
+    expect(() => loadBlueprint(path.join(dir, 'page.yaml'))).toThrow(
+      /translatable, which only applies to a string field/,
+    );
+  });
+
+  it('refuses a translatable field on an unrouted resource', () => {
+    writeBlueprint(
+      dir,
+      'page',
+      `
+name: Page
+routed: false
+fields:
+  - name: title
+    type: string
+    translatable: true
+sorts: []
+`,
+    );
+
+    expect(() => loadBlueprint(path.join(dir, 'page.yaml'))).toThrow(
+      /only applies to a routed resource/,
+    );
+  });
+});

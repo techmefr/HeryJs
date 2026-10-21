@@ -62,4 +62,61 @@ describe('PrismaSearchDriver', () => {
     expect(matches.ids).toHaveLength(5);
     expect(matches.truncated).toBe(false);
   });
+
+  it('searches the resolved text of a JSON field in memory and the other fields in SQL', async () => {
+    const calls: { select: Record<string, true> }[] = [];
+    const prisma = {
+      blogPost: {
+        findMany: (args: { select: Record<string, true> }) => {
+          calls.push(args);
+
+          return Promise.resolve(
+            args.select.summary
+              ? [
+                  { id: 'hit', summary: { en: 'the BETA release' } },
+                  { id: 'miss', summary: { en: 'other' } },
+                  { id: 'empty', summary: null },
+                ]
+              : [{ id: 'sql-hit' }],
+          );
+        },
+      },
+    } as unknown as TenantScopedPrismaClient;
+    const driver = new PrismaSearchDriver(prisma);
+
+    const matches = await driver.search(
+      'blog-post',
+      'beta',
+      ['title', 'summary'],
+      't',
+      10,
+    );
+
+    expect(matches.ids).toEqual(['sql-hit', 'hit']);
+    expect(calls).toHaveLength(2);
+  });
+
+  it('does not query SQL at all when every searched field is JSON', async () => {
+    const calls: { select: Record<string, true> }[] = [];
+    const prisma = {
+      blogPost: {
+        findMany: (args: { select: Record<string, true> }) => {
+          calls.push(args);
+
+          return Promise.resolve([{ id: 'hit', summary: { en: 'beta' } }]);
+        },
+      },
+    } as unknown as TenantScopedPrismaClient;
+
+    const matches = await new PrismaSearchDriver(prisma).search(
+      'blog-post',
+      'beta',
+      ['summary'],
+      't',
+      10,
+    );
+
+    expect(matches.ids).toEqual(['hit']);
+    expect(calls).toHaveLength(1);
+  });
 });

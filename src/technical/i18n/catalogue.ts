@@ -67,6 +67,10 @@ export const CATALOGUE: Catalogue = {
     fr: (details) =>
       `${String(details.resource)} n'est pas dans la corbeille, il ne peut donc pas être restauré.`,
   },
+  'translatable.empty': {
+    fr: (details) =>
+      `"${String(details.field)}" est obligatoire et resterait sans aucune traduction.`,
+  },
   'query.invalid.param': {
     fr: (details) =>
       `Valeur invalide pour "${String(details.param)}". Autorisées : ${(details.allowed as unknown[]).join(', ')}.`,

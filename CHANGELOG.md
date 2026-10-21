@@ -47,6 +47,13 @@ Twelve packages, versioned together:
 
 ### The kernel
 
+- Translatable content fields: a blueprint string field with `translatable: true`
+  is stored as JSON per locale, read through the request locale and the
+  `i18n.fallbacks` chain, written as one string or several locales, and
+  filtered, sorted and searched on the resolved value. `/describe` publishes
+  the locales, and a cacheable route now varies on `Accept-Language`. A resource
+  with no translatable field generates exactly what it did before.
+
 - Authentication, API keys and sessions on better-auth.
 - Session management: list devices, revoke one, sign out everywhere, a password
   change that revokes the other sessions, and per-account lockout after

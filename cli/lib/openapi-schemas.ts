@@ -60,12 +60,33 @@ function fieldBaseSchema(type: RecordProperty['type']): JsonSchema {
     case 'datetime':
     case 'timestamp':
       return DATE_TIME;
+    case 'translations':
+      return { type: 'object', additionalProperties: { type: 'string' } };
     default:
       return { type: 'string' };
   }
 }
 
 function inputFieldSchema(field: BlueprintField): JsonSchema {
+  if (field.translatable) {
+    const text: JsonSchema = {
+      type: 'string',
+      minLength: 1,
+      maxLength: MAX_STRING_LENGTH,
+    };
+
+    return {
+      oneOf: [
+        text,
+        {
+          type: 'object',
+          minProperties: 1,
+          additionalProperties: { anyOf: [text, { type: 'null' }] },
+        },
+      ],
+    };
+  }
+
   if (field.type === 'string' || field.type === 'file') {
     return { type: 'string', minLength: 1, maxLength: MAX_STRING_LENGTH };
   }
@@ -661,9 +682,22 @@ export function describeSchema(ctx: ResourceContext): JsonSchema {
               enum: ['string', 'int', 'boolean', 'datetime', 'file'],
             },
             optional: { type: 'boolean' },
+            translatable: { type: 'boolean' },
           },
           required: ['name', 'type', 'optional'],
         },
+      },
+      locales: {
+        type: 'object',
+        properties: {
+          supported: strings,
+          default: { type: 'string' },
+          fallbacks: {
+            type: 'object',
+            additionalProperties: strings,
+          },
+        },
+        required: ['supported', 'default', 'fallbacks'],
       },
       sorts: strings,
       filters: strings,

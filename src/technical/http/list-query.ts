@@ -3,6 +3,11 @@ import {
   InvalidQueryException,
   PaginationNotOfferedException,
 } from '#technical/errors/invalid-query.exception';
+import {
+  TRANSLATABLE_FILTER_KEY,
+  TRANSLATABLE_FILTER_OPERATORS,
+} from '#technical/i18n/translatable-query';
+import type { TranslatableFilterOperator } from '#technical/i18n/translatable-query';
 import { buildCursorWhere, decodeCursor, encodeCursor } from './cursor';
 
 export const FILTER_OPERATORS = [
@@ -182,6 +187,7 @@ export interface FieldContract {
   filters: readonly string[];
   sorts: readonly string[];
   selects: readonly string[];
+  translatable?: readonly string[];
 }
 
 export type RelationType = 'hasMany' | 'morphMany';
@@ -325,7 +331,7 @@ function operatorFragment(
 
 function buildFilterEntry(
   entry: FilterEntry,
-  contract: Pick<FieldContract, 'filters'>,
+  contract: Pick<FieldContract, 'filters' | 'translatable'>,
   depth: number,
 ): Record<string, unknown> {
   if (entry.nested) {
@@ -345,12 +351,37 @@ function buildFilterEntry(
     throw new InvalidQueryException('filters.value', []);
   }
 
+  if (contract.translatable?.includes(entry.field)) {
+    if (!isTranslatableOperator(operator)) {
+      throw new InvalidQueryException(
+        'filters.operator',
+        TRANSLATABLE_FILTER_OPERATORS,
+      );
+    }
+
+    return {
+      [TRANSLATABLE_FILTER_KEY]: {
+        field: entry.field,
+        operator,
+        value: entry.value,
+      },
+    };
+  }
+
   return { [entry.field]: operatorFragment(operator, entry.value) };
+}
+
+function isTranslatableOperator(
+  operator: FilterOperator,
+): operator is TranslatableFilterOperator {
+  return (TRANSLATABLE_FILTER_OPERATORS as readonly string[]).includes(
+    operator,
+  );
 }
 
 function buildFilterWhere(
   entries: FilterEntry[],
-  contract: Pick<FieldContract, 'filters'>,
+  contract: Pick<FieldContract, 'filters' | 'translatable'>,
   depth: number,
 ): Record<string, unknown> {
   if (depth > MAX_FILTER_DEPTH) {
@@ -444,6 +475,12 @@ function resolvePaginatedSorts(
     throw new InvalidQueryException('cursor', []);
   }
 
+  if (
+    effectiveSorts.some((sort) => contract.translatable?.includes(sort.field))
+  ) {
+    throw new InvalidQueryException('cursor', []);
+  }
+
   const payload = decodeCursor(body.cursor);
   const cursorSorts = payload.sorts.map(({ field, direction }) => ({
     field,
@@ -467,6 +504,14 @@ function resolvePaginatedSorts(
   return { sorts: effectiveSorts, cursorWhere: buildCursorWhere(payload) };
 }
 
+function isPlainObject(value: unknown): boolean {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    Object.getPrototypeOf(value) === Object.prototype
+  );
+}
+
 export function nextCursorFor(
   records: readonly Record<string, unknown>[],
   sorts: SortEntry[] | undefined,
@@ -480,7 +525,10 @@ export function nextCursorFor(
 
   if (
     sorts.some(
-      (sort) => last[sort.field] === undefined || last[sort.field] === null,
+      (sort) =>
+        last[sort.field] === undefined ||
+        last[sort.field] === null ||
+        isPlainObject(last[sort.field]),
     )
   ) {
     return null;

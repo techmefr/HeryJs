@@ -27,6 +27,7 @@ const FIELD_TS_TYPES: Record<RecordProperty['type'], string> = {
   file: 'string',
   id: 'string',
   timestamp: 'string',
+  translations: 'Record<string, string>',
 };
 
 function union(names: readonly string[]): string {
@@ -36,7 +37,9 @@ function union(names: readonly string[]): string {
 }
 
 function inputType(field: BlueprintField): string {
-  return FIELD_TS_TYPES[field.type];
+  return field.translatable
+    ? 'string | Record<string, string | null>'
+    : FIELD_TS_TYPES[field.type];
 }
 
 function sortEntryType(sorts: readonly string[]): string {
@@ -204,7 +207,8 @@ function describeDeclaration(ctx: ResourceContext): string {
 
   return `export interface ${name}Describe {
   version: ${ctx.version};
-  fields: Array<{ name: string; type: 'string' | 'int' | 'boolean' | 'datetime' | 'file'; optional: boolean }>;
+  fields: Array<{ name: string; type: 'string' | 'int' | 'boolean' | 'datetime' | 'file'; optional: boolean; translatable?: boolean }>;
+  locales?: { supported: string[]; default: string; fallbacks: Record<string, string[]> };
   sorts: string[];
   filters: string[];
   selects: string[];

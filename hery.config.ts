@@ -19,6 +19,7 @@ export default {
   i18n: {
     supportedLocales: ['en', 'fr'],
     defaultLocale: 'en',
+    fallbacks: { fr: ['en'] },
   },
   // One variable swings the whole app from logging mail to sending it, which
   // is the point of declaring the driver here rather than picking a class in

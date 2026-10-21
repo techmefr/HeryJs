@@ -68,17 +68,37 @@ async function promptFields(): Promise<BlueprintField[]> {
       initial: false,
     })) as { hidden?: boolean };
 
+    const type = typeResponse.type ?? 'string';
+    const translatableResponse =
+      type === 'string'
+        ? ((await prompts({
+            type: 'confirm',
+            name: 'translatable',
+            message: 'Translatable (one value per locale)?',
+            initial: false,
+          })) as { translatable?: boolean })
+        : {};
+
     fields.push({
       name: nameResponse.name,
-      type: typeResponse.type ?? 'string',
+      type,
       optional: optionalResponse.optional ?? false,
       hidden: hiddenResponse.hidden ?? false,
+      translatable: translatableResponse.translatable ?? false,
     });
   }
 
   return fields.length > 0
     ? fields
-    : [{ name: 'title', type: 'string', optional: false, hidden: false }];
+    : [
+        {
+          name: 'title',
+          type: 'string',
+          optional: false,
+          hidden: false,
+          translatable: false,
+        },
+      ];
 }
 
 async function promptPermissionFor(
@@ -201,6 +221,7 @@ fields:
   # type: string | int | boolean | datetime
   # optional: true if the field can be null
   # hidden: true to strip the field from every API response (see <name>.view.ts)
+  # translatable: true (string only) keeps one value per locale in a Json column
   - name: title
     type: string
     optional: false

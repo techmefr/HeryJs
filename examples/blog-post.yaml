@@ -3,6 +3,10 @@ name: BlogPost
 fields:
   - name: title
     type: string
+  - name: summary
+    type: string
+    optional: true
+    translatable: true
 
 permissions:
   view: own
@@ -12,9 +16,11 @@ permissions:
 
 sorts:
   - createdAt
+  - summary
 
 filters:
   - title
+  - summary
 
 includes:
   - relation: notes

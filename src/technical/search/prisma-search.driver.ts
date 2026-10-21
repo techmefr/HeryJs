@@ -1,4 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { matchesTranslatedText } from '#technical/i18n/translatable-query';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import { matchesFrom } from './search-driver';
@@ -11,12 +13,26 @@ function kebabToCamel(value: string): string {
   );
 }
 
+function capitalize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function jsonFieldsOf(modelName: string, fields: readonly string[]): string[] {
+  const model = Prisma.dmmf.datamodel.models.find(
+    (candidate) => candidate.name === modelName,
+  );
+
+  return fields.filter((name) =>
+    model?.fields.some((field) => field.name === name && field.type === 'Json'),
+  );
+}
+
 interface FindManyDelegate {
   findMany(args: {
     where: Record<string, unknown>;
-    select: { id: true };
-    take: number;
-  }): Promise<{ id: string }[]>;
+    select: Record<string, true>;
+    take?: number;
+  }): Promise<Record<string, unknown>[]>;
 }
 
 /**
@@ -63,15 +79,56 @@ export class PrismaSearchDriver implements SearchDriver {
       throw new Error(`No Prisma delegate for collection "${collection}"`);
     }
 
+    const jsonFields = jsonFieldsOf(capitalize(delegateName), fields);
+    const textFields = fields.filter((field) => !jsonFields.includes(field));
+
+    if (jsonFields.length === 0 || textFields.length > 0) {
+      const rows = await delegate.findMany({
+        where: buildTextSearchWhere(term, textFields) ?? {},
+        select: { id: true },
+        take: limit + 1,
+      });
+      const textIds = rows.map((row) => String(row.id));
+
+      if (jsonFields.length === 0) {
+        return matchesFrom(textIds, limit);
+      }
+
+      const jsonIds = await this.idsMatchingTranslations(
+        delegate,
+        jsonFields,
+        term,
+      );
+
+      return matchesFrom([...new Set([...textIds, ...jsonIds])], limit);
+    }
+
+    const jsonIds = await this.idsMatchingTranslations(
+      delegate,
+      jsonFields,
+      term,
+    );
+
+    return matchesFrom(jsonIds, limit);
+  }
+
+  private async idsMatchingTranslations(
+    delegate: FindManyDelegate,
+    jsonFields: readonly string[],
+    term: string,
+  ): Promise<string[]> {
     const rows = await delegate.findMany({
-      where: buildTextSearchWhere(term, fields) ?? {},
-      select: { id: true },
-      take: limit + 1,
+      where: {},
+      select: Object.fromEntries([
+        ['id', true],
+        ...jsonFields.map((field) => [field, true]),
+      ]) as Record<string, true>,
     });
 
-    return matchesFrom(
-      rows.map((row) => row.id),
-      limit,
-    );
+    return rows
+      .filter((row) =>
+        jsonFields.some((field) => matchesTranslatedText(row[field], term)),
+      )
+      .map((row) => String(row.id));
   }
 }

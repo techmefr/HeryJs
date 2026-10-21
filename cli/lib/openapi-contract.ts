@@ -44,7 +44,7 @@ export const ALIAS_PATTERN = '^[A-Za-z_][A-Za-z0-9_]*$';
 
 export interface RecordProperty {
   name: string;
-  type: BlueprintField['type'] | 'id' | 'timestamp';
+  type: BlueprintField['type'] | 'id' | 'timestamp' | 'translations';
   optional: boolean;
 }
 
@@ -71,7 +71,11 @@ export function selectableFields(ctx: ResourceContext): string[] {
     'id',
     'ownerId',
     ...(isOwnedByTeam(ctx) ? ['teamId'] : []),
-    ...visibleFields(ctx).map((field) => field.name),
+    ...visibleFields(ctx).flatMap((field) =>
+      field.translatable
+        ? [field.name, `${field.name}Translations`]
+        : [field.name],
+    ),
     'createdAt',
     'updatedAt',
     ...(ctx.softDeletes ? ['deletedAt'] : []),
@@ -90,11 +94,18 @@ export function recordProperties(ctx: ResourceContext): RecordProperty[] {
     ...(isOwnedByTeam(ctx)
       ? [{ name: 'teamId', type: 'id' as const, optional: false }]
       : []),
-    ...visibleFields(ctx).map((field) => ({
-      name: field.name,
-      type: field.type,
-      optional: field.optional,
-    })),
+    ...visibleFields(ctx).flatMap((field): RecordProperty[] =>
+      field.translatable
+        ? [
+            { name: field.name, type: field.type, optional: true },
+            {
+              name: `${field.name}Translations`,
+              type: 'translations',
+              optional: false,
+            },
+          ]
+        : [{ name: field.name, type: field.type, optional: field.optional }],
+    ),
     { name: 'createdAt', type: 'timestamp', optional: false },
     { name: 'updatedAt', type: 'timestamp', optional: false },
     ...(ctx.softDeletes
