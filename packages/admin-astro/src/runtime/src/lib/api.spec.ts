@@ -287,7 +287,13 @@ function controller(
 describe('section discovery', () => {
   it('lists a plain get route', () => {
     expect(sectionsOf([controller('/seeders', [['GET', '/']])])).toEqual([
-      { label: 'Seeders', path: '/seeders', method: 'GET' },
+      {
+        label: 'Seeders',
+        path: '/seeders',
+        method: 'GET',
+        group: 'Sections',
+        order: 100,
+      },
     ]);
   });
 
@@ -299,6 +305,8 @@ describe('section discovery', () => {
         label: 'Inspector Requests',
         path: '/inspector/requests',
         method: 'GET',
+        group: 'Sections',
+        order: 100,
       },
     ]);
   });
@@ -317,7 +325,13 @@ describe('section discovery', () => {
     expect(
       sectionsOf([controller('/blog-posts', [['POST', '/search']])]),
     ).toEqual([
-      { label: 'Blog Posts', path: '/blog-posts/search', method: 'POST' },
+      {
+        label: 'Blog Posts',
+        path: '/blog-posts/search',
+        method: 'POST',
+        group: 'Sections',
+        order: 100,
+      },
     ]);
   });
 
@@ -381,8 +395,20 @@ describe('section discovery', () => {
         ]),
       ]),
     ).toEqual([
-      { label: 'Blog Posts', path: '/blog-posts', method: 'GET' },
-      { label: 'Blog Posts', path: '/blog-posts/search', method: 'POST' },
+      {
+        label: 'Blog Posts',
+        path: '/blog-posts',
+        method: 'GET',
+        group: 'Sections',
+        order: 100,
+      },
+      {
+        label: 'Blog Posts',
+        path: '/blog-posts/search',
+        method: 'POST',
+        group: 'Sections',
+        order: 100,
+      },
     ]);
   });
 
