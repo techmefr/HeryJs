@@ -57,11 +57,13 @@ const publicHost = () => Promise.resolve(['93.184.216.34']);
 describe('AuditSinkDelivery', () => {
   it('posts the range as JSON lines with the token, an idempotency key and the range', async () => {
     const calls: { url: string; init: RequestInit }[] = [];
+    const bodies: string[] = [];
     const delivery = new AuditSinkDelivery(secrets, {} as DriverResolver, {
       allowPrivateHosts: false,
       resolve: publicHost,
       fetch: (url, init) => {
         calls.push({ url: url as string, init: init ?? {} });
+        bodies.push(init?.body as string);
         return Promise.resolve(new Response(null, { status: 204 }));
       },
     });
@@ -84,7 +86,7 @@ describe('AuditSinkDelivery', () => {
     expect(headers['X-Audit-Sequence-To']).toBe('5');
     expect(calls[0]?.init.redirect).toBe('error');
 
-    const lines = (calls[0]?.init.body as string).trimEnd().split('\n');
+    const lines = (bodies[0] ?? '').trimEnd().split('\n');
 
     expect(
       lines.map((line) => (JSON.parse(line) as { sequence: number }).sequence),
