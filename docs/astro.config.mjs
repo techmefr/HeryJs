@@ -74,6 +74,7 @@ export default defineConfig({
                 { label: 'Idempotency keys', slug: 'guides/idempotency' },
                 { label: 'Secrets and encryption', slug: 'guides/secrets' },
                 { label: 'Jobs', slug: 'guides/jobs' },
+                { label: 'Logging', slug: 'guides/logging' },
                 { label: 'Migrations', slug: 'guides/migrations' },
                 { label: 'Prune', slug: 'guides/prune' },
               ],

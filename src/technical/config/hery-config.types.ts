@@ -57,6 +57,18 @@ export interface HeryConfigI18n {
 }
 
 /**
+ * Logging is the one slice where every declared driver is active at once: each
+ * line goes to all of them, so `stdout` plus a collector is two entries rather
+ * than a choice. `default` names the driver the query route prefers to read
+ * from when more than one can answer, and `stdout` alone is what a project
+ * that declares nothing gets.
+ */
+export interface HeryConfigLogging extends HeryConfigDrivers {
+  retentionDays?: number;
+  maxEntriesPerTenant?: number;
+}
+
+/**
  * `satisfies HeryConfig` at the config file's own export is the entire
  * contract mechanism: an unknown top-level key or a search engine missing
  * `driver` fails typecheck, not a schema loaded at runtime. Fields are kept
@@ -76,6 +88,7 @@ export interface HeryConfig {
   cache?: HeryConfigCache;
   rateLimit?: HeryConfigRateLimit;
   i18n?: HeryConfigI18n;
+  logging?: HeryConfigLogging;
   mail?: HeryConfigDrivers;
   export?: HeryConfigDrivers;
   import?: HeryConfigDrivers;

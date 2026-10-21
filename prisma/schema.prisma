@@ -507,3 +507,15 @@ model TwoFactorVerifiedSession {
 
   @@index([tenantId, userId])
 }
+
+model LogEntry {
+  id       String   @id @default(cuid())
+  tenantId String
+  level    String
+  message  String
+  fields   Json?
+  loggedAt DateTime @default(now())
+
+  @@index([tenantId, loggedAt])
+  @@index([loggedAt])
+}

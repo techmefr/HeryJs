@@ -38,43 +38,45 @@ import { OAuthModule } from '#modules/oauth/oauth.module';
 import { LocaleMiddleware } from '#technical/i18n/locale.middleware';
 import { TenantMiddleware } from '#technical/tenancy/tenant.middleware';
 import { DomainExceptionFilter } from '#technical/errors/domain-exception.filter';
+import { tenantLogMixin } from '#technical/logging/tenant-log-mixin';
+import { logShippingStream } from '#technical/logging/log.pipeline';
+import { LogShippingModule } from '#technical/logging/log-shipping.module';
 import { redactedRequestSerializer } from '#technical/logging/redacted-request-serializer';
 
 @Module({
   imports: [
     LoggerModule.forRoot({
-      pinoHttp: {
-        level:
-          process.env.NODE_ENV === 'test'
-            ? 'silent'
-            : process.env.NODE_ENV === 'production'
-              ? 'info'
-              : 'debug',
-        transport:
-          process.env.NODE_ENV === 'production' ||
-          process.env.NODE_ENV === 'test'
-            ? undefined
-            : { target: 'pino-pretty', options: { singleLine: true } },
-        // A bearer token IS a live session (or, for up to 30 minutes, an
-        // impersonation session) -- logging it verbatim on every request is
-        // equivalent to logging the password. redact() below drops the value
-        // rather than the whole header, so the rest of pino-http's default
-        // request serializer is unaffected. redact only reaches structured
-        // fields, never req.url itself, which is why the signal and storage
-        // credentials carried as query params need the serializer below too.
-        redact: {
-          paths: [
-            'req.headers.authorization',
-            'req.headers.cookie',
-            'req.query.token',
-            'req.query.sig',
-          ],
-          censor: '[redacted]',
+      pinoHttp: [
+        {
+          level:
+            process.env.NODE_ENV === 'test'
+              ? 'silent'
+              : process.env.NODE_ENV === 'production'
+                ? 'info'
+                : 'debug',
+          mixin: tenantLogMixin,
+          // A bearer token IS a live session (or, for up to 30 minutes, an
+          // impersonation session) -- logging it verbatim on every request is
+          // equivalent to logging the password. redact() below drops the value
+          // rather than the whole header, so the rest of pino-http's default
+          // request serializer is unaffected. redact only reaches structured
+          // fields, never req.url itself, which is why the signal and storage
+          // credentials carried as query params need the serializer below too.
+          redact: {
+            paths: [
+              'req.headers.authorization',
+              'req.headers.cookie',
+              'req.query.token',
+              'req.query.sig',
+            ],
+            censor: '[redacted]',
+          },
+          serializers: {
+            req: redactedRequestSerializer,
+          },
         },
-        serializers: {
-          req: redactedRequestSerializer,
-        },
-      },
+        logShippingStream,
+      ],
     }),
     AuditModule,
     AuthModule,
@@ -89,6 +91,7 @@ import { redactedRequestSerializer } from '#technical/logging/redacted-request-s
     InspectorModule,
     IntrospectionModule,
     JobsModule,
+    LogShippingModule,
     MailModule,
     MonitoringModule,
     NotificationsModule,

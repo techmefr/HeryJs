@@ -69,6 +69,12 @@ Twelve packages, versioned together:
   stored per tenant and replayed on a retry, the same key with a different
   body or route is a `422`, and records expire after 24 hours through the
   existing prune sweep.
+- Logging behind the driver contract: `stdout` (the default, unchanged),
+  size-rotated `file`, a Loki-style `http` sink over `fetch`, and a `database`
+  store, every declared driver receiving every line and a failing one never
+  blocking the others. Lines carry their tenant, and an admin-only `GET /logs`
+  reads the store back for the caller's tenant, bounded by a retention window
+  and a per-tenant cap. Adds the `LogEntry` table.
 - A rate limit on by default across every kernel and module route, with
   `read` / `write` / `auth` buckets a project can retune but never remove.
 - A `hasMany` include may itself carry a further `includes` — a relation of a
