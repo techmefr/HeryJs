@@ -44,7 +44,7 @@ async function copiedFromPackageRoot(
 describe('what a module has to publish', () => {
   // Fifteen more than the original eleven: the module-and-driver convention
   // added export, import and http-client, plus the driver packages that land
-  // inside the module they extend (mail-resend, export-xlsx, export-pdf,
+  // inside the module they extend (mail-resend, mail-smtp, export-xlsx, export-pdf,
   // billing-stripe landing inside billing), plus sms, push and billing, plus
   // peer (WebRTC signalling and TURN credentials over the live gateway),
   // notifier (the facade that composes mail, sms and push rather than adding
@@ -53,9 +53,10 @@ describe('what a module has to publish', () => {
   // single-implementation module whose providers are a contract, not drivers,
   // two-factor, the same shape with a second-factor guard and four tables,
   // and sso, the same shape for a tenant's own identity provider, plus
-  // embeddings, a module whose drivers turn text into vectors.
+  // embeddings, a module whose drivers turn text into vectors, plus mail-smtp,
+  // the second driver landing inside mail.
   it('found the modules to check', () => {
-    expect(MODULES).toHaveLength(28);
+    expect(MODULES).toHaveLength(29);
   });
 
   it.each(MODULES.map((module) => [module.name, module] as const))(
