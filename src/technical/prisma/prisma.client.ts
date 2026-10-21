@@ -21,6 +21,10 @@ interface PrismaQueryEvent {
 }
 
 const TENANT_SCOPED_MODELS = new Set<string>([
+  'TwoFactorEnrolment',
+  'TwoFactorRecoveryCode',
+  'TwoFactorRoleRequirement',
+  'TwoFactorVerifiedSession',
   'Team',
   'TeamMember',
   'BlogPost',

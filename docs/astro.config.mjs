@@ -117,6 +117,7 @@ export default defineConfig({
                 { label: 'Import', slug: 'guides/import' },
                 { label: 'The HTTP client', slug: 'guides/http-client' },
                 { label: 'Impersonation', slug: 'guides/impersonation' },
+                { label: 'Two-factor', slug: 'guides/two-factor' },
                 { label: 'Webhooks', slug: 'guides/webhooks' },
                 { label: 'GraphQL and MCP', slug: 'guides/graphql-and-mcp' },
                 { label: 'Billing', slug: 'guides/billing' },
