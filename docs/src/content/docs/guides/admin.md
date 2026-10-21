@@ -102,15 +102,17 @@ A controller that exposes `POST /search`, `GET /describe` and `POST /create` is 
 
 - **Forms.** New and Edit are generated from `GET /describe`. The field list gives the kinds (text, whole number, checkbox, date), and `rules.create` / `rules.update`, the JSON Schema reflected off the Zod DTOs, give what is required and each field's length, bounds, pattern and enum. The form validates with those same rules before anything is sent, so the client and the server refuse the same values. A rule only the server can state (a cross-field `check` in the DTO) still comes back as a 400, and its messages are shown at the top of the form. Edit sends only the fields that changed, and an update cannot empty a field, because an optional field in the DTO accepts a value or nothing, never `null`.
 - **Table.** Search, filters, sorting and paging are driven by the search contract in `describe`: only the `sorts` and `filters` it declares are offered, the operators depend on the field type, values are converted to the type Prisma expects (a number is sent as a number, a date as an ISO timestamp), `search.q` is offered only when the resource has a text field, and `limits` fills the page size menu. A resource that does not paginate is never sent `page` or `limit`, which the API would refuse.
+- **Bulk actions.** Tick rows to delete, delete permanently, or restore from the trash. Each action only sends the ids the API allowed, reports per record what was refused, and keeps the refused rows selected. A batch larger than `MAX_BATCH_ENTRIES` is split into several requests.
 
 ### A disabled button is a refused request
 
 The panel asks for the decisions it is going to draw, in the same request as the rows: `capabilities: ['update', 'delete', 'restore', 'attachTags', 'detachTags']` on the search body. Each row comes back with `{ allowed, scope }` per key, and `meta.capabilities` carries the collection-wide ones (`create`, and on a resource with soft deletes `hardDelete` and `listTrashed`). A button is enabled exactly when its decision is `allowed: true`; a missing decision counts as a refusal. The panel holds no permission logic of its own to drift from the policy file.
 
-Two habits keep this true over time:
+Three habits keep this true over time:
 
 - Nothing is patched locally after a write. Every mutation reloads the page, so the decisions are the API's current answer, not the ones the page loaded with.
 - Opening Edit re-fetches that one record by id first, so a permission withdrawn since the list loaded shows "not allowed" instead of a form the server would refuse.
+- A bulk action is planned from the decisions of the selected rows, shows how many it will run and how many it skips, and a partial failure is reported per record rather than as one verdict.
 
 Every value is written with `textContent` or an input's `value`, never as markup, so a hostile record cannot run script in the admin origin.
 

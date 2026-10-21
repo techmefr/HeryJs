@@ -15,8 +15,10 @@ export interface View {
   capabilityKeys: string[];
   query: QueryState;
   outcome: SearchOutcome;
+  selected: Set<string>;
   notice: HTMLElement;
   table: HTMLElement;
+  bulk: HTMLElement;
   pager: HTMLElement;
   root: HTMLElement;
 }

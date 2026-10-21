@@ -1,4 +1,6 @@
 import { ApiError } from './api';
+import { drawBulk } from './bulk-bar';
+import type { BulkKind } from './bulk';
 import { initialState, nextSort, searchBody } from './query';
 import type { QueryState } from './query';
 import { drawPager } from './pager';
@@ -86,7 +88,7 @@ function buttonsOf(view: View, row: ResourceRow): RowButton[] {
 
 async function runRowChange(
   view: View,
-  kind: 'delete' | 'restore',
+  kind: BulkKind,
   row: ResourceRow,
 ): Promise<void> {
   const verb = kind === 'restore' ? 'Restore' : 'Delete';
@@ -132,11 +134,27 @@ function drawTable(view: View): void {
       columns: columnsOf(rows),
       sortable: view.description.sorts,
       sort: view.query.sort,
+      selectable: true,
+      selected: view.selected,
       buttonsOf: (row) => buttonsOf(view, row),
       onSort: (field) => {
         view.query.sort = nextSort(view.query.sort, field);
         view.query.page = 1;
         void load(view);
+      },
+      onToggle: (id, isChecked) => {
+        if (isChecked) {
+          view.selected.add(id);
+        } else {
+          view.selected.delete(id);
+        }
+
+        drawBulk(view, () => load(view));
+      },
+      onToggleAll: (isChecked) => {
+        view.selected = new Set(isChecked ? rows.map((row) => row.id) : []);
+        drawTable(view);
+        drawBulk(view, () => load(view));
       },
     }),
   );
@@ -144,6 +162,7 @@ function drawTable(view: View): void {
 
 async function goTo(view: View, page: number): Promise<void> {
   view.query.page = page;
+  view.selected = new Set();
   await load(view);
 }
 
@@ -161,7 +180,10 @@ async function load(view: View): Promise<void> {
     return;
   }
 
+  const present = new Set(view.outcome.rows.map((row) => row.id));
+  view.selected = new Set([...view.selected].filter((id) => present.has(id)));
   drawTable(view);
+  drawBulk(view, () => load(view));
   drawPager(view, (page) => goTo(view, page));
   drawHeader(view);
 }
@@ -246,12 +268,15 @@ export async function mountResource(
     capabilityKeys: capabilityKeysOf(description),
     query: query(description),
     outcome: first,
+    selected: new Set(),
     notice: document.createElement('p'),
     table: document.createElement('div'),
+    bulk: document.createElement('div'),
     pager: document.createElement('div'),
     root,
   };
   view.notice.dataset.slot = 'notice';
+  view.bulk.className = 'bulk';
   view.pager.className = 'pager';
 
   const header = document.createElement('div');
@@ -266,12 +291,21 @@ export async function mountResource(
     canListTrash: isAllowed(first.meta.capabilities, 'listTrashed'),
     onChange: (patch) => {
       Object.assign(view.query, patch);
+      view.selected = new Set();
       void load(view);
     },
   });
 
-  root.replaceChildren(header, toolbar, view.notice, view.table, view.pager);
+  root.replaceChildren(
+    header,
+    toolbar,
+    view.notice,
+    view.bulk,
+    view.table,
+    view.pager,
+  );
   drawTable(view);
+  drawBulk(view, () => load(view));
   drawPager(view, (page) => goTo(view, page));
   drawHeader(view);
 

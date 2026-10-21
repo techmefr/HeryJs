@@ -14,8 +14,12 @@ export interface ResourceTableOptions {
   columns: string[];
   sortable: string[];
   sort: QueryState['sort'];
+  selectable: boolean;
+  selected: Set<string>;
   buttonsOf: (row: ResourceRow) => RowButton[];
   onSort: (field: string) => void;
+  onToggle: (id: string, isChecked: boolean) => void;
+  onToggleAll: (isChecked: boolean) => void;
 }
 
 export const DENIED_HINT = 'Your account is not allowed to do this';
@@ -26,6 +30,15 @@ export function columnsOf(rows: ResourceRow[]): string[] {
   const keys = [...new Set(rows.flatMap((row) => Object.keys(row)))];
 
   return keys.filter((key) => !HIDDEN_KEYS.has(key));
+}
+
+function checkbox(label: string, isChecked: boolean): HTMLInputElement {
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.checked = isChecked;
+  input.setAttribute('aria-label', label);
+
+  return input;
 }
 
 function headingOf(
@@ -95,6 +108,18 @@ export function resourceTable(options: ResourceTableOptions): HTMLElement {
   const element = document.createElement('table');
   const head = element.createTHead().insertRow();
 
+  if (options.selectable) {
+    const all = document.createElement('th');
+    const input = checkbox(
+      'Select every row on this page',
+      options.rows.length > 0 &&
+        options.rows.every((row) => options.selected.has(row.id)),
+    );
+    input.addEventListener('change', () => options.onToggleAll(input.checked));
+    all.appendChild(input);
+    head.appendChild(all);
+  }
+
   for (const column of options.columns) {
     head.appendChild(headingOf(column, options));
   }
@@ -105,6 +130,18 @@ export function resourceTable(options: ResourceTableOptions): HTMLElement {
 
   for (const row of options.rows) {
     const line = body.insertRow();
+
+    if (options.selectable) {
+      const cell = line.insertCell();
+      const input = checkbox(
+        'Select row ' + row.id,
+        options.selected.has(row.id),
+      );
+      input.addEventListener('change', () =>
+        options.onToggle(row.id, input.checked),
+      );
+      cell.appendChild(input);
+    }
 
     for (const column of options.columns) {
       line.appendChild(cellOf(row, column));
