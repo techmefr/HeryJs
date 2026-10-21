@@ -3,6 +3,7 @@ import { APP_FILTER } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AdminStudioModule } from '#technical/admin/admin-studio.module';
 import { AuditModule } from '#technical/audit/audit.module';
 import { AuthModule } from '#technical/auth/auth.module';
 import { CacheModule } from '#technical/cache/cache.module';
@@ -101,6 +102,7 @@ const telemetryOptions = telemetryPinoOptions();
         logShippingStream,
       ],
     }),
+    AdminStudioModule,
     AuditModule,
     AuthModule,
     CacheModule,
