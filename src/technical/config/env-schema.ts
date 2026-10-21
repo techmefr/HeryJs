@@ -95,6 +95,14 @@ export function buildServerSchema(nodeEnv: string | undefined) {
       .string()
       .default('false')
       .transform((value) => value === 'true'),
+    BACKUP_ENABLED: z
+      .string()
+      .default('false')
+      .transform((value) => value === 'true'),
+    BACKUP_CRON: z.string().min(1).default('0 3 * * *'),
+    BACKUP_DIR: z.string().min(1).default('backups'),
+    BACKUP_KEEP: z.coerce.number().int().min(1).default(7),
+    BACKUP_STORAGE_DRIVER: z.string().min(1).optional(),
     SEARCH_MATCH_LIMIT: z.coerce.number().int().positive().default(1000),
     // The most rows a similarity search ranks and returns. Nearest-neighbour
     // search never runs out of matches -- every embedded row has a distance --

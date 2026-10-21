@@ -44,3 +44,6 @@ prisma/*.db-journal
 
 # Scraper credential written by hery module:monitoring
 monitoring/api-key
+
+# Database backups written by hery db:backup
+/backups/

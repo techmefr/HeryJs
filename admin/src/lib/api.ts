@@ -121,6 +121,8 @@ const HIDDEN_PATHS = [
   // A file download, not JSON: the Audit page owns the export button.
   '/audit-logs/export',
   '/signal/stream',
+  '/backups',
+  '/backups/schedule',
 ];
 
 // A section is any GET route that takes no argument, whether it sits at the root
