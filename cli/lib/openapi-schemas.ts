@@ -548,7 +548,7 @@ export function mutationSchemas(ctx: ResourceContext): SchemaRegistry {
  */
 export function historySchemas(ctx: ResourceContext): SchemaRegistry {
   const name = typeNameOf(ctx);
-  const properties: Record<string, JsonSchema> = Object.fromEntries([
+  const entries: Array<[string, JsonSchema]> = [
     ...historyFields(ctx).map((field): [string, JsonSchema] => [
       field.name,
       recordPropertySchema({
@@ -566,11 +566,14 @@ export function historySchemas(ctx: ResourceContext): SchemaRegistry {
               type: 'timestamp',
               optional: true,
             }),
-          ],
+          ] as [string, JsonSchema],
         ]
       : []),
-    ...(ctx.versioned ? [['version', { type: 'integer' }]] : []),
-  ]);
+    ...(ctx.versioned
+      ? [['version', { type: 'integer' }] as [string, JsonSchema]]
+      : []),
+  ];
+  const properties = Object.fromEntries(entries);
 
   return {
     [`${name}Snapshot`]: {
