@@ -1,10 +1,12 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
   HttpCode,
   Inject,
+  Param,
   Post,
   Req,
   UseGuards,
@@ -15,9 +17,15 @@ import { SessionGuard } from '#technical/auth/session.guard';
 import type { RequestWithUser } from '#technical/auth/session.guard';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { subjectOf } from '#technical/capabilities/subject';
-import { Capability } from '#technical/capabilities/capability.decorator';
+import {
+  Capability,
+  LoadRecordWith,
+} from '#technical/capabilities/capability.decorator';
 import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
 import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
+import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
+import { grantShareSchema } from '#technical/sharing/sharing.dto';
+import type { GrantShareInput } from '#technical/sharing/sharing.dto';
 import { AlreadyRestoredException } from '#technical/errors/already-restored.exception';
 import { resolveDomainError } from '#technical/errors/domain-exception.filter';
 import type { ResolvedError } from '#technical/errors/domain-exception.filter';
@@ -64,11 +72,15 @@ import {
   canRestoreAnySnippet,
   canUpdateSnippet,
   canUpdateAnySnippet,
+  canShareSnippet,
   canViewAnySnippet,
   SnippetPolicy,
 } from './snippet.policy';
 import { SNIPPET_SIGNAL_CHANNEL, SnippetService } from './snippet.service';
-import { SNIPPET_RECORD_LOADER } from './snippet-record.loader';
+import {
+  SNIPPET_RECORD_LOADER,
+  SNIPPET_VISIBLE_RECORD_LOADER,
+} from './snippet-record.loader';
 import type { SnippetRecordLoader } from './snippet-record.loader';
 import { toSnippetView } from './snippet.view';
 import type { SnippetView } from './snippet.view';
@@ -112,6 +124,7 @@ const SNIPPET_DESCRIBE = {
   paginated: true,
   softDeletes: true,
   versioned: { field: 'version', header: 'If-Match' },
+  sharing: true,
   // The many-to-many relations the update route can attach to and detach from
   // by id. A client builds its relation controls from this list and reads
   // whether each is allowed from the record's own capabilities, so it neither
@@ -125,6 +138,8 @@ const SNIPPET_DESCRIBE = {
     update: z.toJSONSchema(updateSnippetSchema, { unrepresentable: 'any' }),
   },
 };
+
+type RequestWithSnippet = RequestWithUser & { record: Snippet };
 
 @Controller('snippets')
 @UseGuards(SessionGuard, CapabilitiesGuard)
@@ -259,8 +274,9 @@ export class SnippetController {
       );
     }
 
+    const shared = await this.snippets.withShares(records);
     return ok(
-      records.map((record) => {
+      shared.map((record) => {
         const resolved = this.policy.recordCapabilities(subject, record);
         return {
           ...withIncludesAndAggregates(
@@ -288,6 +304,46 @@ export class SnippetController {
   @CacheableRead()
   describe() {
     return ok(SNIPPET_DESCRIBE);
+  }
+
+  // Who a record is shared with. Gated by the share capability, which is the
+  // owner's: a reader or writer by share cannot see, or change, the list.
+  @RateLimit('read')
+  @Post(':id/shares/search')
+  @HttpCode(200)
+  @Capability(canShareSnippet)
+  @LoadRecordWith(SNIPPET_VISIBLE_RECORD_LOADER, 'snippet')
+  async listShares(@Req() req: RequestWithSnippet) {
+    return ok(await this.snippets.listShares(req.record.id));
+  }
+
+  // Granting twice to the same user or team changes the access rather than
+  // adding a row. The grantee must exist in the caller's tenant.
+  @RateLimit('write')
+  @Post(':id/shares')
+  @Capability(canShareSnippet)
+  @LoadRecordWith(SNIPPET_VISIBLE_RECORD_LOADER, 'snippet')
+  async grantShare(
+    @Req() req: RequestWithSnippet,
+    @Body(new ZodValidationPipe(grantShareSchema)) body: GrantShareInput,
+  ) {
+    return ok(
+      await this.snippets.grantShare(req.record.id, req.user.id, body),
+      ['Share granted.'],
+    );
+  }
+
+  @RateLimit('write')
+  @Delete(':id/shares/:shareId')
+  @Capability(canShareSnippet)
+  @LoadRecordWith(SNIPPET_VISIBLE_RECORD_LOADER, 'snippet')
+  async revokeShare(
+    @Req() req: RequestWithSnippet,
+    @Param('shareId') shareId: string,
+  ) {
+    return ok(await this.snippets.revokeShare(req.record.id, shareId), [
+      'Share revoked.',
+    ]);
   }
 
   @Post('create')

@@ -150,6 +150,9 @@ export const blueprintSchema = z.strictObject({
   // written down on purpose.
   softDeletes: z.boolean().optional(),
   versioned: z.boolean().default(false),
+  // Off by default. On, the resource can be shared record by record with a user
+  // or a team (read or write), on top of its permission presets.
+  sharing: z.boolean().default(false),
   /**
    * How the resource answers a privacy request, and the only way it opts in: a
    * resource that does not declare it is never exported nor erased, and says
@@ -593,6 +596,26 @@ function assertSoftDeletesIsCoherent(
   }
 }
 
+function assertSharingIsCoherent(
+  blueprint: RawBlueprint,
+  report: (message: string) => void,
+): void {
+  if (blueprint.sharing && !blueprint.routed) {
+    report(
+      'sharing only applies to a routed resource: an unrouted one has no routes to grant or revoke a share on',
+    );
+  }
+
+  if (
+    blueprint.sharing &&
+    blueprint.fields.some((field) => field.type === 'vector')
+  ) {
+    report(
+      'sharing cannot be combined with a vector field yet: similarity ranking runs in SQL against the view scope, which does not carry the shared ids',
+    );
+  }
+}
+
 function assertVersionedIsCoherent(
   blueprint: RawBlueprint,
   report: (message: string) => void,
@@ -867,6 +890,7 @@ export function loadBlueprint(filePath: string): Blueprint {
   assertTranslatableIsCoherent(blueprint, (message) => problems.push(message));
   assertVectorFieldsAreCoherent(blueprint, (message) => problems.push(message));
   assertVersionedIsCoherent(blueprint, (message) => problems.push(message));
+  assertSharingIsCoherent(blueprint, (message) => problems.push(message));
   assertErasureIsCoherent(blueprint, (message) => problems.push(message));
   assertRelationsAreUnique(blueprint, (message) => problems.push(message));
   assertOwnRouteOnlyOnIncludes(blueprint, (message) => problems.push(message));
