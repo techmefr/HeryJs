@@ -69,6 +69,20 @@ export interface HeryConfigLogging extends HeryConfigDrivers {
 }
 
 /**
+ * Every field is optional because the defaults are the point: the dashboard
+ * records in development and in nothing else. `enabled: true` is the explicit
+ * opt-in for a deployed environment, and the routes are then behind an admin
+ * capability rather than gone.
+ */
+export interface HeryConfigDevDashboard {
+  enabled?: boolean;
+  retentionHours?: number;
+  maxEntriesPerTenant?: number;
+  slowQueryMs?: number;
+  nPlusOneThreshold?: number;
+}
+
+/**
  * `satisfies HeryConfig` at the config file's own export is the entire
  * contract mechanism: an unknown top-level key or a search engine missing
  * `driver` fails typecheck, not a schema loaded at runtime. Fields are kept
@@ -89,6 +103,7 @@ export interface HeryConfig {
   rateLimit?: HeryConfigRateLimit;
   i18n?: HeryConfigI18n;
   logging?: HeryConfigLogging;
+  devDashboard?: HeryConfigDevDashboard;
   mail?: HeryConfigDrivers;
   export?: HeryConfigDrivers;
   import?: HeryConfigDrivers;

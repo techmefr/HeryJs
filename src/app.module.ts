@@ -12,6 +12,8 @@ import { ExpositionModule } from '#technical/exposition/exposition.module';
 import { IntrospectionModule } from '#technical/introspection/introspection.module';
 import { FeatureFlagsModule } from '#technical/feature-flags/feature-flags.module';
 import { IdempotencyModule } from '#technical/idempotency/idempotency.module';
+import { DevDashboardModule } from '#devtools/dashboard/dev-dashboard.module';
+import { DevDashboardMiddleware } from '#devtools/dashboard/dev-dashboard.middleware';
 import { InspectorModule } from '#devtools/inspector/inspector.module';
 import { PipelineModule } from '#devtools/pipeline/pipeline.module';
 import { ImpersonationModule } from '#modules/impersonation/impersonation.module';
@@ -38,6 +40,7 @@ import { PipelineMiddleware } from '#devtools/pipeline/pipeline.middleware';
 import { SignalModule } from '#technical/signal/signal.module';
 import { SseModule } from '#modules/sse/sse.module';
 import { OAuthModule } from '#modules/oauth/oauth.module';
+import { SsoModule } from '#modules/sso/sso.module';
 import { LocaleMiddleware } from '#technical/i18n/locale.middleware';
 import { TenantMiddleware } from '#technical/tenancy/tenant.middleware';
 import { DomainExceptionFilter } from '#technical/errors/domain-exception.filter';
@@ -98,6 +101,7 @@ const telemetryOptions = telemetryPinoOptions();
     AuditModule,
     AuthModule,
     CacheModule,
+    DevDashboardModule,
     EtagModule,
     ErrorReporterModule,
     EventsModule,
@@ -124,6 +128,7 @@ const telemetryOptions = telemetryPinoOptions();
     SeedersModule.forRoot([]),
     SignalModule,
     SseModule,
+    SsoModule.forRoot(),
     StorageModule,
     TeamsModule,
     TelemetryModule,
@@ -146,6 +151,7 @@ export class AppModule implements NestModule {
     consumer.apply(SecurityHeadersMiddleware).forRoutes('*');
     consumer.apply(MaintenanceMiddleware).forRoutes('*');
     consumer.apply(LocaleMiddleware).forRoutes('*');
+    consumer.apply(DevDashboardMiddleware).forRoutes('*');
     consumer.apply(PipelineMiddleware).forRoutes('*');
     consumer.apply(TenantMiddleware).forRoutes('*');
     consumer.apply(InspectorMiddleware).forRoutes('*');

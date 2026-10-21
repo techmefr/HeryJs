@@ -116,6 +116,11 @@ Twelve packages, versioned together:
   blocking the others. Lines carry their tenant, and an admin-only `GET /logs`
   reads the store back for the caller's tenant, bounded by a retention window
   and a per-tenant cap. Adds the `LogEntry` table.
+- A persisted dev dashboard, on in development only: requests, slow queries,
+  N+1 findings, job history, mail / SMS / push sent and exceptions, bounded
+  by a retention window and a per-tenant cap, tenant-scoped on every read,
+  and shown as a page of the admin. Production needs `devDashboard.enabled`
+  and then an admin capability. Adds the `DevtoolsEntry` table.
 - A rate limit on by default across every kernel and module route, with
   `read` / `write` / `auth` buckets a project can retune but never remove.
 - A `hasMany` include may itself carry a further `includes` — a relation of a
@@ -178,6 +183,12 @@ installable with `hery install` and removable with `hery uninstall`.
   behind a session, gating on a content-type allowlist and a size cap before
   handing back a tenant-prefixed key the caller never names. A blueprint
   field can now declare `type: file` to own that key like any other column.
+- `sso` adds enterprise single sign-on over OpenID Connect, configured per
+  tenant: the tenant owns its identity provider (client secret sealed with
+  AES-256-GCM), proves the email domains it claims with a DNS TXT record, and
+  its users are provisioned just in time into that tenant. Linking an existing
+  local account is a declared per-connection policy, `refuse` by default.
+  SAML is not covered.
 
 - `oauth` adds social sign-in (Google, GitHub, Microsoft) behind a provider
   contract, with PKCE, a signed single-use state cookie and verified emails

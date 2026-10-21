@@ -3,6 +3,8 @@ import type {
   PushMessage,
   PushOutcome,
 } from '#technical/push/push-driver';
+import { TelemetryBus } from '#technical/tracing/telemetry-bus';
+import type { TelemetryRecord } from '#technical/tracing/telemetry-bus';
 import { PushDriverRegistry } from './push-driver.registry';
 import { PushService } from './push.service';
 import { PushTokenService } from './push.tokens';
@@ -103,5 +105,48 @@ describe('PushService', () => {
       failed: 0,
     });
     expect(tokens.forgotten).toEqual([]);
+  });
+
+  describe('telemetry', () => {
+    const heard: TelemetryRecord[] = [];
+    let unsubscribe: () => void;
+
+    beforeEach(() => {
+      heard.length = 0;
+      unsubscribe = TelemetryBus.subscribe((record) => heard.push(record));
+    });
+
+    afterEach(() => unsubscribe());
+
+    it('reports one message per send, sent when a device was reached', async () => {
+      const { service } = build([laptop, phone], {});
+
+      await service.sendToUser('user-1', message);
+
+      expect(heard).toHaveLength(1);
+      expect(heard[0]).toMatchObject({
+        kind: 'message',
+        channel: 'push',
+        status: 'sent',
+        recipient: 'user-1',
+        subject: 'Ready',
+      });
+    });
+
+    it('reports a failure when no device was reached', async () => {
+      const { service } = build([laptop], { 'web-1': 'failed' });
+
+      await service.sendToUser('user-1', message);
+
+      expect(heard[0]).toMatchObject({ status: 'failed' });
+    });
+
+    it('says nothing for a user with no device', async () => {
+      const { service } = build([], {});
+
+      await service.sendToUser('user-1', message);
+
+      expect(heard).toHaveLength(0);
+    });
   });
 });
