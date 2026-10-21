@@ -1,0 +1,44 @@
+name: Widget
+softDeletes: false
+
+fields:
+  - name: label
+    type: string
+  - name: quantity
+    type: int
+    optional: true
+  - name: isActive
+    type: boolean
+  - name: shippedAt
+    type: datetime
+    optional: true
+  - name: secret
+    type: string
+    hidden: true
+
+permissions:
+  view: team
+  create: team
+  update: team
+  delete: team
+
+sorts:
+  - createdAt
+  - label
+
+filters:
+  - label
+  - quantity
+
+includes:
+  - relation: parts
+    resource: Part
+    type: hasMany
+    foreignKey: widgetId
+    ownRoute: true
+
+aggregates:
+  - relation: parts
+    resource: Part
+    type: hasMany
+    foreignKey: widgetId

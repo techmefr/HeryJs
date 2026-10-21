@@ -1,0 +1,20 @@
+name: Part
+routed: false
+
+fields:
+  - name: name
+    type: string
+  - name: weight
+    type: int
+  - name: createdAt
+    type: datetime
+
+sorts:
+  - createdAt
+
+filters:
+  - name
+
+pagination:
+  limits: [5, 10]
+  default: 5

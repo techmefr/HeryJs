@@ -13,6 +13,14 @@ category is called out here explicitly.
 
 First public release.
 
+### OpenAPI and a typed client
+
+`hery openapi` emits an OpenAPI 3.1 document and `hery openapi:client` a typed
+TypeScript client, both read from the blueprints. What `/describe` does not
+publish (the resolved-capability block, capability-dependent shapes, morph
+targets, included-row types) is stated as absent, not guessed. Nothing in a
+generated file changes.
+
 ### Installing it
 
 Twelve packages, versioned together:

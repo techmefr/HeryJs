@@ -21,6 +21,8 @@ The `hery` CLI is the only thing in this project that reads a blueprint. It is a
 | `module:list`                | Lists the modules available to install.                                                 |
 | `module:monitoring`          | Scaffolds Prometheus, Grafana and Loki.                                                 |
 | `search:reindex <Name>`      | Rebuilds a resource's search index from Postgres.                                       |
+| `openapi`                    | Emits an OpenAPI 3.1 document from every routed blueprint.                              |
+| `openapi:client`             | Emits a typed TypeScript client from the same blueprints.                               |
 | `expose:list`                | Prints the catalog of `@ExposeAction`s.                                                 |
 | `expose:run <action>`        | Runs one exposed action, `--param name=value` per field.                                |
 | `up`                         | Checks that local dependencies are ready.                                               |
