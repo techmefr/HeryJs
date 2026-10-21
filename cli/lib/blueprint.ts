@@ -8,9 +8,10 @@ export const permissionPresetSchema = z.enum(['own', 'team', 'all', 'none']);
 
 export const blueprintFieldSchema = z.strictObject({
   name: z.string().regex(/^[a-z][a-zA-Z0-9]*$/),
-  type: z.enum(['string', 'int', 'boolean', 'datetime', 'file']),
+  type: z.enum(['string', 'int', 'boolean', 'datetime', 'file', 'encrypted']),
   optional: z.boolean().default(false),
   hidden: z.boolean().default(false),
+  reveal: z.boolean().default(false),
 });
 
 const fieldNameSchema = z.string().regex(/^[a-z][a-zA-Z0-9]*$/);
@@ -286,6 +287,48 @@ function assertSortsAndFiltersAreKnownFields(
       }
     }
   }
+}
+
+function assertEncryptedFieldsAreCoherent(
+  blueprint: RawBlueprint,
+  report: (message: string) => void,
+): void {
+  const encrypted = new Set(
+    blueprint.fields
+      .filter((field) => field.type === 'encrypted')
+      .map((field) => field.name),
+  );
+
+  for (const field of blueprint.fields) {
+    if (field.reveal && field.type !== 'encrypted') {
+      report(`field "${field.name}" sets reveal but is not encrypted`);
+    }
+
+    if (field.reveal && field.hidden) {
+      report(`field "${field.name}" cannot be both hidden and revealed`);
+    }
+  }
+
+  for (const [kind, entries] of [
+    ['sort', blueprint.sorts],
+    ['filter', blueprint.filters],
+  ] as const) {
+    for (const entry of entries) {
+      if (encrypted.has(entry)) {
+        report(
+          `${kind} "${entry}" names an encrypted field, and a comparison of ciphertext says nothing about the secret`,
+        );
+      }
+    }
+  }
+}
+
+function concealEncryptedFields(blueprint: RawBlueprint): BlueprintField[] {
+  return blueprint.fields.map((field) =>
+    field.type === 'encrypted' && !field.reveal
+      ? { ...field, hidden: true }
+      : field,
+  );
 }
 
 /**
@@ -569,6 +612,9 @@ export function loadBlueprint(filePath: string): Blueprint {
   assertSortsAndFiltersAreKnownFields(blueprint, (message) =>
     problems.push(message),
   );
+  assertEncryptedFieldsAreCoherent(blueprint, (message) =>
+    problems.push(message),
+  );
   assertSoftDeletesIsCoherent(blueprint, (message) => problems.push(message));
   assertRelationsAreUnique(blueprint, (message) => problems.push(message));
   assertOwnRouteOnlyOnIncludes(blueprint, (message) => problems.push(message));
@@ -592,6 +638,7 @@ export function loadBlueprint(filePath: string): Blueprint {
 
   return {
     ...blueprint,
+    fields: concealEncryptedFields(blueprint),
     softDeletes: softDeletesEnabled(blueprint),
     includes,
     aggregates,

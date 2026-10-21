@@ -1,4 +1,17 @@
 import { z } from 'zod';
+import { parseSecretKeys } from '../secrets/keyring';
+
+export const DEV_SECRETS_KEYS =
+  'dev:ZGV2ZWxvcG1lbnQta2V5LW5vdC1hLXNlY3JldC0wMDA=';
+
+function isValidSecretKeyList(value: string): boolean {
+  try {
+    parseSecretKeys(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Split from env.ts so this file has no side effect: env.ts's bottom-level
@@ -30,6 +43,15 @@ export function buildServerSchema(nodeEnv: string | undefined) {
     STORAGE_URL_SECRET: devOnlySecret(
       'dev-storage-secret-change-in-production',
     ),
+    SECRETS_KEYS: z
+      .string()
+      .min(1)
+      .default(DEV_SECRETS_KEYS)
+      .refine(isValidSecretKeyList, {
+        message:
+          'must be a comma-separated list of <id>:<base64 key>, each key 32 bytes (openssl rand -base64 32)',
+      }),
+    SECRETS_ACTIVE_KEY_ID: z.string().min(1).optional(),
     RLS_ENABLED: z
       .string()
       .default('false')

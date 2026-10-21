@@ -83,6 +83,11 @@ Twelve packages, versioned together:
   registered handler, with per-handler receipts, exponential backoff, a
   dead-letter state and a daily prune. New `OutboxMessage` and `OutboxReceipt`
   tables, and `OUTBOX_RELAY_ENABLED` / `OUTBOX_RELAY_INTERVAL_MS`.
+- An `encrypted` blueprint field type: AES-256-GCM at rest, decrypted
+  transparently by the tenant-scoped Prisma client, hidden from responses
+  unless `reveal: true`, redacted in the audit chain and refused in filters and
+  sorts. Keys are versioned in `SECRETS_KEYS`; `SecretsService` seals values
+  that are not columns and `hery secrets:rotate` re-encrypts to the active key.
 - An architecture linter that fails CI on a domain missing a concern, plus
   fourteen convention checks covering capabilities, pagination, RLS, rate
   limiting, module drift and patched kernel files.

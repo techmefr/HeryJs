@@ -24,6 +24,7 @@ import { registerNewCommand } from './commands/new';
 import { registerOpenApiCommand } from './commands/openapi';
 import { registerOpenApiClientCommand } from './commands/openapi-client';
 import { registerSearchReindexCommand } from './commands/search-reindex';
+import { registerSecretsCommands } from './commands/secrets';
 import { registerUninstallCommand } from './commands/uninstall';
 import { registerUpCommand } from './commands/up';
 
@@ -55,6 +56,7 @@ registerNewCommand(program);
 registerOpenApiCommand(program);
 registerOpenApiClientCommand(program);
 registerSearchReindexCommand(program);
+registerSecretsCommands(program);
 registerUninstallCommand(program);
 registerUpCommand(program);
 

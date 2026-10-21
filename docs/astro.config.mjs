@@ -72,6 +72,7 @@ export default defineConfig({
                 { label: 'Transactional outbox', slug: 'guides/outbox' },
                 { label: 'Distributed lock', slug: 'guides/lock' },
                 { label: 'Idempotency keys', slug: 'guides/idempotency' },
+                { label: 'Secrets and encryption', slug: 'guides/secrets' },
                 { label: 'Jobs', slug: 'guides/jobs' },
                 { label: 'Migrations', slug: 'guides/migrations' },
                 { label: 'Prune', slug: 'guides/prune' },
