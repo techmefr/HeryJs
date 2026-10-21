@@ -1760,8 +1760,7 @@ import { CapabilitiesService } from '#technical/capabilities/capabilities.servic
 import { ChangeFeedModule } from '#technical/change-feed/change-feed.module';
 import { PrismaModule } from '#technical/prisma/prisma.module';
 import { SearchModule } from '#technical/search/search.module';
-import { SignalModule } from '#technical/signal/signal.module';${ctx.vector ? "
-import { VectorModule } from '#technical/vector/vector.module';" : ''}
+import { SignalModule } from '#technical/signal/signal.module';${ctx.vector ? "\nimport { VectorModule } from '#technical/vector/vector.module';" : ''}
 import { ${ctx.pascalName}ChangeFeed } from './${ctx.kebabName}.change-feed';
 import { ${ctx.pascalName}Controller } from './${ctx.kebabName}.controller';
 import { ${ctx.pascalName}Policy } from './${ctx.kebabName}.policy';
