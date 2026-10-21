@@ -68,6 +68,12 @@ export function buildServerSchema(nodeEnv: string | undefined) {
         message:
           'cannot be true in production: it would leave every route, including auth, with no rate limit',
       }),
+    AUTH_LOCKOUT_MAX_ATTEMPTS: z.coerce.number().int().positive().default(5),
+    AUTH_LOCKOUT_SECONDS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(15 * 60),
     AUTH_TWO_FACTOR_ISSUER: z.string().min(1).default('HeryJs'),
     AUTH_REQUIRE_EMAIL_VERIFICATION: z
       .string()
