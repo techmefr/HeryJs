@@ -128,6 +128,11 @@ model FeatureFlag {
   key       String
   tenantId  String?
   enabled   Boolean  @default(false)
+  // 0-100, bucketed per user or per tenant (rolloutBy); 100 means everyone.
+  rolloutPercentage Int @default(100)
+  rolloutBy String @default("user")
+  // Ordered targeting rules, first match wins; see feature-flag-evaluation.ts.
+  rules     Json     @default("[]")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
