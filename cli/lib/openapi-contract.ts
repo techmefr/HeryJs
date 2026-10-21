@@ -1,4 +1,8 @@
-import type { BlueprintField, ResolvedInclude } from './blueprint';
+import type {
+  ResolvedInclude,
+  ScalarBlueprintField,
+  ScalarFieldType,
+} from './blueprint';
 import type { ResourceContext } from './resource-context';
 
 export const FILTER_OPERATORS = [
@@ -44,7 +48,7 @@ export const ALIAS_PATTERN = '^[A-Za-z_][A-Za-z0-9_]*$';
 
 export interface RecordProperty {
   name: string;
-  type: BlueprintField['type'] | 'id' | 'timestamp';
+  type: ScalarFieldType | 'id' | 'timestamp';
   optional: boolean;
 }
 
@@ -62,7 +66,7 @@ export function operationPrefixOf(ctx: ResourceContext): string {
   return ctx.version === 1 ? ctx.camelName : `${ctx.camelName}V${ctx.version}`;
 }
 
-export function visibleFields(ctx: ResourceContext): BlueprintField[] {
+export function visibleFields(ctx: ResourceContext): ScalarBlueprintField[] {
   return ctx.fields.filter((field) => !field.hidden);
 }
 
