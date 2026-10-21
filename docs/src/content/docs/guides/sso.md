@@ -40,6 +40,8 @@ POST /sso/connections
 
 `issuer` is the provider's entity ID, `entryPoint` its single sign-on URL and `certificate` the certificate it signs assertions with: a PEM block, several of them while the provider rotates its key, or the bare base64 a metadata file carries. The response says what to register at the provider: `saml.acsUrl` (the assertion consumer service, `<origin>/sso/saml/acs`, the same for every tenant) and `saml.spEntityId` (the audience; it defaults to `<origin>/sso/saml/<connection id>` and can be set with `spEntityId`). The certificate itself is never returned, only its SHA-256 fingerprints. `entryPoint` has to be `https`, outside development.
 
+Instead of typing `issuer`, `entryPoint` and `certificate`, give `metadataUrl` (fetched under the same URL rules as OpenID Connect discovery) or paste `metadataXml`: the entity ID, the HTTP-Redirect sign-on URL and the signing certificates are read from the provider's metadata, and anything typed explicitly wins over the document. The same two fields on `PATCH` re-import it, which is how a rotation is picked up. A document that declares a DTD is refused. `attributeMapping` (`{ email, name, givenName, surname }`) names the attributes a provider uses when it is not one of the usual ones; the configured name is tried first, then the usual ones.
+
 A sign-in starts at the same `GET /sso/start`. The browser is redirected to the entry point with an AuthnRequest over the HTTP-Redirect binding (unsigned: the provider trusts the entry point it was configured with), and the provider posts the assertion back to `POST /sso/saml/acs`. As with OpenID Connect, the signed state cookie carries the connection, but it is sent `SameSite=None; Secure`, since a form post from the provider is a cross-site request that a `lax` cookie does not travel on.
 
 What the callback accepts, and refuses with `400 sso.invalid-assertion` otherwise:
@@ -52,6 +54,13 @@ What the callback accepts, and refuses with `400 sso.invalid-assertion` otherwis
 The address comes from the `email` or `mail` attribute (or the OID and claim URIs the common providers use), falling back to the NameID when that looks like an address. The subject an identity is matched on is the NameID, except for a transient NameID, which changes at every login and is replaced by the address. An assertion is not stored, so within the ten minutes of the state cookie a request that holds both the cookie and the assertion could replay it; the cookie is HttpOnly and scoped to `/sso`.
 
 Single logout, encrypted assertions and signed AuthnRequests are not supported.
+
+## From the admin panel
+
+The [admin panel](../admin/) builds itself from `GET /introspect`, so the routes behind `canManageSso` are what an operator uses, with no page of their own:
+
+- **Connections** (`GET /sso/connections`) lists every connection of the tenant: protocol, whether it is enabled, the verified domains, the SAML coordinates and the certificate fingerprints. `PATCH /sso/connections/:id` with `isEnabled` switches one on or off, and with `metadataUrl`, `certificate` or `attributeMapping` reconfigures it.
+- **Checks** (`GET /sso/connections/checks`) is the test button: for every connection, whether it is on, whether a verified domain routes to it, and, for SAML, whether the signing certificate is still valid (with a warning inside thirty days) and the sign-on URL answers, or, for OpenID Connect, whether discovery still succeeds. `POST /sso/connections/:id/test` runs the same checks for one connection. Nothing signs anyone in.
 
 ## Proving a domain
 

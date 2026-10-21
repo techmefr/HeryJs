@@ -9,7 +9,7 @@ import {
 } from './sso-domain-verifier';
 import { SsoSecretService } from './sso-secret.service';
 import { InMemorySsoConnectionStore } from './sso.fakes';
-import { generateSamlTestIdp } from './sso-saml.fakes';
+import { generateSamlTestIdp, samlMetadataXml } from './sso-saml.fakes';
 import type { CreateConnectionInput } from './sso.dto';
 
 const ISSUER = 'https://idp.acme.test';
@@ -351,5 +351,70 @@ describe('SsoConnectionService with a SAML identity provider', () => {
     await expect(
       service.update('acme', view.id, { entryPoint: 'https://x.test/sso' }),
     ).rejects.toMatchObject({ reason: 'protocol-mismatch' });
+  });
+
+  it('configures the provider from a pasted metadata document', async () => {
+    const { store, service } = buildSaml();
+    const view = await service.create('acme', {
+      protocol: 'saml',
+      name: 'From metadata',
+      metadataXml: samlMetadataXml(idp.certificate),
+      attributeMapping: { email: 'corporateEmail' },
+      linkPolicy: 'refuse',
+      domains: ['acme.test'],
+    });
+
+    expect(store.rows[0]).toMatchObject({
+      issuer: 'https://idp.acme.test/metadata',
+      samlEntryPoint: 'https://idp.acme.test/redirect',
+      samlAttributeMapping: { email: 'corporateEmail' },
+    });
+    expect(view.saml?.attributeMapping).toEqual({ email: 'corporateEmail' });
+  });
+
+  it('lets what is typed override the metadata, and refuses a connection neither supplies', async () => {
+    const { store, service } = buildSaml();
+
+    await service.create('acme', {
+      protocol: 'saml',
+      name: 'Override',
+      metadataXml: samlMetadataXml(idp.certificate),
+      entryPoint: 'https://idp.acme.test/custom',
+      linkPolicy: 'refuse',
+      domains: ['acme.test'],
+    });
+
+    expect(store.rows[0]?.samlEntryPoint).toBe('https://idp.acme.test/custom');
+    await expect(
+      service.create('acme', {
+        protocol: 'saml',
+        name: 'Nothing',
+        linkPolicy: 'refuse',
+        domains: ['acme.test'],
+      }),
+    ).rejects.toMatchObject({ reason: 'saml-incomplete' });
+    await expect(
+      service.create('acme', {
+        protocol: 'saml',
+        name: 'Broken',
+        metadataXml: '<nothing/>',
+        linkPolicy: 'refuse',
+        domains: ['acme.test'],
+      }),
+    ).rejects.toMatchObject({ reason: 'saml-metadata-invalid' });
+  });
+
+  it('re-imports a rotated certificate from fresh metadata', async () => {
+    const { store, service } = buildSaml();
+    const view = await service.create('acme', samlInput);
+    const next = generateSamlTestIdp('next.acme.test');
+
+    await service.update('acme', view.id, {
+      metadataXml: samlMetadataXml(next.certificate),
+    });
+
+    expect(store.rows[0]?.samlCertificate).toContain(
+      next.certificate.split('\n')[1] ?? 'missing',
+    );
   });
 });

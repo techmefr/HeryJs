@@ -1,6 +1,7 @@
 import type {
   SsoConnectionRecord,
   SsoDomainRecord,
+  SsoAttributeMapping,
   SsoLinkPolicy,
   SsoProtocol,
 } from './sso.types';
@@ -17,6 +18,7 @@ export interface NewSsoConnection {
   sealedClientSecret: string | null;
   samlEntryPoint: string | null;
   samlCertificate: string | null;
+  samlAttributeMapping: SsoAttributeMapping | null;
   linkPolicy: SsoLinkPolicy;
   domains: Array<{ domain: string; verificationToken: string }>;
 }
@@ -28,6 +30,7 @@ export interface SsoConnectionChanges {
   sealedClientSecret?: string;
   samlEntryPoint?: string;
   samlCertificate?: string;
+  samlAttributeMapping?: SsoAttributeMapping;
   linkPolicy?: SsoLinkPolicy;
   isEnabled?: boolean;
 }

@@ -6,6 +6,7 @@ const MAX_TEXT_LENGTH = 255;
 const MAX_URL_LENGTH = 2048;
 const MAX_SECRET_LENGTH = 1024;
 const MAX_CERTIFICATE_LENGTH = 16_384;
+const MAX_METADATA_LENGTH = 524_288;
 const MAX_SAML_RESPONSE_LENGTH = 1_048_576;
 
 const linkPolicySchema = z.enum(SSO_LINK_POLICIES as [string, ...string[]]);
@@ -29,12 +30,31 @@ const createOidcConnectionSchema = z.object({
 // always a URL, so `issuer` is a plain string here; `spEntityId` is what this
 // service provider calls itself in the request and what the assertion's
 // audience has to match, and it defaults to a URL under this API.
+const attributeMappingSchema = z
+  .object({
+    email: z.string().min(1).max(MAX_URL_LENGTH),
+    name: z.string().min(1).max(MAX_URL_LENGTH),
+    givenName: z.string().min(1).max(MAX_URL_LENGTH),
+    surname: z.string().min(1).max(MAX_URL_LENGTH),
+  })
+  .partial()
+  .strict();
+
+// The provider's coordinates come from its metadata document, fetched from a
+// URL or pasted, or are typed in; whatever is typed in wins over the document.
+const samlMetadataSource = {
+  metadataUrl: z.url().max(MAX_URL_LENGTH).optional(),
+  metadataXml: z.string().min(1).max(MAX_METADATA_LENGTH).optional(),
+};
+
 const createSamlConnectionSchema = z.object({
   protocol: z.literal('saml'),
   name: z.string().min(1).max(MAX_TEXT_LENGTH),
-  issuer: z.string().min(1).max(MAX_URL_LENGTH),
-  entryPoint: z.url().max(MAX_URL_LENGTH),
-  certificate: z.string().min(1).max(MAX_CERTIFICATE_LENGTH),
+  issuer: z.string().min(1).max(MAX_URL_LENGTH).optional(),
+  entryPoint: z.url().max(MAX_URL_LENGTH).optional(),
+  certificate: z.string().min(1).max(MAX_CERTIFICATE_LENGTH).optional(),
+  ...samlMetadataSource,
+  attributeMapping: attributeMappingSchema.optional(),
   spEntityId: z.string().min(1).max(MAX_URL_LENGTH).optional(),
   linkPolicy: linkPolicySchema.default('refuse'),
   domains: domainsSchema,
@@ -53,6 +73,8 @@ export const updateConnectionSchema = z
     issuer: z.string().min(1).max(MAX_URL_LENGTH),
     entryPoint: z.url().max(MAX_URL_LENGTH),
     certificate: z.string().min(1).max(MAX_CERTIFICATE_LENGTH),
+    ...samlMetadataSource,
+    attributeMapping: attributeMappingSchema,
     linkPolicy: linkPolicySchema,
     isEnabled: z.boolean(),
   })

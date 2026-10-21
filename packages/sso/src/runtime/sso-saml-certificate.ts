@@ -68,3 +68,9 @@ export function certificateFingerprints(bundle: string): string[] {
     (pem) => new X509Certificate(pem).fingerprint256,
   );
 }
+
+export function certificateExpiries(bundle: string): Date[] {
+  return splitCertificates(bundle).map(
+    (pem) => new Date(new X509Certificate(pem).validTo),
+  );
+}

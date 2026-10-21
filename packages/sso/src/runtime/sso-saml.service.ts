@@ -90,13 +90,18 @@ function firstString(value: unknown): string | null {
     : null;
 }
 
-function attribute(profile: Profile, names: string[]): string | null {
+function attribute(
+  profile: Profile,
+  names: string[],
+  configured?: string,
+): string | null {
+  const candidates = configured ? [configured, ...names] : names;
   const attributes =
     typeof profile.attributes === 'object' && profile.attributes !== null
       ? (profile.attributes as Record<string, unknown>)
       : {};
 
-  for (const name of names) {
+  for (const name of candidates) {
     const found = firstString(attributes[name]) ?? firstString(profile[name]);
 
     if (found) {
@@ -237,9 +242,10 @@ export class SsoSamlService {
     connection: SsoConnectionRecord,
     profile: Profile,
   ): SsoProfile {
+    const mapping = connection.samlAttributeMapping;
     const nameId = firstString(profile.nameID);
     const email =
-      attribute(profile, EMAIL_ATTRIBUTES) ??
+      attribute(profile, EMAIL_ATTRIBUTES, mapping?.email) ??
       (nameId && isEmailLike(nameId) ? nameId : null);
 
     if (!email) {
@@ -252,14 +258,16 @@ export class SsoSamlService {
       nameId && profile.nameIDFormat !== TRANSIENT_NAME_ID
         ? nameId
         : `email:${email.toLowerCase()}`;
-    const given = attribute(profile, GIVEN_NAME_ATTRIBUTES);
-    const surname = attribute(profile, SURNAME_ATTRIBUTES);
+    const given = attribute(profile, GIVEN_NAME_ATTRIBUTES, mapping?.givenName);
+    const surname = attribute(profile, SURNAME_ATTRIBUTES, mapping?.surname);
     const composed = [given, surname].filter(Boolean).join(' ');
 
     return {
       subject,
       email: email.toLowerCase(),
-      name: attribute(profile, NAME_ATTRIBUTES) ?? (composed || null),
+      name:
+        attribute(profile, NAME_ATTRIBUTES, mapping?.name) ??
+        (composed || null),
       avatarUrl: null,
     };
   }

@@ -224,7 +224,11 @@ installable with `hery install` and removable with `hery uninstall`.
   assertion must be signed, answer the request this browser started, and name
   an address on a domain the tenant proved. SAML adds three columns to
   `SsoConnection` and makes `clientSecret` nullable; `@node-saml/node-saml`
-  does the XML signature checking.
+  does the XML signature checking. The provider can be configured from its
+  metadata (a URL or pasted XML) with an attribute mapping, and
+  `GET /sso/connections/checks` tests every connection (certificate expiry,
+  reachability, verified domain, discovery) so the admin panel, which builds
+  itself from introspection, gets a section for it.
 
 - `oauth` adds social sign-in (Google, GitHub, Microsoft) behind a provider
   contract, with PKCE, a signed single-use state cookie and verified emails

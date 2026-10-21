@@ -2,6 +2,7 @@ import { DynamicModule, Module, Type } from '@nestjs/common';
 import { AuthModule } from '#technical/auth/auth.module';
 import { SSO_CONNECTION_STORE } from './sso-connection.store';
 import { PrismaSsoConnectionStore } from './prisma-sso-connection.store';
+import { SsoConnectionTestService } from './sso-connection-test.service';
 import { SsoConnectionController } from './sso-connection.controller';
 import { SsoConnectionService } from './sso-connection.service';
 import { SsoDiscoveryService } from './sso-discovery.service';
@@ -45,6 +46,7 @@ import { SsoController } from './sso.controller';
     SsoLoginService,
     SsoSamlService,
     SsoConnectionService,
+    SsoConnectionTestService,
   ],
   exports: [SsoConnectionService, SsoRouterService, SSO_LOGIN_HANDLER],
 })

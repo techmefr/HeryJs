@@ -5,6 +5,7 @@ import {
 import { samlAcsUri } from './sso-saml-uri';
 import { certificateFingerprints } from './sso-saml-certificate';
 import type {
+  SsoAttributeMapping,
   SsoConnectionRecord,
   SsoLinkPolicy,
   SsoProtocol,
@@ -22,6 +23,7 @@ export interface SsoSamlView {
   spEntityId: string;
   acsUrl: string;
   certificateFingerprints: string[];
+  attributeMapping: SsoAttributeMapping | null;
 }
 
 export interface SsoConnectionView {
@@ -59,6 +61,7 @@ export function toConnectionView(
             certificateFingerprints: record.samlCertificate
               ? certificateFingerprints(record.samlCertificate)
               : [],
+            attributeMapping: record.samlAttributeMapping,
           }
         : null,
     linkPolicy: record.linkPolicy,

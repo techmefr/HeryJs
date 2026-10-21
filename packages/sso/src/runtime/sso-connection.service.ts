@@ -12,6 +12,8 @@ import type { SsoConnectionView } from './sso-connection.view';
 import { SsoDiscoveryService } from './sso-discovery.service';
 import { normalizeDomain } from './sso-domain';
 import { SsoDomainVerifier } from './sso-domain-verifier';
+import { parseIdpMetadata } from './sso-saml-metadata';
+import type { SamlIdpMetadata } from './sso-saml-metadata';
 import { normalizeCertificates } from './sso-saml-certificate';
 import { SsoSecretService } from './sso-secret.service';
 import { ssoEnv } from './sso.env';
@@ -37,6 +39,7 @@ type ProtocolFields = Pick<
   | 'sealedClientSecret'
   | 'samlEntryPoint'
   | 'samlCertificate'
+  | 'samlAttributeMapping'
 >;
 type OidcFields = ProtocolFields;
 type SamlFields = ProtocolFields;
@@ -68,7 +71,7 @@ export class SsoConnectionService {
     const id = randomUUID();
     const protocolFields =
       input.protocol === 'saml'
-        ? this.samlFields(id, input)
+        ? await this.samlFields(id, input)
         : await this.oidcFields(id, input);
     const domains = [
       ...new Set(input.domains.map((domain) => this.requireDomain(domain))),
@@ -104,33 +107,56 @@ export class SsoConnectionService {
     input: UpdateConnectionInput,
   ): Promise<SsoConnectionView> {
     const existing = await this.require(tenantId, id);
-    const { clientSecret, linkPolicy, entryPoint, certificate, ...rest } =
-      input;
+    const {
+      clientSecret,
+      linkPolicy,
+      entryPoint,
+      certificate,
+      issuer,
+      metadataUrl,
+      metadataXml,
+      attributeMapping,
+      ...rest
+    } = input;
     const isSaml = existing.protocol === 'saml';
     const isMismatch = isSaml
       ? clientSecret !== undefined
-      : rest.issuer !== undefined ||
+      : issuer !== undefined ||
         entryPoint !== undefined ||
-        certificate !== undefined;
+        certificate !== undefined ||
+        metadataUrl !== undefined ||
+        metadataXml !== undefined ||
+        attributeMapping !== undefined;
 
     if (isMismatch) {
       throw new SsoConnectionConflictException('protocol-mismatch');
     }
 
+    const imported = isSaml
+      ? await this.importMetadata({ metadataUrl, metadataXml })
+      : null;
+    const nextIssuer = issuer ?? imported?.entityId;
+    const nextEntryPoint = entryPoint ?? imported?.entryPoint;
+    const nextCertificate = certificate ?? imported?.certificates.join('\n');
+
     await this.store.update(tenantId, id, {
       ...rest,
+      ...(nextIssuer === undefined ? {} : { issuer: nextIssuer }),
+      ...(attributeMapping === undefined
+        ? {}
+        : { samlAttributeMapping: attributeMapping }),
       ...(linkPolicy === undefined
         ? {}
         : { linkPolicy: linkPolicy as SsoLinkPolicy }),
       ...(clientSecret === undefined
         ? {}
         : { sealedClientSecret: this.secrets.seal(clientSecret, id) }),
-      ...(entryPoint === undefined
+      ...(nextEntryPoint === undefined
         ? {}
-        : { samlEntryPoint: this.requireEntryPoint(entryPoint) }),
-      ...(certificate === undefined
+        : { samlEntryPoint: this.requireEntryPoint(nextEntryPoint) }),
+      ...(nextCertificate === undefined
         ? {}
-        : { samlCertificate: this.requireCertificate(certificate) }),
+        : { samlCertificate: this.requireCertificate(nextCertificate) }),
     });
 
     return this.view(await this.require(tenantId, id));
@@ -238,24 +264,68 @@ export class SsoConnectionService {
       sealedClientSecret: this.secrets.seal(input.clientSecret, id),
       samlEntryPoint: null,
       samlCertificate: null,
+      samlAttributeMapping: null,
     };
   }
 
-  private samlFields(id: string, input: CreateSamlConnectionInput): SamlFields {
+  private async samlFields(
+    id: string,
+    input: CreateSamlConnectionInput,
+  ): Promise<SamlFields> {
+    const imported = await this.importMetadata(input);
+    const issuer = input.issuer ?? imported?.entityId;
+    const entryPoint = input.entryPoint ?? imported?.entryPoint;
+    const certificate = input.certificate ?? imported?.certificates.join('\n');
+
+    if (!issuer || !entryPoint || !certificate) {
+      throw new SsoConnectionConflictException('saml-incomplete');
+    }
+
     return {
       protocol: 'saml',
-      issuer: input.issuer,
+      samlAttributeMapping: input.attributeMapping ?? null,
+      issuer,
       clientId:
         input.spEntityId ??
         `${new URL(this.redirectUri).origin}${SAML_ENTITY_PATH}${id}`,
       sealedClientSecret: null,
-      samlEntryPoint: this.requireEntryPoint(input.entryPoint),
-      samlCertificate: this.requireCertificate(input.certificate),
+      samlEntryPoint: this.requireEntryPoint(entryPoint),
+      samlCertificate: this.requireCertificate(certificate),
     };
   }
 
+  private async importMetadata(source: {
+    metadataUrl?: string;
+    metadataXml?: string;
+  }): Promise<SamlIdpMetadata | null> {
+    if (!source.metadataUrl && !source.metadataXml) {
+      return null;
+    }
+
+    try {
+      const xml =
+        source.metadataXml ??
+        (await this.discovery.fetchDocument(source.metadataUrl ?? ''));
+      const metadata = parseIdpMetadata(xml);
+
+      if (metadata) {
+        return metadata;
+      }
+    } catch {
+      // reported below as one refusal, whatever stopped the import
+    }
+
+    throw new SsoConnectionConflictException('saml-metadata-invalid');
+  }
+
   private requireEntryPoint(value: string): string {
-    const { protocol } = new URL(value);
+    const protocol = ((): string => {
+      try {
+        return new URL(value).protocol;
+      } catch {
+        return '';
+      }
+    })();
     const isSecure =
       protocol === 'https:' ||
       (protocol === 'http:' && ssoEnv.SSO_ALLOW_PRIVATE_ISSUERS);

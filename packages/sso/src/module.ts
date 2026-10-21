@@ -11,6 +11,7 @@ model SsoConnection {
   clientSecret    String?
   samlEntryPoint  String?
   samlCertificate String?
+  samlAttributeMapping String?
   linkPolicy      String   @default("refuse")
   isEnabled       Boolean  @default(true)
   createdAt       DateTime @default(now())
@@ -59,7 +60,12 @@ export default {
   description:
     'Enterprise SSO per tenant over OpenID Connect and SAML 2.0: a tenant owns its identity provider, proves the email domains it claims with a DNS record, and its users are provisioned just in time with a declared account-linking policy.',
   meta: { compatibility: '>=0.0.1' },
-  dependencies: ['@node-saml/node-saml@^5.1.0', 'xml-crypto@^6.4.0'],
+  dependencies: [
+    '@node-saml/node-saml@^5.1.0',
+    '@xmldom/xmldom@^0.8.15',
+    'xpath@^0.0.34',
+    'xml-crypto@^6.4.0',
+  ],
   install(context) {
     context.copyRuntime();
     context.addPrismaModels(SSO_MODELS);

@@ -9,6 +9,7 @@ import type {
 } from './sso-connection.store';
 import type {
   SsoConnectionRecord,
+  SsoAttributeMapping,
   SsoDomainRecord,
   SsoLinkPolicy,
   SsoProtocol,
@@ -26,6 +27,7 @@ interface ConnectionRow {
   clientSecret: string | null;
   samlEntryPoint: string | null;
   samlCertificate: string | null;
+  samlAttributeMapping: string | null;
   linkPolicy: string;
   isEnabled: boolean;
   createdAt: Date;
@@ -52,10 +54,25 @@ function toProtocol(value: string): SsoProtocol {
   return SSO_PROTOCOLS.find((protocol) => protocol === value) ?? 'oidc';
 }
 
+function toMapping(value: string | null): SsoAttributeMapping | null {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(value);
+
+    return typeof parsed === 'object' && parsed !== null ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 function toRecord(row: ConnectionRow): SsoConnectionRecord {
   return {
     ...row,
     protocol: toProtocol(row.protocol),
+    samlAttributeMapping: toMapping(row.samlAttributeMapping),
     linkPolicy: toLinkPolicy(row.linkPolicy),
   };
 }
@@ -85,6 +102,9 @@ export class PrismaSsoConnectionStore implements SsoConnectionStore {
         clientSecret: connection.sealedClientSecret,
         samlEntryPoint: connection.samlEntryPoint,
         samlCertificate: connection.samlCertificate,
+        samlAttributeMapping: connection.samlAttributeMapping
+          ? JSON.stringify(connection.samlAttributeMapping)
+          : null,
         linkPolicy: connection.linkPolicy,
         domains: {
           create: connection.domains.map((entry) => ({
@@ -147,7 +167,7 @@ export class PrismaSsoConnectionStore implements SsoConnectionStore {
     id: string,
     changes: SsoConnectionChanges,
   ): Promise<boolean> {
-    const { sealedClientSecret, ...rest } = changes;
+    const { sealedClientSecret, samlAttributeMapping, ...rest } = changes;
     const result = await authPrismaClient.ssoConnection.updateMany({
       where: { id, tenantId },
       data: {
@@ -155,6 +175,9 @@ export class PrismaSsoConnectionStore implements SsoConnectionStore {
         ...(sealedClientSecret === undefined
           ? {}
           : { clientSecret: sealedClientSecret }),
+        ...(samlAttributeMapping === undefined
+          ? {}
+          : { samlAttributeMapping: JSON.stringify(samlAttributeMapping) }),
       },
     });
 

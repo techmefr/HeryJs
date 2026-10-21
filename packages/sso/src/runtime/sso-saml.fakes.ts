@@ -217,3 +217,21 @@ export function samlResponseXml(options: SamlAssertionOptions): string {
 export function encodeSamlResponse(xml: string): string {
   return Buffer.from(xml).toString('base64');
 }
+
+function certificateBody(pem: string): string {
+  return pem.replace(/-----[A-Z ]+-----/g, '').replace(/\s+/g, '');
+}
+
+export function samlMetadataXml(certificate: string): string {
+  return `<?xml version="1.0"?>
+<md:EntitiesDescriptor xmlns:md="urn:oasis:names:tc:SAML:2.0:metadata" xmlns:ds="http://www.w3.org/2000/09/xmldsig#">
+  <md:EntityDescriptor entityID="https://idp.acme.test/metadata">
+    <md:IDPSSODescriptor protocolSupportEnumeration="urn:oasis:names:tc:SAML:2.0:protocol">
+      <md:KeyDescriptor use="encryption"><ds:KeyInfo><ds:X509Data><ds:X509Certificate>ENCRYPTION</ds:X509Certificate></ds:X509Data></ds:KeyInfo></md:KeyDescriptor>
+      <md:KeyDescriptor use="signing"><ds:KeyInfo><ds:X509Data><ds:X509Certificate>${certificateBody(certificate)}</ds:X509Certificate></ds:X509Data></ds:KeyInfo></md:KeyDescriptor>
+      <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST" Location="https://idp.acme.test/post"/>
+      <md:SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://idp.acme.test/redirect"/>
+    </md:IDPSSODescriptor>
+  </md:EntityDescriptor>
+</md:EntitiesDescriptor>`;
+}

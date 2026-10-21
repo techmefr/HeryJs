@@ -604,6 +604,7 @@ model SsoConnection {
   clientSecret    String?
   samlEntryPoint  String?
   samlCertificate String?
+  samlAttributeMapping String?
   linkPolicy      String   @default("refuse")
   isEnabled       Boolean  @default(true)
   createdAt       DateTime @default(now())

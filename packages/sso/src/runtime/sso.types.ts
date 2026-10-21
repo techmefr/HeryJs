@@ -4,6 +4,13 @@ export type SsoProtocol = 'oidc' | 'saml';
 
 export const SSO_PROTOCOLS: readonly SsoProtocol[] = ['oidc', 'saml'];
 
+export interface SsoAttributeMapping {
+  email?: string;
+  name?: string;
+  givenName?: string;
+  surname?: string;
+}
+
 export type SsoLinkPolicy = 'refuse' | 'link-verified';
 
 export const SSO_LINK_POLICIES: readonly SsoLinkPolicy[] = [
@@ -30,6 +37,7 @@ export interface SsoConnectionRecord {
   clientSecret: string | null;
   samlEntryPoint: string | null;
   samlCertificate: string | null;
+  samlAttributeMapping: SsoAttributeMapping | null;
   linkPolicy: SsoLinkPolicy;
   isEnabled: boolean;
   createdAt: Date;
