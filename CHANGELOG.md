@@ -13,6 +13,10 @@ category is called out here explicitly.
 
 First public release.
 
+### Parallel test isolation
+
+Each jest worker now runs against a Postgres database and a Redis keyspace of its own. The migrations are applied once into a template database named after their hash, every worker's database is a `CREATE DATABASE ... TEMPLATE` copy of it, recreated on each run and dropped afterwards, so one worker's failure cannot corrupt another's data. The suite runs on four workers. `pnpm test:serial` (or `JEST_SHARED_DB=true`) is the way back to a single shared database. Test infrastructure only: nothing changes for a generated project.
+
 ### Per-tenant quotas and usage metering
 
 `quotas` in `hery.config.ts` declares a named limit with a default and a period (`month`, `day` or `total`), and `QuotasService` gives resources `check`, `consume` and `usage`. A tenant's limit can be overridden in the database (`PUT /quotas/:name/override`, admin only), and `GET /quotas` lists each quota's limit and use behind a capability, so the admin panel shows it as a section with no wiring. The count is kept in Postgres in one conditional `UPDATE`, so racing requests cannot overshoot, and the two new tables (`QuotaOverride`, `QuotaUsage`) are tenant scoped under row-level security. A rate-limit bucket can also be retuned for one tenant with an override named `rate-limit:<bucket>`; per plan is not covered. It is independent of `billingQuotas`, and usage-based billing is the next step. **Upgrade note:** a project that already exists needs the two new migrations, and has to add `QuotasModule` to its `AppModule` by hand.

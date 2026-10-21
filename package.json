@@ -110,6 +110,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "typecheck:packages": "for d in packages/*/ examples/hery-module-*/; do if [ -f \"$d/tsconfig.json\" ]; then echo \"$d\"; tsc --noEmit -p \"$d/tsconfig.json\" || exit 1; fi; done",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest && pnpm run test:module-specs && pnpm --filter admin test",
+    "test:serial": "JEST_SHARED_DB=true NODE_OPTIONS=--experimental-vm-modules jest --runInBand",
     "test:watch": "NODE_OPTIONS=--experimental-vm-modules jest --watch",
     "test:cov": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "test:debug": "NODE_OPTIONS=--experimental-vm-modules node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
@@ -226,7 +227,12 @@
     ],
     "rootDir": ".",
     "testRegex": ".*\\.spec\\.ts$",
-    "globalSetup": "<rootDir>/test/global-setup.ts",
+    "globalSetup": "<rootDir>/test/parallel-setup.ts",
+    "globalTeardown": "<rootDir>/test/parallel-teardown.ts",
+    "setupFiles": [
+      "<rootDir>/test/parallel-env.ts"
+    ],
+    "maxWorkers": 4,
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },
