@@ -219,15 +219,31 @@ export function afterEveryMigration(
   );
 }
 
+const MAX_SUFFIX_LENGTH = 80;
+
+/**
+ * Named after the tables it locks down while that stays readable. A fresh
+ * project's first migrate covers every kernel table at once, and the joined
+ * names ran past the 255-byte limit on a directory name: `mkdir` failed with
+ * ENAMETOOLONG on the very command the getting-started path gives.
+ */
+export function rlsMigrationSuffix(models: TenantModel[]): string {
+  const joined = models.map((model) => model.name.toLowerCase()).join('_');
+
+  if (joined.length <= MAX_SUFFIX_LENGTH) {
+    return `enable_rls_${joined}`;
+  }
+
+  return `enable_rls_${models.length}_tables`;
+}
+
 export function writeRlsMigration(
   root: string,
   models: TenantModel[],
   timestamp: string,
 ): string {
   const migrationsDir = path.join(root, 'prisma', 'migrations');
-  const name = `${afterEveryMigration(migrationsDir, timestamp)}_enable_rls_${models
-    .map((model) => model.name.toLowerCase())
-    .join('_')}`;
+  const name = `${afterEveryMigration(migrationsDir, timestamp)}_${rlsMigrationSuffix(models)}`;
   const dir = path.join(migrationsDir, name);
 
   mkdirSync(dir, { recursive: true });
