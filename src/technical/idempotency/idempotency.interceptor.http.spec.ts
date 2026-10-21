@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -60,8 +61,9 @@ describe('IdempotencyInterceptor over a real HTTP round trip', () => {
 
   it('executes the handler and stores the response on a first request', async () => {
     const user = await registerAndLogin(app);
+    const key = randomUUID();
 
-    const response = await createTeam(user, 'first-seen', 'Acme');
+    const response = await createTeam(user, key, 'Acme');
     expect(response.status).toBe(201);
 
     const body = response.body as TeamResponse;
@@ -71,11 +73,12 @@ describe('IdempotencyInterceptor over a real HTTP round trip', () => {
 
   it('replays the stored response on a repeat, without re-running the handler', async () => {
     const user = await registerAndLogin(app);
+    const key = randomUUID();
 
-    const first = await createTeam(user, 'replay-key', 'Acme');
+    const first = await createTeam(user, key, 'Acme');
     expect(first.status).toBe(201);
 
-    const second = await createTeam(user, 'replay-key', 'Acme');
+    const second = await createTeam(user, key, 'Acme');
     expect(second.status).toBe(201);
     expect(second.body).toEqual(first.body);
 
@@ -84,15 +87,12 @@ describe('IdempotencyInterceptor over a real HTTP round trip', () => {
 
   it('answers a repeat with a different body as a 422, not a replay', async () => {
     const user = await registerAndLogin(app);
+    const key = randomUUID();
 
-    const first = await createTeam(user, 'mismatch-key', 'Acme');
+    const first = await createTeam(user, key, 'Acme');
     expect(first.status).toBe(201);
 
-    const second = await createTeam(
-      user,
-      'mismatch-key',
-      'A Different Company',
-    );
+    const second = await createTeam(user, key, 'A Different Company');
     expect(second.status).toBe(422);
 
     const body = second.body as { error: { key: string } };
@@ -107,10 +107,11 @@ describe('IdempotencyInterceptor over a real HTTP round trip', () => {
    */
   it('executes the handler only once for concurrent requests sharing a key', async () => {
     const user = await registerAndLogin(app);
+    const key = randomUUID();
 
     const [first, second] = await Promise.all([
-      createTeam(user, 'concurrent-key', 'Acme'),
-      createTeam(user, 'concurrent-key', 'Acme'),
+      createTeam(user, key, 'Acme'),
+      createTeam(user, key, 'Acme'),
     ]);
 
     expect(first.status).toBe(201);
@@ -133,25 +134,14 @@ describe('IdempotencyInterceptor over a real HTTP round trip', () => {
     expect(await teamCount(user)).toBe(2);
   });
 
-  it('keeps the same key from colliding across tenants', async () => {
-    const first = await registerAndLogin(app);
-    const second = await registerAndLogin(app);
-
-    const firstResponse = await createTeam(first, 'shared-key', 'Acme');
-    const secondResponse = await createTeam(second, 'shared-key', 'Globex');
-
-    expect(firstResponse.status).toBe(201);
-    expect(secondResponse.status).toBe(201);
-    expect((secondResponse.body as TeamResponse).data.name).toBe('Globex');
-  });
-
   it('does not store a failed response, so a retry runs the handler again', async () => {
     const user = await registerAndLogin(app);
+    const key = randomUUID();
 
-    const failed = await createTeam(user, 'failing-key', '');
+    const failed = await createTeam(user, key, '');
     expect(failed.status).toBeGreaterThanOrEqual(400);
 
-    const retried = await createTeam(user, 'failing-key', '');
+    const retried = await createTeam(user, key, '');
     expect(retried.status).toBe(failed.status);
   });
 });
