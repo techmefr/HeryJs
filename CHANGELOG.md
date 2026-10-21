@@ -177,6 +177,12 @@ installable with `hery install` and removable with `hery uninstall`.
   behind a session, gating on a content-type allowlist and a size cap before
   handing back a tenant-prefixed key the caller never names. A blueprint
   field can now declare `type: file` to own that key like any other column.
+- `sso` adds enterprise single sign-on over OpenID Connect, configured per
+  tenant: the tenant owns its identity provider (client secret sealed with
+  AES-256-GCM), proves the email domains it claims with a DNS TXT record, and
+  its users are provisioned just in time into that tenant. Linking an existing
+  local account is a declared per-connection policy, `refuse` by default.
+  SAML is not covered.
 
 - `oauth` adds social sign-in (Google, GitHub, Microsoft) behind a provider
   contract, with PKCE, a signed single-use state cookie and verified emails
