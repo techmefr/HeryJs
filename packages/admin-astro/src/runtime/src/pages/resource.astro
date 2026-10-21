@@ -12,6 +12,7 @@ import Shell from '../layouts/Shell.astro';
 <script>
   import { api, labelOf } from '../lib/api';
   import type { DescribedController } from '../lib/api';
+  import { withContributions } from '../lib/admin-actions';
   import { tintOf } from '../lib/icons';
   import { extensionFor } from '../lib/extensions';
   import { state } from '../lib/render';
@@ -40,7 +41,7 @@ import Shell from '../layouts/Shell.astro';
     await mountResource(output, {
       base,
       controllers: data,
-      extensions,
+      extensions: withContributions(extensions, data, base, output),
       editId: params.get('edit'),
     });
   }
