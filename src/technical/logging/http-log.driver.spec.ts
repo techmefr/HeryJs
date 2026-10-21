@@ -48,7 +48,10 @@ describe('HttpLogDriver', () => {
     const driver = new HttpLogDriver({
       ...options,
       fetch: (url, init) => {
-        calls.push({ url: String(url), init: init ?? {} });
+        calls.push({
+          url: typeof url === 'string' ? url : 'not a string',
+          init: init ?? {},
+        });
         return Promise.resolve(new Response(null, { status: 204 }));
       },
     });
@@ -63,7 +66,9 @@ describe('HttpLogDriver', () => {
       Authorization: 'Bearer secret-token',
       'Content-Type': 'application/json',
     });
-    expect(JSON.parse(String(calls[0]?.init.body))).toMatchObject({
+    const body = calls[0]?.init.body;
+
+    expect(JSON.parse(typeof body === 'string' ? body : '{}')).toMatchObject({
       streams: [{ stream: { level: 'info' } }],
     });
   });

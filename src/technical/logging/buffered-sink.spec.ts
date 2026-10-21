@@ -53,7 +53,7 @@ describe('BufferedSink', () => {
 
     await sink.flush();
 
-    const sent = (send.mock.calls[0]?.[0] ?? []) as LogEntry[];
+    const sent = send.mock.calls[0]?.[0] ?? [];
 
     expect(sent.map((item) => item.message)).toEqual([
       'm3',
