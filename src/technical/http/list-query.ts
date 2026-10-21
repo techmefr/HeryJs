@@ -3,6 +3,7 @@ import {
   InvalidQueryException,
   PaginationNotOfferedException,
 } from '#technical/errors/invalid-query.exception';
+import { buildCursorWhere, decodeCursor, encodeCursor } from './cursor';
 
 export const FILTER_OPERATORS = [
   '=',
@@ -158,6 +159,7 @@ const includeEntrySchema: z.ZodType<IncludeEntry> = z.lazy(() =>
 export const searchRequestSchema = z.object({
   page: z.number().int().positive().max(MAX_PAGE).optional(),
   limit: z.number().int().optional(),
+  cursor: z.string().optional(),
   sorts: z.array(sortEntrySchema).max(MAX_SORTS).optional(),
   filters: z.array(filterEntrySchema).max(MAX_FILTERS).optional(),
   selects: z.array(selectEntrySchema).max(MAX_SELECTS).optional(),
@@ -279,6 +281,7 @@ export interface ParsedListQuery {
   onlyTrashed: boolean;
   sorts?: SortEntry[];
   where?: Record<string, unknown>;
+  cursorWhere?: Record<string, unknown>;
   select?: Record<string, true>;
   include?: Record<string, unknown>;
   relationInstructions?: RelationInstruction[];
@@ -394,6 +397,92 @@ function parseSorts(
   }
 
   return sorts;
+}
+
+const DEFAULT_SORT: SortEntry = { field: 'createdAt', direction: 'desc' };
+
+function withIdTiebreak(sorts: SortEntry[]): SortEntry[] {
+  const last = sorts[sorts.length - 1]!;
+
+  if (last.field === 'id') {
+    return sorts;
+  }
+
+  return [...sorts, { field: 'id', direction: last.direction }];
+}
+
+function sortsEqual(a: SortEntry[], b: SortEntry[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every(
+      (s, i) => s.field === b[i]!.field && s.direction === b[i]!.direction,
+    )
+  );
+}
+
+function resolvePaginatedSorts(
+  body: SearchRequestBody,
+  contract: ListQueryContract,
+): { sorts: SortEntry[] | undefined; cursorWhere?: Record<string, unknown> } {
+  const declaredSorts = parseSorts(body.sorts, contract);
+
+  if (!contract.limits) {
+    if (body.cursor !== undefined) {
+      throw new PaginationNotOfferedException('cursor');
+    }
+
+    return { sorts: declaredSorts };
+  }
+
+  const effectiveSorts = withIdTiebreak(declaredSorts ?? [DEFAULT_SORT]);
+
+  if (body.cursor === undefined) {
+    return { sorts: effectiveSorts };
+  }
+
+  if (body.page !== undefined) {
+    throw new InvalidQueryException('cursor', []);
+  }
+
+  const payload = decodeCursor(body.cursor);
+  const cursorSorts = payload.sorts.map(({ field, direction }) => ({
+    field,
+    direction,
+  }));
+
+  if (cursorSorts[cursorSorts.length - 1]!.field !== 'id') {
+    throw new InvalidQueryException('cursor', []);
+  }
+
+  for (const sort of cursorSorts) {
+    if (sort.field !== 'id' && !contract.sorts.includes(sort.field)) {
+      throw new InvalidQueryException('cursor', contract.sorts);
+    }
+  }
+
+  if (!sortsEqual(cursorSorts, effectiveSorts)) {
+    throw new InvalidQueryException('cursor', []);
+  }
+
+  return { sorts: effectiveSorts, cursorWhere: buildCursorWhere(payload) };
+}
+
+export function nextCursorFor(
+  records: readonly Record<string, unknown>[],
+  sorts: SortEntry[] | undefined,
+  limit: number,
+): string | null {
+  if (!sorts || records.length === 0 || records.length < limit) {
+    return null;
+  }
+
+  const last = records[records.length - 1]!;
+
+  if (sorts.some((sort) => !(sort.field in last))) {
+    return null;
+  }
+
+  return encodeCursor(last, sorts);
 }
 
 /**
@@ -713,7 +802,7 @@ export function parseSearchRequest(
   contract: ListQueryContract,
 ): ParsedListQuery {
   const { page, limit } = resolvePagination(body, contract);
-  const sorts = parseSorts(body.sorts, contract);
+  const { sorts, cursorWhere } = resolvePaginatedSorts(body, contract);
   const select = parseSelects(body.selects, contract);
   const where =
     body.filters && body.filters.length > 0
@@ -758,6 +847,7 @@ export function parseSearchRequest(
     onlyTrashed: body.onlyTrashed === true,
     sorts,
     where,
+    cursorWhere,
     select,
     include,
     relationInstructions:
