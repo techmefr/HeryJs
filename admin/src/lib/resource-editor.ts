@@ -1,6 +1,7 @@
 import { buildForm } from './form';
 import { formFieldsOf, payloadOf, valuesOf, validate } from './form-schema';
 import type { FormMode } from './form-schema';
+import { buildRelationsPanel } from './relations-panel';
 import {
   failureMessages,
   isAllowed,
@@ -13,8 +14,11 @@ export interface EditorContext {
   root: HTMLElement;
   base: string;
   description: ResourceDescription;
+  childRelations: string[];
+  resourceBases: string[];
   refreshRow: (id: string) => Promise<ResourceRow | null>;
   onSaved: (message: string) => Promise<void>;
+  onRelationsChanged: () => Promise<void>;
 }
 
 const NOTHING_CHANGED = 'Nothing changed.';
@@ -149,6 +153,13 @@ function notAllowed(): HTMLElement {
   return line;
 }
 
+function hasRelations(context: EditorContext): boolean {
+  return (
+    context.description.relations.length > 0 ||
+    context.childRelations.length > 0
+  );
+}
+
 export async function openEdit(
   context: EditorContext,
   id: string,
@@ -162,11 +173,31 @@ export async function openEdit(
       return;
     }
 
-    body.replaceChildren(
+    const parts: HTMLElement[] = [];
+    parts.push(
       isAllowed(row.capabilities, 'update')
         ? formFor(context, 'update', row, close)
         : notAllowed(),
     );
+
+    if (hasRelations(context)) {
+      parts.push(
+        buildRelationsPanel({
+          base: context.base,
+          row,
+          description: context.description,
+          childRelations: context.childRelations,
+          resourceBases: context.resourceBases,
+          onChanged: async () => {
+            await context.onRelationsChanged();
+
+            return context.refreshRow(row.id);
+          },
+        }),
+      );
+    }
+
+    body.replaceChildren(...parts);
   };
 
   render(await context.refreshRow(id));

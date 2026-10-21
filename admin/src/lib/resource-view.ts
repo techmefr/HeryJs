@@ -5,6 +5,7 @@ import { initialState, nextSort, searchBody } from './query';
 import type { QueryState } from './query';
 import { drawPager } from './pager';
 import { state as stateCard, skeleton } from './render';
+import { childRelationsOf } from './relations';
 import { openCreate, openEdit } from './resource-editor';
 import type { EditorContext } from './resource-editor';
 import { resourceTable, columnsOf } from './resource-table';
@@ -14,6 +15,7 @@ import {
   describeResource,
   isAllowed,
   mutateIds,
+  resourcesOf,
   searchResource,
   summarize,
 } from './resource';
@@ -189,17 +191,20 @@ async function load(view: View): Promise<void> {
 }
 
 function editorOf(view: View): EditorContext {
-  const { base } = view.options;
+  const { base, controllers } = view.options;
 
   return {
     root: view.root,
     base,
     description: view.description,
+    childRelations: childRelationsOf(controllers, base),
+    resourceBases: resourcesOf(controllers).map((item) => item.base),
     refreshRow: (id) => refreshRow(view, id),
     onSaved: async (message) => {
       announce(view, message, false);
       await load(view);
     },
+    onRelationsChanged: () => load(view),
   };
 }
 
