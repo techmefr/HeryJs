@@ -9,6 +9,9 @@ export default {
   },
   prune: {
     default: { retentionDays: 30 },
+    overrides: {
+      IdempotencyKey: { retentionDays: 1 },
+    },
   },
   cache: {
     defaultTtlSeconds: 300,

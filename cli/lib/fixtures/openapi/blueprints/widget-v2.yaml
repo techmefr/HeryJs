@@ -1,0 +1,10 @@
+name: Widget
+version: 2
+model: Widget
+
+fields:
+  - name: label
+    type: string
+
+sorts:
+  - createdAt

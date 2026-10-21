@@ -24,7 +24,9 @@ import { AlreadyRestoredException } from '#technical/errors/already-restored.exc
 import { resolveDomainError } from '#technical/errors/domain-exception.filter';
 import type { ResolvedError } from '#technical/errors/domain-exception.filter';
 import { ok } from '#technical/http/envelope';
+import { CacheableRead } from '#technical/http/etag.decorator';
 import {
+  nextCursorFor,
   parseSearchRequest,
   searchRequestSchema,
   withIncludesAndAggregates,
@@ -132,7 +134,10 @@ const BLOG_POST_DESCRIBE = {
   // Published so a client can tell which contract it is holding without
   // inferring it from the path it happened to call.
   version: 1,
-  fields: [{ name: 'title', type: 'string', optional: false }],
+  fields: [
+    { name: 'title', type: 'string', optional: false },
+    { name: 'privateNote', type: 'encrypted', optional: true },
+  ],
   ...BLOG_POST_CONTRACT,
   // Stated rather than implied by the absence of limits: a client reading this
   // knows the search route returns every match, and that asking for a page is
@@ -231,6 +236,7 @@ export class BlogPostController {
   @Post('search')
   @HttpCode(200)
   @Capability(canViewAnyBlogPost)
+  @CacheableRead()
   async search(
     @Req() req: RequestWithUser,
     @Body(new ZodValidationPipe(searchRequestSchema)) body: SearchRequestBody,
@@ -264,6 +270,7 @@ export class BlogPostController {
       page: query.page ?? 1,
       limit: pageLimit,
       last_page: Math.max(1, Math.ceil(total / pageLimit)),
+      next_cursor: nextCursorFor(records, query.sorts, pageLimit),
       total,
       ...(matches
         ? {
@@ -321,6 +328,7 @@ export class BlogPostController {
 
   @Get('describe')
   @Capability(canViewAnyBlogPost)
+  @CacheableRead()
   describe() {
     return ok(BLOG_POST_DESCRIBE);
   }
@@ -331,6 +339,7 @@ export class BlogPostController {
   @Post(':id/notes/search')
   @HttpCode(200)
   @Capability(canViewBlogPost)
+  @CacheableRead()
   @LoadRecordWith(BLOG_POST_VISIBLE_RECORD_LOADER, 'blog-post')
   async searchNotes(
     @Req() req: RequestWithBlogPost,
@@ -347,6 +356,7 @@ export class BlogPostController {
       page: query.page ?? 1,
       limit: pageLimit,
       last_page: Math.max(1, Math.ceil(total / pageLimit)),
+      next_cursor: nextCursorFor(records, query.sorts, pageLimit),
       total,
     };
 

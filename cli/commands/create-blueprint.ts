@@ -51,6 +51,10 @@ async function promptFields(): Promise<BlueprintField[]> {
           title: 'file (a storage key from POST /storage/upload)',
           value: 'file',
         },
+        {
+          title: 'encrypted (AES-256-GCM at rest, hidden from responses)',
+          value: 'encrypted',
+        },
       ],
     })) as { type?: BlueprintField['type'] };
 
@@ -73,12 +77,21 @@ async function promptFields(): Promise<BlueprintField[]> {
       type: typeResponse.type ?? 'string',
       optional: optionalResponse.optional ?? false,
       hidden: hiddenResponse.hidden ?? false,
+      reveal: false,
     });
   }
 
   return fields.length > 0
     ? fields
-    : [{ name: 'title', type: 'string', optional: false, hidden: false }];
+    : [
+        {
+          name: 'title',
+          type: 'string',
+          optional: false,
+          hidden: false,
+          reveal: false,
+        },
+      ];
 }
 
 async function promptPermissionFor(

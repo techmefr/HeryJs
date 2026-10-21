@@ -11,13 +11,16 @@ pnpm hery install storage
 
 No migration — storage owns no Prisma model. A stored file is a key, and where you keep that key is your resource's business.
 
-## The contract is three methods
+## The contract
 
 ```ts
 export interface StorageDriver {
   put(key: string, body: Buffer, contentType: string): Promise<StoredObject>;
+  get(key: string): Promise<Buffer>;
   remove(key: string): Promise<void>;
   signedUrl(key: string, expiresInSeconds?: number): Promise<string>;
+  presignPut(key: string, contentType: string, sizeBytes: number): Promise<PresignedUpload>;
+  stat(key: string): Promise<StoredObjectStat | null>;
 }
 ```
 
@@ -122,9 +125,22 @@ await api.post('/users/update', { data: [{ id, avatar: data.key }] });
 
 Reading the record back gives you the key, not a URL — resolve it through `GET /storage/:key` or `StorageService.signedUrl(key)` server-side. A `file` field is not a shortcut around the tenant boundary either: it is validated and stored like any other field the generator writes, so the resource's own capability checks gate who may set it.
 
+## Direct-to-storage uploads, and the local driver's asymmetry
+
+`POST /storage/upload` proxies every byte through this process: for anything bigger than a profile picture — a video, a dataset, a scan — that shape is wrong, even with the size cap bounding the damage. `POST /storage/upload-intent` is the other shape, the one every object store solves the same way:
+
+1. **Ask for permission.** `POST /storage/upload-intent` with `{ contentType, size }`, gated by the same `canUploadFiles` capability as the proxying route. The server generates the key itself — never from client input, same discipline as `/storage/upload` — and returns `{ key, url, headers? }`: a presigned PUT and the key it chose.
+2. **Upload straight to the store.** The client `PUT`s the file body to `url` (with `headers` set, when given) — S3, MinIO, wherever. This app never sees the bytes.
+3. **Confirm.** `POST /storage/upload-intent/confirm` with `{ key }`. The app does **not** take the client's word: it re-derives the object's existence, size and content type from the driver's own `stat(key)` and refuses with `StorageUploadIntentMismatchException` the moment any of them disagree with what the intent authorised, or `StorageUploadIntentNotFoundException` if the key names no pending intent (expired or already confirmed). A key handed out is not a key used until this step says so.
+
+The intent itself lives in `CacheService` — the same tenant-scoped Redis store the rate limiter and everything else already share — under `upload-intent:<key>`, with a TTL equal to the presigned URL's own expiry (5 minutes). It is written once and consumed atomically with a Redis `MULTI` get-and-delete on confirm, so concurrent or repeated confirms of one intent yield exactly one success; a confirm that fails verification still consumes the intent and the client asks for a new one.  that is what a cache is for, not a reason to add a Prisma model and a migration for a record nothing ever lists or joins against.
+
+**Residual risk.** The presigned PUT stays valid until its 5 minute expiry even after confirm, so a holder of the URL could overwrite the object inside that window. Confirm checks the object as it is at that moment; if that matters, treat a key as final only once the window has passed or copy it server-side.
+
+**The local driver has no presigned-PUT equivalent.** There is no object store in front of local disk to hand a client a direct URL for — only this process. Its `presignPut()` throws `StoragePresignUnsupportedException` naming the driver, rather than silently falling back to something that looks like it worked. This is a real asymmetry, not an oversight to work around: **the proxying `POST /storage/upload` route stays the local-development path**, and `upload-intent` is the production path once a real driver (S3-compatible) is bound. A project running on the local driver should keep using `/storage/upload` for uploads; pointing a client at `/storage/upload-intent` there fails loudly and immediately, with a message that says exactly that.
+
 ## What storage deliberately does not do
 
-- **No database record per file.** There is no `StoredFile` model, no ownership row, no orphan collection. A key is a string on your resource, and deleting the resource does not delete the object — call `.remove()` where you mean it.
+- **No database record per file.** There is no `StoredFile` model, no ownership row, no orphan collection. A key is a string on your resource, and deleting the resource does not delete the object — call `.remove()` where you mean it. Upload intents are the one exception, and they live in the cache, not a table — see above.
 - **No image processing.** No resizing, no thumbnails, no transformation URLs.
-- **No direct-to-bucket uploads.** Every upload proxies through this app, so the same four gates apply to every driver. That costs you the bytes crossing your own process, and buys you one place where the content type, the size and the tenant are decided.
 - **No per-call driver selection.** Like mail and unlike export, storage is single-active: a caller says "store this", never "store this in S3".

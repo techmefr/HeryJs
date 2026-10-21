@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { authPrismaClient, getAuthContext } from './better-auth.instance';
 import { ApiKeyService } from './api-key.service';
+import { loginThrottle } from './login-throttle';
+import { AccountLockedException } from '#technical/errors/account-locked.exception';
 import { InvalidCredentialsException } from '#technical/errors/invalid-credentials.exception';
 import { AuthenticatedUser, AuthProvider } from './auth.types';
 
@@ -65,6 +67,11 @@ export class SessionAuthProvider implements AuthProvider {
       const result = await auth.api.signInEmail({ body: { email, password } });
       return { user: await authenticate(result.user), token: result.token };
     } catch (error) {
+      if (error instanceof APIError && error.status === 'TOO_MANY_REQUESTS') {
+        throw new AccountLockedException(
+          await loginThrottle.lockedForSeconds(email),
+        );
+      }
       if (error instanceof APIError) {
         throw new InvalidCredentialsException();
       }

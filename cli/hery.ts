@@ -21,7 +21,10 @@ import { registerModuleMonitoringCommand } from './commands/module-monitoring';
 import { registerModuleNewCommand } from './commands/module-new';
 import { registerModuleValidateCommand } from './commands/module-validate';
 import { registerNewCommand } from './commands/new';
+import { registerOpenApiCommand } from './commands/openapi';
+import { registerOpenApiClientCommand } from './commands/openapi-client';
 import { registerSearchReindexCommand } from './commands/search-reindex';
+import { registerSecretsCommands } from './commands/secrets';
 import { registerUninstallCommand } from './commands/uninstall';
 import { registerUpCommand } from './commands/up';
 
@@ -50,7 +53,10 @@ registerModuleMonitoringCommand(program);
 registerModuleNewCommand(program);
 registerModuleValidateCommand(program);
 registerNewCommand(program);
+registerOpenApiCommand(program);
+registerOpenApiClientCommand(program);
 registerSearchReindexCommand(program);
+registerSecretsCommands(program);
 registerUninstallCommand(program);
 registerUpCommand(program);
 

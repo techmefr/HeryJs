@@ -15,6 +15,7 @@ const FALLBACK_BUCKETS: Record<string, HeryConfigRateLimitBucket> = {
   read: { limit: 120, windowSeconds: 60 },
   write: { limit: 30, windowSeconds: 60 },
   [AUTH_BUCKET]: { limit: 5, windowSeconds: 300 },
+  'auth-recipient': { limit: 3, windowSeconds: 600 },
 };
 
 export function resolveRateLimitBucket(

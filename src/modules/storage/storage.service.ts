@@ -13,7 +13,7 @@ const DEFAULT_ALLOWED_CONTENT_TYPES = [
   'application/pdf',
 ];
 
-const EXTENSION_BY_CONTENT_TYPE: Record<string, string> = {
+export const EXTENSION_BY_CONTENT_TYPE: Record<string, string> = {
   'image/png': 'png',
   'image/jpeg': 'jpg',
   'image/webp': 'webp',
@@ -32,7 +32,7 @@ export interface StoredFile {
   url: string;
 }
 
-function allowedContentTypes(): string[] {
+export function allowedContentTypes(): string[] {
   return storageEnv.STORAGE_ALLOWED_CONTENT_TYPES
     ? storageEnv.STORAGE_ALLOWED_CONTENT_TYPES.split(',').map((type) =>
         type.trim(),
