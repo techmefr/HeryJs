@@ -15,6 +15,7 @@ import { defaultKeyring } from '../secrets/default-keyring';
 import { redactEncryptedColumns } from '../secrets/encrypted-columns';
 import { encryptedFieldsExtension } from '../secrets/encrypted-fields.extension';
 import { TenantContextStorage } from '../tenancy/tenant-context';
+import { TelemetryBus } from '../tracing/telemetry-bus';
 import { TraceContextStorage } from '../tracing/trace-context';
 
 interface PrismaQueryEvent {
@@ -219,6 +220,10 @@ export const APP_ENFORCED_TENANT_MODELS = new Set<string>([
   // by the ambient tenant.
   'OutboxMessage',
   'NotificationDigestEntry',
+  // Written in batches from a buffer that flushes on a timer, long after the
+  // request that produced an entry has ended, so there is no ambient tenant
+  // to stamp: each entry carries the tenant it was recorded under.
+  'DevtoolsEntry',
 ]);
 
 type TenantHandling =
@@ -274,6 +279,11 @@ export function createTenantScopedPrismaClient() {
       status: 'ok',
       durationMs: event.duration,
       detail: { sql: event.query, params: event.params },
+    });
+    TelemetryBus.emit({
+      kind: 'query',
+      sql: event.query,
+      durationMs: event.duration,
     });
   });
 

@@ -352,6 +352,17 @@ describe('section discovery', () => {
     );
   });
 
+  it('skips the dev dashboard routes, which have a page of their own', () => {
+    expect(
+      sectionsOf([
+        controller('/devtools', [
+          ['GET', '/entries'],
+          ['GET', '/summary'],
+        ]),
+      ]),
+    ).toEqual([]);
+  });
+
   it('skips a describe route, whatever resource it hangs off', () => {
     expect(
       sectionsOf([controller('/blog-posts', [['GET', '/describe']])]),

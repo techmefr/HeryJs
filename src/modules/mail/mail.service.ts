@@ -71,7 +71,7 @@ export class MailService {
 
     await this.jobs.dispatch(
       MAIL_SEND_JOB,
-      { mailLogId: log.id, ...message },
+      { mailLogId: log.id, tenantId, ...message },
       MAIL_SEND_POLICY,
     );
   }

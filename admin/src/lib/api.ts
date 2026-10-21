@@ -101,7 +101,8 @@ export interface AdminSection {
 }
 
 // The overview already reports these, and /signal/stream never ends.
-// /pipeline/traces gets its own dedicated page (pipeline.astro) rather than
+// /pipeline/traces and /devtools/* get dedicated pages (pipeline.astro,
+// devtools.astro) rather than
 // the generic flat table, so it's hidden from the auto-discovered sidebar
 // sections the same way /introspect and /health are. /expose is the mine's
 // own catalog route (see prune.astro for a page built on top of it), not a
@@ -115,6 +116,8 @@ const HIDDEN_PATHS = [
   '/health/ready',
   '/metrics',
   '/pipeline/traces',
+  '/devtools/entries',
+  '/devtools/summary',
   '/signal/stream',
 ];
 

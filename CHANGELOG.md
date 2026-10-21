@@ -110,6 +110,11 @@ Twelve packages, versioned together:
   stored per tenant and replayed on a retry, the same key with a different
   body or route is a `422`, and records expire after 24 hours through the
   existing prune sweep.
+- A persisted dev dashboard, on in development only: requests, slow queries,
+  N+1 findings, job history, mail / SMS / push sent and exceptions, bounded
+  by a retention window and a per-tenant cap, tenant-scoped on every read,
+  and shown as a page of the admin. Production needs `devDashboard.enabled`
+  and then an admin capability. Adds the `DevtoolsEntry` table.
 - A rate limit on by default across every kernel and module route, with
   `read` / `write` / `auth` buckets a project can retune but never remove.
 - A `hasMany` include may itself carry a further `includes` — a relation of a

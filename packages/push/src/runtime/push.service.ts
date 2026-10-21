@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { TelemetryBus } from '#kernel/tracing/telemetry-bus';
 import type { PushMessage } from '#kernel/push/push-driver';
 import { PushDriverRegistry } from './push-driver.registry';
 import { PushTokenService } from './push.tokens';
@@ -51,6 +52,20 @@ export class PushService {
     }
 
     await this.tokens.forget(dead);
+
+    if (devices.length > 0) {
+      TelemetryBus.emit({
+        kind: 'message',
+        channel: 'push',
+        status: delivery.sent > 0 ? 'sent' : 'failed',
+        recipient: userId,
+        subject: message.title,
+        error:
+          delivery.sent > 0
+            ? null
+            : `${delivery.failed} failed, ${delivery.expired} expired`,
+      });
+    }
 
     return delivery;
   }

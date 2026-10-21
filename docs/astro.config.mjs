@@ -81,6 +81,7 @@ export default defineConfig({
                   label: 'Optimistic concurrency',
                   slug: 'guides/optimistic-concurrency',
                 },
+                { label: 'Dev dashboard', slug: 'guides/dev-dashboard' },
                 { label: 'Jobs', slug: 'guides/jobs' },
                 { label: 'Migrations', slug: 'guides/migrations' },
                 { label: 'Prune', slug: 'guides/prune' },
