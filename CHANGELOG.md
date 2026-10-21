@@ -13,6 +13,9 @@ category is called out here explicitly.
 
 First public release.
 
+### Parallel test isolation
+
+Each jest worker now runs against a Postgres database and a Redis keyspace of its own. The migrations are applied once into a template database named after their hash, every worker's database is a `CREATE DATABASE ... TEMPLATE` copy of it, recreated on each run and dropped afterwards, so one worker's failure cannot corrupt another's data. The suite runs on four workers. `pnpm test:serial` (or `JEST_SHARED_DB=true`) is the way back to a single shared database. Test infrastructure only: nothing changes for a generated project.
 ### Rich text fields
 
 A blueprint field `type: richtext` (with an optional `maxLength` and an `allow` list of tags, attributes per tag and link schemes) stores HTML that the service sanitises on every write and the view sanitises again on every read, using `sanitize-html`. Script, style, embedding and form tags, event-handler and style attributes and code-carrying schemes can never be allowed, and a blueprint that names one is refused. The field cannot be filtered, sorted or translated. OpenAPI and the typed client expose a `string` with `format: html`, `GET /describe` publishes the limit and the resolved allow-list, the generated suite proves eighteen XSS payloads stripped, and the admin form shows a textarea with a safe live preview. The new `src/technical/richtext` module and the `sanitize-html` dependency are kernel additions: in an existing project copy the module, add the dependency, and copy the admin runtime files `form.ts`, `form-schema.ts`, `query.ts`, `resource.ts` and `safe-html.ts` by hand.
