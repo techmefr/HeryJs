@@ -67,6 +67,18 @@ export const CATALOGUE: Catalogue = {
     fr: (details) =>
       `${String(details.resource)} n'est pas dans la corbeille, il ne peut donc pas être restauré.`,
   },
+  'record.versionConflict': {
+    fr: (details) =>
+      `${String(details.resource)} a été modifié depuis votre lecture (version envoyée ${String(details.expected)}, version actuelle ${String(details.current ?? 'inconnue')}). Rechargez-le puis réappliquez votre modification.`,
+  },
+  'record.preconditionFailed': {
+    fr: (details) =>
+      `${String(details.resource)} a été modifié depuis votre lecture (If-Match ${String(details.expected)}, version actuelle ${String(details.current ?? 'inconnue')}). Rechargez-le puis réappliquez votre modification.`,
+  },
+  'record.versionRequired': {
+    fr: (details) =>
+      `${String(details.resource)} est versionné : envoyez la version lue, dans le champ "version" de l'entrée ou dans un en-tête If-Match.`,
+  },
   'query.invalid.param': {
     fr: (details) =>
       `Valeur invalide pour "${String(details.param)}". Autorisées : ${(details.allowed as unknown[]).join(', ')}.`,

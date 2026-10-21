@@ -23,6 +23,7 @@ export interface ResourceContext {
   pluralCamelName: string;
   pluralKebabName: string;
   softDeletes: Blueprint['softDeletes'];
+  versioned: Blueprint['versioned'];
   fields: Blueprint['fields'];
   permissions: Blueprint['permissions'];
   pagination: Blueprint['pagination'];
@@ -55,6 +56,7 @@ export function buildResourceContext(blueprint: Blueprint): ResourceContext {
     pluralCamelName: pluralize(camelName),
     pluralKebabName,
     softDeletes: blueprint.softDeletes,
+    versioned: blueprint.versioned,
     fields: blueprint.fields,
     permissions: blueprint.permissions,
     pagination: blueprint.pagination,

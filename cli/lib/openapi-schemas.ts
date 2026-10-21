@@ -407,7 +407,21 @@ function updateItemSchema(ctx: ResourceContext): JsonSchema {
 
   return {
     type: 'object',
-    properties: { id: { type: 'string' }, ...patch.properties, ...relations },
+    properties: {
+      id: { type: 'string' },
+      ...(ctx.versioned
+        ? {
+            version: {
+              type: 'integer',
+              minimum: 1,
+              description:
+                'The version this entry read. Required on a versioned resource; a request carrying a single entry may send it as an If-Match header instead.',
+            },
+          }
+        : {}),
+      ...patch.properties,
+      ...relations,
+    },
     required: ['id'],
     additionalProperties: false,
   };
@@ -677,6 +691,18 @@ export function describeSchema(ctx: ResourceContext): JsonSchema {
           }
         : {}),
       paginated: { const: Boolean(ctx.pagination) },
+      ...(ctx.versioned
+        ? {
+            versioned: {
+              type: 'object',
+              properties: {
+                field: { const: 'version' },
+                header: { const: 'If-Match' },
+              },
+              required: ['field', 'header'],
+            },
+          }
+        : {}),
       rules: {
         type: 'object',
         properties: { create: { type: 'object' }, update: { type: 'object' } },

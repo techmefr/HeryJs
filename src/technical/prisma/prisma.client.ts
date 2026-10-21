@@ -39,6 +39,7 @@ const TENANT_SCOPED_MODELS = new Set<string>([
   'SmsConsent',
   'PushToken',
   'BillingSubscription',
+  'Snippet',
 ]);
 
 /**
