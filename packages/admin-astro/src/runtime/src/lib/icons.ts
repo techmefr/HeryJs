@@ -1,13 +1,20 @@
 import {
   Activity,
+  Archive,
   Bell,
+  Box,
   Bug,
   Check,
   ChevronRight,
   Clock,
   Gauge,
   Database,
+  File,
+  Flag,
+  Globe,
   Inbox,
+  Key,
+  Layers,
   LayoutDashboard,
   LockKeyhole,
   LogOut,
@@ -15,11 +22,15 @@ import {
   Mail,
   RefreshCw,
   ScrollText,
+  Settings,
+  Shield,
   ShieldCheck,
   Sprout,
   Table2,
   ToggleRight,
   Trash2,
+  Users,
+  Webhook,
   Workflow,
   X,
   Zap,
@@ -58,6 +69,34 @@ const BY_ROUTE: Record<string, IconNode | undefined> = {
   '/seeders': Sprout,
   '/blog-posts': Table2,
 };
+
+// The names @AdminSection and @AdminAction accept, one drawn icon each. A name
+// this build does not know falls back to the neutral table icon rather than
+// leaving a hole, so a newer API never breaks an older admin.
+const BY_NAME: Record<string, IconNode | undefined> = {
+  activity: Activity,
+  archive: Archive,
+  bell: Bell,
+  box: Box,
+  clock: Clock,
+  database: Database,
+  file: File,
+  flag: Flag,
+  globe: Globe,
+  key: Key,
+  layers: Layers,
+  mail: Mail,
+  settings: Settings,
+  shield: Shield,
+  table: Table2,
+  users: Users,
+  webhook: Webhook,
+  zap: Zap,
+};
+
+export function adminIcon(name: string | undefined, route: string): IconNode {
+  return (name === undefined ? undefined : BY_NAME[name]) ?? iconFor(route);
+}
 
 /**
  * Falls back to a neutral table icon, so a route this admin has never heard of
