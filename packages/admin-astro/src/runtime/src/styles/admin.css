@@ -973,3 +973,61 @@ fieldset.relation > div {
     padding: 1.5rem 1rem 3rem;
   }
 }
+
+/* Dev dashboard */
+
+.kinds {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1.25rem 0 1rem;
+}
+
+.kinds button.kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 0.4375rem 0.75rem;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.kinds button.kind[aria-pressed='true'] {
+  border-color: var(--accent);
+}
+
+.kinds button.primary {
+  margin: 0 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  margin-top: 1rem;
+}
+
+.pager button {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 0.375rem 0.75rem;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.pager button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

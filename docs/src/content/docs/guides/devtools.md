@@ -28,7 +28,7 @@ export interface InspectedRequest {
 
 That is the whole record. **Request bodies, headers, query strings and cookies are never captured** — not captured-and-redacted, simply never read. It is why the inspector needs no redaction configuration and no allow-list of sensitive fields: there is nothing in the store that was not already in the access log.
 
-The trade-off is deliberate. This is not Laravel's Telescope: there is one entry kind, not a dozen watchers over queries, jobs, mail and exceptions.
+The trade-off is deliberate: this buffer is the lightweight view of the last few requests. For history that survives a restart, with slow queries, N+1 findings, jobs, mail and exceptions, see the [dev dashboard](../guides/dev-dashboard/).
 
 ### It sees requests the handler never did
 

@@ -12,6 +12,8 @@ import { ExpositionModule } from '#technical/exposition/exposition.module';
 import { IntrospectionModule } from '#technical/introspection/introspection.module';
 import { FeatureFlagsModule } from '#technical/feature-flags/feature-flags.module';
 import { IdempotencyModule } from '#technical/idempotency/idempotency.module';
+import { DevDashboardModule } from '#devtools/dashboard/dev-dashboard.module';
+import { DevDashboardMiddleware } from '#devtools/dashboard/dev-dashboard.middleware';
 import { InspectorModule } from '#devtools/inspector/inspector.module';
 import { PipelineModule } from '#devtools/pipeline/pipeline.module';
 import { ImpersonationModule } from '#modules/impersonation/impersonation.module';
@@ -86,6 +88,7 @@ import { redactedRequestSerializer } from '#technical/logging/redacted-request-s
     AuditModule,
     AuthModule,
     CacheModule,
+    DevDashboardModule,
     EtagModule,
     ErrorReporterModule,
     EventsModule,
@@ -133,6 +136,7 @@ export class AppModule implements NestModule {
     consumer.apply(SecurityHeadersMiddleware).forRoutes('*');
     consumer.apply(MaintenanceMiddleware).forRoutes('*');
     consumer.apply(LocaleMiddleware).forRoutes('*');
+    consumer.apply(DevDashboardMiddleware).forRoutes('*');
     consumer.apply(PipelineMiddleware).forRoutes('*');
     consumer.apply(TenantMiddleware).forRoutes('*');
     consumer.apply(InspectorMiddleware).forRoutes('*');
