@@ -35,6 +35,40 @@ The `hery` CLI is the only thing in this project that reads a blueprint. It is a
 | `console`                    | Boots the app into a REPL.                                                              |
 | `hosts`                      | Adds the local hostname to your hosts file.                                             |
 | `mcp:serve`                  | A read-only MCP server over stdio.                                                      |
+| Command                       | What it does                                                                            |
+| ----------------------------- | --------------------------------------------------------------------------------------- |
+| `new <name>`                  | Scaffolds a fresh HeryJs project in its own directory.                                  |
+| `create:blueprint <Name>`     | Writes a blueprint from prompts or defaults.                                            |
+| `generate <Name>`             | Writes a full resource from that blueprint.                                             |
+| `migrate --name <name>`       | Runs `prisma migrate dev`, then emits and applies any missing row-level policy.         |
+| `install [modules...]`        | Installs optional modules.                                                              |
+| `uninstall <module>`          | Removes a module and reverses what installing it did.                                   |
+| `make:mail <Name>`            | Writes a `Mailable` into `src/functional/<domain>`.                                     |
+| `make:export <Name>`          | Writes an `Exportable` into `src/functional/<domain>`.                                  |
+| `make:job <Name>`             | Writes a queued job, its name and its retry policy.                                     |
+| `make:listener <Name>`        | Writes an event listener.                                                               |
+| `make:scheduled-task <Name>`  | Writes a cron task that records its runs.                                               |
+| `make:policy <Name>`          | Writes a capability policy, admin only until you say otherwise.                         |
+| `make:seeder <Name>`          | Writes a seeder exposed to `expose:run` and the mine, dev and test only.                |
+| `make:driver <module> <Name>` | Writes a driver and its token module from the module's own contract.                    |
+| `make:notification <Name>`    | Writes a notification with one method per channel.                                      |
+| `make:webhook-handler <Name>` | Writes a handler for one webhook source.                                                |
+| `routes`                      | Prints every route with its capability and rate-limit bucket.                           |
+| `module:list`                 | Lists the modules available to install.                                                 |
+| `module:monitoring`           | Scaffolds Prometheus, Grafana and Loki.                                                 |
+| `search:reindex <Name>`       | Rebuilds a resource's search index from Postgres.                                       |
+| `openapi`                     | Emits an OpenAPI 3.1 document from every routed blueprint.                              |
+| `openapi:client`              | Emits a typed TypeScript client from the same blueprints.                               |
+| `expose:list`                 | Prints the catalog of `@ExposeAction`s.                                                 |
+| `expose:run <action>`         | Runs one exposed action, `--param name=value` per field.                                |
+| `up`                          | Checks that local dependencies are ready.                                               |
+| `doctor`                      | One command for environment, config and infra together.                                 |
+| `env pull`                    | Writes the resolved variables into `.env`.                                              |
+| `env run -- <command>`        | Runs a command with the resolved variables injected.                                    |
+| `lint`                        | Scores the project against conventions eslint and the architecture linter do not reach. |
+| `console`                     | Boots the app into a REPL.                                                              |
+| `hosts`                       | Adds the local hostname to your hosts file.                                             |
+| `mcp:serve`                   | A read-only MCP server over stdio.                                                      |
 
 ## `hery new <name>`
 
@@ -142,6 +176,36 @@ Each carries the part a copy-paste quietly drops:
 Each also prints what is left to do — the payload, the event class, the cron
 expression, and the module to register it in. Generated code is yours from the
 moment it lands; these fill in the decisions, not the work.
+
+## `make:policy`, `make:seeder`, `make:driver`, `make:notification`, `make:webhook-handler`
+
+Five more scaffolds on the same pattern: one file next to the code that uses it, `--force` to overwrite, next steps printed.
+
+```bash
+pnpm hery make:policy ManageInvoices            # src/functional/manage-invoices/manage-invoices.policy.ts
+pnpm hery make:seeder InvoiceSeeder             # an @ExposeAction, so `expose:run invoice.seed` works
+pnpm hery make:driver mail postmark             # src/modules/mail/postmark-mail.driver.ts and .module.ts
+pnpm hery make:notification OrderShipped        # toMail, toSms, toPush
+pnpm hery make:webhook-handler StripeWebhookHandler
+```
+
+- a **policy** is `adminAbility` under a name, so a route cannot be guarded by a rule nobody wrote down.
+- a **seeder** is bounded (`max: 500`) and restricted to `development` and `test`, the same two rules `agency.seed` carries.
+- a **driver** is read from `src/technical/<module>/<module>-driver.ts` rather than from a table in the CLI: every method of the contract becomes a stub that rejects with "not implemented", so an unfinished driver fails loudly instead of pretending to send. It also writes the `@Global()` module that provides the `driverToken(<module>, <name>)` the registry resolves.
+- a **notification** declares what it says per channel; delete the channels it has nothing to say on.
+- a **webhook handler** names its `source` and registers itself with the webhook processor, which hands it every event for that source inside the event's tenant, before the admin notification goes out. A handler that throws fails the job, so the event is retried rather than marked processed.
+
+## `hery routes`
+
+Boots the application and prints what Nest's router actually has wired:
+
+```
+METHOD  PATH           CAPABILITY      RATE LIMIT
+GET     /blog-posts    canViewAnyPost  read
+POST    /webhooks/:id  public (signed by its sender)  exempt (sender is trusted)
+```
+
+`--unguarded` keeps only the routes with no capability or no rate-limit bucket, `--json` prints the rows. A route that is deliberately public or unthrottled shows its stated reason instead of a blank.
 
 There is deliberately no `module:add`: `hery install` already does that.
 
