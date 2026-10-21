@@ -52,9 +52,10 @@ describe('what a module has to publish', () => {
   // live, with no driver of its own to swap, plus oauth, likewise a
   // single-implementation module whose providers are a contract, not drivers,
   // two-factor, the same shape with a second-factor guard and four tables,
-  // and sso, the same shape for a tenant's own identity provider.
+  // and sso, the same shape for a tenant's own identity provider, plus
+  // embeddings, a module whose drivers turn text into vectors.
   it('found the modules to check', () => {
-    expect(MODULES).toHaveLength(27);
+    expect(MODULES).toHaveLength(28);
   });
 
   it.each(MODULES.map((module) => [module.name, module] as const))(

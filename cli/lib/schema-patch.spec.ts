@@ -1,7 +1,12 @@
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
-import { addModelFields, addPrismaModels, modelNamesIn } from './schema-patch';
+import {
+  addModelFields,
+  addPrismaModels,
+  modelNamesIn,
+  patchModelSet,
+} from './schema-patch';
 
 const SCHEMA = [
   'model User {',
@@ -113,5 +118,49 @@ describe('adding fields to a model a module does not own', () => {
 
   it('refuses being given no field at all', () => {
     expect(() => addModelFields(schema, 'User', [])).toThrow('no field lines');
+  });
+});
+
+describe('patchModelSet', () => {
+  let file: string;
+
+  function registry(body: string): string {
+    return `const SET = new Set<string>([${body}]);\n`.replace(
+      'SET',
+      'TENANT_SCOPED_MODELS',
+    );
+  }
+
+  function patched(body: string): string {
+    file = path.join(mkdtempSync(path.join(tmpdir(), 'hery-set-')), 'set.ts');
+    writeFileSync(file, registry(body));
+    patchModelSet(file, 'TENANT_SCOPED_MODELS', 'Note');
+
+    return readFileSync(file, 'utf8');
+  }
+
+  function names(source: string): string[] {
+    return [...source.matchAll(/'(\w+)'/g)].map((match) => match[1] ?? '');
+  }
+
+  it('appends to a list written on one line', () => {
+    expect(names(patched("'Team', 'Tag'"))).toEqual(['Team', 'Tag', 'Note']);
+  });
+
+  it('appends to an empty list', () => {
+    expect(names(patched(''))).toEqual(['Note']);
+  });
+
+  it('appends after a trailing comma without leaving an array hole', () => {
+    const source = patched("\n  'Team',\n  'Tag',\n");
+
+    expect(names(source)).toEqual(['Team', 'Tag', 'Note']);
+    expect(source).not.toMatch(/,\s*,/);
+  });
+
+  it('is a no-op when the model is already listed', () => {
+    const source = patched("'Note'");
+
+    expect(names(source)).toEqual(['Note']);
   });
 });

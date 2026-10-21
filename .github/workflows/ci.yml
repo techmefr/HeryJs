@@ -35,7 +35,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:17-alpine
+        image: pgvector/pgvector:pg17
         env:
           POSTGRES_USER: heryjs
           POSTGRES_PASSWORD: heryjs
