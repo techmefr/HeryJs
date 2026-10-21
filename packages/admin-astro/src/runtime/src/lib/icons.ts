@@ -5,6 +5,8 @@ import {
   Check,
   ChevronRight,
   Clock,
+  Gauge,
+  Database,
   Inbox,
   LayoutDashboard,
   ListChecks,
@@ -27,6 +29,7 @@ import {
 type IconNode = Parameters<typeof createElement>[0];
 
 export const ICONS = {
+  backups: Database,
   brand: Zap,
   crumb: ChevronRight,
   devtools: Bug,
@@ -37,6 +40,7 @@ export const ICONS = {
   overview: LayoutDashboard,
   pipeline: Workflow,
   prune: Trash2,
+  quotas: Gauge,
   refresh: RefreshCw,
   signOut: LogOut,
   yes: Check,
@@ -49,6 +53,7 @@ const BY_ROUTE: Record<string, IconNode | undefined> = {
   '/inspector/requests': Activity,
   '/mail': Mail,
   '/notifications': Bell,
+  '/quotas': Gauge,
   '/scheduler/tasks': Clock,
   '/seeders': Sprout,
   '/blog-posts': Table2,

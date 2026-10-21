@@ -115,10 +115,15 @@ const HIDDEN_PATHS = [
   '/health/live',
   '/health/ready',
   '/metrics',
+  '/quotas',
+  '/quotas/defaults',
+  '/quotas/tenants',
   '/pipeline/traces',
   '/devtools/entries',
   '/devtools/summary',
   '/signal/stream',
+  '/backups',
+  '/backups/schedule',
 ];
 
 // A section is any GET route that takes no argument, whether it sits at the root
