@@ -173,6 +173,8 @@ const HIDDEN_PATHS = [
   '/pipeline/traces',
   '/devtools/entries',
   '/devtools/summary',
+  // A file download, not JSON: the Audit page owns the export button.
+  '/audit-logs/export',
   '/signal/stream',
   '/backups',
   '/backups/schedule',

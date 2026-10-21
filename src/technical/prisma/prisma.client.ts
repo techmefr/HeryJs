@@ -218,6 +218,10 @@ export const APP_ENFORCED_TENANT_MODELS = new Set<string>([
   // extension chain so an audit entry cannot be scoped away by the boundary it
   // is recording a crossing of.
   'AuditLog',
+  // Read by a streamer that walks every tenant's sinks with no request behind
+  // it, and written by the sink routes with the caller's tenantId passed
+  // explicitly, the way AuditLog itself is.
+  'AuditSink',
   // Written by the same extension and for the same reason as AuditLog: the
   // snapshot of a write must not be scoped away by the boundary it describes.
   // HistoryService states the tenant in every read.
