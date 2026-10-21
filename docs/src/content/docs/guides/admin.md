@@ -66,7 +66,7 @@ pnpm --filter admin dev
 
 Astro on port 4322, in its own pnpm workspace. Statically built on purpose: every page authenticates from the browser with the session token, so there is nothing to render on a server and no adapter to deploy — the pages are files.
 
-Five pages. An overview counting controllers, routes and how many sit behind a capability; a browse page rendering one route as a table; a login form; the [Pipeline](../guides/debugging/) page, one card per traced request with the blocked step outlined; and a [Prune](../guides/prune/#the-admin-page) page, one row per configured model with a button that triggers a run. Sign in with any account of your API — it posts to the same `/auth/login` the rest of the world uses and keeps the token in the browser.
+Six pages. An overview counting controllers, routes and how many sit behind a capability; a browse page rendering one plain route as a table; a resource page managing a generated resource; a login form; the [Pipeline](../guides/debugging/) page, one card per traced request with the blocked step outlined; and a [Prune](../guides/prune/#the-admin-page) page, one row per configured model with a button that triggers a run. Sign in with any account of your API — it posts to the same `/auth/login` the rest of the world uses and keeps the token in the browser.
 
 ### Every argument-free GET, and every POST search route, becomes a section
 
@@ -96,9 +96,22 @@ const columns = [...new Set(rows.flatMap((row) => Object.keys(row)))];
 
 The consequence is a useful one: **a field the resource's view strips never reaches the table in the first place**. Hidden fields are hidden in the admin for the same reason and by the same mechanism as everywhere else, with no second list to maintain. Values are formatted by shape — booleans as pills, timestamps trimmed, objects as JSON, HTTP status codes coloured — and a route that answers with a single object rather than an array renders as a one-row table.
 
-### It is read-only
+### Resources are managed, not just browsed
 
-The only requests the panel makes that are not a `GET` are the login and a resource's own search route, always called with an empty body. There are no forms, no edit views and no delete buttons. A 403 is surfaced as a state card explaining that the API refused for the signed-in account, rather than being hidden client-side — the panel shows you what the backend decided, which is the same contract the frontend gets everywhere else in HeryJs.
+A controller that exposes `POST /search`, `GET /describe` and `POST /create` is a generated resource, and its sidebar entry opens the resource page (`/resource?base=/blog-posts`) instead of the flat table. Everything on that page is read from the contract the API publishes; there is no per-resource file.
+
+- **Forms.** New and Edit are generated from `GET /describe`. The field list gives the kinds (text, whole number, checkbox, date), and `rules.create` / `rules.update`, the JSON Schema reflected off the Zod DTOs, give what is required and each field's length, bounds, pattern and enum. The form validates with those same rules before anything is sent, so the client and the server refuse the same values. A rule only the server can state (a cross-field `check` in the DTO) still comes back as a 400, and its messages are shown at the top of the form. Edit sends only the fields that changed, and an update cannot empty a field, because an optional field in the DTO accepts a value or nothing, never `null`.
+
+### A disabled button is a refused request
+
+The panel asks for the decisions it is going to draw, in the same request as the rows: `capabilities: ['update', 'delete', 'restore', 'attachTags', 'detachTags']` on the search body. Each row comes back with `{ allowed, scope }` per key, and `meta.capabilities` carries the collection-wide ones (`create`, and on a resource with soft deletes `hardDelete` and `listTrashed`). A button is enabled exactly when its decision is `allowed: true`; a missing decision counts as a refusal. The panel holds no permission logic of its own to drift from the policy file.
+
+Two habits keep this true over time:
+
+- Nothing is patched locally after a write. Every mutation reloads the page, so the decisions are the API's current answer, not the ones the page loaded with.
+- Opening Edit re-fetches that one record by id first, so a permission withdrawn since the list loaded shows "not allowed" instead of a form the server would refuse.
+
+Every value is written with `textContent` or an input's `value`, never as markup, so a hostile record cannot run script in the admin origin.
 
 Point it at another API with `PUBLIC_API_URL` if yours is not on `http://localhost:3000`.
 

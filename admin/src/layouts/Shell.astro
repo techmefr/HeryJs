@@ -75,6 +75,7 @@ const { title, bare = false } = Astro.props;
         sectionsOf,
         type DescribedController,
       } from '../lib/api';
+      import { resourcesOf } from '../lib/resource';
       import { ICONS, icon, iconFor, tintOf } from '../lib/icons';
       import { clearToken, token } from '../lib/session';
 
@@ -128,19 +129,27 @@ const { title, bare = false } = Astro.props;
       if (token() && !onLogin) {
         const nav = document.getElementById('sections');
         const { data } = await api<DescribedController[]>('/introspect');
-        const current = new URLSearchParams(window.location.search).get('path');
+        const query = new URLSearchParams(window.location.search);
+        const current = query.get('path') ?? query.get('base');
+        const bases = resourcesOf(data).map((resource) => resource.base);
 
         for (const section of sectionsOf(data)) {
           const link = document.createElement('a');
           link.className = 'item ' + tintOf(section.path);
-          link.href =
-            '/browse?path=' +
-            encodeURIComponent(section.path) +
-            '&method=' +
-            section.method;
+          const base =
+            section.method === 'POST'
+              ? section.path.slice(0, -'/search'.length)
+              : section.path;
+          const isResource = section.method === 'POST' && bases.includes(base);
+          link.href = isResource
+            ? '/resource?base=' + encodeURIComponent(base)
+            : '/browse?path=' +
+              encodeURIComponent(section.path) +
+              '&method=' +
+              section.method;
           label(link, iconFor(section.path), section.label);
 
-          if (section.path === current) {
+          if (section.path === current || base === current) {
             link.setAttribute('aria-current', 'page');
           }
 
