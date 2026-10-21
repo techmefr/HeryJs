@@ -16,10 +16,21 @@ First public release.
 ### Outbound webhooks
 
 The `webhooks` module also delivers to your tenants. An admin subscribes an https URL to named events (`webhook.*` names you stage with the outbox, and the `model.*` change messages), each delivery is signed with HMAC-SHA256 (`v1=<hex>` per valid secret), retried ten times with doubling backoff on its own queue, and lands in a visible `dead` state you can replay. Rotating a secret keeps the old one valid for a grace window and signs with both, so no event is dropped. Subscription URLs must be public https addresses. New tables `WebhookSubscription` and `WebhookDelivery` (migration `add_outbound_webhooks`), a `heryjs-webhook-deliveries` queue in the kernel, routes under `/webhook-subscriptions` and `/webhook-deliveries`, and a Webhooks page in the admin panel. A project that already installed the module applies the kernel queue constants and the new runtime files by hand, and sets `SECRETS_KEYS` in production because secrets are sealed with it.
+### A fresh project installs, migrates and builds
+
+`hery new` produced a project whose first `pnpm install` failed: every module package depended on `heryjs@workspace:*`, and the scaffold renames the root package. That dependency only carried the `ModuleDefinition` type, already mapped by path in each package's tsconfig, so `hery new` now drops it from the copied manifests. The project then failed `nest build` because the guest upgrade named the demo's `blogPost`; it now reads every non-cascading reference to a user off Prisma's DMMF, which also covers `Snippet` and any generated resource with an owner. Its first `hery migrate` failed too: the row-level policy migration was named after every table it covers, past the filesystem's limit on a directory name, and is now named by a count once the names would not fit. A new `scaffold` CI job runs `hery new`, install, `hery migrate`, typecheck and build on every push.
+
+### Admin studio contract and production access
+
+A kernel feature or module contributes to the admin by decorating its own routes: `@AdminSection({ id, title, icon, group, columns })` on a list route and `@AdminAction({ id, title, icon, section, scope, confirm, danger, fields })` on a mutating one. Introspection reports them (`admin` on each route), the sidebar groups by `group`, tables take their columns, and row, bulk and global actions get a button and a generated confirmation or form. `@AdminAction` audits every call itself (field names, never values) and `lint:conventions admin-contract` fails a contribution with no `@Capability`, an unknown icon, a duplicate id, a GET action, a row action without `:id` or an unknown section. `/introspect` now sits behind `@AdminStudio()` instead of `DevOnlyGuard`: development is unchanged, production is a 404 until `ADMIN_STUDIO_ENABLED=true`, then reachable by a platform admin (`canUseAdminStudio`), optionally restricted by `ADMIN_STUDIO_ALLOWED_IPS` and `ADMIN_STUDIO_REQUIRE_2FA`. Nothing a request carries can bypass it.
 
 ### Per-tenant quotas and usage metering
 
 `quotas` in `hery.config.ts` declares a named limit with a default and a period (`month`, `day` or `total`), and `QuotasService` gives resources `check`, `consume` and `usage`. A tenant's limit can be overridden in the database (`PUT /quotas/:name/override`, admin only), and `GET /quotas` lists each quota's limit and use behind a capability, so the admin panel shows it as a section with no wiring. The count is kept in Postgres in one conditional `UPDATE`, so racing requests cannot overshoot, and the two new tables (`QuotaOverride`, `QuotaUsage`) are tenant scoped under row-level security. A rate-limit bucket can also be retuned for one tenant with an override named `rate-limit:<bucket>`; per plan is not covered. It is independent of `billingQuotas`, and usage-based billing is the next step. **Upgrade note:** a project that already exists needs the two new migrations, and has to add `QuotasModule` to its `AppModule` by hand.
+
+### Mail in the admin
+
+The admin panel gains a Messaging group for the mail module: the declared drivers with the active one marked, the tenant's recent sends with their status and error, and a "Send test mail" action that queues a real message to an address you type. They are declared through the admin contract on a new `MailAdminController`, behind the studio gate and admin-only capabilities. In a project that already has the mail module, copy the new controller files and register `MailAdminController` in `MailModule` by hand.
 
 ### SMTP mail driver
 
@@ -236,7 +247,15 @@ installable with `hery install` and removable with `hery uninstall`.
   AES-256-GCM), proves the email domains it claims with a DNS TXT record, and
   its users are provisioned just in time into that tenant. Linking an existing
   local account is a declared per-connection policy, `refuse` by default.
-  SAML is not covered.
+  A connection speaks OpenID Connect or SAML 2.0 (`protocol: 'saml'`): the
+  assertion must be signed, answer the request this browser started, and name
+  an address on a domain the tenant proved. SAML adds three columns to
+  `SsoConnection` and makes `clientSecret` nullable; `@node-saml/node-saml`
+  does the XML signature checking. The provider can be configured from its
+  metadata (a URL or pasted XML) with an attribute mapping, and
+  `GET /sso/connections/checks` tests every connection (certificate expiry,
+  reachability, verified domain, discovery) so the admin panel, which builds
+  itself from introspection, gets a section for it.
 
 - `oauth` adds social sign-in (Google, GitHub, Microsoft) behind a provider
   contract, with PKCE, a signed single-use state cookie and verified emails

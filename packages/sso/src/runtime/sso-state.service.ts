@@ -82,11 +82,16 @@ export class SsoStateService {
     return payload;
   }
 
-  cookieOptions(): CookieOptions {
+  /**
+   * The SAML response comes back as a cross-site POST, which a `lax` cookie is
+   * not sent on, so the sign-in that ends there needs `none` -- and browsers
+   * only keep that on a secure cookie.
+   */
+  cookieOptions(isCrossSitePost = false): CookieOptions {
     return {
       httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
+      sameSite: isCrossSitePost ? 'none' : 'lax',
+      secure: isCrossSitePost || process.env.NODE_ENV === 'production',
       path: SSO_COOKIE_PATH,
       maxAge: SSO_STATE_TTL_SECONDS * 1000,
     };
