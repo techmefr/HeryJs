@@ -53,7 +53,7 @@ describe('what a module has to publish', () => {
   // single-implementation module whose providers are a contract, not drivers,
   // and two-factor, the same shape with a second-factor guard and four tables.
   it('found the modules to check', () => {
-    expect(MODULES).toHaveLength(26);
+    expect(MODULES).toHaveLength(27);
   });
 
   it.each(MODULES.map((module) => [module.name, module] as const))(

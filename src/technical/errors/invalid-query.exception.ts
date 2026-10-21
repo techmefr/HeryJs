@@ -77,3 +77,38 @@ export class PaginationNotOfferedException extends DomainException {
     );
   }
 }
+
+/**
+ * `mode: similar` on a resource with no vector field would otherwise fall back
+ * to a text search, handing the caller substring matches while they believe
+ * they are reading a semantic ranking.
+ */
+export class SimilarSearchNotOfferedException extends DomainException {
+  constructor() {
+    super(
+      HttpStatus.BAD_REQUEST,
+      'query.invalid',
+      '"search.mode" cannot be "similar": this resource declares no vector field, so there is no embedding to compare against.',
+      { param: 'search.mode', allowed: ['text'] },
+      'query.invalid.similar-not-offered',
+    );
+  }
+}
+
+/**
+ * The request names something a similarity ranking has no use for -- a text
+ * engine, a cursor, a sort. Each would be silently ignored, and a client that
+ * sorted by `createdAt` and got a ranking back would have no way to tell its
+ * sort was dropped.
+ */
+export class SimilarSearchRejectedException extends DomainException {
+  constructor(param: string, reason: string) {
+    super(
+      HttpStatus.BAD_REQUEST,
+      'query.invalid',
+      `"${param}" is not accepted with "search.mode": "similar": ${reason}`,
+      { param, allowed: [] },
+      'query.invalid.similar-rejected',
+    );
+  }
+}

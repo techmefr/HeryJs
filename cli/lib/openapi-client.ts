@@ -1,5 +1,5 @@
 import type {
-  BlueprintField,
+  ScalarBlueprintField,
   ResolvedAggregate,
   ResolvedInclude,
 } from './blueprint';
@@ -36,7 +36,7 @@ function union(names: readonly string[]): string {
     : names.map((name) => `'${name}'`).join(' | ');
 }
 
-function inputType(field: BlueprintField): string {
+function inputType(field: ScalarBlueprintField): string {
   return FIELD_TS_TYPES[field.type];
 }
 
@@ -155,7 +155,7 @@ function queryDeclarations(ctx: ResourceContext): string {
   selects?: Array<{ field: K }>;
   includes?: Array<${includes.names.join(' | ') || 'never'}>;
   aggregates?: Array<${aggregates.names.join(' | ') || 'never'}>;
-  search?: { q?: string; engine?: string };
+  search?: { q?: string; engine?: string${ctx.vector ? "; mode?: 'text' | 'similar'; metric?: 'cosine' | 'l2'" : ''} };
 ${paginationMembers(ctx.pagination)}
 ${trashMembers(ctx)}
   capabilities?: string[];
@@ -211,7 +211,7 @@ function describeDeclaration(ctx: ResourceContext): string {
   selects: string[];
   includes: Record<string, DescribedRelation>;
   aggregates: Record<string, DescribedRelation>;
-${pagination}
+${ctx.vector ? '  similar: true;\n' : ''}${pagination}
   rules: { create: Record<string, unknown>; update: Record<string, unknown> };
 }`;
 }
@@ -339,7 +339,7 @@ export interface UnpagedMeta {
 
 export interface ResourceMeta {
   channels: string[];
-  search?: { matchLimit: number; truncated: boolean };
+  search?: { matchLimit: number; truncated: boolean; mode?: 'text' | 'similar'; metric?: 'cosine' | 'l2' };
   capabilities?: Record<string, unknown>;
 }
 

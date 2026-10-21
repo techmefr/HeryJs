@@ -5,7 +5,12 @@ import {
   pluralize,
   screamingSnakeCase,
 } from './naming';
-import type { Blueprint } from './blueprint';
+import { isScalarField, isVectorField } from './blueprint';
+import type {
+  Blueprint,
+  ScalarBlueprintField,
+  VectorBlueprintField,
+} from './blueprint';
 
 export interface ResourceContext {
   pascalName: string;
@@ -23,7 +28,9 @@ export interface ResourceContext {
   pluralCamelName: string;
   pluralKebabName: string;
   softDeletes: Blueprint['softDeletes'];
-  fields: Blueprint['fields'];
+  fields: ScalarBlueprintField[];
+  /** The embedding column, when the resource declares one: derived from `source`, never client-writable and never returned. */
+  vector: VectorBlueprintField | null;
   permissions: Blueprint['permissions'];
   pagination: Blueprint['pagination'];
   sorts: Blueprint['sorts'];
@@ -55,7 +62,8 @@ export function buildResourceContext(blueprint: Blueprint): ResourceContext {
     pluralCamelName: pluralize(camelName),
     pluralKebabName,
     softDeletes: blueprint.softDeletes,
-    fields: blueprint.fields,
+    fields: blueprint.fields.filter(isScalarField),
+    vector: blueprint.fields.find(isVectorField) ?? null,
     permissions: blueprint.permissions,
     pagination: blueprint.pagination,
     sorts: blueprint.sorts,

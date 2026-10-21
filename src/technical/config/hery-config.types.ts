@@ -83,6 +83,7 @@ export interface HeryConfig {
   httpClient?: HeryConfigDrivers;
   featureFlags?: HeryConfigDrivers;
   sms?: HeryConfigDrivers;
+  embeddings?: HeryConfigDrivers;
   push?: HeryConfigDrivers;
   billing?: HeryConfigDrivers;
   billingQuotas?: HeryConfigBillingQuotas;

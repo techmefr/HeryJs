@@ -1,5 +1,5 @@
 import type {
-  BlueprintField,
+  ScalarBlueprintField,
   ResolvedAggregate,
   ResolvedInclude,
 } from './blueprint';
@@ -38,6 +38,7 @@ export interface QueryContract {
   aggregates: readonly ResolvedAggregate[];
   pagination: ResourceContext['pagination'];
   trash: boolean;
+  similar: boolean;
 }
 
 const REJECTED: JsonSchema = { not: {} };
@@ -65,7 +66,7 @@ function fieldBaseSchema(type: RecordProperty['type']): JsonSchema {
   }
 }
 
-function inputFieldSchema(field: BlueprintField): JsonSchema {
+function inputFieldSchema(field: ScalarBlueprintField): JsonSchema {
   if (field.type === 'string' || field.type === 'file') {
     return { type: 'string', minLength: 1, maxLength: MAX_STRING_LENGTH };
   }
@@ -266,7 +267,16 @@ export function queryRequestSchemas(query: QueryContract): SchemaRegistry {
       aggregates,
       search: {
         type: 'object',
-        properties: { q: { type: 'string' }, engine: { type: 'string' } },
+        properties: {
+          q: { type: 'string' },
+          engine: { type: 'string' },
+          ...(query.similar
+            ? {
+                mode: { type: 'string', enum: ['text', 'similar'] },
+                metric: { type: 'string', enum: ['cosine', 'l2'] },
+              }
+            : {}),
+        },
       },
       page: query.pagination
         ? { type: 'integer', minimum: 1, maximum: MAX_PAGE }
@@ -319,6 +329,7 @@ export function resourceQuery(ctx: ResourceContext): QueryContract {
     aggregates: ctx.aggregates,
     pagination: ctx.pagination,
     trash: ctx.softDeletes,
+    similar: ctx.vector !== null,
   };
 }
 
@@ -335,6 +346,7 @@ export function childQuery(
     aggregates: [],
     pagination: include.pagination,
     trash: false,
+    similar: false,
   };
 }
 
@@ -579,6 +591,8 @@ export function pageMeta(
           properties: {
             matchLimit: { type: 'integer' },
             truncated: { type: 'boolean' },
+            mode: { type: 'string', enum: ['text', 'similar'] },
+            metric: { type: 'string', enum: ['cosine', 'l2'] },
           },
         },
         capabilities: ref('Capabilities'),
@@ -676,6 +690,7 @@ export function describeSchema(ctx: ResourceContext): JsonSchema {
             defaultLimit: { type: 'integer' },
           }
         : {}),
+      ...(ctx.vector ? { similar: { const: true } } : {}),
       paginated: { const: Boolean(ctx.pagination) },
       rules: {
         type: 'object',

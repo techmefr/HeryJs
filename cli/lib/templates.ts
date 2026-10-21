@@ -9,6 +9,20 @@ import {
   zodTypeFor,
 } from './field-types';
 import { camelCase, screamingSnakeCase } from './naming';
+import {
+  vectorConstructorParameter,
+  vectorConstructorBody,
+  vectorSearchDispatch,
+  vectorSearchOptions,
+  vectorServiceConstants,
+  vectorServiceImports,
+  vectorSimilarMethod,
+  vectorSpecFixtures,
+  vectorSpecImports,
+  vectorSpecOverride,
+  vectorSpecTests,
+  vectorTextResult,
+} from './vector-templates';
 
 /**
  * A resource is owned by a team as soon as one of its presets says so, and only
@@ -424,7 +438,7 @@ import { CapabilitySubject } from '#technical/capabilities/capabilities.types';
 import { scopeWhereFor } from '#technical/capabilities/scope-where';
 import { env } from '#technical/config/env';${ownedByTeam(ctx) ? `\nimport { NoCurrentTeamException } from '#technical/errors/no-current-team.exception';` : ''}
 import { SignalService } from '#technical/signal/signal.service';
-import { SearchEngineRegistry } from '#technical/search/search-engine.registry';
+import { SearchEngineRegistry } from '#technical/search/search-engine.registry';${vectorServiceImports(ctx)}
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { writeAuditLog } from '#technical/audit/audit-log';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
@@ -438,7 +452,7 @@ import {
 import { ${ctx.screamingSnakeName}_PRESETS } from './${ctx.kebabName}.presets';
 
 const SEARCHABLE_FIELDS = [${searchableFields.map((name) => `'${name}'`).join(', ')}] as const;
-const SEARCH_COLLECTION = '${ctx.kebabName}';
+const SEARCH_COLLECTION = '${ctx.kebabName}';${vectorServiceConstants(ctx)}
 
 export interface ${ctx.pascalName}SearchOptions {${
     ctx.softDeletes
@@ -454,7 +468,7 @@ export interface ${ctx.pascalName}SearchOptions {${
   relationInstructions?: RelationInstruction[];
   search?: string;
   searchEngine?: string;
-  // null when the resource declares no pagination: every match, no window.
+${vectorSearchOptions(ctx)}  // null when the resource declares no pagination: every match, no window.
   page?: number | null;
   limit?: number | null;
 }
@@ -468,8 +482,8 @@ export class ${ctx.pascalName}Service {
   constructor(
     @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,
     private readonly signal: SignalService,
-    private readonly searchEngines: SearchEngineRegistry,
-  ) {}
+    private readonly searchEngines: SearchEngineRegistry,${vectorConstructorParameter(ctx)}
+  ) {${vectorConstructorBody(ctx)}}
 
   private notify() {
     void this.signal.publish(
@@ -532,9 +546,9 @@ export class ${ctx.pascalName}Service {
     subject: CapabilitySubject,
     options: ${ctx.pascalName}SearchOptions = {},
   ) {
-${
-  ctx.softDeletes
-    ? `    // Excluding trashed rows is the default branch, not an opt-in one: a
+${vectorSearchDispatch(ctx)}${
+    ctx.softDeletes
+      ? `    // Excluding trashed rows is the default branch, not an opt-in one: a
     // caller that says nothing gets live rows only, so a forgotten flag hides
     // a deleted record rather than resurfacing it.
     const trashedWhere = options.onlyTrashed
@@ -544,8 +558,8 @@ ${
         : { deletedAt: null };
 
 `
-    : ''
-}    // The matches carry whether the engine had to cut them, which travels back
+      : ''
+  }    // The matches carry whether the engine had to cut them, which travels back
     // to the caller as a message. A page of 15 out of a capped 1000 out of
     // 40000 real matches is a different answer than a page of 15 out of 1000,
     // and the caller cannot tell them apart unless it is told.
@@ -599,14 +613,14 @@ ${
       options.relationInstructions,
     );
 
-    return { records, total, matches };
+    ${vectorTextResult(ctx)}
   }
-${childIncludes
-  .map((include) => {
-    const pascalRelation = pascalRelationName(include);
-    const childDelegate = camelCase(include.resource);
+${vectorSimilarMethod(ctx)}${childIncludes
+    .map((include) => {
+      const pascalRelation = pascalRelationName(include);
+      const childDelegate = camelCase(include.resource);
 
-    return `
+      return `
   // Scoped to the already-loaded parent by ${include.foreignKey} -- there is
   // no capability of ${include.resource}'s own to apply, it is routed: false.
   // The controller already gated this call on the parent's own view
@@ -640,8 +654,8 @@ ${childIncludes
     return { records, total };
   }
 `;
-  })
-  .join('')}
+    })
+    .join('')}
   async create(subject: CapabilitySubject, data: Create${ctx.pascalName}Input) {
 ${
   ownedByTeam(ctx)
@@ -876,6 +890,7 @@ function paginationContractLines(
  */
 function paginationMetaLines(
   pagination: ResourceContext['pagination'],
+  hasSimilarMode = false,
 ): string {
   if (!pagination) {
     return '      paginated: false,\n';
@@ -884,7 +899,7 @@ function paginationMetaLines(
   return `      page: query.page ?? 1,
       limit: pageLimit,
       last_page: Math.max(1, Math.ceil(total / pageLimit)),
-      next_cursor: nextCursorFor(records, query.sorts, pageLimit),
+      next_cursor: ${hasSimilarMode ? 'similar ? null : ' : ''}nextCursorFor(records, query.sorts, pageLimit),
 `;
 }
 
@@ -1089,7 +1104,7 @@ const ${ctx.screamingSnakeName}_CONTRACT = {
   selects: [${selectableFields.map((field) => `'${field}'`).join(', ')}],
   includes: ${includesContractLiteral(ctx, '  ')},
   aggregates: ${aggregatesContractLiteral(ctx, '  ')},
-${paginationContractLines(ctx.pagination)}} as const satisfies ListQueryContract;
+${ctx.vector ? '  similar: true,\n' : ''}${paginationContractLines(ctx.pagination)}} as const satisfies ListQueryContract;
 
 // Computed once at module load, not per request: the blueprint's shape never
 // changes at runtime, and the Zod schemas already own the create/update
@@ -1212,7 +1227,7 @@ ${
     }
 `
 }
-    const { records, total, matches } = await this.${ctx.camelName}s.search(subject, query);
+    const { records, total, matches${ctx.vector ? ', similar' : ''} } = await this.${ctx.camelName}s.search(subject, query);
     const capabilities = body.capabilities ?? [];
     const select = query.select;
     const project = (view: Record<string, unknown>) =>
@@ -1223,9 +1238,9 @@ ${
         : view;
 ${ctx.pagination ? `    const pageLimit = query.limit ?? ${ctx.pagination.default};\n` : ''}    const meta = {
       channels: [${ctx.screamingSnakeName}_SIGNAL_CHANNEL],
-${paginationMetaLines(ctx.pagination)}      total,
+${paginationMetaLines(ctx.pagination, ctx.vector !== null)}      total,
       ...(matches
-        ? { search: { matchLimit: matches.limit, truncated: matches.truncated } }
+        ? { search: { matchLimit: matches.limit, truncated: matches.truncated${ctx.vector ? ", ...(similar ? { mode: 'similar', metric: similar.metric } : {})" : ''} } }
         : {}),
     };
 
@@ -1234,7 +1249,13 @@ ${paginationMetaLines(ctx.pagination)}      total,
     // number that is quietly wrong.
     const messages = matches?.truncated
       ? [
-          \`Only the first \${matches.limit} full-text matches were counted, and more exist. The totals below are a floor, not a count -- narrow the search term to see the rest.\`,
+          ${
+            ctx.vector
+              ? `similar
+            ? \`Only the \${matches.limit} nearest matches are ranked and returned. Narrow the query or add filters to reach the rest.\`
+            : `
+              : ''
+          }\`Only the first \${matches.limit} full-text matches were counted, and more exist. The totals below are a floor, not a count -- narrow the search term to see the rest.\`,
         ]
       : [];
 
@@ -1512,7 +1533,7 @@ import { AuthModule } from '#technical/auth/auth.module';
 import { CapabilitiesService } from '#technical/capabilities/capabilities.service';
 import { PrismaModule } from '#technical/prisma/prisma.module';
 import { SearchModule } from '#technical/search/search.module';
-import { SignalModule } from '#technical/signal/signal.module';
+import { SignalModule } from '#technical/signal/signal.module';${ctx.vector ? "\nimport { VectorModule } from '#technical/vector/vector.module';" : ''}
 import { ${ctx.pascalName}Controller } from './${ctx.kebabName}.controller';
 import { ${ctx.pascalName}Policy } from './${ctx.kebabName}.policy';
 import { ${ctx.pascalName}Service } from './${ctx.kebabName}.service';
@@ -1524,7 +1545,7 @@ import {
 } from './${ctx.kebabName}-record.loader';
 
 @Module({
-  imports: [PrismaModule, AuthModule, SearchModule, SignalModule],
+  imports: [PrismaModule, AuthModule, SearchModule, SignalModule${ctx.vector ? ', VectorModule' : ''}],
   controllers: [${ctx.pascalName}Controller],
   providers: [
     ${ctx.pascalName}Service,
@@ -2554,10 +2575,10 @@ import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
 import { env } from '#technical/config/env';
 import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
-import { registerAndLogin } from '#devtools/testing/register-and-login';
+import { registerAndLogin } from '#devtools/testing/register-and-login';${vectorSpecImports(ctx)}
 
 const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient({ adapter });${vectorSpecFixtures(ctx)}
 
 describe('${ctx.pascalName} resource', () => {
   let app: INestApplication<App>;
@@ -2567,7 +2588,7 @@ describe('${ctx.pascalName} resource', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })${vectorSpecOverride(ctx)}.compile();
     app = moduleRef.createNestApplication();
     await app.init();
 
@@ -2648,7 +2669,7 @@ ${
   });
 
 ${scopeParityTest(ctx, createBody)}
-${ctx.softDeletes ? `\n${trashParityTest(ctx, createBody)}\n` : ''}
+${vectorSpecTests(ctx, createBody)}${ctx.softDeletes ? `\n${trashParityTest(ctx, createBody)}\n` : ''}
 ${
   canCreateAny && canUpdateAny
     ? `  it('lists records with the capabilities named in the request body', async () => {
@@ -3002,13 +3023,16 @@ export function prismaModelBlock(ctx: ResourceContext): string {
   const customFieldLines = ctx.fields
     .map((field) => `  ${field.name} ${prismaTypeFor(field)}`)
     .join('\n');
+  const vectorLine = ctx.vector
+    ? `\n  ${ctx.vector.name} Unsupported("vector(${ctx.vector.dimensions})")?`
+    : '';
 
   return `
 model ${ctx.pascalName} {
   id        String    @id @default(cuid())
   tenantId  String
   ownerId   String${ownedByTeam(ctx) ? `\n  teamId    String` : ''}
-${customFieldLines}
+${customFieldLines}${vectorLine}
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt${ctx.softDeletes ? `\n  deletedAt DateTime?` : ''}
 

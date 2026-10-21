@@ -201,6 +201,12 @@ export function registerGenerateCommand(program: Command): void {
           `  2. Run "pnpm hery migrate --name add_${ctx.kebabName}" to create the migration — it also emits the row-level security policy for the new table`,
         );
 
+        if (ctx.vector) {
+          console.log(
+            `  - ${ctx.pascalName} embeds "${ctx.vector.source}" into "${ctx.vector.name}" on every write: run "pnpm hery install embeddings" and import ${pc.bold('EmbeddingsModule')} into src/app.module.ts, or the resource cannot boot`,
+          );
+        }
+
         if (options.graphql) {
           console.log(
             `  3. Add ${pc.bold(`${ctx.pascalName}Resolver`)} to the providers of ${ctx.kebabName}.module.ts`,

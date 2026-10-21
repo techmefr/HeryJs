@@ -6,12 +6,31 @@ import { camelCase, kebabCase, pascalCase } from './naming';
 
 export const permissionPresetSchema = z.enum(['own', 'team', 'all', 'none']);
 
+export const VECTOR_MAX_DIMENSIONS = 16000;
+
+// A `vector` field is not data a client sends or reads: it is the embedding of
+// another string field of the same resource, written by a queued job and read
+// only by the similarity search. `dimensions` is the column's declared width
+// and `source` is the string field whose text gets embedded.
 export const blueprintFieldSchema = z.strictObject({
   name: z.string().regex(/^[a-z][a-zA-Z0-9]*$/),
-  type: z.enum(['string', 'int', 'boolean', 'datetime', 'file', 'encrypted']),
+  type: z.enum([
+    'string',
+    'int',
+    'boolean',
+    'datetime',
+    'file',
+    'encrypted',
+    'vector',
+  ]),
   optional: z.boolean().default(false),
   hidden: z.boolean().default(false),
   reveal: z.boolean().default(false),
+  dimensions: z.number().int().positive().max(VECTOR_MAX_DIMENSIONS).optional(),
+  source: z
+    .string()
+    .regex(/^[a-z][a-zA-Z0-9]*$/)
+    .optional(),
 });
 
 const fieldNameSchema = z.string().regex(/^[a-z][a-zA-Z0-9]*$/);
@@ -197,11 +216,34 @@ export interface ResolvedMutableRelation extends BlueprintMutableRelation {
   pivotDelegate: string;
   // The referenced resource's required fields, so a generated spec can seed a
   // row to attach without knowing anything about that resource beyond its name.
-  childRequiredFields: BlueprintField[];
+  childRequiredFields: ScalarBlueprintField[];
 }
 
 export type PermissionPreset = z.infer<typeof permissionPresetSchema>;
 export type BlueprintField = z.infer<typeof blueprintFieldSchema>;
+export type ScalarFieldType = Exclude<BlueprintField['type'], 'vector'>;
+export type ScalarBlueprintField = BlueprintField & { type: ScalarFieldType };
+export type VectorBlueprintField = BlueprintField & {
+  type: 'vector';
+  dimensions: number;
+  source: string;
+};
+
+export function isScalarField(
+  field: BlueprintField,
+): field is ScalarBlueprintField {
+  return field.type !== 'vector';
+}
+
+export function isVectorField(
+  field: BlueprintField,
+): field is VectorBlueprintField {
+  return (
+    field.type === 'vector' &&
+    field.dimensions !== undefined &&
+    field.source !== undefined
+  );
+}
 
 export interface Blueprint extends Omit<
   RawBlueprint,
@@ -272,7 +314,16 @@ function assertSortsAndFiltersAreKnownFields(
   blueprint: RawBlueprint,
   report: (message: string) => void,
 ): void {
-  const fieldNames = new Set(blueprint.fields.map((field) => field.name));
+  const fieldNames = new Set(
+    blueprint.fields
+      .filter((field) => field.type !== 'vector')
+      .map((field) => field.name),
+  );
+  const vectorNames = new Set(
+    blueprint.fields
+      .filter((field) => field.type === 'vector')
+      .map((field) => field.name),
+  );
   const knownTargets = blueprint.routed
     ? KNOWN_NON_FIELD_SORT_FILTER_TARGETS
     : new Set(['id']);
@@ -282,6 +333,13 @@ function assertSortsAndFiltersAreKnownFields(
     ['filter', blueprint.filters],
   ] as const) {
     for (const entry of entries) {
+      if (vectorNames.has(entry)) {
+        report(
+          `${kind} "${entry}" names a vector field, which is searched with mode: similar and cannot be ${kind === 'sort' ? 'sorted' : 'filtered'} on`,
+        );
+        continue;
+      }
+
       if (!fieldNames.has(entry) && !knownTargets.has(entry)) {
         report(`${kind} "${entry}" names no declared field`);
       }
@@ -329,6 +387,63 @@ function concealEncryptedFields(blueprint: RawBlueprint): BlueprintField[] {
       ? { ...field, hidden: true }
       : field,
   );
+}
+
+/**
+ * A vector field is a derived column with a lot of ways to be written down
+ * wrong, and every one of them generates something that compiles: a width
+ * missing, a source that is not text, two embeddings on one resource (which
+ * `mode: similar` could not tell apart), or a field marked optional/hidden as
+ * if the client ever saw it. Each is refused here instead.
+ */
+function assertVectorFieldsAreCoherent(
+  blueprint: RawBlueprint,
+  report: (message: string) => void,
+): void {
+  const vectors = blueprint.fields.filter((field) => field.type === 'vector');
+
+  for (const field of blueprint.fields) {
+    if (field.type !== 'vector') {
+      if (field.dimensions !== undefined || field.source !== undefined) {
+        report(
+          `field "${field.name}" declares dimensions/source, which only apply to a vector field`,
+        );
+      }
+      continue;
+    }
+
+    if (field.dimensions === undefined) {
+      report(`vector field "${field.name}" needs dimensions`);
+    }
+
+    if (field.optional || field.hidden) {
+      report(
+        `vector field "${field.name}" is always optional and never returned, so optional/hidden must not be declared`,
+      );
+    }
+
+    const source = blueprint.fields.find(
+      (candidate) => candidate.name === field.source,
+    );
+
+    if (!source || source.type !== 'string') {
+      report(
+        `vector field "${field.name}" needs a source naming a declared string field`,
+      );
+    }
+  }
+
+  if (vectors.length > 1) {
+    report(
+      `only one vector field is supported per resource, found ${vectors.map((field) => `"${field.name}"`).join(', ')}`,
+    );
+  }
+
+  if (vectors.length > 0 && !blueprint.routed) {
+    report(
+      'a vector field needs a routed resource: an unrouted one has no service to embed on write and no search route to query it',
+    );
+  }
 }
 
 /**
@@ -596,7 +711,9 @@ function resolveMutableRelations(
       ...link,
       childDelegate: camelCase(link.resource),
       pivotDelegate: camelCase(link.pivotTable),
-      childRequiredFields: referenced.fields.filter((field) => !field.optional),
+      childRequiredFields: referenced.fields
+        .filter(isScalarField)
+        .filter((field) => !field.optional),
     });
   }
 
@@ -616,6 +733,7 @@ export function loadBlueprint(filePath: string): Blueprint {
     problems.push(message),
   );
   assertSoftDeletesIsCoherent(blueprint, (message) => problems.push(message));
+  assertVectorFieldsAreCoherent(blueprint, (message) => problems.push(message));
   assertRelationsAreUnique(blueprint, (message) => problems.push(message));
   assertOwnRouteOnlyOnIncludes(blueprint, (message) => problems.push(message));
 

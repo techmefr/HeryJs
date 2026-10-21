@@ -1,9 +1,9 @@
-import type { BlueprintField } from './blueprint';
+import type { ScalarBlueprintField, ScalarFieldType } from './blueprint';
 
 // A `file` field never carries the bytes themselves -- it stores the key an
 // upload to POST /storage/upload already returned, the same way every other
 // scalar field stores a value the caller already has in hand.
-const ZOD_TYPES: Record<BlueprintField['type'], string> = {
+const ZOD_TYPES: Record<ScalarFieldType, string> = {
   string: 'z.string().min(1).max(255)',
   int: 'z.number().int()',
   boolean: 'z.boolean()',
@@ -12,7 +12,7 @@ const ZOD_TYPES: Record<BlueprintField['type'], string> = {
   encrypted: 'z.string().min(1).max(4096)',
 };
 
-const PRISMA_TYPES: Record<BlueprintField['type'], string> = {
+const PRISMA_TYPES: Record<ScalarFieldType, string> = {
   string: 'String',
   int: 'Int',
   boolean: 'Boolean',
@@ -21,22 +21,22 @@ const PRISMA_TYPES: Record<BlueprintField['type'], string> = {
   encrypted: 'String',
 };
 
-export function zodTypeFor(field: BlueprintField): string {
+export function zodTypeFor(field: ScalarBlueprintField): string {
   const base = ZOD_TYPES[field.type];
   return field.optional ? `${base}.optional()` : base;
 }
 
-export function zodOutputTypeFor(field: BlueprintField): string {
+export function zodOutputTypeFor(field: ScalarBlueprintField): string {
   const base = ZOD_TYPES[field.type];
   return field.optional ? `${base}.nullable()` : base;
 }
 
-export function prismaTypeFor(field: BlueprintField): string {
+export function prismaTypeFor(field: ScalarBlueprintField): string {
   const base = PRISMA_TYPES[field.type];
   return field.optional ? `${base}?` : base;
 }
 
-export function sampleValueFor(field: BlueprintField): string {
+export function sampleValueFor(field: ScalarBlueprintField): string {
   switch (field.type) {
     case 'string':
       return `'${field.name}-value'`;
@@ -53,7 +53,7 @@ export function sampleValueFor(field: BlueprintField): string {
   }
 }
 
-const GRAPHQL_TYPES: Record<BlueprintField['type'], string> = {
+const GRAPHQL_TYPES: Record<ScalarFieldType, string> = {
   string: 'String',
   int: 'Int',
   boolean: 'Boolean',
@@ -62,11 +62,11 @@ const GRAPHQL_TYPES: Record<BlueprintField['type'], string> = {
   encrypted: 'String',
 };
 
-export function graphqlTypeFor(field: BlueprintField): string {
+export function graphqlTypeFor(field: ScalarBlueprintField): string {
   return GRAPHQL_TYPES[field.type];
 }
 
-const TS_TYPES: Record<BlueprintField['type'], string> = {
+const TS_TYPES: Record<ScalarFieldType, string> = {
   string: 'string',
   int: 'number',
   boolean: 'boolean',
@@ -75,11 +75,11 @@ const TS_TYPES: Record<BlueprintField['type'], string> = {
   encrypted: 'string',
 };
 
-export function tsTypeFor(field: BlueprintField): string {
+export function tsTypeFor(field: ScalarBlueprintField): string {
   return TS_TYPES[field.type];
 }
 
-const FAKER_VALUES: Record<BlueprintField['type'], string> = {
+const FAKER_VALUES: Record<ScalarFieldType, string> = {
   string: 'faker.lorem.words(3)',
   int: 'faker.number.int({ min: 1, max: 1000 })',
   boolean: 'faker.datatype.boolean()',
@@ -88,6 +88,6 @@ const FAKER_VALUES: Record<BlueprintField['type'], string> = {
   encrypted: 'faker.string.alphanumeric(24)',
 };
 
-export function fakerValueFor(field: BlueprintField): string {
+export function fakerValueFor(field: ScalarBlueprintField): string {
   return FAKER_VALUES[field.type];
 }

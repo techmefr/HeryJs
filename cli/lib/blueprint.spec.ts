@@ -617,3 +617,101 @@ describe('a polymorphic child declaring its morph once', () => {
     expect(aggregate?.discriminatorValue).toBe('BlogPost');
   });
 });
+
+describe('loadBlueprint with a vector field', () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(tmpdir(), 'hery-blueprint-vector-'));
+  });
+
+  function load(fields: string, extra = ''): ReturnType<typeof loadBlueprint> {
+    writeBlueprint(
+      dir,
+      'note',
+      `name: Note\nfields:\n  - name: body\n    type: string\n${fields}\n${extra}`,
+    );
+
+    return loadBlueprint(path.join(dir, 'note.yaml'));
+  }
+
+  const embedding = `  - name: embedding\n    type: vector\n    dimensions: 8\n    source: body`;
+
+  it('accepts a vector field naming a width and a string source', () => {
+    const blueprint = load(embedding);
+
+    expect(blueprint.fields.map((field) => field.type)).toEqual([
+      'string',
+      'vector',
+    ]);
+  });
+
+  it('refuses a vector field with no dimensions', () => {
+    expect(() =>
+      load(`  - name: embedding\n    type: vector\n    source: body`),
+    ).toThrow(/needs dimensions/);
+  });
+
+  it('refuses a vector field whose source is not a declared string field', () => {
+    expect(() =>
+      load(
+        `  - name: embedding\n    type: vector\n    dimensions: 8\n    source: missing`,
+      ),
+    ).toThrow(/needs a source naming a declared string field/);
+  });
+
+  it('refuses a source that is itself not text', () => {
+    writeBlueprint(
+      dir,
+      'note',
+      `name: Note\nfields:\n  - name: reps\n    type: int\n  - name: embedding\n    type: vector\n    dimensions: 8\n    source: reps\n`,
+    );
+
+    expect(() => loadBlueprint(path.join(dir, 'note.yaml'))).toThrow(
+      /declared string field/,
+    );
+  });
+
+  it('refuses a second vector field, which mode: similar could not tell apart', () => {
+    expect(() =>
+      load(
+        `${embedding}\n  - name: other\n    type: vector\n    dimensions: 8\n    source: body`,
+      ),
+    ).toThrow(/only one vector field/);
+  });
+
+  it('refuses optional or hidden on a vector field, which is always both', () => {
+    expect(() => load(`${embedding}\n    optional: true`)).toThrow(
+      /always optional and never returned/,
+    );
+  });
+
+  it('refuses dimensions or source on any other field', () => {
+    expect(() =>
+      load(`  - name: title\n    type: string\n    dimensions: 8`),
+    ).toThrow(/only apply to a vector field/);
+  });
+
+  it('refuses to sort or filter on a vector field', () => {
+    expect(() => load(embedding, 'sorts:\n  - embedding\n')).toThrow(
+      /names a vector field/,
+    );
+    expect(() => load(embedding, 'filters:\n  - embedding\n')).toThrow(
+      /names a vector field/,
+    );
+  });
+
+  it('refuses a vector field on a resource that is not routed', () => {
+    expect(() => load(embedding, 'routed: false\nsorts: []\n')).toThrow(
+      /needs a routed resource/,
+    );
+  });
+
+  it('refuses a width past what a vector column can hold', () => {
+    expect(() =>
+      load(
+        `  - name: embedding\n    type: vector\n    dimensions: 20000\n    source: body`,
+      ),
+    ).toThrow();
+  });
+});
