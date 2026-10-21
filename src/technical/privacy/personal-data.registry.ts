@@ -36,10 +36,30 @@ export function erasedValue(field: PersonalDataField): unknown {
       return EPOCH;
     case 'string':
     case 'richtext':
+    case 'slug':
     case 'file':
     case 'encrypted':
       return ERASED_TEXT;
   }
+}
+
+/**
+ * A slug is unique per tenant, so one value cannot overwrite every row: each
+ * erased row gets its own, made from its id and never from what it held.
+ */
+export function erasedSlug(id: string): string {
+  return `deleted-${id
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')}`;
+}
+
+export function personalSlugFields(
+  declaration: PersonalDataDeclaration,
+): PersonalDataField[] {
+  return declaration.fields.filter(
+    (field) => field.personal && field.type === 'slug',
+  );
 }
 
 export function anonymisedData(
@@ -47,7 +67,7 @@ export function anonymisedData(
 ): Record<string, unknown> {
   return Object.fromEntries(
     declaration.fields
-      .filter((field) => field.personal)
+      .filter((field) => field.personal && field.type !== 'slug')
       .map((field) => [field.name, erasedValue(field)]),
   );
 }

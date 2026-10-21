@@ -27,6 +27,7 @@ const MAX_IN_VALUES = 500;
 const OPERATORS_BY_TYPE: Record<FieldType, string[]> = {
   string: ['=', '!=', 'like', 'not like', 'in', 'not in'],
   file: ['=', '!=', 'like', 'not like', 'in', 'not in'],
+  slug: ['=', '!=', 'like', 'not like', 'in', 'not in'],
   richtext: [],
   int: ['=', '!=', '>', '>=', '<', '<=', 'in', 'not in'],
   datetime: ['=', '!=', '>', '>=', '<', '<='],

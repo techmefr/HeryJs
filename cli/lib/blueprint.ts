@@ -93,6 +93,7 @@ export const blueprintFieldSchema = z.strictObject({
     'file',
     'encrypted',
     'vector',
+    'slug',
     'richtext',
   ]),
   optional: z.boolean().default(false),
@@ -101,13 +102,17 @@ export const blueprintFieldSchema = z.strictObject({
   reveal: z.boolean().default(false),
   // Marks the field as personal data: an anonymising erasure rewrites it, and
   // leaves the resource's other fields as they were. Every field is exported
-  // either way.
-  personal: z.boolean().default(false),
+  // either way. Left out, a slug takes its source's mark and any other field is
+  // not personal.
+  personal: z.boolean().optional(),
   dimensions: z.number().int().positive().max(VECTOR_MAX_DIMENSIONS).optional(),
   source: z
     .string()
     .regex(/^[a-z][a-zA-Z0-9]*$/)
     .optional(),
+  // Slug only, whose `source` is the string field its text is made from: true
+  // keeps the slug it got at creation, false lets it follow the source.
+  stable: z.boolean().optional(),
   // Richtext only: the size limit of the HTML a client may send, and the
   // allow-list the sanitiser keeps. Left out, the runtime defaults apply.
   maxLength: z.number().int().positive().max(RICHTEXT_MAX_LENGTH).optional(),
@@ -522,6 +527,26 @@ function concealEncryptedFields(blueprint: RawBlueprint): BlueprintField[] {
 }
 
 /**
+ * A slug spells out its source in URL-safe form, so a slug made from a personal
+ * field is personal data as much as the field itself: it takes the source's
+ * mark without the blueprint having to repeat it. Every other field is personal
+ * only when it says so.
+ */
+function settlePersonalFields(fields: BlueprintField[]): BlueprintField[] {
+  return fields.map((field) => {
+    const source =
+      field.type === 'slug'
+        ? fields.find((candidate) => candidate.name === field.source)
+        : undefined;
+
+    return {
+      ...field,
+      personal: field.personal ?? source?.personal ?? false,
+    };
+  });
+}
+
+/**
  * A vector field is a derived column with a lot of ways to be written down
  * wrong, and every one of them generates something that compiles: a width
  * missing, a source that is not text, two embeddings on one resource (which
@@ -545,7 +570,10 @@ function assertVectorFieldsAreCoherent(
         );
       }
 
-      if (field.dimensions !== undefined || field.source !== undefined) {
+      if (
+        field.dimensions !== undefined ||
+        (field.source !== undefined && field.type !== 'slug')
+      ) {
         report(
           `field "${field.name}" declares dimensions/source, which only apply to a vector field`,
         );
@@ -611,6 +639,62 @@ function assertTranslatableIsCoherent(
     if (!blueprint.routed) {
       report(
         `field "${field.name}" is translatable, which only applies to a routed resource`,
+      );
+    }
+  }
+}
+
+/**
+ * A slug is always filled in by the service, from a string field that is
+ * itself always there: an optional or translated source would leave it with
+ * nothing to read, and a hidden one would publish its text in the URL-safe
+ * form. The slug is unique per tenant and returned to the client, so it cannot
+ * be hidden, optional or translated either. Like the other derived fields it
+ * needs the service a routed resource has.
+ */
+function assertSlugFieldsAreCoherent(
+  blueprint: RawBlueprint,
+  report: (message: string) => void,
+): void {
+  for (const field of blueprint.fields) {
+    if (field.type !== 'slug') {
+      if (field.stable !== undefined) {
+        report(
+          `field "${field.name}" declares stable, which only applies to a slug field`,
+        );
+      }
+      continue;
+    }
+
+    if (field.optional || field.hidden || field.translatable || field.reveal) {
+      report(
+        `slug field "${field.name}" is always set and always returned, so optional/hidden/translatable/reveal must not be declared`,
+      );
+    }
+
+    const source = blueprint.fields.find(
+      (candidate) => candidate.name === field.source,
+    );
+
+    if (!source || source.type !== 'string') {
+      report(
+        `slug field "${field.name}" needs a source naming a declared string field`,
+      );
+    } else if (source.optional || source.hidden || source.translatable) {
+      report(
+        `slug field "${field.name}" needs a source that is required, visible and not translatable, "${source.name}" is not`,
+      );
+    }
+
+    if (!blueprint.routed) {
+      report(
+        `slug field "${field.name}" needs a routed resource: an unrouted one has no service to derive it on write`,
+      );
+    }
+
+    if (source?.personal && field.personal === false) {
+      report(
+        `slug field "${field.name}" is made from the personal field "${source.name}", so it is personal too and cannot be declared personal: false`,
       );
     }
   }
@@ -1143,6 +1227,7 @@ export function loadBlueprint(filePath: string): Blueprint {
   );
   assertSoftDeletesIsCoherent(blueprint, (message) => problems.push(message));
   assertTranslatableIsCoherent(blueprint, (message) => problems.push(message));
+  assertSlugFieldsAreCoherent(blueprint, (message) => problems.push(message));
   assertRichtextIsCoherent(blueprint, (message) => problems.push(message));
   assertVectorFieldsAreCoherent(blueprint, (message) => problems.push(message));
   assertVersionedIsCoherent(blueprint, (message) => problems.push(message));
@@ -1172,7 +1257,7 @@ export function loadBlueprint(filePath: string): Blueprint {
 
   return {
     ...blueprint,
-    fields: concealEncryptedFields(blueprint),
+    fields: settlePersonalFields(concealEncryptedFields(blueprint)),
     softDeletes: softDeletesEnabled(blueprint),
     includes,
     aggregates,

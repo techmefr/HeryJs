@@ -3,6 +3,10 @@ import type { ScalarBlueprintField, ScalarFieldType } from './blueprint';
 // A `file` field never carries the bytes themselves -- it stores the key an
 // upload to POST /storage/upload already returned, the same way every other
 // scalar field stores a value the caller already has in hand.
+//
+// A `slug` is the same pattern and length as SLUG_PATTERN and SLUG_MAX_LENGTH
+// in src/technical/slug/slug.ts, written out because generated code carries no
+// import for a constant.
 const ZOD_TYPES: Record<ScalarFieldType, string> = {
   string: 'z.string().min(1).max(255)',
   int: 'z.number().int()',
@@ -10,6 +14,7 @@ const ZOD_TYPES: Record<ScalarFieldType, string> = {
   datetime: 'z.coerce.date()',
   file: 'z.string().min(1).max(255)',
   encrypted: 'z.string().min(1).max(4096)',
+  slug: 'z.string().min(1).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)',
   // The view's rule: sanitising can leave nothing of what was sent.
   richtext: 'z.string()',
 };
@@ -21,6 +26,7 @@ const PRISMA_TYPES: Record<ScalarFieldType, string> = {
   datetime: 'DateTime',
   file: 'String',
   encrypted: 'String',
+  slug: 'String',
   richtext: 'String',
 };
 
@@ -37,10 +43,16 @@ function inputRuleFor(field: ScalarBlueprintField): string {
     : ZOD_TYPES[field.type];
 }
 
+// A slug is filled in by the service when the client sends none, so it is
+// never required on the way in, however the blueprint spells optional.
+export function isOptionalOnInput(field: ScalarBlueprintField): boolean {
+  return field.optional || field.type === 'slug';
+}
+
 export function zodTypeFor(field: ScalarBlueprintField): string {
   const rule = inputRuleFor(field);
   const base = field.translatable ? `translatableInputSchema(${rule})` : rule;
-  return field.optional ? `${base}.optional()` : base;
+  return isOptionalOnInput(field) ? `${base}.optional()` : base;
 }
 
 export function zodOutputTypeFor(field: ScalarBlueprintField): string {
@@ -67,6 +79,8 @@ export function sampleValueFor(field: ScalarBlueprintField): string {
       return `'${field.name}-key.png'`;
     case 'encrypted':
       return `'${field.name}-secret-value'`;
+    case 'slug':
+      return `'${field.name}-value'`;
     case 'richtext':
       return `'<p>${field.name}-value</p>'`;
   }
@@ -79,6 +93,7 @@ const GRAPHQL_TYPES: Record<ScalarFieldType, string> = {
   datetime: 'GraphQLISODateTime',
   file: 'String',
   encrypted: 'String',
+  slug: 'String',
   richtext: 'String',
 };
 
@@ -93,6 +108,7 @@ const TS_TYPES: Record<ScalarFieldType, string> = {
   datetime: 'Date',
   file: 'string',
   encrypted: 'string',
+  slug: 'string',
   richtext: 'string',
 };
 
@@ -111,6 +127,7 @@ const FAKER_VALUES: Record<ScalarFieldType, string> = {
   datetime: 'faker.date.recent()',
   file: '`${faker.string.uuid()}.png`',
   encrypted: 'faker.string.alphanumeric(24)',
+  slug: "`${faker.lorem.slug(3)}-${faker.string.alphanumeric({ length: 6, casing: 'lower' })}`",
   richtext: '`<p>${faker.lorem.sentence()}</p>`',
 };
 

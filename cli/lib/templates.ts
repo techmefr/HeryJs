@@ -16,6 +16,7 @@ import {
 import {
   fakerValueFor,
   graphqlTypeFor,
+  isOptionalOnInput,
   prismaTypeFor,
   richtextMaxLength,
   sampleValueFor,
@@ -109,6 +110,19 @@ function translatableFieldsLiteral(ctx: ResourceContext): string {
     .join(', ')}]`;
 }
 
+function slugFields(ctx: ResourceContext): ResourceContext['fields'] {
+  return ctx.fields.filter((field) => field.type === 'slug');
+}
+
+function slugFieldsLiteral(ctx: ResourceContext): string {
+  return `[${slugFields(ctx)
+    .map(
+      (field) =>
+        `{ name: '${field.name}', source: '${field.source}', stable: ${field.stable === true} }`,
+    )
+    .join(', ')}]`;
+}
+
 function richtextFields(ctx: ResourceContext): ResourceContext['fields'] {
   return ctx.fields.filter((field) => field.type === 'richtext');
 }
@@ -120,6 +134,53 @@ function richtextFieldsLiteral(ctx: ResourceContext): string {
         `{ name: '${field.name}', maxLength: ${richtextMaxLength(field)}${field.allow ? `, allow: ${JSON.stringify(field.allow)}` : ''} }`,
     )
     .join(', ')}]`;
+}
+
+function slugServiceImports(ctx: ResourceContext): string {
+  return slugFields(ctx).length > 0
+    ? `import { SLUG_LOOKUP_LIMIT, resolveSlugs, withSlugRetry } from '#technical/slug/slug';
+import type { SlugDelegate, SlugFieldSpec } from '#technical/slug/slug';
+`
+    : '';
+}
+
+function slugServiceConstants(ctx: ResourceContext): string {
+  return slugFields(ctx).length > 0
+    ? `\nconst SLUG_FIELDS: readonly SlugFieldSpec[] = ${slugFieldsLiteral(ctx)};`
+    : '';
+}
+
+// Derived on every write that can change the source, in the service rather
+// than a database default: the slug depends on what the tenant already holds,
+// and the unique index is what settles the race this lookup cannot see.
+function slugServiceMethods(ctx: ResourceContext): string {
+  if (slugFields(ctx).length === 0) {
+    return '';
+  }
+
+  return `  private slugs(data: object, previous: ${ctx.modelPascalName} | null, attempt: number) {
+    return resolveSlugs(
+      data as Record<string, unknown>,
+      SLUG_FIELDS,
+      { taken: (field, base) => this.takenSlugs(field, base) },
+      previous,
+      attempt,
+    );
+  }
+
+  // Trashed rows are not filtered out: they keep their slug and the unique
+  // index still counts them.
+  private async takenSlugs(field: string, base: string) {
+    const rows = await (this.prisma.${ctx.modelCamelName} as unknown as SlugDelegate).findMany({
+      where: { [field]: { startsWith: base } },
+      select: { [field]: true },
+      take: SLUG_LOOKUP_LIMIT,
+    });
+
+    return new Set(rows.map((row) => row[field] as string));
+  }
+
+`;
 }
 
 function pascalRelationName(relation: { relation: string }): string {
@@ -603,6 +664,7 @@ export { ${ctx.pascalName}RecordLoader as ${ctx.pascalName}VisibleRecordLoader }
 
 export function serviceFile(ctx: ResourceContext): string {
   const hasTranslatable = translatableFields(ctx).length > 0;
+  const hasSlugs = slugFields(ctx).length > 0;
   const searchableFields = ctx.fields
     .filter((field) => field.type === 'string')
     .map((field) => field.name);
@@ -636,7 +698,7 @@ import {
 import type { TranslatableRow } from '#technical/i18n/translatable-query';
 `
       : ''
-  }${richtextFields(ctx).length > 0 ? `import { sanitizeRichtextWrite } from '#technical/richtext/richtext';\n` : ''}import { resolveRelationInstructions } from '#technical/http/relation-resolver';
+  }${richtextFields(ctx).length > 0 ? `import { sanitizeRichtextWrite } from '#technical/richtext/richtext';\n` : ''}${slugServiceImports(ctx)}import { resolveRelationInstructions } from '#technical/http/relation-resolver';
 import type { PrismaRelationClient } from '#technical/http/relation-resolver';
 ${ctx.versioned ? `import { VersionConflictException } from '#technical/errors/version-conflict.exception';\nimport { assertVersionIsCurrent, isLostRaceError } from '#technical/http/record-version';\nimport type { ExpectedVersion } from '#technical/http/record-version';\n` : ''}${workflowServiceImports(ctx)}import type { RelationInstruction${childIncludes.length > 0 ? ', ParsedListQuery' : ''} } from '#technical/http/list-query';${ctx.relations.length > 0 ? `\nimport { applyRelationMutation } from '#technical/http/relation-mutations';\nimport type { PivotDelegate, RelatedDelegate } from '#technical/http/relation-mutations';\nimport { MAX_BATCH_ENTRIES } from '#technical/http/batch';` : ''}
 import {
@@ -646,7 +708,7 @@ import {
 import { ${ctx.screamingSnakeName}_PRESETS } from './${ctx.kebabName}.presets';${richtextFields(ctx).length > 0 ? `\nimport { RICHTEXT_FIELDS } from './${ctx.kebabName}.dto';` : ''}
 
 const SEARCHABLE_FIELDS = [${searchableFields.map((name) => `'${name}'`).join(', ')}] as const;
-const SEARCH_COLLECTION = '${ctx.kebabName}';${vectorServiceConstants(ctx)}${workflowServiceConstants(ctx)}${historyServiceConstants(ctx)}${
+const SEARCH_COLLECTION = '${ctx.kebabName}';${vectorServiceConstants(ctx)}${slugServiceConstants(ctx)}${workflowServiceConstants(ctx)}${historyServiceConstants(ctx)}${
     hasTranslatable
       ? `
 const TRANSLATABLE_FIELDS: readonly TranslatableFieldSpec[] = ${translatableFieldsLiteral(ctx)};
@@ -1036,7 +1098,7 @@ ${ctx.relations
     return this.prisma.$atomic(callback);
   }
 
-  async create(subject: CapabilitySubject, data: Create${ctx.pascalName}Input) {
+${slugServiceMethods(ctx)}  async create(subject: CapabilitySubject, data: Create${ctx.pascalName}Input) {
 ${richtextFields(ctx).length > 0 ? `    data = sanitizeRichtextWrite(data, RICHTEXT_FIELDS);\n` : ''}${
     ownedByTeam(ctx)
       ? `    if (!subject.currentTeamId) {
@@ -1045,13 +1107,18 @@ ${richtextFields(ctx).length > 0 ? `    data = sanitizeRichtextWrite(data, RICHT
 
 `
       : ''
-  }    const record = await this.prisma.${ctx.modelCamelName}.create({
+  }    const record = await ${
+    hasSlugs
+      ? `withSlugRetry(SLUG_FIELDS, data, (attempt) => this.slugs(data, null, attempt), (slugs) =>
+    `
+      : ''
+  }this.prisma.${ctx.modelCamelName}.create({
       // tenantId is injected by the tenant-scoping Prisma extension, invisible to callers by design.
       data: {
-        ...${hasTranslatable ? 'normalizeTranslatableWrite(data, TRANSLATABLE_FIELDS)' : 'data'},
+        ...${hasTranslatable ? 'normalizeTranslatableWrite(data, TRANSLATABLE_FIELDS)' : 'data'},${hasSlugs ? '\n        ...slugs,' : ''}
         ownerId: subject.id,${ownedByTeam(ctx) ? `\n        // The team comes from the session, never from the request body, so a\n        // caller cannot file a record into a team it does not belong to.\n        teamId: subject.currentTeamId,` : ''}
       } as unknown as Prisma.${ctx.modelPascalName}CreateInput,
-    });
+    })${hasSlugs ? ')' : ''};
     this.notify();
     await this.syncSearchIndex(record);
     return record;
@@ -1067,10 +1134,10 @@ ${
 ${richtextFields(ctx).length > 0 ? `    data = sanitizeRichtextWrite(data, RICHTEXT_FIELDS);\n` : ''}    assertVersionIsCurrent('${ctx.kebabName}', expected, record.version);
 
     try {
-      const updated = await this.prisma.${ctx.modelCamelName}.update({
+      const updated = await ${hasSlugs ? `withSlugRetry(SLUG_FIELDS, data, (attempt) => this.slugs(data, record, attempt), (slugs) =>\n      ` : ''}this.prisma.${ctx.modelCamelName}.update({
         where: { id: record.id, version: expected.value },
-        data: { ...${hasTranslatable ? 'normalizeTranslatableWrite(data, TRANSLATABLE_FIELDS, record)' : 'data'}, version: { increment: 1 } },
-      });
+        data: { ...${hasTranslatable ? 'normalizeTranslatableWrite(data, TRANSLATABLE_FIELDS, record)' : 'data'},${hasSlugs ? ' ...slugs,' : ''} version: { increment: 1 } },
+      })${hasSlugs ? ')' : ''};
       this.notify();
       await this.syncSearchIndex(updated);
       return updated;
@@ -1083,7 +1150,7 @@ ${richtextFields(ctx).length > 0 ? `    data = sanitizeRichtextWrite(data, RICHT
     }
   }`
     : `  async update(record: ${ctx.modelPascalName}, data: Update${ctx.pascalName}Input) {
-${richtextFields(ctx).length > 0 ? `    data = sanitizeRichtextWrite(data, RICHTEXT_FIELDS);\n` : ''}    const updated = await this.prisma.${ctx.modelCamelName}.update({ where: { id: record.id }, data${hasTranslatable ? `: normalizeTranslatableWrite(data, TRANSLATABLE_FIELDS, record)` : ''} });
+${richtextFields(ctx).length > 0 ? `    data = sanitizeRichtextWrite(data, RICHTEXT_FIELDS);\n` : ''}    const updated = await ${hasSlugs ? `withSlugRetry(SLUG_FIELDS, data, (attempt) => this.slugs(data, record, attempt), (slugs) =>\n    ` : ''}this.prisma.${ctx.modelCamelName}.update({ where: { id: record.id }, data${hasSlugs ? `: { ...${hasTranslatable ? 'normalizeTranslatableWrite(data, TRANSLATABLE_FIELDS, record)' : 'data'}, ...slugs }` : hasTranslatable ? `: normalizeTranslatableWrite(data, TRANSLATABLE_FIELDS, record)` : ''} })${hasSlugs ? ')' : ''};
     this.notify();
     await this.syncSearchIndex(updated);
     return updated;
@@ -1133,10 +1200,10 @@ ${
   }
 
   async restore(record: ${ctx.modelPascalName}, patch?: Update${ctx.pascalName}Input) {
-${richtextFields(ctx).length > 0 ? `    patch = patch && sanitizeRichtextWrite(patch, RICHTEXT_FIELDS);\n` : ''}    const updated = await this.prisma.${ctx.modelCamelName}.update({
+${richtextFields(ctx).length > 0 ? `    patch = patch && sanitizeRichtextWrite(patch, RICHTEXT_FIELDS);\n` : ''}    const updated = await ${hasSlugs ? `withSlugRetry(SLUG_FIELDS, patch ?? {}, (attempt) => this.slugs(patch ?? {}, record, attempt), (slugs) =>\n    ` : ''}this.prisma.${ctx.modelCamelName}.update({
       where: { id: record.id },
-      data: { ...${hasTranslatable ? 'normalizeTranslatableWrite(patch ?? {}, TRANSLATABLE_FIELDS, record)' : 'patch'}, deletedAt: null${ctx.versioned ? ', version: { increment: 1 }' : ''} },
-    });
+      data: { ...${hasTranslatable ? 'normalizeTranslatableWrite(patch ?? {}, TRANSLATABLE_FIELDS, record)' : 'patch'},${hasSlugs ? ' ...slugs,' : ''} deletedAt: null${ctx.versioned ? ', version: { increment: 1 }' : ''} },
+    })${hasSlugs ? ')' : ''};
     this.notify();
     await this.syncSearchIndex(updated);
     return updated;
@@ -1540,7 +1607,7 @@ const ${ctx.screamingSnakeName}_DESCRIBE = {
   // inferring it from the path it happened to call.
   version: ${ctx.version},
   fields: [
-${ctx.fields.map((field) => `    { name: '${field.name}', type: '${field.type}', optional: ${field.optional}${field.translatable ? ', translatable: true' : ''}${field.type === 'richtext' ? `, richtext: describeRichtext(RICHTEXT_FIELDS, '${field.name}')` : ''} },`).join('\n')}
+${ctx.fields.map((field) => `    { name: '${field.name}', type: '${field.type}', optional: ${field.optional}${field.translatable ? ', translatable: true' : ''}${field.type === 'slug' ? `, slug: { source: '${field.source}', stable: ${field.stable === true} }` : ''}${field.type === 'richtext' ? `, richtext: describeRichtext(RICHTEXT_FIELDS, '${field.name}')` : ''} },`).join('\n')}
   ],${hasTranslatable ? '\n  locales: describeLocales(),' : ''}
   ...${ctx.screamingSnakeName}_CONTRACT,
   // Stated rather than implied by the absence of limits: a client reading this
@@ -3649,6 +3716,169 @@ ${searchCheck}
     .join('');
 }
 
+function slugSpecBlock(ctx: ResourceContext, createBody: string): string {
+  const field = slugFields(ctx)[0];
+
+  if (!field || ctx.permissions.create === 'none') {
+    return '';
+  }
+
+  const name = field.name;
+  const source = field.source;
+  const route = ctx.pluralKebabName;
+  const stable = field.stable === true;
+  const canUpdate = ctx.permissions.update !== 'none';
+  const canSearch = ctx.permissions.view !== 'none';
+  const versionPart = ctx.versioned ? ', version: created.version' : '';
+
+  return `
+  describe('slug field ${name}', () => {
+    type CreateOutcome = {
+      status: string;
+      data: Record<string, unknown>;
+      error?: { status: number; key: string };
+    };
+
+    async function createWith(
+      overrides: Record<string, unknown>,
+    ): Promise<CreateOutcome> {
+      const response = await request(app.getHttpServer())
+        .post('/${route}/create')
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .send({ data: [{ ...${createBody}, ...overrides }] })
+        .expect(201);
+
+      return (
+        response.body as {
+          data: { status: string; data: Record<string, unknown>; error?: { status: number; key: string } }[];
+        }
+      ).data[0]!;
+    }
+
+    it('publishes where the slug comes from and whether it stays put', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/${route}/describe')
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .expect(200);
+
+      const body = response.body as {
+        data: {
+          fields: Array<{ name: string; slug?: { source: string; stable: boolean } }>;
+          rules: { create: { required?: string[] } };
+        };
+      };
+      expect(body.data.fields.find((entry) => entry.name === '${name}')?.slug).toEqual({
+        source: '${source}',
+        stable: ${stable},
+      });
+      expect(body.data.rules.create.required ?? []).not.toContain('${name}');
+    });
+
+    it('derives the slug from ${source}, folded to lowercase ascii words', async () => {
+      const marker = randomUUID();
+      const { data } = await createWith({ ${source}: 'Hello Wörld ' + marker });
+
+      expect(data.${name}).toBe('hello-world-' + marker);
+    });
+
+    it('numbers a slug another record of the tenant already holds', async () => {
+      const marker = randomUUID();
+      const first = await createWith({ ${source}: 'Twin ' + marker });
+      const second = await createWith({ ${source}: 'Twin ' + marker });
+      const third = await createWith({ ${source}: 'Twin ' + marker });
+
+      expect(first.data.${name}).toBe('twin-' + marker);
+      expect(second.data.${name}).toBe('twin-' + marker + '-2');
+      expect(third.data.${name}).toBe('twin-' + marker + '-3');
+    });
+
+    it('stays unique when the same source is created concurrently', async () => {
+      const marker = randomUUID();
+      const results = await Promise.all(
+        Array.from({ length: 4 }, () => createWith({ ${source}: 'Race ' + marker })),
+      );
+
+      const slugs = results.map((result) => result.data.${name});
+      expect(results.every((result) => result.status === 'ok')).toBe(true);
+      expect(new Set(slugs).size).toBe(4);
+      expect(slugs.every((slug) => String(slug).startsWith('race-' + marker))).toBe(true);
+    });
+
+    it('keeps a slug the caller sends and refuses to hand the same one out twice', async () => {
+      const marker = randomUUID();
+      const chosen = 'chosen-' + marker;
+      const first = await createWith({ ${name}: chosen });
+      const second = await createWith({ ${name}: chosen });
+
+      expect(first.data.${name}).toBe(chosen);
+      expect(second.status).toBe('error');
+      expect(second.error).toMatchObject({ status: 409, key: 'slug.taken' });
+    });
+
+    it('refuses a slug that is not lowercase words joined by dashes', async () => {
+      for (const bad of ['Not A Slug', 'under_score', '-lead', 'trail-', 'a--b', '<script>']) {
+        await request(app.getHttpServer())
+          .post('/${route}/create')
+          .set('Authorization', \`Bearer \${ownerToken}\`)
+          .send({ data: [{ ...${createBody}, ${name}: bad }] })
+          .expect(400);
+      }
+    });
+${
+  canSearch && ctx.filters.includes(name)
+    ? `
+    it('finds a record by its slug', async () => {
+      const marker = randomUUID();
+      const created = await createWith({ ${source}: 'Lookup ' + marker });
+      await createWith({ ${source}: 'Lookup other ' + marker });
+
+      const response = await request(app.getHttpServer())
+        .post('/${route}/search')
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .send({ filters: [{ field: '${name}', value: 'lookup-' + marker }] })
+        .expect(200);
+
+      const rows = (response.body as { data: { id: string }[] }).data;
+      expect(rows.map((row) => row.id)).toEqual([created.data.id]);
+    });
+`
+    : ''
+}${
+    canUpdate
+      ? `
+    it('${stable ? 'keeps the slug when ' + source + ' changes' : 'follows ' + source + ' when it changes'}', async () => {
+      const marker = randomUUID();
+      const { data: created } = await createWith({ ${source}: 'Before ' + marker });
+
+      const response = await request(app.getHttpServer())
+        .post('/${route}/update')
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .send({ data: [{ id: created.id${versionPart}, ${source}: 'After ' + marker }] })
+        .expect(201);
+
+      const updated = (response.body as { data: { data: Record<string, unknown> }[] }).data[0]!.data;
+      expect(updated.${name}).toBe(${stable ? `'before-' + marker` : `'after-' + marker`});
+    });
+
+    it('moves to a slug the caller sends on update, even when it is stable', async () => {
+      const marker = randomUUID();
+      const { data: created } = await createWith({ ${source}: 'Moving ' + marker });
+
+      const response = await request(app.getHttpServer())
+        .post('/${route}/update')
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .send({ data: [{ id: created.id${versionPart}, ${name}: 'moved-' + marker }] })
+        .expect(201);
+
+      const updated = (response.body as { data: { data: Record<string, unknown> }[] }).data[0]!.data;
+      expect(updated.${name}).toBe('moved-' + marker);
+    });
+`
+      : ''
+  }  });
+`;
+}
+
 const XSS_PAYLOADS = [
   '<script>alert(1)</script><p>ok</p>',
   '<img src=x onerror=alert(1)>',
@@ -4031,7 +4261,7 @@ function privacySpecBlock(ctx: ResourceContext, createBody: string): string {
       field.type === 'string' && !field.optional && !field.translatable,
   );
   const ownedFields = ctx.fields
-    .filter((field) => !field.optional)
+    .filter((field) => !field.optional && field.type !== 'slug')
     .map(
       (field) =>
         `${field.name}: ${field === markerField ? 'marker' : sampleValueFor(field)}`,
@@ -4051,6 +4281,7 @@ function privacySpecBlock(ctx: ResourceContext, createBody: string): string {
         !field.translatable &&
         field.type !== 'datetime' &&
         (!field.optional || field.type === 'encrypted') &&
+        field.type !== 'slug' &&
         field !== markerField,
     )
     .map((field) => `        ${field.name}: ${sampleValueFor(field)},`)
@@ -4062,6 +4293,7 @@ function privacySpecBlock(ctx: ResourceContext, createBody: string): string {
       (field) =>
         field.personal &&
         field.type !== 'datetime' &&
+        field.type !== 'slug' &&
         (field.optional || (!field.translatable && field.type !== 'encrypted')),
     )
     .map((field) => {
@@ -4079,6 +4311,23 @@ function privacySpecBlock(ctx: ResourceContext, createBody: string): string {
       }
     })
     .join('\n');
+  // A personal slug cannot be wiped to one shared value: each erased row gets
+  // its own, made from its id, so nothing of the source survives and the
+  // unique index still holds.
+  const personalSlugs = ctx.fields.filter(
+    (field) => field.personal && field.type === 'slug',
+  );
+  const slugChecks =
+    erase === 'anonymise' && personalSlugs.length > 0
+      ? personalSlugs
+          .map(
+            (field) => `      for (const row of rows) {
+        expect(row.${field.name}).toBe('deleted-' + row.id);
+      }
+      expect(new Set(rows.map((row) => row.${field.name})).size).toBe(rows.length);`,
+          )
+          .join(String.fromCharCode(10)) + String.fromCharCode(10)
+      : '';
   const markerDeclaration = (prefix: string): string =>
     markerField ? `      const marker = '${prefix}-' + randomUUID();\n` : '';
   const rowsAfterErasure = (where: string): string =>
@@ -4090,7 +4339,8 @@ function privacySpecBlock(ctx: ResourceContext, createBody: string): string {
         expect(row).toMatchObject({
 ${wipedChecks}
         });
-      }`;
+      }
+${slugChecks}`;
 
   return `
   describe('privacy requests', () => {
@@ -4236,7 +4486,7 @@ ${exportedChecks}
 
     it('erases a user, redacts what the audit trail held and keeps the request itself', async () => {
 ${markerDeclaration('erase')}      const ownId = await createAs(subject, ${ownedBody});
-      const keptId = await createAs(bystander, ${createBody});
+${slugChecks && markerField ? `      await createAs(subject, ${ownedBody});\n` : ''}      const keptId = await createAs(bystander, ${createBody});
 
       const id = await requestAs(
         subject,
@@ -4248,7 +4498,7 @@ ${markerDeclaration('erase')}      const ownId = await createAs(subject, ${owned
       expect(await settled(id)).toMatchObject({ status: 'done', error: null });
 
 ${rowsAfterErasure(`{ ownerId: subject.id }`)}
-      expect(
+${slugChecks && markerField ? `      expect(JSON.stringify(rows)).not.toContain(marker);\n` : ''}      expect(
         await prisma.${delegate}.findUnique({ where: { id: keptId } }),
       ).not.toBeNull();
 
@@ -4315,7 +4565,9 @@ ${rowsAfterErasure(`{ tenantId }`)}
 }
 
 export function specFile(ctx: ResourceContext): string {
-  const requiredFields = ctx.fields.filter((field) => !field.optional);
+  const requiredFields = ctx.fields.filter(
+    (field) => !isOptionalOnInput(field),
+  );
   const createBody =
     requiredFields.length > 0
       ? `{ ${requiredFields.map((field) => `${field.name}: ${sampleValueFor(field)}`).join(', ')} }`
@@ -4715,7 +4967,7 @@ ${
   });
 `
     : ''
-}${canCreateAny ? workflowSpecBlock(ctx, createBody) : ''}${relationSpecBlock(ctx, createBody)}${translatableSpecBlock(ctx, createBody)}${richtextSpecBlock(ctx, createBody)}${privacySpecBlock(ctx, createBody)}});
+}${canCreateAny ? workflowSpecBlock(ctx, createBody) : ''}${relationSpecBlock(ctx, createBody)}${translatableSpecBlock(ctx, createBody)}${slugSpecBlock(ctx, createBody)}${richtextSpecBlock(ctx, createBody)}${privacySpecBlock(ctx, createBody)}});
 `;
 }
 
@@ -4842,7 +5094,12 @@ export function ${ctx.camelName}Factory(
 
 export function prismaModelBlock(ctx: ResourceContext): string {
   const customFieldLines = ctx.fields
-    .map((field) => `  ${field.name} ${prismaTypeFor(field)}`)
+    .map(
+      (field) =>
+        // A row written past the service (a seeder, a raw script) still gets a
+        // valid, unique slug; the service always replaces it with a readable one.
+        `  ${field.name} ${prismaTypeFor(field)}${field.type === 'slug' ? ' @default(cuid())' : ''}`,
+    )
     .join('\n');
   const vectorLine = ctx.vector
     ? `\n  ${ctx.vector.name} Unsupported("vector(${ctx.vector.dimensions})")?`
@@ -4859,7 +5116,14 @@ ${customFieldLines}${vectorLine}
 
   owner User @relation(fields: [ownerId], references: [id])${ownedByTeam(ctx) ? `\n  team  Team @relation(fields: [teamId], references: [id])` : ''}
 
-  @@index([tenantId])${
+  @@index([tenantId])${slugFields(ctx)
+    .map(
+      (field) => `
+  // Unique per tenant, trashed rows included: a slug stays reserved until
+  // prune frees the row.
+  @@unique([tenantId, ${field.name}])`,
+    )
+    .join('')}${
     ctx.softDeletes
       ? `
   // Every default read filters on these two together, so the composite keeps

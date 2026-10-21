@@ -88,11 +88,12 @@ import type { BlogPostView } from './blog-post.view';
 // from describe.
 const BLOG_POST_CONTRACT = {
   sorts: ['createdAt', 'summary'],
-  filters: ['id', 'title', 'summary'],
+  filters: ['id', 'title', 'slug', 'summary'],
   selects: [
     'id',
     'ownerId',
     'title',
+    'slug',
     'summary',
     'summaryTranslations',
     'body',
@@ -153,6 +154,12 @@ const BLOG_POST_DESCRIBE = {
   version: 1,
   fields: [
     { name: 'title', type: 'string', optional: false },
+    {
+      name: 'slug',
+      type: 'slug',
+      optional: false,
+      slug: { source: 'title', stable: false },
+    },
     { name: 'summary', type: 'string', optional: true, translatable: true },
     {
       name: 'body',

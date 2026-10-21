@@ -18,6 +18,13 @@ export class BlogPostPersonalData implements OnModuleInit {
           personal: true,
         },
         {
+          name: 'slug',
+          type: 'slug',
+          optional: false,
+          translatable: false,
+          personal: true,
+        },
+        {
           name: 'summary',
           type: 'string',
           optional: true,

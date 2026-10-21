@@ -127,7 +127,7 @@ describe('BlogPost change feed (real database, real outbox, real redis)', () => 
       mine.map((message) => message.type === 'change' && message.kind),
     ).toEqual(['updated', 'deleted']);
     expect(mine[0]).toMatchObject({
-      changedFields: ['title'],
+      changedFields: ['title', 'slug'],
       record: { title: 'feed-after' },
     });
     expect(mine[1]).toMatchObject({ record: null });
@@ -159,6 +159,7 @@ describe('BlogPost change feed (real database, real outbox, real redis)', () => 
       'deletedAt',
       'id',
       'ownerId',
+      'slug',
       'summary',
       'summaryTranslations',
       'tenantId',

@@ -1,4 +1,5 @@
 import type {
+  DescribedSlug,
   DescribedRichtext,
   ResourceDescription,
   ResourceRow,
@@ -6,7 +7,7 @@ import type {
 import type { FieldOverride } from './extensions';
 
 export type FieldKind =
-  'text' | 'number' | 'checkbox' | 'datetime' | 'select' | 'richtext';
+  'text' | 'number' | 'checkbox' | 'datetime' | 'select' | 'slug' | 'richtext';
 export type FormMode = 'create' | 'update';
 export type FormValue = string | boolean;
 export type FormValues = Record<string, FormValue>;
@@ -28,12 +29,14 @@ export interface FormField {
   minimum?: number;
   maximum?: number;
   pattern?: string;
+  slug?: DescribedSlug;
   richtext?: DescribedRichtext;
 }
 
 const KIND_BY_TYPE: Record<string, FieldKind> = {
   string: 'text',
   file: 'text',
+  slug: 'slug',
   richtext: 'richtext',
   int: 'number',
   boolean: 'checkbox',
@@ -52,6 +55,22 @@ export function humanize(name: string): string {
   const spaced = name.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
 
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+function slugHelp(
+  slug: DescribedSlug,
+  mode: FormMode,
+  overrides: Record<string, FieldOverride>,
+): string {
+  const source = overrides[slug.source]?.label ?? humanize(slug.source);
+
+  if (mode === 'create') {
+    return 'Left empty, it is derived from ' + source + ' and made unique.';
+  }
+
+  return slug.stable
+    ? 'Kept when ' + source + ' changes.'
+    : 'Follows ' + source + ' when it changes, unless you set it here.';
 }
 
 export function formFieldsOf(
@@ -89,9 +108,11 @@ export function formFieldsOf(
       readonly: override.readonly === true && !isRequired,
       help:
         override.help ??
-        (field.richtext
-          ? 'HTML. Anything outside the allow-list is stripped when you save, as the preview shows.'
-          : undefined),
+        (field.slug
+          ? slugHelp(field.slug, mode, overrides)
+          : field.richtext
+            ? 'HTML. Anything outside the allow-list is stripped when you save, as the preview shows.'
+            : undefined),
       placeholder: override.placeholder,
       options,
       minLength: schema.minLength,
@@ -99,6 +120,7 @@ export function formFieldsOf(
       minimum: boundOf(schema.minimum),
       maximum: boundOf(schema.maximum),
       pattern: schema.pattern,
+      slug: field.slug,
       richtext: field.richtext,
     });
   }
