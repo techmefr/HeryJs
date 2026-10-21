@@ -103,7 +103,7 @@ export class SnippetPolicy {
   recordCapabilities(
     subject: CapabilitySubject,
     record: SnippetRecordLike,
-  ): Record<'update' | 'delete', CapabilityDecision> {
+  ): Record<'update' | 'delete' | 'restore', CapabilityDecision> {
     return {
       update: this.capabilities.resolve(
         SNIPPET_PRESETS.update,
@@ -115,14 +115,17 @@ export class SnippetPolicy {
         subject,
         record,
       ),
+      restore: canRestoreSnippet(subject, record),
     };
   }
 
   metaCapabilities(
     subject: CapabilitySubject,
-  ): Record<'create', CapabilityDecision> {
+  ): Record<'create' | 'hardDelete' | 'listTrashed', CapabilityDecision> {
     return {
       create: canCreateSnippet(subject),
+      hardDelete: canHardDeleteSnippet(subject),
+      listTrashed: canListTrashedSnippet(subject),
     };
   }
 }

@@ -11,6 +11,7 @@ import {
   messagesOfDetails,
   mutate,
   splitIssues,
+  versionPartOf,
 } from './resource';
 import type { BatchEntry, ResourceDescription, ResourceRow } from './resource';
 
@@ -126,7 +127,15 @@ function formFor(
         const body =
           mode === 'create'
             ? { data: [payload] }
-            : { data: [{ id: row?.id, ...payload }] };
+            : {
+                data: [
+                  {
+                    id: row?.id,
+                    ...versionPartOf(context.description, row),
+                    ...payload,
+                  },
+                ],
+              };
         const [entry] = await mutate(context.base, mode, body);
         const failure = failureOfEntry(entry);
 

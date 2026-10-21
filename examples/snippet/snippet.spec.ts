@@ -62,14 +62,18 @@ describe('Snippet resource', () => {
         fields: Array<{ name: string }>;
         limits?: number[];
         paginated: boolean;
+        softDeletes: boolean;
+        relations: string[];
         rules: { create: { required?: string[] } };
       };
     };
     expect(body.data.fields.map((field) => field.name)).toEqual(['title']);
     expect(body.data.paginated).toBe(true);
+    expect(body.data.softDeletes).toBe(true);
     expect(body.data).toMatchObject({
       versioned: { field: 'version', header: 'If-Match' },
     });
+    expect(body.data.relations).toEqual([]);
     expect(body.data.limits).toEqual([10, 20]);
     expect(body.data.rules.create.required).toEqual(['title']);
   });
@@ -141,20 +145,28 @@ describe('Snippet resource', () => {
 
     const response = await request(app.getHttpServer())
       .post('/snippets/search')
-      .send({ capabilities: ['update'] })
+      .send({ capabilities: ['update', 'delete', 'restore'] })
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(200);
 
     const body = response.body as {
-      data: Array<{ capabilities: { update: { allowed: boolean } } }>;
+      data: Array<{ capabilities: Record<string, { allowed: boolean }> }>;
       meta: unknown;
     };
     expect(body.data.length).toBeGreaterThan(0);
-    expect(body.data[0]?.capabilities.update.allowed).toBe(true);
+    expect(body.data[0]?.capabilities.update?.allowed).toBe(true);
+    expect(Object.keys(body.data[0]?.capabilities ?? {}).sort()).toEqual([
+      'delete',
+      'restore',
+      'update',
+    ]);
     expect(body.meta).toMatchObject({
       capabilities: { create: { allowed: true, scope: 'own' } },
       channels: ['snippet'],
     });
+    expect(
+      (body.meta as { capabilities: Record<string, unknown> }).capabilities,
+    ).toHaveProperty('listTrashed');
   });
 
   it('returns a real 403 when someone other than the owner tries to update it', async () => {

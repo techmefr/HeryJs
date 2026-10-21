@@ -107,10 +107,19 @@ const SNIPPET_DESCRIBE = {
   // knows the search route returns every match, and that asking for a page is
   // an error rather than a no-op.
   paginated: true,
+  softDeletes: true,
   versioned: { field: 'version', header: 'If-Match' },
+  // The many-to-many relations the update route can attach to and detach from
+  // by id. A client builds its relation controls from this list and reads
+  // whether each is allowed from the record's own capabilities, so it neither
+  // guesses the relation names nor re-derives who may change them.
+  relations: [],
+  // A date has no JSON Schema form, and without this the whole module throws
+  // at load for any resource that declares a datetime field. The field list
+  // above still says which fields are dates.
   rules: {
-    create: z.toJSONSchema(createSnippetSchema),
-    update: z.toJSONSchema(updateSnippetSchema),
+    create: z.toJSONSchema(createSnippetSchema, { unrepresentable: 'any' }),
+    update: z.toJSONSchema(updateSnippetSchema, { unrepresentable: 'any' }),
   },
 };
 

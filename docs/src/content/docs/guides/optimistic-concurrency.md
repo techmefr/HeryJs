@@ -19,6 +19,8 @@ Off by default, so a resource that does not opt in keeps the schema it has today
 - a `version` on each update entry, or an `If-Match` header when the request carries a single entry.
 - `versioned: { field: 'version', header: 'If-Match' }` in `GET /<resource>/describe`, and the same field in the OpenAPI document and the typed client (`<Name>UpdateItem.version`).
 
+The admin reads `versioned` from `/describe`: its edit form and its relation attach/detach controls send the version of the row they were opened on, so a record changed by someone else in the meantime is refused with the conflict message instead of overwritten.
+
 A resource generated this way needs a migration adding the column; `hery generate` patches the schema the same way it does for `deletedAt`.
 
 ## Sending the version
