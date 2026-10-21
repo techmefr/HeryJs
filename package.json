@@ -118,6 +118,7 @@
     "test:module-specs": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-module-specs.json",
     "arch:check": "depcruise src --config .dependency-cruiser.cjs",
     "lint:conventions": "NODE_OPTIONS=--conditions=development ts-node scripts/check-conventions.ts",
+    "lint:admin-contract": "pnpm run lint:conventions admin-contract",
     "lint:capabilities": "pnpm run lint:conventions capabilities",
     "lint:scope-parity": "pnpm run lint:conventions scope-parity",
     "lint:rls": "pnpm run lint:conventions rls",
