@@ -66,4 +66,4 @@ The request is audited as `privacy.<kind>.requested` and `privacy.<kind>.complet
 
 ## The admin page
 
-The admin panel lists `GET /privacy/requests` as a section from introspection alone. Its Privacy page adds what introspection cannot: request an export for a user id and download the JSON, erase a user or a tenant behind a prompt where the operator types the id to confirm, and see the history refresh with each request's status.
+The privacy routes contribute to the admin through the [admin contract](../admin/): `GET /privacy/requests` is the `@AdminSection` "Privacy requests" under the Compliance group, and the export and the two erasures are `@AdminAction` buttons (global scope, the erasures marked `danger` with a confirmation sentence). Each call is audited and each button is shown only to a caller whose capability allows it. Its Privacy page adds what introspection cannot: request an export for a user id and download the JSON, erase a user or a tenant behind a prompt where the operator types the id to confirm, and see the history refresh with each request's status.
