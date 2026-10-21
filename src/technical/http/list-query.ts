@@ -478,7 +478,11 @@ export function nextCursorFor(
 
   const last = records[records.length - 1]!;
 
-  if (sorts.some((sort) => !(sort.field in last))) {
+  if (
+    sorts.some(
+      (sort) => last[sort.field] === undefined || last[sort.field] === null,
+    )
+  ) {
     return null;
   }
 

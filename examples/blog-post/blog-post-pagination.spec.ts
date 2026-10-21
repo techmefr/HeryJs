@@ -113,9 +113,20 @@ describe('BlogPost pagination and caching', () => {
     });
 
     it('walks ties on the sort key without skipping or repeating a row', async () => {
+      const created: string[] = [];
+      for (let i = 1; i <= 12; i++) {
+        created.push(await createBlogPost(`cursor-tie-${i}`));
+      }
+      await prisma.blogPost.updateMany({
+        where: { id: { in: created } },
+        data: { createdAt: new Date('2020-01-01T00:00:00.000Z') },
+      });
       const seen: string[] = [];
       let cursor: string | null = null;
-      const body = { limit: 10, sorts: [{ field: 'title', direction: 'asc' }] };
+      const body = {
+        limit: 10,
+        sorts: [{ field: 'createdAt', direction: 'asc' }],
+      };
 
       for (let guard = 0; guard < 50; guard++) {
         const response = await search(cursor ? { ...body, cursor } : body);
@@ -131,6 +142,15 @@ describe('BlogPost pagination and caching', () => {
       }
 
       expect(new Set(seen).size).toBe(seen.length);
+      expect(seen).toEqual(expect.arrayContaining(created));
+    });
+
+    it('rejects a sort the blueprint does not declare', async () => {
+      await request(app.getHttpServer())
+        .post('/blog-posts/search')
+        .set('Authorization', `Bearer ${ownerToken}`)
+        .send({ limit: 10, sorts: [{ field: 'title', direction: 'asc' }] })
+        .expect(400);
     });
 
     it('rejects a cursor replayed under a different sort', async () => {
@@ -147,7 +167,7 @@ describe('BlogPost pagination and caching', () => {
         .send({
           limit: 10,
           cursor,
-          sorts: [{ field: 'title', direction: 'asc' }],
+          sorts: [{ field: 'createdAt', direction: 'asc' }],
         })
         .expect(400);
     });

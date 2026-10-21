@@ -908,6 +908,30 @@ describe('cursor pagination', () => {
   });
 });
 
+describe('cursor with a null sort value', () => {
+  it('is not offered, and a hand-built one is refused', () => {
+    const sorts = [
+      { field: 'createdAt', direction: 'desc' as const },
+      { field: 'id', direction: 'desc' as const },
+    ];
+    expect(
+      nextCursorFor([{ id: 'row-1', createdAt: null }], sorts, 1),
+    ).toBeNull();
+
+    const cursor = Buffer.from(
+      JSON.stringify({
+        sorts: [
+          { field: 'createdAt', direction: 'desc', value: null },
+          { field: 'id', direction: 'desc', value: 'row-1' },
+        ],
+      }),
+    ).toString('base64url');
+    expect(() => parseSearchRequest({ cursor }, contract)).toThrow(
+      InvalidQueryException,
+    );
+  });
+});
+
 describe('nextCursorFor', () => {
   const sorts = [
     { field: 'createdAt', direction: 'desc' as const },

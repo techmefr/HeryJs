@@ -55,8 +55,7 @@ function isCursorSortStep(value: unknown): value is CursorSortStep {
   return (
     typeof step.field === 'string' &&
     (step.direction === 'asc' || step.direction === 'desc') &&
-    (step.value === null ||
-      typeof step.value === 'string' ||
+    (typeof step.value === 'string' ||
       typeof step.value === 'number' ||
       typeof step.value === 'boolean')
   );
