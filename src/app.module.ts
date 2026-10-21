@@ -23,6 +23,7 @@ import { PruneModule } from '#technical/prune/prune.module';
 import { RateLimitModule } from '#technical/rate-limit/rate-limit.module';
 import { SchedulerModule } from '#technical/scheduler/scheduler.module';
 import { SecurityHeadersMiddleware } from '#technical/http/security-headers.middleware';
+import { EtagModule } from '#technical/http/etag.module';
 import { SeedersModule } from '#technical/seeders/seeders.module';
 import { StorageModule } from '#modules/storage/storage.module';
 import { TeamsModule } from '#technical/teams/teams.module';
@@ -75,6 +76,7 @@ import { redactedRequestSerializer } from '#technical/logging/redacted-request-s
     AuditModule,
     AuthModule,
     CacheModule,
+    EtagModule,
     EventsModule,
     ExportModule,
     ExpositionModule,
