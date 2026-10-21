@@ -52,6 +52,17 @@ export class CacheService implements OnModuleDestroy {
     );
   }
 
+  async take<T>(key: string): Promise<T | null> {
+    const results = await this.client
+      .multi()
+      .get(this.key(key))
+      .del(this.key(key))
+      .exec();
+    const raw = results?.[0]?.[1] as string | null | undefined;
+
+    return raw === null || raw === undefined ? null : (JSON.parse(raw) as T);
+  }
+
   async del(key: string): Promise<void> {
     await this.client.del(this.key(key));
   }

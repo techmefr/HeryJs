@@ -2,6 +2,7 @@ import { readFile, rm } from 'node:fs/promises';
 import * as path from 'node:path';
 import { InvalidStorageKeyException } from './invalid-storage-key.exception';
 import { LocalStorageDriver } from './local-storage.driver';
+import { StoragePresignUnsupportedException } from './storage-presign-unsupported.exception';
 
 const ESCAPING_KEYS = [
   '../escaped.txt',
@@ -76,5 +77,24 @@ describe('local storage keys', () => {
     await expect(driver.contentTypeOf('inside.txt')).resolves.toBe(
       'text/plain',
     );
+  });
+
+  it('has no presigned-PUT equivalent, and says so rather than pretending', async () => {
+    await expect(driver.presignPut()).rejects.toThrow(
+      StoragePresignUnsupportedException,
+    );
+  });
+
+  it('stats an object that exists', async () => {
+    await driver.put('inside.txt', Buffer.from('kept'), 'text/plain');
+
+    await expect(driver.stat('inside.txt')).resolves.toEqual({
+      size: 4,
+      contentType: 'text/plain',
+    });
+  });
+
+  it('stats a missing object as null', async () => {
+    await expect(driver.stat('never-written.txt')).resolves.toBeNull();
   });
 });
