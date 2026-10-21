@@ -26,6 +26,7 @@ export function buildServerSchema(nodeEnv: string | undefined) {
       'dev-signal-secret-change-in-production',
     ),
     SSE_TOKEN_SECRET: devOnlySecret('dev-sse-secret-change-in-production'),
+    OAUTH_STATE_SECRET: devOnlySecret('dev-oauth-secret-change-in-production'),
     STORAGE_URL_SECRET: devOnlySecret(
       'dev-storage-secret-change-in-production',
     ),
@@ -92,6 +93,21 @@ export function buildServerSchema(nodeEnv: string | undefined) {
     AUTH_GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
     AUTH_GITHUB_CLIENT_ID: z.string().min(1).optional(),
     AUTH_GITHUB_CLIENT_SECRET: z.string().min(1).optional(),
+    OAUTH_LINK_POLICY: z
+      .enum(['refuse', 'link-authenticated', 'link-verified'])
+      .default('refuse'),
+    OAUTH_ALLOW_SIGN_UP: z
+      .string()
+      .default('true')
+      .transform((value) => value === 'true'),
+    OAUTH_REDIRECT_BASE_URL: z.url().optional(),
+    OAUTH_MICROSOFT_TENANT: z.string().min(1).default('common'),
+    OAUTH_GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+    OAUTH_GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+    OAUTH_GITHUB_CLIENT_ID: z.string().min(1).optional(),
+    OAUTH_GITHUB_CLIENT_SECRET: z.string().min(1).optional(),
+    OAUTH_MICROSOFT_CLIENT_ID: z.string().min(1).optional(),
+    OAUTH_MICROSOFT_CLIENT_SECRET: z.string().min(1).optional(),
   });
 }
 

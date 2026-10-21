@@ -108,6 +108,7 @@ export default defineConfig({
                   slug: 'guides/peer',
                 },
                 { label: 'Server-Sent Events', slug: 'guides/sse' },
+                { label: 'Social sign-in', slug: 'guides/oauth' },
                 { label: 'Mail', slug: 'guides/mail' },
                 { label: 'Notifier', slug: 'guides/notifier' },
                 { label: 'Storage', slug: 'guides/storage' },

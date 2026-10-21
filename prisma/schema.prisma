@@ -378,4 +378,15 @@ model IdempotencyKey {
 
   @@unique([tenantId, key])
   @@index([tenantId])
+
+model OauthIdentity {
+  id             String   @id @default(cuid())
+  userId         String
+  provider       String
+  providerUserId String
+  email          String?
+  createdAt      DateTime @default(now())
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
 }
