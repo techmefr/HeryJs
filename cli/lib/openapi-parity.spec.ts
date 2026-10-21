@@ -59,7 +59,7 @@ const EXAMPLES = path.join(__dirname, '..', '..', 'examples');
 const contexts: ResourceContext[] = [
   buildResourceContext(loadBlueprint(path.join(EXAMPLES, 'blog-post.yaml'))),
   ...discoverResourceContexts(
-    path.join(EXAMPLES, 'openapi-fixture', 'blueprints'),
+    path.join(__dirname, 'fixtures', 'openapi', 'blueprints'),
   ),
 ];
 

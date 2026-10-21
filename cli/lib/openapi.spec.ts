@@ -22,7 +22,7 @@ const blogPost = buildResourceContext(
   loadBlueprint(path.join(EXAMPLES, 'blog-post.yaml')),
 );
 const fixtureContexts = discoverResourceContexts(
-  path.join(EXAMPLES, 'openapi-fixture', 'blueprints'),
+  path.join(__dirname, 'fixtures', 'openapi', 'blueprints'),
 );
 
 function documentOf(
@@ -74,7 +74,7 @@ describe('discoverResourceContexts', () => {
   });
 
   it('returns nothing for a directory that does not exist', () => {
-    expect(discoverResourceContexts(path.join(EXAMPLES, 'nope'))).toEqual([]);
+    expect(discoverResourceContexts(path.join(__dirname, 'fixtures', 'nope'))).toEqual([]);
   });
 });
 

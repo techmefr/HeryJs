@@ -13,7 +13,7 @@ const blogPost = buildResourceContext(
   loadBlueprint(path.join(EXAMPLES, 'blog-post.yaml')),
 );
 const fixtureContexts = discoverResourceContexts(
-  path.join(EXAMPLES, 'openapi-fixture', 'blueprints'),
+  path.join(__dirname, 'fixtures', 'openapi', 'blueprints'),
 );
 const generated = openApiClientFile([blogPost, ...fixtureContexts]);
 
