@@ -1,32 +1,36 @@
+<div align="center">
+
 # HeryJs
 
-**Generate once. Own your code. Structure everything.**
+**The batteries-included framework for NestJS.**<br>
+Generate secured, multi-tenant resources from a blueprint. Then own every line.
 
-[Documentation](https://techmefr.github.io/HeryJs/)
+[Documentation](https://techmefr.github.io/HeryJs/) · [Getting started](#getting-started) · [What's included](#whats-included) · [Security](#security) · [Contributing](#contributing)
 
-HeryJs is a framework built on top of [NestJS](https://nestjs.com) — the way Nuxt sits on Vue, or Adonis on Express. NestJS gives you the runtime; HeryJs gives you the project: a CLI that scaffolds a new app, generates secured resources into it, and installs the pieces most backends end up building by hand anyway. Nothing re-syncs, nothing runs a schema at request time. What you get is a normal, readable, ownable NestJS codebase from the first commit.
+![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![Node >=22.12](https://img.shields.io/badge/node-%3E%3D22.12-339933.svg)
+![NestJS](https://img.shields.io/badge/built%20on-NestJS-E0234E.svg)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-RLS-4169E1.svg)
+
+</div>
 
 ---
 
-## The problem
+NestJS gives you an excellent runtime and then stops at the plumbing. Auth, permissions, tenancy, jobs, real-time, audit, search: every project assembles them again, slightly differently, and the rules drift between the backend and the frontend.
 
-NestJS gives you an excellent foundation, but it stops at the plumbing. Auth, permissions, multi-tenancy, background jobs, real-time updates, audit trails — you assemble all of it yourself, project after project. Nest's first-party packages are great _adapters_, not _solutions_: they get you connected, then leave the rest to you.
+HeryJs is the missing layer — the way Nuxt sits on Vue, or Laravel gives PHP a home. A CLI scaffolds a project, generates fully wired resources into it, and installs the pieces most backends end up building by hand. Nothing re-syncs, nothing compiles a schema at request time. What you get is a plain, readable NestJS codebase from the first commit, and it is yours.
 
-Meanwhile, permission logic tends to drift. The backend enforces one set of rules, the frontend renders another, and the two slowly fall out of sync until someone finds a button that should have been disabled, or a request that should have been rejected.
+```bash
+pnpm dlx heryjs new my-app
+```
 
-Laravel developers know this feeling from the other side: strong conventions, a scaffold that gets you moving in minutes, an experience that lets you write business logic instead of glue code. That experience doesn't really exist yet on the NestJS side.
+## Why HeryJs
 
-## The approach
-
-HeryJs takes a deliberately different path from typical low-code or model-driven generators:
-
-- **Generate once, then disappear.** Run `hery generate`, get real NestJS files — a module, a controller, a service, a policy, DTOs. Nothing is regenerated later, nothing recompiles a schema at runtime. What you get is a normal, readable, ownable codebase from the first commit.
-- **No re-sync, no proxy layer.** Tools like Amplication or ZenStack keep a live connection between a schema and your running app. HeryJs doesn't. Once a resource exists, evolving it is just... writing NestJS code, the way you always have.
-- **Resolved decisions, not raw rules.** The backend never ships its permission rules to the frontend. It resolves them once, server-side, into plain decisions (`{ allowed, scope }`) attached to the data. The frontend uses them for UX. The backend re-checks everything, every time, regardless of what the frontend thinks it's allowed to do.
-- **Multi-tenancy as a foundation, not an afterthought.** Tenant isolation is resolved once per request and enforced underneath permissions — not bolted on when the app outgrows a single customer.
-- **A structure a machine can also read.** Every domain follows the same shape — the same file per concern, named after the resource, with an architecture linter that fails CI on a folder missing one — so both a human and a coding agent know exactly where to look. No exploration tax.
-
-This is a bet, not a certainty: that developers — and the agents increasingly writing code alongside them — prefer owning plain, predictable code over depending on a platform's lifecycle. Everything else follows from that bet.
+- **Generate once, then disappear.** `hery generate` writes real NestJS files — module, controller, service, policy, DTOs, view, factory, spec. The blueprint is never read again. There is no runtime magic to outlive, and no platform whose lifecycle you depend on.
+- **Secure by construction, and proven.** Every route carries a capability decision or a stated reason it cannot, and a rate-limit bucket. A route with neither fails CI. Every generated resource ships a test suite that boots the real app against a real database and proves the 403, the tenant boundary and the scope parity.
+- **Tenancy is the foundation.** The tenant is resolved once per request and enforced twice: in the Prisma client and by a Postgres row-level policy that fails closed.
+- **Decisions, not rules, reach the client.** Permissions resolve server-side into plain `{ allowed, scope }` decisions attached to the data. The frontend renders them; the backend re-checks everything, every time.
+- **Built to be read by machines too.** Every domain has the same files, named after the resource, and an architecture linter fails CI on a folder that breaks the shape. A person or a coding agent knows exactly where to look.
 
 ## Getting started
 
@@ -35,25 +39,95 @@ pnpm dlx heryjs new my-app
 cd my-app
 cp .env.example .env
 pnpm install
-pnpm hery up --start
+pnpm hery up --start      # compose services, ports written back to .env
 pnpm hery migrate --name init
 pnpm start:dev
 ```
 
-`heryjs new` scaffolds a fresh, standalone project: the kernel, the CLI, the seventeen modules, none of HeryJs's own demo or docs. The CLI travels into the project it creates, so every command after this one is `pnpm hery` from inside it — there is nothing global to install and nothing to keep in step with a release.
-
-`hery up --start` brings the compose services up and writes the ports Docker actually assigned back into `.env`; they are not fixed, so several projects can run side by side.
-
-From there, generate your first resource:
+Then generate your first resource:
 
 ```bash
 pnpm hery create:blueprint BlogPost
 pnpm hery generate blueprints/blog-post.yaml
 ```
 
-### From a clone
+`heryjs new` scaffolds a standalone project: the kernel, the CLI and the modules, none of HeryJs's own demo or docs. The CLI travels into the project, so every later command is `pnpm hery` from inside it. There is nothing global to install and nothing to keep in step with a release.
 
-Only to work on the framework itself. A clone is this repository — the demo resource, the docs site and the seventeen module workspaces — not a starting point for an application:
+## What a blueprint gives you
+
+A blueprint is a short description of intent: fields, relations, permission presets.
+
+```yaml
+name: BlogPost
+fields:
+  - name: title
+    type: string
+    translatable: true
+  - name: body
+    type: string
+  - name: embedding
+    type: vector
+    dimensions: 1536
+    source: body
+```
+
+One `hery generate` later you have ten files in `functional/blog-post/` and a Prisma model, and the resource already comes with:
+
+| | |
+|---|---|
+| **`search`** | One route for listing and reading, with filters, sorting, relations, cursor pagination, ETag and similarity search |
+| **`mutate`** | Create, update, soft-delete and restore, each taking an array, with an atomic mode and a per-entry report |
+| **Capabilities** | Permission decisions returned with the data, computed in memory, no per-row query |
+| **Isolation** | Tenant scoping underneath permissions, enforced by Prisma and by Postgres RLS |
+| **Concurrency** | Optional optimistic versioning, and `Idempotency-Key` on every mutating route |
+| **Real time** | A change feed over SSE and WebSocket, filtered per subscriber by its own permissions |
+| **Contract** | An OpenAPI 3.1 document and a typed client generated from the blueprint |
+| **Tests** | A generated suite proven for every resource, not only the example |
+
+## What's included
+
+A kernel that is always there, and modules you install only when you need them (`pnpm hery module:list`, `pnpm hery install <name>`).
+
+**In the kernel**
+
+- **Identity** — sessions, API keys, passwordless sign-in (magic link, email and phone OTP, passkeys), guest sessions, login lockout and session management
+- **Access** — capabilities and scopes, teams, tenancy with Postgres row-level security, admin impersonation with a bounded session
+- **Reliability** — BullMQ jobs with a retry policy and a dashboard, a scheduler, a transactional outbox, distributed locks, idempotency, rate limiting on by default
+- **Data** — migrations, seeders, factories, database branches, encrypted fields with key rotation, retention and pruning, translatable content fields
+- **Operations** — health probes, Prometheus metrics, OpenTelemetry traces, metrics and logs, an error-reporter contract, maintenance mode, structured log shipping, a request inspector and a persisted dev dashboard
+- **Delivery** — OpenAPI and a typed client, feature flags, an audit trail with a canonical hash chain, `hery doctor`, and an architecture linter
+
+**As modules**
+
+- **Auth** — two-factor (TOTP), social sign-in (OAuth), enterprise single sign-on (OIDC)
+- **Communication** — mail, SMS, push, and a notifier that composes them with per-user preferences, quiet hours and digests
+- **Real time** — WebSocket, server-sent events, WebRTC signalling, LiveKit streaming
+- **Search** — Prisma, Elasticsearch and Meilisearch drivers, plus vector search on pgvector with an embeddings module
+- **APIs** — GraphQL, an MCP gateway for agents, inbound webhooks with HMAC verification, an outbound HTTP client with a fake driver for tests
+- **Data in and out** — file storage with presigned uploads, CSV, XLSX and PDF export, import
+- **Money** — billing that mirrors a provider's subscription state and guards a quota (Stripe driver)
+- **Admin** — a dashboard that every module contributes a section to, with no registry to maintain
+
+Every module follows one convention: a module exposes one capability, a driver is one way of performing it, and swapping a transport is a line in `hery.config.ts` rather than a source edit. All of them are published as `@heryjs/<name>` and versioned with the kernel. See [Modules and drivers](https://techmefr.github.io/HeryJs/guides/modules-and-drivers/) and [Publishing a module](https://techmefr.github.io/HeryJs/guides/publishing-a-module/).
+
+## Where it stops
+
+HeryJs covers a common backend core and says plainly what it does not.
+
+- **Mail** ships a logging driver and a Resend driver. There is no SMTP driver, because choosing a transport carries deliverability and compliance consequences the framework has no opinion on.
+- **Storage** ships a local-disk driver. The S3 driver is in the tree but is not bound to a driver token yet, so using it takes one line of wiring you write.
+- **Not shipped yet:** outbound webhooks to your own customers, GDPR export and erasure tooling, database backups, SAML and SCIM, workflow engines and state machines, a circuit breaker on the HTTP client.
+- **API only.** There is no server-rendered view layer; the admin dashboard is the one UI.
+
+For anything outside that core, you write ordinary NestJS in a clean, conventional project. HeryJs never gets in the way, and it does not pretend to replace judgment.
+
+## Security
+
+Every request goes through the same four steps — who is calling, which tenant, what they may do, what they sent — and the tenant boundary is enforced in the Prisma client and again by a Postgres policy. The security model, and what it deliberately leaves to you, is written out in [the security guide](https://techmefr.github.io/HeryJs/guides/security/). To report a vulnerability, see [SECURITY.md](SECURITY.md).
+
+## Working on the framework
+
+A clone of this repository is the framework itself — the demo resource, the docs site and the module workspaces — not a starting point for an application:
 
 ```bash
 git clone https://github.com/techmefr/HeryJs.git
@@ -63,73 +137,10 @@ pnpm run db:generate
 pnpm hery up --start
 ```
 
-## What it generates
-
-A resource in HeryJs starts as a short blueprint describing intent — fields, relations, its permission presets. Tenancy is not one of the choices: every generated resource is tenant-scoped, in the Prisma extension and behind a Postgres row-level policy. From that, `hery generate` produces:
-
-```
-functional/
-  blog-post/
-    blog-post.module.ts
-    blog-post.controller.ts
-    blog-post.service.ts
-    blog-post.policy.ts
-    blog-post.presets.ts
-    blog-post.dto.ts
-    blog-post.view.ts
-    blog-post-record.loader.ts
-    blog-post.factory.ts
-    blog-post.spec.ts
-prisma/
-  schema.prisma
-```
-
-Out of the box, that resource comes with:
-
-- **`search`** — one route for listing and for reading a single record, with filters, sorting, relations, and pagination when the blueprint asks for it
-- **`mutate`** — create, update, soft-delete, restore, each taking an array so one call can carry many records
-- **Capabilities** — resolved permission decisions returned alongside the data for whichever ones the request names, computed in memory, no per-row query
-- **Multi-tenant isolation** — enforced automatically, underneath permissions
-- **Auth** — session-based login wired in from the start, plus API keys for CI and scripts
-- **A generated test suite** — scope parity, the trashed bin, resolved capabilities, tenant-header spoofing, proven for every resource, not just the example
-
-The blueprint is never read again after generation. It becomes historical documentation, nothing more. From that point on, the code is yours: edit it by hand like any other NestJS module.
-
-## What's included
-
-Every project starts with a kernel that's always there — auth, capabilities, multi-tenancy, teams, audit, feature flags, request inspector, scheduler, an interactive console, health checks and metrics — plus a growing set of modules you install only when you need them:
-
-```bash
-pnpm hery module:list
-pnpm hery install <module>
-```
-
-Search (Prisma, Elasticsearch, Meilisearch), GraphQL, MCP (read and write), real-time (`live`, WebSocket), streaming (LiveKit), mail, file storage, exports (CSV built in, XLSX and PDF as driver packages), imports, an outbound HTTP client with a fake driver for tests, admin impersonation, inbound webhooks with HMAC signature verification, and an admin dashboard (`admin-astro`) that every module contributes a section to automatically, with no registry to maintain.
-
-Every one of them follows a single convention: a module exposes one capability, a driver is one way of performing it, and swapping mail transports or export formats is a line in `hery.config.ts` rather than a source edit. See [Modules and drivers](https://techmefr.github.io/HeryJs/guides/modules-and-drivers/).
-
-All seventeen are published as `@heryjs/<name>` and versioned with the kernel, so a module can be added to a project that wasn't scaffolded with it, and a module you write yourself declares exactly what those do — the two channels are the same contract. See [Publishing a module](https://techmefr.github.io/HeryJs/guides/publishing-a-module/).
-
-## What it deliberately does not do
-
-HeryJs covers a common backend core. It does not try to be a solution for everything. Billing, PDF-perfect document generation, workflow engines — for those, you write ordinary NestJS code in a clean, conventional project.
-
-It is also worth being precise about where the modules stop. Mail ships a driver that logs and a driver that posts to Resend; **no SMTP driver ships**, because choosing a transport has deliverability and compliance consequences the framework has no opinion on. Storage ships a local-disk driver; the S3 driver is in the tree but is not yet bound to a driver token, so declaring it needs one line of wiring you write. Export ships CSV; XLSX and PDF are separate packages carrying `exceljs` and `pdfkit`, and neither is installed in this repository, so both are typechecked rather than proven. The HTTP client's real driver is `ofetch`, which is likewise declared and not installed here.
-
-HeryJs never gets in the way, but it doesn't pretend to replace judgment either.
-
-## Status
-
-The vertical slice, the widening of features, and a hardening pass (opt-in row-level security, an adversarial security review, a more robust generator) are done. Since then: teams as a first-class permission scope, a module system with a growing catalog (search drivers, GraphQL, MCP, live, stream, mail, storage, export, import, HTTP client, impersonation), a single module-and-drivers convention every one of them follows, and a kernel events bus, an admin dashboard every module plugs into automatically, a layered architecture enforced by an actual linter, and `hery new` — a real starting point for a project that isn't this repository. A pre-publication external audit has since closed out a round of fixes: tenant-safe search indexing, actor tracking on the audit trail, `hery.config.ts` as a real closed-config point, keyword-selected search engines, a bounded impersonation session with its own admin-on-admin test, and API keys for non-interactive callers. See the [commit history](https://github.com/techmefr/HeryJs/commits/main) for the detail.
-
-## Security
-
-Every request goes through the same four steps — who is calling, which tenant, what they may do, what they sent — and the tenant boundary is enforced twice, once in the Prisma client and once by a Postgres row-level policy that fails closed. What that covers, and what it deliberately leaves to you (rate limiting, for one), is written out in [the security model](https://techmefr.github.io/HeryJs/guides/security/). To report a vulnerability, see [SECURITY.md](SECURITY.md).
-
 ## Contributing
 
-HeryJs is a personal project, built in the open, and it's still small enough that one conversation with a maintainer can shape its direction. If you generate a resource and something feels off, or you have a use case the current conventions don't cover well, open an issue. Pull requests are welcome too, especially ones that come with the same "prove it end-to-end, then keep only what's proven" discipline the project holds itself to (see [CONTRIBUTING.md](CONTRIBUTING.md)).
+HeryJs is built in the open and is still small enough that one conversation with a maintainer can shape its direction. If you generate a resource and something feels off, or you have a use case the current conventions do not cover, open an issue. Pull requests are welcome, especially ones that follow the project's own discipline: prove it end to end, then keep only what is proven. See [CONTRIBUTING.md](CONTRIBUTING.md) and the [changelog](CHANGELOG.md).
 
 ## License
 
-MIT.
+[MIT](LICENSE)

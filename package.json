@@ -1,7 +1,7 @@
 {
   "name": "heryjs",
   "version": "0.1.0",
-  "description": "A framework built on top of NestJS. Generate once, own your code.",
+  "description": "The batteries-included framework for NestJS: generate secured, multi-tenant resources from a blueprint, then own every line. Auth, RBAC, Postgres RLS, jobs, real time, vector search, OpenAPI.",
   "author": "Gaetan Compigni",
   "license": "MIT",
   "homepage": "https://techmefr.github.io/HeryJs/",
@@ -14,13 +14,31 @@
   },
   "keywords": [
     "nestjs",
+    "nestjs-framework",
+    "typescript",
     "framework",
+    "backend",
+    "api",
+    "rest-api",
     "scaffolding",
     "code-generator",
+    "boilerplate",
     "prisma",
+    "postgresql",
     "multi-tenant",
+    "saas",
+    "rbac",
     "authorization",
-    "cli"
+    "authentication",
+    "row-level-security",
+    "graphql",
+    "mcp",
+    "openapi",
+    "realtime",
+    "websocket",
+    "bullmq",
+    "cli",
+    "batteries-included"
   ],
   "engines": {
     "node": ">=22.12"
