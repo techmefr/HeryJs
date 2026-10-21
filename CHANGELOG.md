@@ -95,6 +95,10 @@ Twelve packages, versioned together:
   unless `reveal: true`, redacted in the audit chain and refused in filters and
   sorts. Keys are versioned in `SECRETS_KEYS`; `SecretsService` seals values
   that are not columns and `hery secrets:rotate` re-encrypts to the active key.
+- `/health` is now fed by a registry any module registers a check on, and
+  `/health/live` and `/health/ready` give an orchestrator the two probes
+  separately, public and carrying only ok or error. The report no longer names
+  a `redis` check: it reports `cache` and `queue`.
 - An architecture linter that fails CI on a domain missing a concern, plus
   fourteen convention checks covering capabilities, pagination, RLS, rate
   limiting, module drift and patched kernel files.
