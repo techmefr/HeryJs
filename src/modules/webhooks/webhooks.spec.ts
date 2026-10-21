@@ -49,6 +49,11 @@ class WebhookActionFixture {
     webhookRuns.push({ amount: -2, tenantId: 'optedOut' });
   }
 }
+import {
+  clearWebhookHandlers,
+  registerWebhookHandler,
+} from '#technical/webhooks/webhook-handler';
+import type { WebhookEventRecord } from '#technical/webhooks/webhook-handler';
 
 function sign(secret: string, timestamp: string, body: string): string {
   return createHmac('sha256', secret)
@@ -304,5 +309,38 @@ describe('Webhooks', () => {
 
   it('refuses to bind an endpoint to an action the creator may not run', async () => {
     await mintEndpoint('expose:webhookfixture.closed', 403);
+  });
+
+  it('hands an event to the handler registered for its source and to no other', async () => {
+    const { endpoint } = await mintEndpoint('handled-source', 201);
+    const handled: WebhookEventRecord[] = [];
+    const ignored: WebhookEventRecord[] = [];
+    registerWebhookHandler({
+      source: 'handled-source',
+      handle: (event) => {
+        handled.push(event);
+        return Promise.resolve();
+      },
+    });
+    registerWebhookHandler({
+      source: 'other-source',
+      handle: (event) => {
+        ignored.push(event);
+        return Promise.resolve();
+      },
+    });
+
+    const eventId = await post(endpoint, { event: 'ping' });
+
+    await waitForProcessed(eventId);
+    clearWebhookHandlers();
+
+    expect(handled).toHaveLength(1);
+    expect(handled[0]).toMatchObject({
+      id: eventId,
+      source: 'handled-source',
+      payload: { event: 'ping' },
+    });
+    expect(ignored).toHaveLength(0);
   });
 });
