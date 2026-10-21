@@ -157,6 +157,7 @@ export const TENANT_FREE_MODELS = new Set<string>([
   // Email-verification and password-reset tokens, looked up by their own value
   // before any session exists, so there is no tenant to scope the lookup by.
   'Verification',
+  'OauthIdentity',
 ]);
 
 /**
