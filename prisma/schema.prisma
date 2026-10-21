@@ -660,10 +660,12 @@ model Snippet {
   tenantId  String
   ownerId   String
   title     String
+  summary   String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
   version   Int       @default(1)
+  status    String    @default("draft")
 
   owner User @relation(fields: [ownerId], references: [id])
 

@@ -71,6 +71,14 @@ export const CATALOGUE: Catalogue = {
   'record.notFound': {
     fr: (details) => `${String(details.resource)} introuvable.`,
   },
+  'workflow.illegalTransition': {
+    fr: (details) =>
+      `${String(details.resource)} ne peut pas « ${String(details.transition)} » depuis « ${String(details.current)} ».`,
+  },
+  'workflow.guardFailed': {
+    fr: (details) =>
+      `${String(details.resource)} ne peut pas « ${String(details.transition)} » tant que ${(details.missing as unknown[]).join(', ')} n'est pas renseigné.`,
+  },
   'record.alreadyRestored': {
     fr: (details) =>
       `${String(details.resource)} n'est pas dans la corbeille, il ne peut donc pas être restauré.`,

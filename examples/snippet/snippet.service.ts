@@ -29,16 +29,31 @@ import {
   isLostRaceError,
 } from '#technical/http/record-version';
 import type { ExpectedVersion } from '#technical/http/record-version';
+import { IllegalTransitionException } from '#technical/errors/illegal-transition.exception';
+import {
+  assertTransitionAllowed,
+  recordTransition,
+} from '#technical/workflow/workflow';
+import type { TransitionRule } from '#technical/workflow/workflow';
 import type { RelationInstruction } from '#technical/http/list-query';
 import { CreateSnippetInput, UpdateSnippetInput } from './snippet.dto';
 import { SNIPPET_PRESETS } from './snippet.presets';
 
-const SEARCHABLE_FIELDS = ['title'] as const;
+const SEARCHABLE_FIELDS = ['title', 'summary'] as const;
 const SEARCH_COLLECTION = 'snippet';
+export const SNIPPET_WORKFLOW_FIELD = 'status';
+// The edges, as the blueprint declared them. The only way the state column
+// changes is transition() reading this table.
+export const SNIPPET_TRANSITION_RULES = {
+  publish: { from: ['draft'], to: 'published', requires: ['summary'] },
+  archive: { from: ['draft', 'published'], to: 'archived', requires: [] },
+  reopen: { from: ['archived'], to: 'draft', requires: [] },
+} as const satisfies Record<string, TransitionRule>;
+export type SnippetTransition = keyof typeof SNIPPET_TRANSITION_RULES;
 const HISTORY_MODEL = 'Snippet';
 // What a restore writes back: the blueprint's fields minus anything hidden or
 // encrypted, which history never stored and so can neither show nor restore.
-const HISTORY_REVERTIBLE_FIELDS = ['title'] as const;
+const HISTORY_REVERTIBLE_FIELDS = ['title', 'summary'] as const;
 
 export interface SnippetSearchOptions {
   withTrashed?: boolean;
@@ -264,6 +279,57 @@ export class SnippetService {
           expected.value,
           null,
           expected.source,
+        );
+      }
+
+      throw error;
+    }
+  }
+
+  // Moves the record along one declared edge. The legality is checked first
+  // (current state, then the guard), and the write repeats the state it read
+  // in its own where clause, so two callers firing from the same state cannot
+  // both succeed. The audit entry and the outbox event are written in the same
+  // transaction as the new state.
+  async transition(record: Snippet, name: SnippetTransition) {
+    const rule = SNIPPET_TRANSITION_RULES[name];
+    const current = record.status;
+
+    assertTransitionAllowed('snippet', name, rule, record, current);
+
+    try {
+      const updated = await this.prisma.$atomic(async () => {
+        const written = await this.prisma.snippet.update({
+          where: { id: record.id, status: current },
+          data: { status: rule.to, version: { increment: 1 } },
+        });
+        const ambient = AmbientTransactionStorage.current();
+
+        if (!ambient) {
+          throw new Error('$atomic runs its callback inside a transaction');
+        }
+
+        await recordTransition(ambient.tx, {
+          tenantId: record.tenantId,
+          model: 'Snippet',
+          recordId: record.id,
+          transition: name,
+          from: current,
+          to: rule.to,
+        });
+
+        return written;
+      });
+      this.notify();
+      await this.syncSearchIndex(updated);
+      return updated;
+    } catch (error) {
+      if (isLostRaceError(error)) {
+        throw new IllegalTransitionException(
+          'snippet',
+          name,
+          current,
+          rule.from,
         );
       }
 

@@ -398,6 +398,17 @@ export function pathsFor(ctx: ResourceContext): PathItems {
     );
   }
 
+  if (ctx.workflow) {
+    paths[`${base}/transition`] = mutation(
+      ctx,
+      'Transition',
+      `Move ${ctx.pluralCamelName} along a declared transition`,
+      `${name}TransitionRequest`,
+      ref(name),
+      true,
+    );
+  }
+
   if (ctx.history) {
     Object.assign(paths, historyPaths(ctx));
   }

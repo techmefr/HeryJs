@@ -26,6 +26,22 @@ import {
 } from './field-types';
 import { camelCase, screamingSnakeCase } from './naming';
 import {
+  workflowCapabilityKeys,
+  workflowCapabilityLines,
+  workflowControllerImports,
+  workflowControllerTypeImports,
+  workflowDescribe,
+  workflowDtoBlock,
+  workflowPolicyBlock,
+  workflowPolicyImports,
+  workflowPresetsBlock,
+  workflowRoute,
+  workflowServiceConstants,
+  workflowServiceImports,
+  workflowServiceMethods,
+  workflowSpecBlock,
+} from './workflow-templates';
+import {
   vectorConstructorParameter,
   vectorConstructorBody,
   vectorSearchDispatch,
@@ -80,7 +96,7 @@ export const ${ctx.screamingSnakeName}_PRESETS = {
   'view' | 'create' | 'update' | 'delete',
   PermissionPreset
 >;
-`;
+${workflowPresetsBlock(ctx)}`;
 }
 
 function translatableFields(ctx: ResourceContext): ResourceContext['fields'] {
@@ -280,7 +296,7 @@ export type Delete${ctx.pascalName}RequestBody = z.infer<
   typeof delete${ctx.pascalName}RequestSchema
 >;
 `
-}`;
+}${workflowDtoBlock(ctx)}`;
 }
 
 function relationPolicyBlock(ctx: ResourceContext): string {
@@ -323,6 +339,7 @@ function recordCapabilityKeyList(ctx: ResourceContext): string[] {
     keys.push(`attach${pascalRelation}`, `detach${pascalRelation}`);
   }
 
+  keys.push(...workflowCapabilityKeys(ctx));
   keys.push(...historyCapabilityKeys(ctx));
 
   return keys;
@@ -359,6 +376,7 @@ function recordCapabilityLines(ctx: ResourceContext): string {
     );
   }
 
+  lines.push(...workflowCapabilityLines(ctx));
   lines.push(...historyCapabilityLines(ctx));
 
   return lines.length > 0 ? '\n' + lines.join('\n') : '';
@@ -385,7 +403,7 @@ import {
   CapabilityDecision,
   CapabilitySubject,
 } from '#technical/capabilities/capabilities.types';
-import { ${ctx.screamingSnakeName}_PRESETS } from './${ctx.kebabName}.presets';${
+import { ${ctx.screamingSnakeName}_PRESETS${ctx.workflow ? `, ${ctx.screamingSnakeName}_TRANSITION_PRESETS` : ''} } from './${ctx.kebabName}.presets';${
     ctx.sharing
       ? `
 import type { RecordShare } from '#technical/capabilities/capabilities.types';`
@@ -487,7 +505,7 @@ export const canListTrashed${ctx.pascalName}: PolicyCheck = (subject) =>
 
 `
     : ''
-}@Injectable()
+}${workflowPolicyBlock(ctx)}@Injectable()
 export class ${ctx.pascalName}Policy {
   constructor(private readonly capabilities: CapabilitiesService) {}
 
@@ -620,7 +638,7 @@ import type { TranslatableRow } from '#technical/i18n/translatable-query';
       : ''
   }${richtextFields(ctx).length > 0 ? `import { sanitizeRichtextWrite } from '#technical/richtext/richtext';\n` : ''}import { resolveRelationInstructions } from '#technical/http/relation-resolver';
 import type { PrismaRelationClient } from '#technical/http/relation-resolver';
-${ctx.versioned ? `import { VersionConflictException } from '#technical/errors/version-conflict.exception';\nimport { assertVersionIsCurrent, isLostRaceError } from '#technical/http/record-version';\nimport type { ExpectedVersion } from '#technical/http/record-version';\n` : ''}import type { RelationInstruction${childIncludes.length > 0 ? ', ParsedListQuery' : ''} } from '#technical/http/list-query';${ctx.relations.length > 0 ? `\nimport { applyRelationMutation } from '#technical/http/relation-mutations';\nimport type { PivotDelegate, RelatedDelegate } from '#technical/http/relation-mutations';\nimport { MAX_BATCH_ENTRIES } from '#technical/http/batch';` : ''}
+${ctx.versioned ? `import { VersionConflictException } from '#technical/errors/version-conflict.exception';\nimport { assertVersionIsCurrent, isLostRaceError } from '#technical/http/record-version';\nimport type { ExpectedVersion } from '#technical/http/record-version';\n` : ''}${workflowServiceImports(ctx)}import type { RelationInstruction${childIncludes.length > 0 ? ', ParsedListQuery' : ''} } from '#technical/http/list-query';${ctx.relations.length > 0 ? `\nimport { applyRelationMutation } from '#technical/http/relation-mutations';\nimport type { PivotDelegate, RelatedDelegate } from '#technical/http/relation-mutations';\nimport { MAX_BATCH_ENTRIES } from '#technical/http/batch';` : ''}
 import {
   Create${ctx.pascalName}Input,${ctx.relations.length > 0 ? `\n  RelationMutationInput,` : ''}
   Update${ctx.pascalName}Input,
@@ -628,7 +646,7 @@ import {
 import { ${ctx.screamingSnakeName}_PRESETS } from './${ctx.kebabName}.presets';${richtextFields(ctx).length > 0 ? `\nimport { RICHTEXT_FIELDS } from './${ctx.kebabName}.dto';` : ''}
 
 const SEARCHABLE_FIELDS = [${searchableFields.map((name) => `'${name}'`).join(', ')}] as const;
-const SEARCH_COLLECTION = '${ctx.kebabName}';${vectorServiceConstants(ctx)}${historyServiceConstants(ctx)}${
+const SEARCH_COLLECTION = '${ctx.kebabName}';${vectorServiceConstants(ctx)}${workflowServiceConstants(ctx)}${historyServiceConstants(ctx)}${
     hasTranslatable
       ? `
 const TRANSLATABLE_FIELDS: readonly TranslatableFieldSpec[] = ${translatableFieldsLiteral(ctx)};
@@ -1071,9 +1089,9 @@ ${richtextFields(ctx).length > 0 ? `    data = sanitizeRichtextWrite(data, RICHT
     return updated;
   }`
 }
-${ctx.relations
-  .map(
-    (relation) => `
+${workflowServiceMethods(ctx)}${ctx.relations
+    .map(
+      (relation) => `
   async sync${pascalRelationName(relation)}(record: ${ctx.modelPascalName}, input: RelationMutationInput) {
     return applyRelationMutation(
       this.prisma.${relation.pivotDelegate} as unknown as PivotDelegate,
@@ -1086,8 +1104,8 @@ ${ctx.relations
     );
   }
 `,
-  )
-  .join('')}
+    )
+    .join('')}
 ${
   ctx.softDeletes
     ? `  /**
@@ -1405,6 +1423,7 @@ export function controllerFile(ctx: ResourceContext): string {
     'updatedAt',
     ...(ctx.softDeletes ? ['deletedAt'] : []),
     ...(ctx.versioned ? ['version'] : []),
+    ...(ctx.workflow ? [ctx.workflow.field] : []),
   ];
   const childIncludes = ownRouteIncludes(ctx);
   const hasParentRoutes =
@@ -1453,13 +1472,13 @@ import {
   create${ctx.pascalName}RequestSchema,
   create${ctx.pascalName}Schema,
   delete${ctx.pascalName}RequestSchema,${ctx.softDeletes ? `\n  restore${ctx.pascalName}RequestSchema,` : ''}
-  update${ctx.pascalName}RequestSchema,
+${workflowControllerImports(ctx)}  update${ctx.pascalName}RequestSchema,
   update${ctx.pascalName}Schema,
 } from './${ctx.kebabName}.dto';
 import type {
   Create${ctx.pascalName}RequestBody,
   Delete${ctx.pascalName}RequestBody,${ctx.softDeletes ? `\n  Restore${ctx.pascalName}RequestBody,` : ''}
-  Update${ctx.pascalName}RequestBody,
+${workflowControllerTypeImports(ctx)}  Update${ctx.pascalName}RequestBody,
 } from './${ctx.kebabName}.dto';
 import {${ctx.relations
     .map(
@@ -1486,7 +1505,7 @@ ${
 }  canUpdate${ctx.pascalName},
   canUpdateAny${ctx.pascalName},${ctx.sharing ? `\n  canShare${ctx.pascalName},` : ''}${childIncludes.length > 0 || ctx.relations.length > 0 ? `\n  canView${ctx.pascalName},` : ''}${historyPolicyImports(ctx)}
   canViewAny${ctx.pascalName},
-  ${ctx.pascalName}Policy,
+  ${ctx.pascalName}Policy,${workflowPolicyImports(ctx)}
 } from './${ctx.kebabName}.policy';
 import {
   ${ctx.screamingSnakeName}_SIGNAL_CHANNEL,
@@ -1528,7 +1547,7 @@ ${ctx.fields.map((field) => `    { name: '${field.name}', type: '${field.type}',
   // knows the search route returns every match, and that asking for a page is
   // an error rather than a no-op.
   paginated: ${ctx.pagination ? 'true' : 'false'},
-  softDeletes: ${ctx.softDeletes ? 'true' : 'false'},${ctx.versioned ? `\n  versioned: { field: 'version', header: 'If-Match' },` : ''}${ctx.history ? `\n  history: true,` : ''}${ctx.sharing ? `\n  sharing: true,` : ''}
+  softDeletes: ${ctx.softDeletes ? 'true' : 'false'},${ctx.versioned ? `\n  versioned: { field: 'version', header: 'If-Match' },` : ''}${ctx.history ? `\n  history: true,` : ''}${ctx.sharing ? `\n  sharing: true,` : ''}${workflowDescribe(ctx)}
   // The many-to-many relations the update route can attach to and detach from
   // by id. A client builds its relation controls from this list and reads
   // whether each is allowed from the record's own capabilities, so it neither
@@ -1854,6 +1873,7 @@ ${
     return ok(results, meta);
   }
 
+${workflowRoute(ctx)}
   @Post('update')
   @Capability(canUpdateAny${ctx.pascalName})
   async update(
@@ -4695,7 +4715,7 @@ ${
   });
 `
     : ''
-}${relationSpecBlock(ctx, createBody)}${translatableSpecBlock(ctx, createBody)}${richtextSpecBlock(ctx, createBody)}${privacySpecBlock(ctx, createBody)}});
+}${canCreateAny ? workflowSpecBlock(ctx, createBody) : ''}${relationSpecBlock(ctx, createBody)}${translatableSpecBlock(ctx, createBody)}${richtextSpecBlock(ctx, createBody)}${privacySpecBlock(ctx, createBody)}});
 `;
 }
 
@@ -4739,7 +4759,7 @@ export function viewFile(ctx: ResourceContext): string {
   ownerId: z.string(),${ownedByTeam(ctx) ? `\n  teamId: z.string(),` : ''}
 ${visibleFieldLines}
   createdAt: z.coerce.date(),
-  updatedAt: z.coerce.date(),${ctx.softDeletes ? `\n  deletedAt: z.coerce.date().nullable(),` : ''}${ctx.versioned ? `\n  version: z.number().int(),` : ''}
+  updatedAt: z.coerce.date(),${ctx.softDeletes ? `\n  deletedAt: z.coerce.date().nullable(),` : ''}${ctx.versioned ? `\n  version: z.number().int(),` : ''}${ctx.workflow ? `\n  ${ctx.workflow.field}: z.string(),` : ''}
 });
 export type ${ctx.pascalName}View = z.infer<typeof ${ctx.camelName}ViewSchema>;
 `;
@@ -4835,7 +4855,7 @@ model ${ctx.pascalName} {
   ownerId   String${ownedByTeam(ctx) ? `\n  teamId    String` : ''}
 ${customFieldLines}${vectorLine}
   createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt${ctx.softDeletes ? `\n  deletedAt DateTime?` : ''}${ctx.versioned ? `\n  version   Int       @default(1)` : ''}
+  updatedAt DateTime  @updatedAt${ctx.softDeletes ? `\n  deletedAt DateTime?` : ''}${ctx.versioned ? `\n  version   Int       @default(1)` : ''}${ctx.workflow ? `\n  ${ctx.workflow.field.padEnd(9)} String    @default("${ctx.workflow.initial}")` : ''}
 
   owner User @relation(fields: [ownerId], references: [id])${ownedByTeam(ctx) ? `\n  team  Team @relation(fields: [teamId], references: [id])` : ''}
 

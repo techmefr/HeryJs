@@ -9,7 +9,7 @@ import {
   CapabilityDecision,
   CapabilitySubject,
 } from '#technical/capabilities/capabilities.types';
-import { SNIPPET_PRESETS } from './snippet.presets';
+import { SNIPPET_PRESETS, SNIPPET_TRANSITION_PRESETS } from './snippet.presets';
 import type { RecordShare } from '#technical/capabilities/capabilities.types';
 
 export interface SnippetRecordLike {
@@ -131,6 +131,44 @@ export const canViewAnySnippet: PolicyCheck = (subject) =>
 export const canListTrashedSnippet: PolicyCheck = (subject) =>
   resolveCollectionCapability(SNIPPET_PRESETS.delete, subject);
 
+// Its own capability: being allowed to edit a snippet does not make
+// "publish" yours to fire. The preset comes from the blueprint's
+// transition, not from update.
+export const canPublishSnippet: PolicyCheck<SnippetRecordLike> = (
+  subject,
+  record,
+) =>
+  record
+    ? resolveCapability(SNIPPET_TRANSITION_PRESETS.publish, subject, record)
+    : { allowed: false };
+
+// Its own capability: being allowed to edit a snippet does not make
+// "archive" yours to fire. The preset comes from the blueprint's
+// transition, not from update.
+export const canArchiveSnippet: PolicyCheck<SnippetRecordLike> = (
+  subject,
+  record,
+) =>
+  record
+    ? resolveCapability(SNIPPET_TRANSITION_PRESETS.archive, subject, record)
+    : { allowed: false };
+
+// Its own capability: being allowed to edit a snippet does not make
+// "reopen" yours to fire. The preset comes from the blueprint's
+// transition, not from update.
+export const canReopenSnippet: PolicyCheck<SnippetRecordLike> = (
+  subject,
+  record,
+) =>
+  record
+    ? resolveCapability(SNIPPET_TRANSITION_PRESETS.reopen, subject, record)
+    : { allowed: false };
+
+// The outer gate on the transition route: there is no single record yet, so
+// this is the broad pass a reader of the resource takes, before each entry is
+// checked against its own transition's capability.
+export const canTransitionAnySnippet: PolicyCheck = (subject) =>
+  resolveCollectionCapability(SNIPPET_PRESETS.view, subject);
 @Injectable()
 export class SnippetPolicy {
   constructor(private readonly capabilities: CapabilitiesService) {}
@@ -139,7 +177,15 @@ export class SnippetPolicy {
     subject: CapabilitySubject,
     record: SnippetRecordLike,
   ): Record<
-    'update' | 'delete' | 'share' | 'restore' | 'history' | 'revert',
+    | 'update'
+    | 'delete'
+    | 'share'
+    | 'restore'
+    | 'publish'
+    | 'archive'
+    | 'reopen'
+    | 'history'
+    | 'revert',
     CapabilityDecision
   > {
     return {
@@ -156,6 +202,9 @@ export class SnippetPolicy {
       ),
       share: canShareSnippet(subject, record),
       restore: canRestoreSnippet(subject, record),
+      publish: canPublishSnippet(subject, record),
+      archive: canArchiveSnippet(subject, record),
+      reopen: canReopenSnippet(subject, record),
       history: canViewHistorySnippet(subject, record),
       revert: canRevertSnippet(subject, record),
     };
