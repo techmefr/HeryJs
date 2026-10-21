@@ -10,7 +10,7 @@ export default defineConfig({
     starlight({
       title: 'HeryJs',
       description:
-        'A convention framework for NestJS. Generate once. Own your code.',
+        'The batteries-included framework for NestJS. Generate secured, multi-tenant resources, then own every line.',
       social: [
         {
           icon: 'github',
