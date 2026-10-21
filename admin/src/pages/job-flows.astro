@@ -1,0 +1,249 @@
+---
+import Shell from '../layouts/Shell.astro';
+---
+
+<Shell title="Job flows">
+  <h1>Job flows</h1>
+  <p class="lede">
+    Chains and batches of background jobs. A failed step leaves the steps after
+    it waiting; retry re-runs only the failed ones and carries on from there.
+  </p>
+
+  <div class="output" id="definitions"></div>
+  <div class="output" id="output"></div>
+</Shell>
+
+<script>
+  import { ApiError, api } from '../lib/api';
+  import { icon, ICONS } from '../lib/icons';
+  import { pill, skeleton, state } from '../lib/render';
+
+  interface FlowStep {
+    id: string;
+    name: string;
+    role: string;
+    state: string;
+    attemptsMade: number;
+    failedReason: string | null;
+  }
+
+  interface Flow {
+    id: string;
+    kind: string;
+    name: string;
+    state: string;
+    progress: { completed: number; total: number };
+    createdAt: string;
+    steps?: FlowStep[];
+  }
+
+  interface Definition {
+    name: string;
+    description: string | null;
+  }
+
+  const TONES: Record<string, string> = {
+    completed: 'ok',
+    running: 'neutral',
+    queued: 'neutral',
+    failed: 'danger',
+    cancelled: 'warn',
+    expired: 'warn',
+  };
+
+  const definitions = document.getElementById('definitions')!;
+  const output = document.getElementById('output')!;
+  output.appendChild(skeleton(3));
+
+  function button(label: string, disabled: boolean): HTMLButtonElement {
+    const element = document.createElement('button');
+    element.type = 'button';
+    element.className = 'primary';
+    element.disabled = disabled;
+    element.append(icon(ICONS.refresh, 14), document.createTextNode(label));
+
+    return element;
+  }
+
+  function stepList(steps: FlowStep[]): HTMLElement {
+    const list = document.createElement('ol');
+    list.className = 'flow-steps';
+
+    for (const step of steps) {
+      const item = document.createElement('li');
+      const name = document.createElement('span');
+      name.className = 'path';
+      name.textContent = step.name;
+      item.append(name, pill(step.state, TONES[step.state] ?? 'neutral'));
+
+      if (step.failedReason) {
+        const reason = document.createElement('span');
+        reason.className = 'mono';
+        reason.textContent = step.failedReason;
+        item.appendChild(reason);
+      }
+
+      list.appendChild(item);
+    }
+
+    return list;
+  }
+
+  async function act(path: string, result: HTMLElement): Promise<void> {
+    result.textContent = 'Running…';
+
+    try {
+      await api<Flow>(path, { method: 'POST', body: JSON.stringify({}) });
+      await load();
+    } catch (error) {
+      result.textContent = error instanceof ApiError ? error.message : 'Failed';
+    }
+  }
+
+  function flowRow(flow: Flow): HTMLElement {
+    const card = document.createElement('div');
+    card.className = 'card flow-card';
+
+    const row = document.createElement('div');
+    row.className = 'prune-row';
+
+    const name = document.createElement('span');
+    name.className = 'path';
+    name.textContent = flow.name;
+
+    const result = document.createElement('span');
+    result.className = 'mono';
+
+    const retry = button('Retry failed', flow.state !== 'failed');
+    const finished = ['completed', 'cancelled', 'expired'].includes(flow.state);
+    const cancel = button('Cancel', finished);
+    retry.addEventListener('click', () =>
+      act('/job-flows/' + flow.id + '/retry', result),
+    );
+    cancel.addEventListener('click', () =>
+      act('/job-flows/' + flow.id + '/cancel', result),
+    );
+
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.textContent = 'Steps';
+    toggle.addEventListener('click', async () => {
+      const open = card.querySelector('.flow-steps');
+
+      if (open) {
+        open.remove();
+        return;
+      }
+
+      const { data } = await api<Flow>('/job-flows/' + flow.id);
+      card.appendChild(stepList(data.steps ?? []));
+    });
+
+    row.append(
+      name,
+      pill(flow.kind, 'neutral'),
+      pill(flow.state, TONES[flow.state] ?? 'neutral'),
+      pill(flow.progress.completed + '/' + flow.progress.total, 'neutral'),
+      toggle,
+      retry,
+      cancel,
+      result,
+    );
+    card.appendChild(row);
+
+    return card;
+  }
+
+  function definitionRow(definition: Definition): HTMLElement {
+    const row = document.createElement('div');
+    row.className = 'card prune-row';
+
+    const name = document.createElement('span');
+    name.className = 'path';
+    name.textContent = definition.name;
+
+    const description = document.createElement('span');
+    description.className = 'mono';
+    description.textContent = definition.description ?? '';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = '{}';
+    input.setAttribute('aria-label', 'Input for ' + definition.name);
+
+    const result = document.createElement('span');
+    result.className = 'mono';
+
+    const start = button('Start', false);
+    start.addEventListener('click', async () => {
+      let parsed: unknown;
+
+      try {
+        parsed = JSON.parse(input.value);
+      } catch {
+        result.textContent = 'Input is not valid JSON';
+        return;
+      }
+
+      result.textContent = 'Starting…';
+
+      try {
+        await api<Flow>(
+          '/job-flows/definitions/' +
+            encodeURIComponent(definition.name) +
+            '/start',
+          { method: 'POST', body: JSON.stringify({ input: parsed }) },
+        );
+        await load();
+        result.textContent = 'Started';
+      } catch (error) {
+        result.textContent =
+          error instanceof ApiError ? error.message : 'Failed';
+      }
+    });
+
+    row.append(name, description, input, start, result);
+
+    return row;
+  }
+
+  async function load(): Promise<void> {
+    try {
+      const [flows, defined] = await Promise.all([
+        api<Flow[]>('/job-flows?limit=25'),
+        api<Definition[]>('/job-flows/definitions'),
+      ]);
+
+      definitions.replaceChildren(...defined.data.map(definitionRow));
+      output.replaceChildren(
+        flows.data.length === 0
+          ? state(
+              'No flows yet',
+              'Start one from a definition above, or from code with JobFlowsService.',
+            )
+          : (() => {
+              const list = document.createElement('div');
+              list.className = 'traces';
+              list.append(...flows.data.map(flowRow));
+              return list;
+            })(),
+      );
+    } catch (error) {
+      output.replaceChildren(
+        error instanceof ApiError && error.status === 403
+          ? state(
+              'Not available',
+              'Managing job flows is an admin-only operation.',
+              'denied',
+            )
+          : state(
+              'Could not load job flows',
+              'The request to /job-flows failed.',
+              'denied',
+            ),
+      );
+    }
+  }
+
+  await load();
+</script>

@@ -4,6 +4,7 @@ import { HeryConfigModule } from '#technical/config/hery-config.module';
 import { DriversModule } from '#technical/drivers/drivers.module';
 import { LocalStorageDriver } from './local-storage.driver';
 import { S3StorageDriver } from './s3-storage.driver';
+import { StorageAdminController } from './storage-admin.controller';
 import { StorageController } from './storage.controller';
 import { StorageDriverRegistry } from './storage-driver.registry';
 import { storageEnv } from './storage.env';
@@ -27,10 +28,15 @@ const S3_DRIVER_TOKEN = storageDriverToken('s3');
     storageEnv.STORAGE_DRIVER === 'local'
       ? [
           StorageController,
+          StorageAdminController,
           StorageUploadController,
           StorageUploadIntentController,
         ]
-      : [StorageUploadController, StorageUploadIntentController],
+      : [
+          StorageAdminController,
+          StorageUploadController,
+          StorageUploadIntentController,
+        ],
   providers: [
     LocalStorageDriver,
     S3StorageDriver,

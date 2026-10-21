@@ -1,5 +1,12 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import {
+  mkdir,
+  readFile,
+  readdir,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
 import * as path from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { env } from '#technical/config/env';
@@ -11,6 +18,7 @@ import type {
   StorageDriver,
   StoredObject,
   StoredObjectStat,
+  StoredObjectSummary,
 } from '#technical/storage/storage-driver';
 
 const ROOT = path.resolve(process.cwd(), 'storage');
@@ -141,6 +149,37 @@ export class LocalStorageDriver implements StorageDriver {
     } catch {
       return null;
     }
+  }
+
+  async list(prefix: string, limit: number): Promise<StoredObjectSummary[]> {
+    const found: StoredObjectSummary[] = [];
+    const walk = async (directory: string): Promise<void> => {
+      const entries = await readdir(directory, { withFileTypes: true }).catch(
+        () => [],
+      );
+
+      for (const entry of entries) {
+        if (found.length >= limit) {
+          return;
+        }
+
+        const target = path.join(directory, entry.name);
+
+        if (entry.isDirectory()) {
+          await walk(target);
+        } else if (!entry.name.endsWith(META_SUFFIX)) {
+          const key = path.relative(ROOT, target).split(path.sep).join('/');
+
+          if (key.startsWith(prefix)) {
+            found.push({ key, size: (await stat(target)).size });
+          }
+        }
+      }
+    };
+
+    await walk(insideRoot(prefix === '' ? '.' : prefix.replace(/\/$/, '')));
+
+    return found;
   }
 
   private sign(key: string, exp: number): string {

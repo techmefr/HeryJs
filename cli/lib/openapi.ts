@@ -13,6 +13,7 @@ import {
   childQuery,
   childRowSchema,
   describeSchema,
+  historySchemas,
   mutationSchemas,
   queryRequestSchemas,
   recordSchema,
@@ -49,6 +50,10 @@ function schemasFor(ctx: ResourceContext): SchemaRegistry {
     ...queryRequestSchemas(resourceQuery(ctx)),
     ...mutationSchemas(ctx),
   };
+
+  if (ctx.history) {
+    Object.assign(registry, historySchemas(ctx));
+  }
 
   for (const include of ownRouteIncludes(ctx)) {
     const query = childQuery(ctx, include);

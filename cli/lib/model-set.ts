@@ -48,4 +48,9 @@ export const MODEL_REGISTRIES = [
     set: 'AUDITED_MODELS',
     stripped: true,
   },
+  {
+    file: 'src/technical/history/history-columns.ts',
+    set: 'HISTORY_COLUMNS',
+    stripped: true,
+  },
 ] as const;

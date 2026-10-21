@@ -83,6 +83,8 @@ export default defineConfig({
                   label: 'Optimistic concurrency',
                   slug: 'guides/optimistic-concurrency',
                 },
+                { label: 'Workflow', slug: 'guides/workflow' },
+                { label: 'Row history', slug: 'guides/row-history' },
                 { label: 'Dev dashboard', slug: 'guides/dev-dashboard' },
                 { label: 'Backups', slug: 'guides/backups' },
                 { label: 'Bulk mutations', slug: 'guides/bulk-mutations' },
@@ -90,6 +92,7 @@ export default defineConfig({
                 { label: 'Logging', slug: 'guides/logging' },
                 { label: 'Migrations', slug: 'guides/migrations' },
                 { label: 'Prune', slug: 'guides/prune' },
+                { label: 'GDPR export and erasure', slug: 'guides/gdpr' },
               ],
             },
             {

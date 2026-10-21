@@ -59,7 +59,7 @@ Each mutation also publishes on the resource's signal channel and syncs the sear
 
 ## `task.controller.ts`
 
-The HTTP surface: six routes, each behind `SessionGuard` and `CapabilitiesGuard`, each response passed through `task.view.ts` before it leaves the process. There is no `GET /tasks/:id` — reading one record is the search route filtered to an id, so there is one contract to learn instead of two, and [Details](../guides/endpoints/details/) explains why.
+The HTTP surface: six routes, each behind `SessionGuard` and `CapabilitiesGuard`, each response passed through `task.view.ts` before it leaves the process. A blueprint with `history: true` adds three more (`POST /tasks/:id/history`, `/history/diff`, `/history/restore`); see [Row history](../guides/row-history/). There is no `GET /tasks/:id` — reading one record is the search route filtered to an id, so there is one contract to learn instead of two, and [Details](../guides/endpoints/details/) explains why.
 
 | Route                 | Capability at the guard                                                                     | Per-record check                                |
 | --------------------- | ------------------------------------------------------------------------------------------- | ----------------------------------------------- |
@@ -68,6 +68,7 @@ The HTTP surface: six routes, each behind `SessionGuard` and `CapabilitiesGuard`
 | `POST /tasks/create`  | `canCreateTask`                                                                             | —                                               |
 | `POST /tasks/update`  | `canUpdateAnyTask`                                                                          | `canUpdateTask` per entry, on the loaded record |
 | `POST /tasks/delete`  | `canDeleteAnyTask`, plus `canHardDeleteTask` once for the whole request when `mode: 'hard'` | `canDeleteTask` per entry                       |
+| `POST /tasks/transition` (with a `workflow`) | `canTransitionAnyTask` | `canPublishTask`-style, one per transition, per entry |
 | `POST /tasks/restore` | `canRestoreAnyTask`                                                                         | `canRestoreTask` per entry                      |
 
 Every mutating route takes an array and answers with one result per entry, each carrying its own `status`, so one refused record never blocks the others. The guard admits the caller to the route; the per-record function above is what decides each entry.

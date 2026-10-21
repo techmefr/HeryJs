@@ -181,9 +181,11 @@ describe('what the generators claim against what the controller publishes', () =
     contexts.map((ctx) => [`${ctx.pascalName}@${ctx.version}`, ctx] as const),
   )('matches the %s parent-scoped routes', (_name, ctx) => {
     const source = controllerFile(ctx);
-    const routes = [...source.matchAll(/@Post\(':id\/(\w+)\/search'\)/g)].map(
-      (match) => match[1],
-    );
+    const routes = [...source.matchAll(/@Post\(':id\/(\w+)\/search'\)/g)]
+      .map((match) => match[1])
+      // The share routes are not a child resource: they have no contract of
+      // their own, and the OpenAPI document describes them separately.
+      .filter((route) => route !== 'shares');
     expect(routes).toEqual(
       ownRouteIncludes(ctx).map((include) => include.relation),
     );
@@ -222,7 +224,7 @@ describe('what the generators claim against what the controller publishes', () =
       ctx.softDeletes,
     );
     expect(dto.match(/atomic: z\.boolean\(\)\.default\(false\)/g)).toHaveLength(
-      ctx.softDeletes ? 4 : 3,
+      (ctx.softDeletes ? 4 : 3) + (ctx.workflow ? 1 : 0),
     );
     expect(dto.includes('relationMutationSchema')).toBe(
       ctx.relations.length > 0,
