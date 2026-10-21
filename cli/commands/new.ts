@@ -451,6 +451,17 @@ on.
 policy for every tenant-scoped table, so the database boundary is created with
 the tables rather than remembered afterwards.
 
+## Deploying
+
+\`Dockerfile\` builds the production image and a one-shot migration job from
+the same source. The environment contract and the rollout order are in the
+[deployment guide](https://techmefr.github.io/HeryJs/guides/deployment/).
+
+\`\`\`bash
+docker build --target migrate -t ${projectName}-migrate .
+docker build -t ${projectName} .
+\`\`\`
+
 ## Adding a resource
 
 \`\`\`bash
@@ -484,6 +495,24 @@ function writeGitignore(destRoot: string): void {
       path.join(REPO_ROOT, 'templates', 'project.gitignore'),
       'utf8',
     ),
+  );
+}
+
+/**
+ * The production image, written from templates for the same reason as the
+ * gitignore: `.dockerignore` is the name Docker reads, and a template keeps the
+ * framework's own repository free of an image it never builds.
+ */
+function writeContainerFiles(destRoot: string): void {
+  const templates = path.join(REPO_ROOT, 'templates');
+
+  writeFileSync(
+    path.join(destRoot, 'Dockerfile'),
+    readFileSync(path.join(templates, 'Dockerfile'), 'utf8'),
+  );
+  writeFileSync(
+    path.join(destRoot, '.dockerignore'),
+    readFileSync(path.join(templates, 'dockerignore'), 'utf8'),
   );
 }
 
@@ -546,6 +575,7 @@ export function registerNewCommand(program: Command): void {
       rewriteWorkspaceFile(destRoot);
       writeReadme(destRoot, name);
       writeGitignore(destRoot);
+      writeContainerFiles(destRoot);
 
       spawnSync('git', ['init'], { cwd: destRoot, stdio: 'ignore' });
       spawnSync('git', ['add', '-A'], { cwd: destRoot, stdio: 'ignore' });
