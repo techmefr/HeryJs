@@ -72,3 +72,44 @@ export class UnstubbedHttpRequestException extends DomainException {
     );
   }
 }
+
+/**
+ * Raised without calling the host at all: its circuit is open because the last
+ * calls to it failed, so waiting out a timeout again would only add load to a
+ * dependency that is already struggling. `retryAfterMs` says when it will let
+ * one call through to find out whether it recovered.
+ */
+export class HttpCircuitOpenException extends DomainException {
+  constructor(
+    readonly host: string,
+    readonly retryAfterMs: number,
+  ) {
+    super(
+      HttpStatus.SERVICE_UNAVAILABLE,
+      'http.circuit-open',
+      `Calls to ${host} are suspended after repeated failures. Retry in ${Math.ceil(retryAfterMs / 1000)}s.`,
+      { host, retryAfterMs },
+      'http.circuit-open',
+    );
+  }
+}
+
+/**
+ * The concurrency limit for one host is reached. Refused immediately rather
+ * than queued: a queue in front of a slow dependency is how every worker ends
+ * up waiting on it.
+ */
+export class HttpBulkheadFullException extends DomainException {
+  constructor(
+    readonly host: string,
+    readonly maxConcurrent: number,
+  ) {
+    super(
+      HttpStatus.SERVICE_UNAVAILABLE,
+      'http.bulkhead-full',
+      `${maxConcurrent} calls to ${host} are already in flight.`,
+      { host, maxConcurrent },
+      'http.bulkhead-full',
+    );
+  }
+}

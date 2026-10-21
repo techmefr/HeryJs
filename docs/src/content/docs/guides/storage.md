@@ -49,22 +49,35 @@ storage: {
 
 `StorageDriverRegistry` resolves every declared driver in `onModuleInit` and throws, naming the install command, on one it cannot find. A `default` that is not in `drivers` fails the same way. Omit the `storage` slice entirely and you get a single `local` driver, which is what a project that has not chosen a backend yet should get.
 
-There is a trap here worth stating plainly. `STORAGE_DRIVER` **also** exists as a module environment variable in `storage.env.ts`, and there it does something different and much smaller: it decides whether `StorageController` — the local serve route — is mounted at all. It does **not** select the active driver. Setting `STORAGE_DRIVER=s3` without also reading it in `hery.config.ts` unmounts the local serve route while leaving the local driver active, which is a working app that hands out signed URLs nobody can resolve. Wire the variable into `default` as above, or do not set it.
+`STORAGE_DRIVER` is read in two places, and they have to agree. In `storage.env.ts` it decides whether `StorageController` — the local serve route — is mounted at all; in `hery.config.ts` it names the active driver. Declaring a `storage` slice that does not read it, and then setting `STORAGE_DRIVER=s3`, unmounts the local serve route while leaving the local driver active, which is a working app that hands out signed URLs nobody can resolve. Read the variable in `default` as above, or do not set it.
 
-## The S3 driver ships, but nothing binds it yet
+## S3 is one variable away
 
-`S3StorageDriver` is in the module: a full `StorageDriver` over `@aws-sdk/client-s3` with real presigned URLs, working against S3 or any S3-compatible endpoint. `STORAGE_S3_ENDPOINT` both points at that endpoint and switches on path-style addressing, which is what self-hosted MinIO needs, and its credentials are read when the driver is constructed rather than when the module is imported, so an app on the local driver is never refused a boot over credentials it does not use.
+`S3StorageDriver` is in the module, bound to `storageDriverToken('s3')` by `storage.module.ts` with no package to install: a full `StorageDriver` over `@aws-sdk/client-s3` with real presigned URLs, working against S3 or any S3-compatible endpoint. `STORAGE_DRIVER=s3` selects it, plus the `STORAGE_S3_*` variables:
 
-What is missing is the binding. `storage.module.ts` provides `LocalStorageDriver` and binds it to `storageDriverToken('local')`; **nothing binds `S3StorageDriver` to `storageDriverToken('s3')`**, so declaring `s3: { driver: 's3' }` in `hery.config.ts` today stops the boot with the missing-driver message. Until a driver package exists for it, bind it yourself in your own copy of the module — the files are yours:
+| Variable                | Meaning                                                                                      |
+| ----------------------- | -------------------------------------------------------------------------------------------- |
+| `STORAGE_S3_BUCKET`     | Defaults to `heryjs`. The bucket has to exist already.                                        |
+| `STORAGE_S3_REGION`     | Defaults to `us-east-1`.                                                                      |
+| `STORAGE_S3_ENDPOINT`   | Unset for AWS. Set it for MinIO or any other S3-compatible server; it also turns on path-style addressing. |
+| `STORAGE_S3_ACCESS_KEY` | Development default outside production, refused in production.                                |
+| `STORAGE_S3_SECRET_KEY` | Same.                                                                                         |
+
+Declare both drivers in `hery.config.ts` and the variable is the whole switch:
 
 ```ts
-const S3_DRIVER_TOKEN = storageDriverToken('s3');
-
-providers: [
-  S3StorageDriver,
-  { provide: S3_DRIVER_TOKEN, useExisting: S3StorageDriver },
-],
+storage: {
+  default: process.env.STORAGE_DRIVER ?? 'local',
+  drivers: {
+    local: { driver: 'local' },
+    s3: { driver: 's3' },
+  },
+},
 ```
+
+Leave the `storage` slice out and `STORAGE_DRIVER` alone picks between the two drivers the module carries, so `STORAGE_DRIVER=s3` is enough with no config edit. A slice you declared always wins over the variable.
+
+The S3 client is built the first time the driver is used, not when the app boots. The module always provides the driver, so reading credentials in a constructor would refuse a production boot over S3 settings on every app that stores on local disk.
 
 The bundled `docker-compose.storage.yml` runs MinIO for local work — note that **it does not create the bucket for you**, and that `hery up` does not cover it:
 
@@ -72,7 +85,17 @@ The bundled `docker-compose.storage.yml` runs MinIO for local work — note that
 docker compose -f docker-compose.storage.yml up -d
 ```
 
-None of this has been exercised against a live bucket in this repository.
+The image is the Bitnami build of MinIO, pinned, because MinIO no longer publishes `minio/minio` images. The driver is exercised against a real MinIO in CI: put, get, list, remove, presigned GET, and the whole upload-intent flow, including a confirm that refuses an object uploaded with a content type other than the one authorised. That last check is deliberate. MinIO accepts a presigned PUT whatever `Content-Type` it carries, so the intent's confirm step, which re-reads the object with `stat()`, is what holds the line, not the signature.
+
+## The admin panel can see and manage files
+
+`storage-admin` is a small controller the [admin panel](../guides/admin/) picks up through introspection, behind `canManageFiles` (admin only). It is a controller of its own because `/storage` owns `GET :key`, which would swallow a `GET /storage/files`, and because it has to exist for every driver, not only the local one.
+
+- `GET /storage-admin/status` answers the active driver, the others the config declares (names only, never a credential), the upload size cap and the content-type allowlist.
+- `GET /storage-admin/files` lists the current tenant's objects, with a signed URL each, capped at 200.
+- `POST /storage-admin/files/delete` removes one by key. A key outside the caller's tenant answers 404, because `remove()` itself takes any key and the HTTP route must not.
+
+The admin's **Storage** page is built on those three and on `POST /storage/upload`: the driver and its limits, an upload field, and the file list with a delete button on each row. Listing is a new method on the `StorageDriver` contract (`list(prefix, limit)`), implemented by the local and S3 drivers and by the testing fake; a driver of your own has to add it.
 
 ## The upload route is where the gates are
 

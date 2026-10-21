@@ -88,6 +88,68 @@ Three exceptions come out of it, and they are distinct on purpose:
 
 A remote's status is **not forwarded as your own** — a 404 from a payment provider does not mean your route is missing. A timeout is separate from a failed response because the two say different things about whether the remote acted, which is what a caller deciding whether it is safe to retry a payment needs. And `details` carries the method, URL, remote status and body, and **deliberately not the request headers**: headers are where the authorization bearer lives, and `details` is serialised into the error response and the log line, which is precisely how an API key ends up in a log aggregator.
 
+## A failing host is cut off, and a busy one is capped
+
+Every call passes through a per-host **circuit breaker** and **bulkhead** in
+`HttpClientService`, before it reaches the active driver. Because they sit in
+the facade, the fake driver is held to the same rules as the real one: a test
+that stubs a 503 opens the circuit exactly as production would.
+
+The host (`api.example.com:8443`) is the unit a circuit protects. Each one is
+closed until `failureThreshold` consecutive calls fail, then **open**: calls are
+refused without touching the network and reject with `HttpCircuitOpenException`
+(503, `http.circuit-open`, `details.retryAfterMs`). After `openMs` the circuit
+goes **half-open** and lets `halfOpenProbes` calls through; a success closes it,
+a failure opens it again for another `openMs`.
+
+What counts as a failure of the host is the same narrow set the retry policy
+treats as transient: a timeout, a transport error, a 429 and a 5xx. A 4xx is the
+caller's mistake and the host answered perfectly well, so it never pushes a
+healthy dependency towards open. A refused call is not a failure either.
+
+The bulkhead is `maxConcurrent` calls to one host in flight. The next one is
+refused at once with `HttpBulkheadFullException` (503, `http.bulkhead-full`)
+rather than queued, because a queue in front of a slow dependency is how every
+worker ends up waiting on it.
+
+```ts
+httpClient: {
+  default: 'ofetch',
+  drivers: { ofetch: { driver: 'ofetch' } },
+  resilience: {
+    failureThreshold: 5,   // consecutive failures that open the circuit
+    openMs: 30_000,        // cooldown before a probe
+    halfOpenProbes: 1,
+    maxConcurrent: 20,     // per host
+    healthCheck: true,     // an open circuit fails the readiness probe
+    hosts: { 'api.slow-vendor.com': { maxConcurrent: 2, openMs: 60_000 } },
+  },
+},
+```
+
+Every key is optional; the values above are the defaults, and `enabled: false`
+switches the whole thing off. State is per process: each instance learns about a
+failing dependency from its own calls, which keeps the check free of any shared
+store on the request path.
+
+### Seeing it, and acting on it
+
+- **Health.** An open circuit fails the `http-circuits` check of the readiness
+  probe and `/health` names the hosts. A third party being down then takes the
+  instance out of rotation, which is the wrong trade for some deployments: set
+  `healthCheck: false` to keep the state in metrics and the admin only.
+- **Metrics.** `http_client_circuit_state{host}` (0 closed, 1 half-open, 2 open),
+  `http_client_in_flight{host}` and `http_client_rejected_calls{host,reason}`
+  (`circuit_open` or `bulkhead_full`), read from the live gates at scrape time.
+- **Admin.** Capability-gated routes, admin only, picked up from introspection:
+  `GET /http-client/circuits` (one row per host called) is a section on its own,
+  and the **HTTP circuits** page adds the actions: `POST
+/http-client/circuits/:host/open` sheds a dependency on purpose, `.../reset`
+  closes the circuit once it is known to be back, `.../settings` changes the
+  thresholds and the concurrency limit of that host. Runtime changes apply to
+  the instance that answered and last until it restarts; the durable setting is
+  `hery.config.ts`.
+
 ## Declaring the drivers
 
 ```ts
@@ -111,5 +173,5 @@ Every declared driver is resolved at boot, not just the active one, so a project
 - **No base URL, no client instances.** There is no `http.for('stripe')`. Every call names its full URL, and a wrapper per vendor is ordinary code you write in `functional/`.
 - **No authentication handling.** No token refresh, no OAuth dance, no credential store. Headers are yours to set per call.
 - **No response validation.** `body` is `unknown` and stays that way. Parse it with the same zod schemas you would use on an inbound payload.
-- **No circuit breaker, no rate limiting, no caching.** Retry and timeout are the whole policy.
+- **No rate limiting, no caching.** Retry, timeout, the circuit breaker and the concurrency limit are the whole policy.
 - **No per-call driver selection.** Unlike [export](../guides/export/), there is no `as()`. A call site choosing to bypass the fake would be a call site that reaches a real vendor from CI.

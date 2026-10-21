@@ -23,3 +23,14 @@ export const SNIPPET_PRESETS = {
   'view' | 'create' | 'update' | 'delete',
   PermissionPreset
 >;
+
+/**
+ * Who may fire each transition, resolved per record like the four presets
+ * above. Kept apart from them because it is keyed by the blueprint's own
+ * transition names rather than by verb.
+ */
+export const SNIPPET_TRANSITION_PRESETS = {
+  publish: 'own',
+  archive: 'own',
+  reopen: 'own',
+} as const satisfies Record<string, PermissionPreset>;

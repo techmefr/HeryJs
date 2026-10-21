@@ -105,6 +105,90 @@ the job succeeded.
 Adding a processor means adding a queue in `jobs.constants.ts`, registering it
 in `JobsModule`, and dispatching through `dispatchTo`.
 
+## Chains, batches and resume
+
+`JobFlowsService` (from `JobFlowsModule`) runs several jobs as one unit, on top
+of BullMQ flows. A **chain** runs steps one after the other; a **batch** runs
+jobs independently and then a completion callback.
+
+```ts
+await this.flows.chain({
+  name: 'monthly-report',
+  steps: [
+    { name: 'report.query', data: { month } },
+    { name: 'report.render' },
+    { name: 'report.mail' },
+  ],
+});
+
+await this.flows.batch({
+  name: 'import-customers',
+  jobs: chunks.map((rows) => ({ name: 'import.chunk', data: { rows } })),
+  onComplete: { name: 'import.summary' },
+});
+```
+
+A step with no `queue` runs on the flow queue, where the handler registered
+under its name runs it. A step that names a queue (`EXPORT_QUEUE`, say) goes to
+that queue's own processor, so a long export or import chains onto the
+processors that already exist. `queue` on the call sets the default for every
+step that names none.
+
+```ts
+handlers.register('report.render', ({ previous, data, tenantId }) => {
+  return render(previous);
+});
+```
+
+`JobFlowHandlers.register` takes the step name and a function; the handler
+runs inside the tenant the flow was started under, receives what the previous
+step returned (`previous`) or, for a batch callback, what every job returned
+(`results`), and returns a JSON-serialisable value. Flow jobs carry the
+`tenantId` and `flow` fields in their data, so do not use those names.
+
+An unknown step name **fails** the step instead of completing it, unlike the
+per-family processors above: a flow queue exists only for flows, so a name
+nobody handles is a missing registration.
+
+### Resume
+
+The whole tree is created in one Redis call, so a flow survives a worker
+restart like any queued job. A step that exhausted its attempts stays `failed`
+and the steps after it stay `waiting-children`; nothing else is touched.
+`retry` re-queues the failed steps with a fresh set of attempts and the flow
+carries on, and the steps that completed are never run again. A batch with a
+failed job keeps its callback waiting in the same way.
+
+Jobs of a flow, and its registry row, are kept for seven days
+(`FLOW_RETENTION_DAYS`): a flow is resumable as long as its failed job exists,
+so the window is a time, not a count.
+
+### Operating flows from the admin
+
+| Route                                     | Capability          | Purpose                                 |
+| ----------------------------------------- | ------------------- | --------------------------------------- |
+| `GET /job-flows`                          | `canReadJobFlows`   | paged flows with state and progress     |
+| `GET /job-flows/definitions`              | `canReadJobFlows`   | flows an operator can start by name     |
+| `GET /job-flows/:id`                      | `canReadJobFlows`   | one flow with the state of every step   |
+| `POST /job-flows/definitions/:name/start` | `canManageJobFlows` | start a defined flow with an `input`    |
+| `POST /job-flows/:id/retry`               | `canManageJobFlows` | retry the failed steps                  |
+| `POST /job-flows/:id/cancel`              | `canManageJobFlows` | drop what has not run (409 if one runs) |
+
+Both capabilities are admin-only, bound to the caller's tenant: a flow of
+another tenant answers 404. The two argument-free `GET` routes appear as
+sections in the admin from introspection, and the **Job flows** page adds the
+actions: start a defined flow, see the steps of a flow and why one failed,
+retry, cancel. A flow becomes startable from there once the shape is declared
+in code:
+
+```ts
+flows.define(
+  'monthly-report',
+  (input) => ({ kind: 'chain', name: 'monthly-report', steps: [/* ... */] }),
+  'Build and mail the monthly report',
+);
+```
+
 ## Watching what failed
 
 `/jobs` mounts Bull Board outside production. It is **unauthenticated and

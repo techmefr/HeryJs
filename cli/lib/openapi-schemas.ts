@@ -4,6 +4,7 @@ import type {
   ResolvedInclude,
 } from './blueprint';
 import type { ResourceContext } from './resource-context';
+import { richtextMaxLength } from './field-types';
 import {
   AGGREGATE_TYPES_NEEDING_FIELD,
   AGGREGATE_TYPES_WITHOUT_FIELD,
@@ -25,6 +26,7 @@ import {
   typeNameOf,
 } from './openapi-contract';
 import type { RecordProperty } from './openapi-contract';
+import { historyFields } from './history-templates';
 
 export type JsonSchema = Record<string, unknown>;
 export type SchemaRegistry = Record<string, JsonSchema>;
@@ -63,10 +65,15 @@ function fieldBaseSchema(type: RecordProperty['type']): JsonSchema {
       return DATE_TIME;
     case 'translations':
       return { type: 'object', additionalProperties: { type: 'string' } };
+    case 'richtext':
+      return { type: 'string', format: 'html', description: RICHTEXT_NOTE };
     default:
       return { type: 'string' };
   }
 }
+
+const RICHTEXT_NOTE =
+  'Sanitised HTML: tags and attributes outside the field allow-list (published by GET /describe) are stripped on write, and again on read. Never trust it without escaping on a surface the allow-list does not cover.';
 
 function inputFieldSchema(field: ScalarBlueprintField): JsonSchema {
   if (field.translatable) {
@@ -85,6 +92,16 @@ function inputFieldSchema(field: ScalarBlueprintField): JsonSchema {
           additionalProperties: { anyOf: [text, { type: 'null' }] },
         },
       ],
+    };
+  }
+
+  if (field.type === 'richtext') {
+    return {
+      type: 'string',
+      format: 'html',
+      minLength: 1,
+      maxLength: richtextMaxLength(field),
+      description: RICHTEXT_NOTE,
     };
   }
 
@@ -523,6 +540,34 @@ export function mutationSchemas(ctx: ResourceContext): SchemaRegistry {
     registry.RelationMutation = relationMutationSchema();
   }
 
+  if (ctx.workflow) {
+    registry[`${name}TransitionRequest`] = {
+      type: 'object',
+      properties: {
+        data: {
+          type: 'array',
+          maxItems: MAX_BATCH_ENTRIES,
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              transition: {
+                type: 'string',
+                enum: ctx.workflow.transitions.map(
+                  (transition) => transition.name,
+                ),
+              },
+            },
+            required: ['id', 'transition'],
+            additionalProperties: false,
+          },
+        },
+        atomic: ATOMIC_PROPERTY,
+      },
+      required: ['data'],
+    };
+  }
+
   if (ctx.softDeletes) {
     registry[`${name}RestoreRequest`] = {
       type: 'object',
@@ -537,6 +582,136 @@ export function mutationSchemas(ctx: ResourceContext): SchemaRegistry {
   }
 
   return registry;
+}
+
+/**
+ * The history a resource that declared `history: true` publishes. A snapshot
+ * lists exactly the columns the kernel registry keeps for it, which excludes
+ * every hidden and every encrypted field: the schema says so by never naming
+ * them, and `additionalProperties: false` keeps a client from expecting more.
+ */
+export function historySchemas(ctx: ResourceContext): SchemaRegistry {
+  const name = typeNameOf(ctx);
+  const entries: Array<[string, JsonSchema]> = [
+    ...historyFields(ctx).map((field): [string, JsonSchema] => [
+      field.name,
+      recordPropertySchema({
+        name: field.name,
+        type: field.type,
+        optional: field.optional,
+      }),
+    ]),
+    ...(ctx.softDeletes
+      ? [
+          [
+            'deletedAt',
+            recordPropertySchema({
+              name: 'deletedAt',
+              type: 'timestamp',
+              optional: true,
+            }),
+          ] as [string, JsonSchema],
+        ]
+      : []),
+    ...(ctx.versioned
+      ? [['version', { type: 'integer' }] as [string, JsonSchema]]
+      : []),
+  ];
+  const properties = Object.fromEntries(entries);
+
+  return {
+    [`${name}Snapshot`]: {
+      type: 'object',
+      description:
+        'The record as it stood after one write. A column added after the entry was written is absent from it.',
+      properties,
+      additionalProperties: false,
+    },
+    [`${name}HistoryEntry`]: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+        sequence: { type: 'integer' },
+        operation: {
+          type: 'string',
+          enum: ['create', 'update', 'delete', 'restore', 'revert'],
+        },
+        userId: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+        impersonatedBy: { anyOf: [{ type: 'string' }, { type: 'null' }] },
+        createdAt: DATE_TIME,
+        snapshot: ref(`${name}Snapshot`),
+      },
+      required: [
+        'id',
+        'sequence',
+        'operation',
+        'userId',
+        'impersonatedBy',
+        'createdAt',
+        'snapshot',
+      ],
+    },
+    [`${name}HistoryListRequest`]: {
+      type: 'object',
+      properties: {
+        limit: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+        before: {
+          type: 'integer',
+          minimum: 1,
+          description:
+            'The `nextBefore` of the previous page: only older entries are returned.',
+        },
+      },
+      additionalProperties: false,
+    },
+    [`${name}HistoryDiffRequest`]: {
+      type: 'object',
+      properties: {
+        from: { type: 'string' },
+        to: {
+          type: 'string',
+          description:
+            'Another entry of the same record. Omitted, the entry is compared with the record as it is now.',
+        },
+      },
+      required: ['from'],
+      additionalProperties: false,
+    },
+    [`${name}HistoryDiff`]: {
+      type: 'object',
+      properties: {
+        from: ref(`${name}HistoryEntry`),
+        to: { anyOf: [ref(`${name}HistoryEntry`), { type: 'null' }] },
+        changes: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: { field: { type: 'string' }, before: {}, after: {} },
+            required: ['field', 'before', 'after'],
+          },
+        },
+      },
+      required: ['from', 'to', 'changes'],
+    },
+    [`${name}HistoryRestoreRequest`]: {
+      type: 'object',
+      properties: {
+        snapshotId: { type: 'string' },
+        ...(ctx.versioned
+          ? {
+              version: {
+                type: 'integer',
+                minimum: 1,
+                description:
+                  'The version the record is at now. Required on a versioned resource; a request may send it as an If-Match header instead.',
+              },
+            }
+          : {}),
+      },
+      required: ['snapshotId'],
+      additionalProperties: false,
+    },
+  };
 }
 
 export function sharedSchemas(): SchemaRegistry {
@@ -730,10 +905,36 @@ export function describeSchema(ctx: ResourceContext): JsonSchema {
             name: { type: 'string' },
             type: {
               type: 'string',
-              enum: ['string', 'int', 'boolean', 'datetime', 'file'],
+              enum: [
+                'string',
+                'int',
+                'boolean',
+                'datetime',
+                'file',
+                'richtext',
+              ],
             },
             optional: { type: 'boolean' },
             translatable: { type: 'boolean' },
+            richtext: {
+              type: 'object',
+              properties: {
+                maxLength: { type: 'integer' },
+                allow: {
+                  type: 'object',
+                  properties: {
+                    tags: strings,
+                    attributes: {
+                      type: 'object',
+                      additionalProperties: strings,
+                    },
+                    schemes: strings,
+                  },
+                  required: ['tags', 'attributes', 'schemes'],
+                },
+              },
+              required: ['maxLength', 'allow'],
+            },
           },
           required: ['name', 'type', 'optional'],
         },
@@ -763,6 +964,7 @@ export function describeSchema(ctx: ResourceContext): JsonSchema {
         : {}),
       ...(ctx.vector ? { similar: { const: true } } : {}),
       paginated: { const: Boolean(ctx.pagination) },
+      ...(ctx.history ? { history: { const: true } } : {}),
       ...(ctx.versioned
         ? {
             versioned: {
@@ -772,6 +974,32 @@ export function describeSchema(ctx: ResourceContext): JsonSchema {
                 header: { const: 'If-Match' },
               },
               required: ['field', 'header'],
+            },
+          }
+        : {}),
+      ...(ctx.workflow
+        ? {
+            workflow: {
+              type: 'object',
+              properties: {
+                field: { const: ctx.workflow.field },
+                initial: { const: ctx.workflow.initial },
+                states: strings,
+                transitions: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      name: { type: 'string' },
+                      from: strings,
+                      to: { type: 'string' },
+                      requires: strings,
+                    },
+                    required: ['name', 'from', 'to', 'requires'],
+                  },
+                },
+              },
+              required: ['field', 'initial', 'states', 'transitions'],
             },
           }
         : {}),

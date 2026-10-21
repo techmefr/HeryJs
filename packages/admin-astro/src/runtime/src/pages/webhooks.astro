@@ -1,0 +1,369 @@
+---
+import Shell from '../layouts/Shell.astro';
+---
+
+<Shell title="Webhooks">
+  <h1>Webhooks</h1>
+  <p class="lede">
+    Where your tenant sends signed events: its subscriptions, every delivery
+    with its status and attempts, and the dead letters you can replay.
+  </p>
+
+  <div class="wh-tabs" id="tabs">
+    <button type="button" data-tab="subscriptions">Subscriptions</button>
+    <button type="button" data-tab="deliveries">Deliveries</button>
+    <button type="button" data-tab="dead">Dead letters</button>
+  </div>
+
+  <div class="output" id="output"></div>
+</Shell>
+
+<script>
+  import { ApiError, api } from '../lib/api';
+  import { pill, skeleton, state, table } from '../lib/render';
+  import {
+    deliveriesRoute,
+    statusTone,
+    subscriptionBody,
+    type DeliveryStatus,
+  } from '../lib/webhooks';
+
+  interface Subscription {
+    id: string;
+    url: string;
+    description: string | null;
+    events: string[];
+    active: boolean;
+    previousSecretExpiresAt: string | null;
+  }
+
+  interface Delivery {
+    id: string;
+    subscriptionId: string;
+    event: string;
+    status: string;
+    attempts: number;
+    lastStatusCode: number | null;
+    lastError: string | null;
+    createdAt: string;
+  }
+
+  interface PageMeta {
+    page: number;
+    last_page: number;
+  }
+
+  type Tab = 'subscriptions' | 'deliveries' | 'dead';
+
+  const output = document.getElementById('output')!;
+  const tabs = [...document.querySelectorAll<HTMLButtonElement>('[data-tab]')];
+
+  function button(
+    text: string,
+    onClick: () => void | Promise<void>,
+    primary = false,
+  ): HTMLButtonElement {
+    const element = document.createElement('button');
+    element.type = 'button';
+    element.textContent = text;
+    element.className = primary ? 'primary' : '';
+    element.addEventListener('click', async () => {
+      element.disabled = true;
+
+      try {
+        await onClick();
+      } finally {
+        element.disabled = false;
+      }
+    });
+
+    return element;
+  }
+
+  function field(
+    label: string,
+    value = '',
+  ): [HTMLLabelElement, HTMLInputElement] {
+    const wrapper = document.createElement('label');
+    const input = document.createElement('input');
+    input.value = value;
+    wrapper.append(document.createTextNode(label), input);
+
+    return [wrapper, input];
+  }
+
+  function failure(error: unknown): HTMLElement {
+    if (error instanceof ApiError && error.status === 403) {
+      return state(
+        'Not available',
+        'Managing webhooks is an admin-only operation.',
+        'denied',
+      );
+    }
+
+    if (error instanceof ApiError && error.status === 404) {
+      return state(
+        'Webhooks are not installed',
+        'Install the webhooks module and import WebhooksModule.',
+        'denied',
+      );
+    }
+
+    return state(
+      'Could not load webhooks',
+      error instanceof ApiError && error.serverMessage
+        ? error.serverMessage
+        : 'The request failed.',
+      'denied',
+    );
+  }
+
+  function secretCard(secret: string): HTMLElement {
+    const card = document.createElement('div');
+    card.className = 'card wh-secret';
+    const title = document.createElement('p');
+    title.textContent =
+      'Copy this secret now. It is shown once and cannot be read again.';
+    const code = document.createElement('code');
+    code.textContent = secret;
+    card.append(title, code);
+
+    return card;
+  }
+
+  function subscriptionForm(
+    existing: Subscription | null,
+    done: (secret: string | null) => Promise<void>,
+  ): HTMLElement {
+    const form = document.createElement('div');
+    form.className = 'card wh-form';
+    const [urlLabel, url] = field('URL', existing?.url ?? '');
+    const [eventsLabel, events] = field(
+      'Events (webhook.invoice.paid, model.*)',
+      existing?.events.join(', ') ?? '',
+    );
+    const [descriptionLabel, description] = field(
+      'Description',
+      existing?.description ?? '',
+    );
+    const problem = document.createElement('p');
+    problem.className = 'wh-problem';
+
+    const save = button(
+      existing ? 'Save' : 'Create subscription',
+      async () => {
+        problem.textContent = '';
+        const body = subscriptionBody({
+          url: url.value,
+          events: events.value,
+          description: description.value,
+        });
+
+        try {
+          const { data } = await api<{ secret?: string }>(
+            existing
+              ? '/webhook-subscriptions/' + existing.id
+              : '/webhook-subscriptions',
+            {
+              method: existing ? 'PATCH' : 'POST',
+              body: JSON.stringify(body),
+            },
+          );
+          await done(data.secret ?? null);
+        } catch (error) {
+          problem.textContent =
+            error instanceof ApiError && error.serverMessage
+              ? error.serverMessage
+              : 'The subscription was refused. Check the URL and the event names.';
+        }
+      },
+      true,
+    );
+
+    form.append(urlLabel, eventsLabel, descriptionLabel, save, problem);
+
+    return form;
+  }
+
+  async function renderSubscriptions(): Promise<void> {
+    const { data } = await api<Subscription[]>('/webhook-subscriptions');
+    const root = document.createElement('div');
+    root.className = 'traces';
+
+    const reload = async (shown: string | null) => {
+      await renderSubscriptions();
+
+      if (shown) {
+        output.prepend(secretCard(shown));
+      }
+    };
+
+    root.appendChild(subscriptionForm(null, reload));
+
+    for (const subscription of data) {
+      const row = document.createElement('div');
+      row.className = 'card wh-row';
+      const url = document.createElement('span');
+      url.className = 'path';
+      url.textContent = subscription.url;
+      row.appendChild(url);
+      row.appendChild(
+        pill(
+          subscription.active ? 'Active' : 'Disabled',
+          subscription.active ? 'ok' : 'neutral',
+        ),
+      );
+
+      if (subscription.previousSecretExpiresAt) {
+        row.appendChild(
+          pill(
+            'Old secret valid until ' +
+              subscription.previousSecretExpiresAt
+                .slice(0, 16)
+                .replace('T', ' '),
+            'warn',
+          ),
+        );
+      }
+
+      for (const name of subscription.events) {
+        row.appendChild(pill(name, 'neutral'));
+      }
+
+      const actions = document.createElement('span');
+      actions.className = 'wh-actions';
+      actions.append(
+        button(subscription.active ? 'Disable' : 'Enable', async () => {
+          await api('/webhook-subscriptions/' + subscription.id, {
+            method: 'PATCH',
+            body: JSON.stringify({ active: !subscription.active }),
+          });
+          await reload(null);
+        }),
+        button('Edit', () => {
+          row.replaceWith(
+            subscriptionForm(subscription, async () => reload(null)),
+          );
+        }),
+        button('Rotate secret', async () => {
+          const { data: rotated } = await api<{ secret: string }>(
+            '/webhook-subscriptions/' + subscription.id + '/rotate-secret',
+            { method: 'POST', body: JSON.stringify({}) },
+          );
+          await reload(rotated.secret);
+        }),
+        button('Delete', async () => {
+          await api('/webhook-subscriptions/' + subscription.id, {
+            method: 'DELETE',
+          });
+          await reload(null);
+        }),
+      );
+      row.appendChild(actions);
+      root.appendChild(row);
+    }
+
+    output.replaceChildren(root);
+  }
+
+  async function renderDeliveries(
+    status: DeliveryStatus | null,
+    page: number,
+  ): Promise<void> {
+    const { data, meta } = await api<Delivery[]>(deliveriesRoute(status, page));
+    const pageMeta = meta as PageMeta;
+    const root = document.createElement('div');
+    root.className = 'traces';
+
+    if (data.length === 0) {
+      root.appendChild(
+        state(
+          status === 'dead' ? 'No dead letters' : 'No deliveries yet',
+          'Deliveries appear here as soon as a subscribed event is announced.',
+        ),
+      );
+    } else {
+      root.appendChild(
+        table(
+          data.map((delivery) => ({
+            id: delivery.id,
+            event: delivery.event,
+            status: delivery.status,
+            attempts: delivery.attempts,
+            httpStatus: delivery.lastStatusCode,
+            lastError: delivery.lastError,
+            createdAt: delivery.createdAt,
+          })),
+        ),
+      );
+
+      if (status === 'dead') {
+        const replays = document.createElement('div');
+        replays.className = 'card wh-row';
+
+        for (const delivery of data) {
+          const line = document.createElement('span');
+          line.className = 'wh-actions';
+          line.append(
+            pill(delivery.event, statusTone(delivery.status)),
+            button('Replay ' + delivery.id.slice(0, 8), async () => {
+              await api('/webhook-deliveries/' + delivery.id + '/redeliver', {
+                method: 'POST',
+                body: JSON.stringify({}),
+              });
+              await renderDeliveries(status, page);
+            }),
+          );
+          replays.appendChild(line);
+        }
+
+        root.appendChild(replays);
+      }
+
+      const pager = document.createElement('div');
+      pager.className = 'wh-actions';
+      pager.append(
+        button('Previous', () => renderDeliveries(status, page - 1)),
+        document.createTextNode(
+          'Page ' + pageMeta.page + ' of ' + pageMeta.last_page,
+        ),
+        button('Next', () => renderDeliveries(status, page + 1)),
+      );
+      (pager.firstElementChild as HTMLButtonElement).disabled = page <= 1;
+      (pager.lastElementChild as HTMLButtonElement).disabled =
+        page >= pageMeta.last_page;
+      root.appendChild(pager);
+    }
+
+    output.replaceChildren(root);
+  }
+
+  async function show(tab: Tab): Promise<void> {
+    for (const element of tabs) {
+      element.setAttribute(
+        'aria-current',
+        element.dataset.tab === tab ? 'page' : 'false',
+      );
+    }
+
+    output.replaceChildren(skeleton(3));
+
+    try {
+      if (tab === 'subscriptions') {
+        await renderSubscriptions();
+      } else {
+        await renderDeliveries(tab === 'dead' ? 'dead' : null, 1);
+      }
+    } catch (error) {
+      output.replaceChildren(failure(error));
+    }
+  }
+
+  for (const element of tabs) {
+    element.addEventListener('click', () => {
+      void show(element.dataset.tab as Tab);
+    });
+  }
+
+  void show('subscriptions');
+</script>

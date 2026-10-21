@@ -26,6 +26,8 @@ Nothing to generate, nothing to patch, nothing to remember: a new soft-deletable
 
 `tenantId` is part of that condition, not an assumption about it. Pruning reads the column twice: once to attribute each deletion to the right tenant's audit chain, once to bound a run triggered from a request. A hand-written model carrying `deletedAt` alone is left out of the list rather than pruned without either.
 
+Row history snapshots (`RecordSnapshot`) are listed too and aged out the same way, record by record, always keeping each record's newest snapshot. See [Row history](../guides/row-history/).
+
 ## Configuring retention
 
 Retention lives in `hery.config.ts`, next to `search` — a scheduled, project-wide policy belongs there, not scattered across blueprints or decorators.

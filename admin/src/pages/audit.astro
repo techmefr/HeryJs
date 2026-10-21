@@ -1,0 +1,367 @@
+---
+import Shell from '../layouts/Shell.astro';
+---
+
+<Shell title="Audit">
+  <h1>Audit</h1>
+  <p class="lede">
+    The hash-chained trail of your tenant: browse and filter it, export a range,
+    verify the chain, and stream new entries to a SIEM or an object store.
+  </p>
+
+  <h2>Chain</h2>
+  <div class="card prune-row" id="chain">
+    <button type="button" class="primary" id="verify">Verify chain</button>
+    <span class="mono" id="verdict"></span>
+  </div>
+
+  <h2>Entries</h2>
+  <form class="card" id="filters">
+    <input name="from" type="date" aria-label="From" />
+    <input name="to" type="date" aria-label="To" />
+    <input name="model" placeholder="Model" aria-label="Model" />
+    <input name="operation" placeholder="Operation" aria-label="Operation" />
+    <input name="userId" placeholder="User id" aria-label="User id" />
+    <button type="submit" class="primary">Filter</button>
+    <button type="button" id="export-csv">Export CSV</button>
+    <button type="button" id="export-jsonl">Export JSON lines</button>
+  </form>
+  <div class="output" id="entries"></div>
+  <div class="card prune-row">
+    <button type="button" id="prev">Previous</button>
+    <button type="button" id="next">Next</button>
+    <span class="mono" id="window"></span>
+  </div>
+
+  <h2>Sinks</h2>
+  <div class="output" id="sinks"></div>
+  <form class="card" id="new-sink">
+    <input name="name" placeholder="Name" aria-label="Name" required />
+    <select name="kind" aria-label="Kind">
+      <option value="http">HTTP</option>
+      <option value="storage">Object storage</option>
+    </select>
+    <input
+      name="url"
+      placeholder="https://siem.example.com/ingest"
+      aria-label="URL"
+    />
+    <input
+      name="authToken"
+      type="password"
+      placeholder="Bearer token"
+      aria-label="Bearer token"
+      autocomplete="off"
+    />
+    <input
+      name="storageDriver"
+      placeholder="Storage driver (local, s3)"
+      aria-label="Storage driver"
+    />
+    <label><input name="backfill" type="checkbox" /> Include history</label>
+    <button type="submit" class="primary">Add sink</button>
+    <span class="mono" id="sink-error"></span>
+  </form>
+</Shell>
+
+<script>
+  import { ApiError, API_URL, api } from '../lib/api';
+  import { pill, skeleton, state, table } from '../lib/render';
+  import { token } from '../lib/session';
+
+  interface Sink {
+    id: string;
+    name: string;
+    kind: string;
+    url: string | null;
+    storageDriver: string | null;
+    active: boolean;
+    hasAuthToken: boolean;
+    cursor: number;
+    lastError: string | null;
+    lastDeliveredAt: string | null;
+  }
+
+  const LIMIT = 25;
+  let page = 1;
+
+  const filters = document.getElementById('filters') as HTMLFormElement;
+  const entries = document.getElementById('entries')!;
+  const sinks = document.getElementById('sinks')!;
+  const windowLabel = document.getElementById('window')!;
+  const prev = document.getElementById('prev') as HTMLButtonElement;
+  const next = document.getElementById('next') as HTMLButtonElement;
+
+  function filterQuery(): URLSearchParams {
+    const query = new URLSearchParams();
+
+    for (const [key, value] of new FormData(filters)) {
+      if (typeof value === 'string' && value.trim() !== '') {
+        query.set(key, value.trim());
+      }
+    }
+
+    return query;
+  }
+
+  function messageOf(error: unknown): string {
+    return error instanceof ApiError
+      ? (error.serverMessage ?? 'Refused (' + error.status + ')')
+      : 'Failed';
+  }
+
+  async function loadEntries() {
+    entries.replaceChildren(skeleton(4));
+
+    const query = filterQuery();
+    query.set('page', String(page));
+    query.set('limit', String(LIMIT));
+
+    try {
+      const { data, meta } = await api<Record<string, unknown>[]>(
+        '/audit-logs?' + query.toString(),
+      );
+      const window = meta as { total?: number; last_page?: number } | undefined;
+
+      entries.replaceChildren(
+        data.length === 0
+          ? state('No entries', 'Nothing matches this filter.')
+          : table(data),
+      );
+      windowLabel.textContent =
+        'Page ' +
+        page +
+        ' of ' +
+        (window?.last_page ?? 1) +
+        ' · ' +
+        (window?.total ?? data.length) +
+        ' entries';
+      prev.disabled = page <= 1;
+      next.disabled = page >= (window?.last_page ?? 1);
+    } catch (error) {
+      entries.replaceChildren(
+        state(
+          error instanceof ApiError && error.status === 403
+            ? 'Not available'
+            : 'Could not load the audit log',
+          error instanceof ApiError && error.status === 403
+            ? 'Reading the audit log is an admin-only operation.'
+            : messageOf(error),
+          'denied',
+        ),
+      );
+    }
+  }
+
+  async function download(format: 'csv' | 'jsonl') {
+    const query = filterQuery();
+    query.set('format', format);
+
+    const response = await fetch(
+      API_URL + '/audit-logs/export?' + query.toString(),
+      {
+        headers: { Authorization: 'Bearer ' + (token() ?? '') },
+      },
+    );
+
+    if (!response.ok) {
+      windowLabel.textContent = 'Export refused (' + response.status + ')';
+      return;
+    }
+
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(await response.blob());
+    link.download = 'audit-log.' + format;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
+  function sinkRow(sink: Sink): HTMLElement {
+    const row = document.createElement('div');
+    row.className = 'card prune-row';
+
+    const name = document.createElement('span');
+    name.className = 'path';
+    name.textContent = sink.name;
+    row.appendChild(name);
+
+    const target = document.createElement('span');
+    target.className = 'mono';
+    target.textContent = sink.url ?? 'storage:' + (sink.storageDriver ?? '');
+    row.appendChild(target);
+
+    row.appendChild(
+      pill(sink.active ? 'Streaming' : 'Paused', sink.active ? 'ok' : 'warn'),
+    );
+
+    if (sink.lastError) {
+      row.appendChild(pill('Failing', 'warn'));
+    }
+
+    const result = document.createElement('span');
+    result.className = 'mono';
+    result.textContent = sink.lastError
+      ? sink.lastError
+      : sink.lastDeliveredAt
+        ? 'Delivered ' + sink.lastDeliveredAt
+        : 'Nothing delivered yet';
+
+    const action = (label: string, run: () => Promise<string | void>) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      button.addEventListener('click', async () => {
+        button.disabled = true;
+        result.textContent = 'Running…';
+
+        try {
+          const message = await run();
+          await loadSinks();
+          result.textContent = message ?? '';
+        } catch (error) {
+          result.textContent = messageOf(error);
+        } finally {
+          button.disabled = false;
+        }
+      });
+      row.appendChild(button);
+    };
+
+    action('Test', async () => {
+      const { data } = await api<{ ok: boolean; error: string | null }>(
+        '/audit-sinks/' + sink.id + '/test',
+        { method: 'POST', body: '{}' },
+      );
+
+      return data.ok ? 'Reachable' : (data.error ?? 'Failed');
+    });
+    action('Stream now', async () => {
+      const { data } = await api<{ batches: number }>(
+        '/audit-sinks/' + sink.id + '/stream',
+        { method: 'POST', body: '{}' },
+      );
+
+      return data.batches + ' batch(es) queued';
+    });
+    action(sink.active ? 'Pause' : 'Resume', async () => {
+      await api('/audit-sinks/' + sink.id, {
+        method: 'PATCH',
+        body: JSON.stringify({ active: !sink.active }),
+      });
+    });
+    action('Delete', async () => {
+      await api('/audit-sinks/' + sink.id, { method: 'DELETE' });
+    });
+
+    row.appendChild(result);
+
+    return row;
+  }
+
+  async function loadSinks() {
+    try {
+      const { data } = await api<Sink[]>('/audit-sinks?limit=100');
+
+      sinks.replaceChildren(
+        data.length === 0
+          ? state('No sink', 'Add one below to stream new entries to a SIEM.')
+          : (() => {
+              const list = document.createElement('div');
+              list.className = 'traces';
+              list.append(...data.map(sinkRow));
+              return list;
+            })(),
+      );
+    } catch (error) {
+      sinks.replaceChildren(
+        state('Could not load sinks', messageOf(error), 'denied'),
+      );
+    }
+  }
+
+  document.getElementById('verify')!.addEventListener('click', async () => {
+    const verdict = document.getElementById('verdict')!;
+    verdict.textContent = 'Verifying…';
+
+    try {
+      const { data } = await api<{
+        valid: boolean;
+        checked: number;
+        brokenAtSequence: number | null;
+      }>('/audit-logs/verify');
+
+      verdict.textContent = data.valid
+        ? 'Intact: ' + data.checked + ' entries checked'
+        : 'Broken at entry ' +
+          data.brokenAtSequence +
+          ' after ' +
+          data.checked +
+          ' good ones';
+    } catch (error) {
+      verdict.textContent = messageOf(error);
+    }
+  });
+
+  filters.addEventListener('submit', (event) => {
+    event.preventDefault();
+    page = 1;
+    void loadEntries();
+  });
+  document
+    .getElementById('export-csv')!
+    .addEventListener('click', () => void download('csv'));
+  document
+    .getElementById('export-jsonl')!
+    .addEventListener('click', () => void download('jsonl'));
+  prev.addEventListener('click', () => {
+    page -= 1;
+    void loadEntries();
+  });
+  next.addEventListener('click', () => {
+    page += 1;
+    void loadEntries();
+  });
+
+  document
+    .getElementById('new-sink')!
+    .addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const form = event.currentTarget as HTMLFormElement;
+      const values = new FormData(form);
+      const kind = String(values.get('kind'));
+      const body: Record<string, unknown> = {
+        name: String(values.get('name')),
+        kind,
+        backfill: values.get('backfill') === 'on',
+      };
+      const optional = (key: string) => String(values.get(key) ?? '').trim();
+
+      if (kind === 'http') {
+        body.url = optional('url');
+
+        if (optional('authToken')) {
+          body.authToken = optional('authToken');
+        }
+      } else if (optional('storageDriver')) {
+        body.storageDriver = optional('storageDriver');
+      }
+
+      const error = document.getElementById('sink-error')!;
+      error.textContent = '';
+
+      try {
+        await api('/audit-sinks', {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
+        form.reset();
+        await loadSinks();
+      } catch (failure) {
+        error.textContent = messageOf(failure);
+      }
+    });
+
+  void loadEntries();
+  void loadSinks();
+</script>

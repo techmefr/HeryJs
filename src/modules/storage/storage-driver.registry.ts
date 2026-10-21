@@ -9,6 +9,7 @@ import {
   missingDriverMessage,
 } from '#technical/drivers/driver-resolver';
 import { LocalStorageDriver } from './local-storage.driver';
+import { storageEnv } from './storage.env';
 import { STORAGE_MODULE } from '#technical/storage/storage-driver';
 import type { StorageDriver } from '#technical/storage/storage-driver';
 
@@ -23,6 +24,11 @@ const BUILTIN_DRIVER = 'local';
  * project that declares S3 but runs on local disk in development should find
  * out that the S3 package is missing on its own machine, not the first time
  * production starts with STORAGE_DRIVER=s3.
+ *
+ * With no `storage` slice declared, STORAGE_DRIVER picks between the two
+ * drivers this module carries, so `STORAGE_DRIVER=s3` alone is enough to store
+ * in S3. A declared slice always wins: it is the committed statement of what
+ * the app uses, and an environment variable does not get to contradict it.
  *
  * Resolution runs in onModuleInit rather than the constructor because driver
  * modules are global but outside this module's import graph, so the lookup
@@ -40,7 +46,7 @@ export class StorageDriverRegistry implements OnModuleInit {
 
   onModuleInit(): void {
     const declared = this.declared() ?? {
-      [BUILTIN_DRIVER]: { driver: BUILTIN_DRIVER },
+      [this.activeKeyword()]: { driver: this.activeKeyword() },
     };
 
     for (const [keyword, entry] of Object.entries(declared)) {
@@ -87,6 +93,14 @@ export class StorageDriverRegistry implements OnModuleInit {
     return driver;
   }
 
+  /**
+   * What the admin shows an operator: which driver is active and which others
+   * the config declares. Names only -- nothing here reads a credential.
+   */
+  get summary(): { active: string; declared: string[] } {
+    return { active: this.activeKeyword(), declared: [...this.drivers.keys()] };
+  }
+
   private slice(): HeryConfigDrivers | undefined {
     return this.config.storage;
   }
@@ -96,6 +110,6 @@ export class StorageDriverRegistry implements OnModuleInit {
   }
 
   private activeKeyword(): string {
-    return this.slice()?.default ?? BUILTIN_DRIVER;
+    return this.slice()?.default ?? storageEnv.STORAGE_DRIVER;
   }
 }

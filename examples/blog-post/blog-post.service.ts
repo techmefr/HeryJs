@@ -22,6 +22,7 @@ import {
   sortByResolvedTranslations,
 } from '#technical/i18n/translatable-query';
 import type { TranslatableRow } from '#technical/i18n/translatable-query';
+import { sanitizeRichtextWrite } from '#technical/richtext/richtext';
 import { resolveRelationInstructions } from '#technical/http/relation-resolver';
 import type { PrismaRelationClient } from '#technical/http/relation-resolver';
 import type {
@@ -40,6 +41,7 @@ import {
   UpdateBlogPostInput,
 } from './blog-post.dto';
 import { BLOG_POST_PRESETS } from './blog-post.presets';
+import { RICHTEXT_FIELDS } from './blog-post.dto';
 
 const SEARCHABLE_FIELDS = ['title', 'summary'] as const;
 const SEARCH_COLLECTION = 'blog-post';
@@ -351,6 +353,7 @@ export class BlogPostService {
   }
 
   async create(subject: CapabilitySubject, data: CreateBlogPostInput) {
+    data = sanitizeRichtextWrite(data, RICHTEXT_FIELDS);
     const record = await this.prisma.blogPost.create({
       // tenantId is injected by the tenant-scoping Prisma extension, invisible to callers by design.
       data: {
@@ -364,6 +367,7 @@ export class BlogPostService {
   }
 
   async update(record: BlogPost, data: UpdateBlogPostInput) {
+    data = sanitizeRichtextWrite(data, RICHTEXT_FIELDS);
     const updated = await this.prisma.blogPost.update({
       where: { id: record.id },
       data: normalizeTranslatableWrite(data, TRANSLATABLE_FIELDS, record),
@@ -410,6 +414,7 @@ export class BlogPostService {
   }
 
   async restore(record: BlogPost, patch?: UpdateBlogPostInput) {
+    patch = patch && sanitizeRichtextWrite(patch, RICHTEXT_FIELDS);
     const updated = await this.prisma.blogPost.update({
       where: { id: record.id },
       data: {
