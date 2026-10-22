@@ -66,11 +66,39 @@ export class ElasticsearchSearchDriver implements SearchDriver {
     tenantId: string,
   ): Promise<void> {
     await this.ensureMapping(collection);
+
+    if (!(await this.isWritableBy(collection, id, tenantId))) {
+      return;
+    }
+
     await this.client.index({
       index: collection,
       id,
       document: { ...document, [TENANT_FIELD]: tenantId },
     });
+  }
+
+  private async ownerOf(collection: string, id: string): Promise<unknown> {
+    const stored = await this.client.get<Record<string, unknown>>(
+      { index: collection, id, _source_includes: [TENANT_FIELD] },
+      { ignore: [404] },
+    );
+
+    return stored._source?.[TENANT_FIELD];
+  }
+
+  // index() is an upsert by id, so the same id held by another tenant would
+  // be overwritten -- content and tenant stamp alike. Such a write is dropped
+  // silently, as remove() drops it: an error would tell the caller that id
+  // exists elsewhere.
+  private async isWritableBy(
+    collection: string,
+    id: string,
+    tenantId: string,
+  ): Promise<boolean> {
+    const owner = await this.ownerOf(collection, id);
+
+    return owner === undefined || owner === tenantId;
   }
 
   // An id alone is not proof of ownership: every tenant shares the
@@ -82,12 +110,7 @@ export class ElasticsearchSearchDriver implements SearchDriver {
     id: string,
     tenantId: string,
   ): Promise<void> {
-    const stored = await this.client.get<Record<string, unknown>>(
-      { index: collection, id, _source_includes: [TENANT_FIELD] },
-      { ignore: [404] },
-    );
-
-    if (stored._source?.[TENANT_FIELD] !== tenantId) {
+    if ((await this.ownerOf(collection, id)) !== tenantId) {
       return;
     }
 
