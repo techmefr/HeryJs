@@ -37,6 +37,7 @@ export class SsoConnectionConflictException extends DomainException {
       {
         reason,
       },
+      'sso.connectionConflict',
     );
     this.reason = reason;
   }

@@ -9,6 +9,8 @@ export class WebhookNotFoundException extends DomainException {
       HttpStatus.NOT_FOUND,
       `webhook.${subject}NotFound`,
       `No such webhook ${subject}.`,
+      { subject },
+      'webhook.notFound',
     );
   }
 }

@@ -9,6 +9,7 @@ import { SmsConsentService } from './sms.consent';
 import { SmsDriverRegistry } from './sms-driver.registry';
 import { SMS_NOTIFIER_CHANNEL_PROVIDER } from './sms-notifier.adapter';
 import { SmsService } from './sms.service';
+import './sms.catalogue';
 
 @Module({
   imports: [PrismaModule, HeryConfigModule, DriversModule],

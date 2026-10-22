@@ -1,7 +1,6 @@
 import {
   CanActivate,
   ExecutionContext,
-  ForbiddenException,
   Injectable,
   NotFoundException,
   UseGuards,
@@ -13,6 +12,7 @@ import { SessionGuard } from '#technical/auth/session.guard';
 import type { RequestWithUser } from '#technical/auth/session.guard';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { adminStudioSettings, normalizeIp } from './admin-settings';
+import { AdminTwoFactorRequiredException } from './admin-two-factor-required.exception';
 
 /**
  * The outer door, ahead of authentication on purpose. In production the
@@ -71,7 +71,7 @@ export class AdminStudioFactorGuard implements CanActivate {
     });
 
     if (row?.twoFactorEnabled !== true) {
-      throw new ForbiddenException('admin.twoFactorRequired');
+      throw new AdminTwoFactorRequiredException();
     }
 
     return true;

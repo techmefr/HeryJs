@@ -4,7 +4,6 @@ import {
   Delete,
   ForbiddenException,
   Get,
-  NotFoundException,
   Param,
   Patch,
   Post,
@@ -24,6 +23,7 @@ import {
   canEvaluateFeatureFlags,
   canManageFeatureFlags,
 } from './feature-flags.policy';
+import { FeatureFlagNotFoundException } from './feature-flag-not-found.exception';
 import { FeatureFlagsService } from './feature-flags.service';
 import {
   evaluateFeatureFlagSchema,
@@ -102,7 +102,7 @@ export class FeatureFlagsController {
     const target = targetTenant(tenantId || undefined);
 
     if (!(await this.featureFlags.remove(key, target))) {
-      throw new NotFoundException('Feature flag not found');
+      throw new FeatureFlagNotFoundException(key);
     }
 
     return ok({ key, tenantId: target ?? null });

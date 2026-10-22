@@ -43,6 +43,7 @@ export class SsoRefusedException extends DomainException {
       {
         reason,
       },
+      'sso.refused',
     );
     this.reason = reason;
   }

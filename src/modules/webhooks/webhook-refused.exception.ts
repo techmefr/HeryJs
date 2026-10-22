@@ -27,6 +27,7 @@ export class WebhookRefusedException extends DomainException {
       {
         reason,
       },
+      'webhook.refused',
     );
     this.reason = reason;
   }
