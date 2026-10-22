@@ -37,6 +37,7 @@ export class OAuthRefusedException extends DomainException {
       `oauth.${reason}`,
       `Social sign-in refused: ${reason}.`,
       { reason },
+      'oauth.refused',
     );
     this.reason = reason;
   }

@@ -1,4 +1,5 @@
 import { LocaleContextStorage } from './locale-context';
+import { registerCatalogue } from './catalogue';
 import { translate } from './translate';
 
 function inLocale<T>(locale: string, callback: () => T): T {
@@ -46,6 +47,28 @@ describe('translate', () => {
     );
 
     expect(message).toBe('BlogPost introuvable.');
+  });
+
+  it('uses an explicit en entry over the exception message', () => {
+    const message = inLocale('en', () =>
+      translate(
+        'admin.twoFactorRequired',
+        undefined,
+        'admin.twoFactorRequired',
+      ),
+    );
+
+    expect(message).toContain('two-factor authentication');
+  });
+
+  it('translates a key a module registered', () => {
+    registerCatalogue({ 'test.registered': { fr: 'Enregistré.' } });
+
+    expect(
+      inLocale('fr', () =>
+        translate('test.registered', undefined, 'Registered.'),
+      ),
+    ).toBe('Enregistré.');
   });
 
   it('falls back when a locale is requested but not in the catalogue for that key', () => {

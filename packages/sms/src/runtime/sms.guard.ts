@@ -14,15 +14,43 @@ import type { SmsMessage } from '#kernel/sms/sms-driver';
  */
 export type SmsKind = 'transactional' | 'marketing';
 
+export type SmsRefusalReason =
+  | 'not-e164'
+  | 'alphanumeric-sender'
+  | 'no-consent'
+  | 'opt-out-missing'
+  | 'outside-window';
+
+export type SmsRefusalDetails = Record<string, unknown> & { to: string };
+
+const MESSAGE_BY_REASON: Record<
+  SmsRefusalReason,
+  (details: SmsRefusalDetails) => string
+> = {
+  'not-e164': (details) =>
+    `"${details.to}" is not an E.164 number. A national number names no country, and every rule below is chosen by country.`,
+  'alphanumeric-sender': () =>
+    'This country refuses an alphanumeric sender: the carrier drops the message rather than returning an error, so it would look delivered and never arrive.',
+  'no-consent': () =>
+    'No consent is recorded for this number. Absence of a record is absence of consent, not permission.',
+  'opt-out-missing': () =>
+    'A marketing message to this country must carry an opt-out mention in its body.',
+  'outside-window': (details) =>
+    `Marketing to this country is allowed between ${String(details.from)}:00 and ${String(details.until)}:00 local time, and it is ${String(details.localHour)}:00 there.`,
+};
+
 export class SmsRefusedException extends DomainException {
-  constructor(reason: string, details: Record<string, unknown> = {}) {
+  readonly reason: SmsRefusalReason;
+
+  constructor(reason: SmsRefusalReason, details: SmsRefusalDetails) {
     super(
       HttpStatus.UNPROCESSABLE_ENTITY,
       'sms.refused',
-      reason,
-      details,
+      MESSAGE_BY_REASON[reason](details),
+      { ...details, reason },
       'sms.refused',
     );
+    this.reason = reason;
   }
 }
 
@@ -44,19 +72,16 @@ export function assertSendable(
   context: SmsGuardContext,
 ): void {
   if (!isE164(message.to)) {
-    throw new SmsRefusedException(
-      `"${message.to}" is not an E.164 number. A national number names no country, and every rule below is chosen by country.`,
-      { to: message.to },
-    );
+    throw new SmsRefusedException('not-e164', { to: message.to });
   }
 
   const rules = rulesOrDefault(message.to);
 
   if (message.sender && !rules.alphanumericSenderAllowed) {
-    throw new SmsRefusedException(
-      'This country refuses an alphanumeric sender: the carrier drops the message rather than returning an error, so it would look delivered and never arrive.',
-      { to: message.to, sender: message.sender },
-    );
+    throw new SmsRefusedException('alphanumeric-sender', {
+      to: message.to,
+      sender: message.sender,
+    });
   }
 
   if (context.kind === 'transactional') {
@@ -64,27 +89,23 @@ export function assertSendable(
   }
 
   if (!context.hasConsent) {
-    throw new SmsRefusedException(
-      'No consent is recorded for this number. Absence of a record is absence of consent, not permission.',
-      { to: message.to },
-    );
+    throw new SmsRefusedException('no-consent', { to: message.to });
   }
 
   if (rules.optOutMentionRequired && !mentionsOptOut(message.body)) {
-    throw new SmsRefusedException(
-      'A marketing message to this country must carry an opt-out mention in its body.',
-      { to: message.to },
-    );
+    throw new SmsRefusedException('opt-out-missing', { to: message.to });
   }
 
   if (rules.marketingWindow && context.localHour !== undefined) {
     const { from, to } = rules.marketingWindow;
 
     if (context.localHour < from || context.localHour >= to) {
-      throw new SmsRefusedException(
-        `Marketing to this country is allowed between ${from}:00 and ${to}:00 local time, and it is ${context.localHour}:00 there.`,
-        { to: message.to, localHour: context.localHour },
-      );
+      throw new SmsRefusedException('outside-window', {
+        to: message.to,
+        localHour: context.localHour,
+        from,
+        until: to,
+      });
     }
   }
 }

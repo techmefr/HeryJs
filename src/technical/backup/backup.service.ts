@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { env } from '#technical/config/env';
 import { DriverResolver } from '#technical/drivers/driver-resolver';
 import { STORAGE_MODULE } from '#technical/storage/storage-driver';
 import type { StorageDriver } from '#technical/storage/storage-driver';
+import { BackupNotFoundException } from './backup.exceptions';
 import { BackupSettingsStore } from './backup-settings';
 import {
   createBackup,
@@ -70,7 +71,7 @@ export class BackupService {
     const known = (await this.list()).some((row) => row.name === name);
 
     if (!known || name !== path.basename(name) || !parseBackupName(name)) {
-      throw new NotFoundException(`There is no backup named ${name}.`);
+      throw new BackupNotFoundException(name);
     }
 
     return path.join(env.BACKUP_DIR, name);

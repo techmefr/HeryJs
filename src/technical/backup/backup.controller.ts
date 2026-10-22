@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
@@ -20,6 +19,7 @@ import { ScheduledTaskStore } from '#technical/scheduler/scheduled-task.store';
 import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
 import { BackupSettingsStore, backupSettingsSchema } from './backup-settings';
 import type { BackupSettings } from './backup-settings';
+import { BackupConfirmationMismatchException } from './backup.exceptions';
 import { BackupService } from './backup.service';
 import { BACKUP_TASK_NAME, BackupTask } from './backup.task';
 import { canManageBackups } from './backup.policy';
@@ -105,9 +105,7 @@ export class BackupController {
     await this.backups.pathOf(name);
 
     if (body.confirm !== name) {
-      throw new BadRequestException(
-        'The confirmation does not match the backup name; nothing was restored.',
-      );
+      throw new BackupConfirmationMismatchException();
     }
 
     await this.backups.restore(name);

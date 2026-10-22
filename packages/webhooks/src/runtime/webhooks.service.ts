@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import type { Queue } from 'bullmq';
 import type { AuthenticatedUser } from '#kernel/auth/auth.types';
@@ -9,6 +9,10 @@ import { ExpositionRegistry } from '#kernel/exposition/exposition.registry';
 import { authPrismaClient } from '#kernel/auth/better-auth.instance';
 import { WEBHOOK_QUEUE } from '#kernel/jobs/jobs.constants';
 import { exposedActionOf } from './exposed-webhook-source';
+import {
+  WebhookActionNotExposedException,
+  WebhookBodyInvalidException,
+} from './webhook-input.exceptions';
 import type { VerifiedWebhookEndpoint } from './webhook-signature.guard';
 
 export interface ReceivedWebhook {
@@ -51,9 +55,7 @@ export class WebhooksService {
     const action = this.actions.get(actionName);
 
     if (!action || action.triggers?.webhook !== true) {
-      throw new BadRequestException(
-        `"${actionName}" is not an action exposed to webhooks.`,
-      );
+      throw new WebhookActionNotExposedException(actionName);
     }
 
     const decision = action.capability(subjectOf(user));
@@ -72,7 +74,7 @@ export class WebhooksService {
     try {
       payload = JSON.parse(input.rawBody.toString('utf8'));
     } catch {
-      throw new BadRequestException('Webhook body must be valid JSON.');
+      throw new WebhookBodyInvalidException();
     }
 
     const event = await authPrismaClient.webhookEvent.create({

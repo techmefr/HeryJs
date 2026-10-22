@@ -7,6 +7,7 @@ export class SecretsMisconfiguredException extends DomainException {
       HttpStatus.INTERNAL_SERVER_ERROR,
       'secrets.misconfigured',
       `Secrets are not configured correctly: ${reason}`,
+      { reason },
     );
   }
 }
