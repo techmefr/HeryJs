@@ -26,7 +26,7 @@ export interface SseSubscription {
 }
 
 function streamKey(tenantId: string, channel: string): string {
-  return `${KEY_PREFIX}${tenantId}:${channel}`;
+  return `${KEY_PREFIX}${encodeURIComponent(tenantId)}:${encodeURIComponent(channel)}`;
 }
 
 function toEntry(id: string, fields: string[]): SseEntry {

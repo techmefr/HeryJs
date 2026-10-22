@@ -1,6 +1,7 @@
 import type { JobsService } from '#kernel/jobs/jobs.service';
 import { IMPORT_QUEUE } from '#kernel/jobs/jobs.constants';
 import type { Importable } from '#kernel/import/import-driver';
+import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
 import { CsvImportDriver } from './csv-import.driver';
 import { IMPORT_CONSUME_JOB } from './import.constants';
 import { ImportDriverRegistry } from './import-driver.registry';
@@ -26,7 +27,9 @@ describe('ImportService.queue', () => {
 
     const service = new ImportService(buildRegistry(), jobs);
 
-    await service.from('csv').queue('uploads/tasks.csv', importable, 'user-1');
+    await TenantContextStorage.run({ tenantId: 'tenant-1' }, () =>
+      service.from('csv').queue('uploads/tasks.csv', importable, 'user-1'),
+    );
 
     expect(dispatchTo).toHaveBeenCalledWith(
       IMPORT_QUEUE,
@@ -36,6 +39,7 @@ describe('ImportService.queue', () => {
         importable: 'tasks',
         key: 'uploads/tasks.csv',
         userId: 'user-1',
+        tenantId: 'tenant-1',
       },
       expect.anything(),
     );

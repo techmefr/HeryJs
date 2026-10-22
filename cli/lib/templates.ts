@@ -4866,33 +4866,35 @@ ${ctx.versioned ? `${versionedSpecBlock(ctx, createBody)}\n` : ''}${ctx.history 
   });
 
 `
-  }  it('never lets a different tenant see this tenant records', async () => {
-    const outsider = await actingAs(app, {
-      tenantId: \`tenant-\${randomUUID()}\`,
+  }  describe('tenant isolation', () => {
+    it('never lets a different tenant see this tenant records', async () => {
+      const outsider = await actingAs(app, {
+        tenantId: \`tenant-\${randomUUID()}\`,
+      });
+
+      const response = await request(app.getHttpServer())
+        .post('/${ctx.pluralKebabName}/search')
+        .set('Authorization', \`Bearer \${outsider.token}\`)
+        .send({})
+        .expect(200);
+
+      expect((response.body as { data: unknown[] }).data).toHaveLength(0);
     });
 
-    const response = await request(app.getHttpServer())
-      .post('/${ctx.pluralKebabName}/search')
-      .set('Authorization', \`Bearer \${outsider.token}\`)
-      .send({})
-      .expect(200);
+    it('cannot be spoofed into another tenant via a client-supplied header', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/${ctx.pluralKebabName}/search')
+        .set('Authorization', \`Bearer \${ownerToken}\`)
+        .set('x-tenant-id', \`tenant-\${randomUUID()}\`)
+        .send({})
+        .expect(200);
 
-    expect((response.body as { data: unknown[] }).data).toHaveLength(0);
-  });
-
-  it('cannot be spoofed into another tenant via a client-supplied header', async () => {
-    const response = await request(app.getHttpServer())
-      .post('/${ctx.pluralKebabName}/search')
-      .set('Authorization', \`Bearer \${ownerToken}\`)
-      .set('x-tenant-id', \`tenant-\${randomUUID()}\`)
-      .send({})
-      .expect(200);
-
-    expect(
-      (response.body as { data: Array<{ tenantId: string }> }).data.every(
-        (record) => record.tenantId === 'default',
-      ),
-    ).toBe(true);
+      expect(
+        (response.body as { data: Array<{ tenantId: string }> }).data.every(
+          (record) => record.tenantId === 'default',
+        ),
+      ).toBe(true);
+    });
   });
 
 ${paginationSpec(ctx, createBody)}

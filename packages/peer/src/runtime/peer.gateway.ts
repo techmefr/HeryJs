@@ -26,6 +26,10 @@ interface JoinRoomBody {
   room: string;
 }
 
+export function tenantRoom(tenantId: string, room: string): string {
+  return `${encodeURIComponent(tenantId)}:${encodeURIComponent(room)}`;
+}
+
 interface SignalBody {
   room: string;
   to: string;
@@ -89,16 +93,17 @@ export class PeerGateway implements OnGatewayConnection, OnGatewayDisconnect {
         return { error: 'capability denied' };
       }
 
+      const room = tenantRoom(client.data.user.tenantId, body.room);
       const participant = { socketId: client.id, userId: client.data.user.id };
-      await client.join(body.room);
-      this.presence.join(body.room, participant);
-      client.to(body.room).emit('peer-joined', participant);
+      await client.join(room);
+      this.presence.join(room, participant);
+      client.to(room).emit('peer-joined', participant);
 
       const viewDecision = canViewPeerRoomParticipants(subject);
       return {
         joined: body.room,
         participants: viewDecision.allowed
-          ? this.presence.participantsOf(body.room)
+          ? this.presence.participantsOf(room)
           : [],
       };
     });
@@ -109,13 +114,12 @@ export class PeerGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() body: JoinRoomBody,
   ) {
-    const participant = this.presence.leave(body.room, client.id);
-    void client.leave(body.room);
+    const room = tenantRoom(client.data.user.tenantId, body.room);
+    const participant = this.presence.leave(room, client.id);
+    void client.leave(room);
 
     if (participant) {
-      client
-        .to(body.room)
-        .emit('peer-left', { ...participant, reason: 'left' });
+      client.to(room).emit('peer-left', { ...participant, reason: 'left' });
     }
 
     return { left: body.room };
@@ -132,7 +136,11 @@ export class PeerGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return { error: 'capability denied' };
     }
 
-    return { participants: this.presence.participantsOf(body.room) };
+    return {
+      participants: this.presence.participantsOf(
+        tenantRoom(client.data.user.tenantId, body.room),
+      ),
+    };
   }
 
   // Offer, answer and ICE candidates are relayed verbatim to one target
@@ -175,12 +183,19 @@ export class PeerGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client: AuthenticatedSocket,
     body: SignalBody,
   ) {
-    const inRoom = this.presence
-      .participantsOf(body.room)
-      .some((participant) => participant.socketId === client.id);
+    const participants = this.presence.participantsOf(
+      tenantRoom(client.data.user.tenantId, body.room),
+    );
+    const inRoom = participants.some(
+      (participant) => participant.socketId === client.id,
+    );
 
     if (!inRoom) {
       return { error: 'not in room' };
+    }
+
+    if (!participants.some((participant) => participant.socketId === body.to)) {
+      return { error: 'target not in room' };
     }
 
     this.server.to(body.to).emit(event, {

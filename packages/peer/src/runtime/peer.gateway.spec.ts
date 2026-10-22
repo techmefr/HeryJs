@@ -5,6 +5,8 @@ import { PeerRoomPresenceService } from './peer-room-presence.service';
 import { PeerTurnCredentialsService } from './peer-turn-credentials.service';
 import * as policy from './peer.policy';
 
+const ROOM = 'tenant-1:room-1';
+
 const USER: AuthenticatedUser = {
   id: 'user-1',
   email: 'caller@example.com',
@@ -63,11 +65,11 @@ describe('PeerGateway room join and capability gating', () => {
 
     const result = await gateway.joinRoom(client, { room: 'room-1' });
 
-    expect(client.join).toHaveBeenCalledWith('room-1');
-    expect(presence.participantsOf('room-1')).toEqual([
+    expect(client.join).toHaveBeenCalledWith(ROOM);
+    expect(presence.participantsOf(ROOM)).toEqual([
       { socketId: 'socket-a', userId: 'user-1' },
     ]);
-    expect(client.to).toHaveBeenCalledWith('room-1');
+    expect(client.to).toHaveBeenCalledWith(ROOM);
     expect(result).toEqual({
       joined: 'room-1',
       participants: [{ socketId: 'socket-a', userId: 'user-1' }],
@@ -91,12 +93,12 @@ describe('PeerGateway leave and disconnect', () => {
   it('removes the participant and tells the room on an explicit leave', () => {
     const { gateway, presence } = gatewayWith();
     const client = socketFor('socket-a', USER);
-    presence.join('room-1', { socketId: 'socket-a', userId: 'user-1' });
+    presence.join(ROOM, { socketId: 'socket-a', userId: 'user-1' });
 
     const result = gateway.leaveRoom(client, { room: 'room-1' });
 
-    expect(presence.participantsOf('room-1')).toEqual([]);
-    expect(client.to).toHaveBeenCalledWith('room-1');
+    expect(presence.participantsOf(ROOM)).toEqual([]);
+    expect(client.to).toHaveBeenCalledWith(ROOM);
     expect(result).toEqual({ left: 'room-1' });
   });
 
@@ -104,15 +106,15 @@ describe('PeerGateway leave and disconnect', () => {
   // without a goodbye still has to be announced as gone.
   it('announces a disconnected peer as a leave to whoever remains', () => {
     const { gateway, presence, server, emit } = gatewayWith();
-    presence.join('room-1', { socketId: 'socket-a', userId: 'user-1' });
-    presence.join('room-1', { socketId: 'socket-b', userId: 'user-2' });
+    presence.join(ROOM, { socketId: 'socket-a', userId: 'user-1' });
+    presence.join(ROOM, { socketId: 'socket-b', userId: 'user-2' });
 
     gateway.handleDisconnect(socketFor('socket-a', USER));
 
-    expect(presence.participantsOf('room-1')).toEqual([
+    expect(presence.participantsOf(ROOM)).toEqual([
       { socketId: 'socket-b', userId: 'user-2' },
     ]);
-    expect(server.to).toHaveBeenCalledWith('room-1');
+    expect(server.to).toHaveBeenCalledWith(ROOM);
     expect(emit).toHaveBeenCalledWith('peer-left', {
       socketId: 'socket-a',
       userId: 'user-1',
@@ -132,7 +134,8 @@ describe('PeerGateway leave and disconnect', () => {
 describe('PeerGateway signalling relay', () => {
   it('relays an offer only to the named target, scoped to the room', () => {
     const { gateway, presence, server, emit } = gatewayWith();
-    presence.join('room-1', { socketId: 'socket-a', userId: 'user-1' });
+    presence.join(ROOM, { socketId: 'socket-a', userId: 'user-1' });
+    presence.join(ROOM, { socketId: 'socket-b', userId: 'user-2' });
     const client = socketFor('socket-a', USER);
 
     const result = gateway.offer(client, {
@@ -165,7 +168,8 @@ describe('PeerGateway signalling relay', () => {
 
   it('relays an ICE candidate the same way as an offer or answer', () => {
     const { gateway, presence, emit } = gatewayWith();
-    presence.join('room-1', { socketId: 'socket-a', userId: 'user-1' });
+    presence.join(ROOM, { socketId: 'socket-a', userId: 'user-1' });
+    presence.join(ROOM, { socketId: 'socket-b', userId: 'user-2' });
     const client = socketFor('socket-a', USER);
 
     gateway.iceCandidate(client, {
