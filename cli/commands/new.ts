@@ -405,12 +405,18 @@ function rewriteWorkflows(destRoot: string): void {
         'pnpm install --frozen-lockfile',
         'pnpm install --no-frozen-lockfile',
       )
-      .replace(
-        'pnpm exec prisma migrate deploy',
-        'pnpm hery migrate --name ci',
-      ),
+      .replace('pnpm exec prisma migrate deploy', 'pnpm hery migrate --name ci')
+      .replace(DOC_EXAMPLES_STEP, ''),
   );
 }
+
+export const DOC_EXAMPLES_STEP = `      - name: Check the generated endpoint examples are fresh
+        if: \${{ !cancelled() }}
+        run: |
+          pnpm run docs:examples
+          git diff --exit-code docs/src/data/endpoint-examples.generated.ts
+
+`;
 
 /**
  * Everything in this repository's manifest that names *this* project rather
@@ -486,7 +492,12 @@ export function projectManifest(
   // admin-astro package's own eslint.config.mjs still ships in packages/ and
   // still shadows the root config for its neighbors the same way it does here.
   manifest.scripts.lint =
-    'eslint "{src,apps,libs,test,cli,scripts,prisma,packages}/**/*.ts" "prisma.config.ts" "hery.config.ts" "cors.config.ts" --ignore-pattern "packages/admin-astro/src/runtime/**" --fix';
+    'eslint "{src,apps,libs,test,cli,scripts,prisma,packages}/**/*.ts" "prisma.config.ts" "hery.config.ts" "cors.config.ts" --ignore-pattern "packages/admin-astro/src/runtime/**"';
+  manifest.scripts['lint:fix'] = `${manifest.scripts.lint} --fix`;
+
+  // The endpoint examples are this repository's documentation, captured from
+  // examples/blog-post, which a project does not have.
+  delete manifest.scripts['docs:examples'];
 
   return manifest;
 }

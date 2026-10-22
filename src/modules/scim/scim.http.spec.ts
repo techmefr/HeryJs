@@ -29,6 +29,7 @@ const bodyOf = (response: { body: unknown }): ScimBody =>
   response.body as ScimBody;
 
 const EMAIL = 'scim-spec-user@scim-spec.test';
+const ACTIVITY_EMAIL = 'scim-activity-user@scim-spec.test';
 
 describe('SCIM provisioning', () => {
   let app: INestApplication<App>;
@@ -48,7 +49,9 @@ describe('SCIM provisioning', () => {
       where: { id: admin.id },
       data: { role: 'admin' },
     });
+  });
 
+  beforeEach(async () => {
     const issued = await request(app.getHttpServer())
       .post('/scim/token')
       .set('Authorization', `Bearer ${admin.token}`)
@@ -58,7 +61,9 @@ describe('SCIM provisioning', () => {
   });
 
   afterAll(async () => {
-    await authPrismaClient.user.deleteMany({ where: { email: EMAIL } });
+    await authPrismaClient.user.deleteMany({
+      where: { email: { in: [EMAIL, ACTIVITY_EMAIL] } },
+    });
     await authPrismaClient.scimToken.deleteMany({
       where: { tenantId: 'default' },
     });
@@ -180,6 +185,16 @@ describe('SCIM provisioning', () => {
   });
 
   it('shows the provisioning activity to an admin', async () => {
+    const provisioned = await scim('post', '/Users')
+      .send({ userName: ACTIVITY_EMAIL })
+      .expect(201);
+    await scim('patch', `/Users/${bodyOf(provisioned).id}`)
+      .send({
+        schemas: [SCIM_PATCH_SCHEMA],
+        Operations: [{ op: 'replace', path: 'active', value: false }],
+      })
+      .expect(200);
+
     const response = await request(app.getHttpServer())
       .get('/scim/activity')
       .set('Authorization', `Bearer ${admin.token}`)

@@ -100,7 +100,7 @@ class DemoModule {
 describe('tenant isolation over a real HTTP round trip', () => {
   let app: INestApplication<App>;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [DemoModule],
     }).compile();
@@ -108,7 +108,7 @@ describe('tenant isolation over a real HTTP round trip', () => {
     await app.init();
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
     await app.close();
   });
 

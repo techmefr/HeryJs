@@ -122,7 +122,11 @@ describe('SseController', () => {
     const channel = `stops-${Date.now()}`;
     const { res, req, chunks } = fakeResponse();
 
-    await controller.stream(fakeRequest(tenantId, { channels: channel }), channel, res);
+    await controller.stream(
+      fakeRequest(tenantId, { channels: channel }),
+      channel,
+      res,
+    );
     req.emit('close');
 
     await new Promise((resolve) => setTimeout(resolve, 100));

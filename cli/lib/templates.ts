@@ -4350,7 +4350,7 @@ ${slugChecks}`;
     let subject: Actor;
     let bystander: Actor;
 
-    beforeAll(async () => {
+    beforeEach(async () => {
       admin = await actingAs(app, { tenantId, role: 'admin' });
       subject = await actingAs(app, { tenantId });
       bystander = await actingAs(app, { tenantId });

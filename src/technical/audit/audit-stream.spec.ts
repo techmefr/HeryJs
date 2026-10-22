@@ -56,6 +56,7 @@ describe('audit streaming to a sink (real database)', () => {
   let status = 200;
   const received: Received[] = [];
   const createdSinks: string[] = [];
+  const tenants: string[] = [];
 
   const write = (recordId: string) =>
     writeAuditLog(authPrismaClient, {
@@ -163,7 +164,13 @@ describe('audit streaming to a sink (real database)', () => {
       where: { id: admin.id },
       data: { role: 'admin' },
     });
+  });
+
+  beforeEach(async () => {
     tenantId = `audit-stream-${randomUUID()}`;
+    tenants.push(tenantId);
+    received.length = 0;
+    status = 200;
     await authPrismaClient.user.update({
       where: { id: admin.id },
       data: { tenantId },
@@ -172,7 +179,7 @@ describe('audit streaming to a sink (real database)', () => {
 
   afterAll(async () => {
     const messages = await authPrismaClient.outboxMessage.findMany({
-      where: { tenantId, name: AUDIT_STREAM_MESSAGE },
+      where: { tenantId: { in: tenants }, name: AUDIT_STREAM_MESSAGE },
       select: { id: true },
     });
     const ids = messages.map((message) => message.id);
@@ -183,7 +190,9 @@ describe('audit streaming to a sink (real database)', () => {
     await authPrismaClient.outboxMessage.deleteMany({
       where: { id: { in: ids } },
     });
-    await authPrismaClient.auditSink.deleteMany({ where: { tenantId } });
+    await authPrismaClient.auditSink.deleteMany({
+      where: { tenantId: { in: tenants } },
+    });
     await app.close();
     await new Promise<void>((resolve) => server.close(() => resolve()));
   });

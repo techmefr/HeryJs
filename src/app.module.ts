@@ -79,10 +79,10 @@ const telemetryOptions = telemetryPinoOptions();
             ...tenantLogMixin(),
           }),
           transport:
-            process.env.NODE_ENV === "production" ||
-            process.env.NODE_ENV === "test"
+            process.env.NODE_ENV === 'production' ||
+            process.env.NODE_ENV === 'test'
               ? undefined
-              : { target: "pino-pretty", options: { singleLine: true } },
+              : { target: 'pino-pretty', options: { singleLine: true } },
           // A bearer token IS a live session (or, for up to 30 minutes, an
           // impersonation session) -- logging it verbatim on every request is
           // equivalent to logging the password. redact() below drops the value

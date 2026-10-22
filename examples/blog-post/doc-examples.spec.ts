@@ -45,8 +45,9 @@ const OUTPUT_PATH = resolve(
  * Every fixture below is a real request against a real, running instance of
  * the framework -- not hand-typed JSON. The doc site cannot boot the app
  * itself (it is a static Astro build), so this suite is what regenerates
- * `endpoint-examples.generated.ts` each time it runs: change the example,
- * run the suite, the docs catch up.
+ * `endpoint-examples.generated.ts` -- but only under `pnpm run docs:examples`,
+ * so a plain test run never leaves a tracked file modified. CI regenerates it
+ * and fails when the committed copy is stale.
  */
 function extractHandler(marker: string): string {
   const start = CONTROLLER_SOURCE.indexOf(marker);
@@ -132,7 +133,9 @@ describe('doc examples', () => {
   });
 
   afterAll(async () => {
-    await writeGeneratedFile();
+    if (process.env.DOC_EXAMPLES_WRITE === 'true') {
+      await writeGeneratedFile();
+    }
     await app.close();
     await prisma.$disconnect();
   });

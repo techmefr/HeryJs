@@ -92,7 +92,9 @@ export class SseController {
 
     res.req.on('close', () => {
       clearInterval(heartbeat);
-      void Promise.all(subscriptions.map((subscription) => subscription.stop()));
+      void Promise.all(
+        subscriptions.map((subscription) => subscription.stop()),
+      );
     });
   }
 

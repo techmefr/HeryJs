@@ -92,6 +92,8 @@ jobs:
 
       - run: pnpm run lint
 
+      - run: pnpm run format:check
+
       - run: pnpm run lint:fast
 
       - run: pnpm run lint:types
@@ -106,9 +108,24 @@ jobs:
 
       - run: pnpm run lint:hery
 
-      - run: pnpm test
+      # One step per suite, each run even when an earlier one failed, so a red
+      # application suite does not hide the state of the others.
+      - run: pnpm run test:app
 
-      - run: pnpm run test:e2e
+      - if: ${{ !cancelled() }}
+        run: pnpm run test:module-specs
+
+      - if: ${{ !cancelled() }}
+        run: pnpm --filter admin test
+
+      - name: Check the generated endpoint examples are fresh
+        if: ${{ !cancelled() }}
+        run: |
+          pnpm run docs:examples
+          git diff --exit-code docs/src/data/endpoint-examples.generated.ts
+
+      - if: ${{ !cancelled() }}
+        run: pnpm run test:e2e
 
       - run: pnpm run build
 
@@ -125,6 +142,68 @@ jobs:
       - run: pnpm --filter admin run build
 
       - run: pnpm --filter docs run build
+
+  # The application suite in a random order, with a fresh seed each run and the
+  # seed printed: a spec that only passes after another one has left data
+  # behind fails here, and the printed seed replays it with --seed.
+  randomized-order:
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: postgresql://heryjs:heryjs@localhost:5432/heryjs
+      REDIS_URL: redis://localhost:6479
+      BETTER_AUTH_URL: http://localhost:3000
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: heryjs
+          POSTGRES_PASSWORD: heryjs
+          POSTGRES_DB: heryjs
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports:
+          - 6479:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+
+      - name: Install the PostgreSQL 17 client tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y postgresql-client-17
+          echo /usr/lib/postgresql/17/bin >> "$GITHUB_PATH"
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run db:generate
+
+      - run: pnpm exec prisma migrate deploy
+
+      - run: pnpm run test:random
 
   # The getting-started path, run the way the README gives it. Everything above
   # proves this repository; a generated project renames the root package and
@@ -322,13 +401,21 @@ jobs:
             -e MINIO_ROOT_USER=heryjs \
             -e MINIO_ROOT_PASSWORD=heryjs-dev-secret \
             bitnamilegacy/minio:2025.5.24-debian-12-r5
-          for _ in $(seq 1 60); do
-            if curl -fsS http://localhost:9000/minio/health/live >/dev/null 2>&1; then
-              exit 0
+          # The image answers once, then restarts after its first-boot setup:
+          # ready means ten consecutive answers, not the first one.
+          streak=0
+          for _ in $(seq 1 120); do
+            if curl -fsS http://localhost:9000/minio/health/ready >/dev/null 2>&1; then
+              streak=$((streak + 1))
+              if [ "$streak" -ge 10 ]; then
+                exit 0
+              fi
+            else
+              streak=0
             fi
-            sleep 2
+            sleep 1
           done
-          echo 'minio never became reachable'
+          echo 'minio never stayed ready'
           docker logs minio
           exit 1
 
