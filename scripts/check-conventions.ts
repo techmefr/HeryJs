@@ -17,6 +17,7 @@ import { checkNoInlineDevGuard } from './check-no-inline-dev-guard';
 import { checkPagination } from './check-pagination';
 import { checkRateLimitDecorator } from './check-rate-limit-decorator';
 import { checkRls } from './check-rls';
+import { checkRuntimeDependencies } from './check-runtime-dependencies';
 import { checkScopeParity } from './check-scope-parity';
 import { checkSubjectConstruction } from './check-subject-construction';
 import { checkTemplateImports } from './check-template-imports';
@@ -35,6 +36,7 @@ const CHECKS: Array<{ name: string; run: () => boolean | Promise<boolean> }> = [
   { name: 'dev-guard', run: checkNoInlineDevGuard },
   { name: 'subject', run: checkSubjectConstruction },
   { name: 'template-imports', run: checkTemplateImports },
+  { name: 'runtime-dependencies', run: checkRuntimeDependencies },
   { name: 'kernel-version', run: checkKernelVersion },
   { name: 'example-freshness', run: checkExampleFreshness },
 ];

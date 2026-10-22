@@ -1217,9 +1217,41 @@ function resolveMutableRelations(
   return relations;
 }
 
+/**
+ * A blueprint its author has to correct, as opposed to a bug in the CLI: the
+ * entry point prints the message alone, with no stack trace to dig it out of.
+ */
+export class BlueprintError extends Error {}
+
+function parseBlueprintFile(filePath: string): z.infer<typeof blueprintSchema> {
+  let raw: unknown;
+
+  try {
+    raw = yaml.load(readFileSync(filePath, 'utf8'));
+  } catch (error) {
+    throw new BlueprintError(
+      `Unreadable blueprint ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+
+  const parsed = blueprintSchema.safeParse(raw);
+
+  if (!parsed.success) {
+    throw new BlueprintError(
+      `Invalid blueprint ${filePath}:\n${parsed.error.issues
+        .map(
+          (issue) =>
+            `  - ${issue.path.length > 0 ? `${issue.path.join('.')}: ` : ''}${issue.message}`,
+        )
+        .join('\n')}`,
+    );
+  }
+
+  return parsed.data;
+}
+
 export function loadBlueprint(filePath: string): Blueprint {
-  const raw = yaml.load(readFileSync(filePath, 'utf8'));
-  const blueprint = blueprintSchema.parse(raw);
+  const blueprint = parseBlueprintFile(filePath);
   const problems: string[] = [];
 
   assertNoReservedField(blueprint, (message) => problems.push(message));
@@ -1254,7 +1286,7 @@ export function loadBlueprint(filePath: string): Blueprint {
   );
 
   if (problems.length > 0) {
-    throw new Error(
+    throw new BlueprintError(
       `Incoherent blueprint ${filePath}:\n${problems.map((problem) => `  - ${problem}`).join('\n')}`,
     );
   }

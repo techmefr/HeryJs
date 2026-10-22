@@ -1,6 +1,10 @@
 import type { Command } from 'commander';
-import pc from 'picocolors';
-import { runInfraChecks } from '../lib/infra-checks';
+import {
+  checkBuildImports,
+  checkEvictionPolicy,
+  reportChecks,
+  runInfraChecks,
+} from '../lib/infra-checks';
 import type { CheckResult } from '../lib/infra-checks';
 
 /**
@@ -68,21 +72,24 @@ export function registerDoctorCommand(program: Command): void {
       'One command for everything that would otherwise fail piecemeal -- environment variables, hery.config.ts, and local infra',
     )
     .action(async () => {
+      const infra = await runInfraChecks();
+      const valkeyAnswers = infra.some(
+        (check) => check.label.startsWith('Valkey') && check.ok,
+      );
       const checks: CheckResult[] = [
         checkEnv(),
         checkHeryConfig(),
-        ...(await runInfraChecks()),
+        ...infra,
+        ...(valkeyAnswers
+          ? [
+              await checkEvictionPolicy(
+                process.env.REDIS_URL ?? 'redis://localhost:6479',
+              ),
+            ]
+          : []),
+        checkBuildImports(),
       ];
 
-      let allOk = true;
-
-      for (const check of checks) {
-        const icon = check.ok ? pc.green('✔') : pc.red('✘');
-        const hint = check.hint ? pc.dim(` — ${check.hint}`) : '';
-        console.log(`${icon} ${check.label}${hint}`);
-        allOk &&= check.ok;
-      }
-
-      process.exitCode = allOk ? 0 : 1;
+      process.exitCode = reportChecks(checks) ? 0 : 1;
     });
 }

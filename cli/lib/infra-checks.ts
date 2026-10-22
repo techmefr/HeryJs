@@ -1,11 +1,32 @@
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { isBuiltin } from 'node:module';
 import { connect } from 'node:net';
+import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { Client } from 'pg';
+import pc from 'picocolors';
 
 export interface CheckResult {
   label: string;
   ok: boolean;
   hint?: string;
+  /** Worth saying, not worth failing on: printed in yellow, exit code kept. */
+  warning?: boolean;
+}
+
+/** Prints each check and answers whether the whole set passed. */
+export function reportChecks(checks: CheckResult[]): boolean {
+  for (const check of checks) {
+    const icon = check.warning
+      ? pc.yellow('!')
+      : check.ok
+        ? pc.green('✔')
+        : pc.red('✘');
+    const hint = check.hint ? pc.dim(` — ${check.hint}`) : '';
+    console.log(`${icon} ${check.label}${hint}`);
+  }
+
+  return checks.every((check) => check.ok);
 }
 
 /**
@@ -150,7 +171,34 @@ async function untilItAnswers(
   }
 }
 
+/**
+ * A fresh project has a schema and no migration yet: that is the step the
+ * README gives next, not a broken environment, and failing `hery up --start`
+ * over it made the documented first run exit 1.
+ */
+export function hasMigrations(root = process.cwd()): boolean {
+  const dir = path.join(root, 'prisma', 'migrations');
+
+  return (
+    existsSync(dir) &&
+    readdirSync(dir, { withFileTypes: true }).some(
+      (entry) =>
+        entry.isDirectory() &&
+        existsSync(path.join(dir, entry.name, 'migration.sql')),
+    )
+  );
+}
+
 export function checkMigrations(): CheckResult {
+  if (!hasMigrations()) {
+    return {
+      label: 'Prisma migrations',
+      ok: true,
+      warning: true,
+      hint: 'none created yet — run "pnpm hery migrate --name init"',
+    };
+  }
+
   const result = spawnSync('npx', ['prisma', 'migrate', 'status'], {
     encoding: 'utf-8',
     shell: process.platform === 'win32',
@@ -171,6 +219,152 @@ export function checkMigrations(): CheckResult {
     label: 'Prisma migrations',
     ok: upToDate,
     hint: upToDate ? undefined : 'run "pnpm hery migrate --name <name>"',
+  };
+}
+
+/**
+ * `CONFIG GET` over the inline protocol, like the PING above. Undefined when
+ * the server will not say (a managed Valkey often renames CONFIG away).
+ */
+export function redisConfigValue(
+  host: string,
+  port: number,
+  name: string,
+  timeoutMs = 1000,
+): Promise<string | undefined> {
+  return new Promise((resolve) => {
+    const socket = connect({ host, port });
+    let received = '';
+
+    function settle(value: string | undefined) {
+      clearTimeout(timer);
+      socket.destroy();
+      resolve(value);
+    }
+
+    const timer = setTimeout(() => settle(undefined), timeoutMs);
+
+    socket.once('connect', () => socket.write(`CONFIG GET ${name}\r\n`));
+    socket.on('data', (chunk: Buffer) => {
+      received += chunk.toString('utf8');
+      const lines = received.split('\r\n');
+
+      if (lines[0] !== '*2') {
+        settle(undefined);
+      } else if (lines.length >= 5) {
+        settle(lines[4]);
+      }
+    });
+    socket.once('error', () => settle(undefined));
+  });
+}
+
+/**
+ * BullMQ keeps jobs, locks and the outbox relay in the same server as the
+ * cache, and any eviction policy drops them as readily as a cache entry.
+ */
+export async function checkEvictionPolicy(
+  redisUrl: string,
+): Promise<CheckResult> {
+  const label = 'Valkey maxmemory-policy';
+  const parsed = parseHostPort(redisUrl, 6379);
+  const policy = parsed
+    ? await redisConfigValue(parsed.host, parsed.port, 'maxmemory-policy')
+    : undefined;
+
+  if (policy === undefined) {
+    return {
+      label,
+      ok: true,
+      warning: true,
+      hint: 'could not read it; make sure it is noeviction, BullMQ jobs live in the same server',
+    };
+  }
+
+  return policy === 'noeviction'
+    ? { label: `${label} (noeviction)`, ok: true }
+    : {
+        label: `${label} (${policy})`,
+        ok: false,
+        hint: 'must be noeviction: any other policy can evict queued jobs — start Valkey with --maxmemory-policy noeviction',
+      };
+}
+
+const REQUIRE_CALL = /\brequire\("([^"]+)"\)/g;
+
+function compiledFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      return compiledFiles(full);
+    }
+
+    return entry.name.endsWith('.js') ? [full] : [];
+  });
+}
+
+function bareSpecifier(specifier: string): string | undefined {
+  if (
+    specifier.startsWith('.') ||
+    specifier.startsWith('#') ||
+    specifier.startsWith('node:') ||
+    isBuiltin(specifier)
+  ) {
+    return undefined;
+  }
+
+  const parts = specifier.split('/');
+
+  return specifier.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
+}
+
+/**
+ * The build is what production runs, and a package that resolves while
+ * developing only because something else pulls it in does not resolve there:
+ * `node dist/src/main` died on `express` in every fresh project that way.
+ */
+export function checkBuildImports(root = process.cwd()): CheckResult {
+  const label = 'Build imports';
+  const dist = path.join(root, 'dist');
+
+  if (!existsSync(dist)) {
+    return {
+      label,
+      ok: true,
+      warning: true,
+      hint: 'no build yet — run "pnpm build" to have its imports checked',
+    };
+  }
+
+  const missing = new Map<string, string>();
+
+  for (const file of compiledFiles(dist)) {
+    for (const match of readFileSync(file, 'utf8').matchAll(REQUIRE_CALL)) {
+      const name = match[1] === undefined ? undefined : bareSpecifier(match[1]);
+
+      if (name === undefined || missing.has(name)) {
+        continue;
+      }
+
+      try {
+        require.resolve(name, { paths: [root] });
+      } catch {
+        missing.set(name, path.relative(root, file));
+      }
+    }
+  }
+
+  if (missing.size === 0) {
+    return { label, ok: true };
+  }
+
+  return {
+    label,
+    ok: false,
+    hint: `${[...missing]
+      .map(([name, file]) => `"${name}" (from ${file}) does not resolve`)
+      .join('; ')} — declare it in the dependencies of package.json`,
   };
 }
 

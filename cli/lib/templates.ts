@@ -2893,6 +2893,12 @@ function trashParityTest(ctx: ResourceContext, createBody: string): string {
   }
 
   if (ctx.permissions.delete === 'own' || ctx.permissions.delete === 'team') {
+    // The bin is narrowed by the view preset like any other read, so under
+    // view: all the stranger can open the record and finds it in the bin too.
+    if (ctx.permissions.view === 'all') {
+      return '';
+    }
+
     return `  it('keeps a trashed record out of the bin of anyone who cannot open it', async () => {
     const created = await request(app.getHttpServer())
       .post('/${ctx.pluralKebabName}/create')

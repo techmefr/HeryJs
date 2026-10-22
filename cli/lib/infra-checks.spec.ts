@@ -1,5 +1,14 @@
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { createServer, type Server, type Socket } from 'node:net';
-import { runInfraChecks, speaksRedis } from './infra-checks';
+import { tmpdir } from 'node:os';
+import * as path from 'node:path';
+import {
+  checkBuildImports,
+  checkEvictionPolicy,
+  hasMigrations,
+  runInfraChecks,
+  speaksRedis,
+} from './infra-checks';
 
 const accepted: Socket[] = [];
 
@@ -131,5 +140,93 @@ describe('infra checks', () => {
     servers.push(server);
 
     await expect(speaksRedis('127.0.0.1', port)).resolves.toBe(true);
+  });
+
+  it('reads a noeviction policy as healthy', async () => {
+    const { server, port } = await listen((socket) =>
+      socket.on('data', () =>
+        socket.write('*2\r\n$16\r\nmaxmemory-policy\r\n$10\r\nnoeviction\r\n'),
+      ),
+    );
+    servers.push(server);
+
+    const check = await checkEvictionPolicy(`redis://127.0.0.1:${port}`);
+
+    expect(check.ok).toBe(true);
+    expect(check.warning).toBeUndefined();
+  });
+
+  it('fails on a policy that can evict queued jobs', async () => {
+    const { server, port } = await listen((socket) =>
+      socket.on('data', () =>
+        socket.write('*2\r\n$16\r\nmaxmemory-policy\r\n$11\r\nallkeys-lru\r\n'),
+      ),
+    );
+    servers.push(server);
+
+    const check = await checkEvictionPolicy(`redis://127.0.0.1:${port}`);
+
+    expect(check.ok).toBe(false);
+    expect(check.hint).toContain('noeviction');
+  });
+
+  it('only warns when the server will not say', async () => {
+    const { server, port } = await listen((socket) =>
+      socket.on('data', () =>
+        socket.write("-ERR unknown command 'CONFIG'\r\n"),
+      ),
+    );
+    servers.push(server);
+
+    const check = await checkEvictionPolicy(`redis://127.0.0.1:${port}`);
+
+    expect(check).toMatchObject({ ok: true, warning: true });
+  });
+});
+
+describe('migrations of a fresh project', () => {
+  it('finds none until a migration directory holds a migration.sql', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'hery-migrations-'));
+    expect(hasMigrations(root)).toBe(false);
+
+    mkdirSync(path.join(root, 'prisma', 'migrations', '0_init'), {
+      recursive: true,
+    });
+    expect(hasMigrations(root)).toBe(false);
+
+    writeFileSync(
+      path.join(root, 'prisma', 'migrations', '0_init', 'migration.sql'),
+      '',
+    );
+    expect(hasMigrations(root)).toBe(true);
+  });
+});
+
+describe('imports of the build', () => {
+  function build(source: string): string {
+    const root = mkdtempSync(path.join(tmpdir(), 'hery-build-'));
+    mkdirSync(path.join(root, 'dist', 'src'), { recursive: true });
+    writeFileSync(path.join(root, 'dist', 'src', 'main.js'), source);
+
+    return root;
+  }
+
+  it('only warns before there is a build', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'hery-build-'));
+
+    expect(checkBuildImports(root)).toMatchObject({ ok: true, warning: true });
+  });
+
+  it('names a package the build requires and nothing resolves', () => {
+    const check = checkBuildImports(
+      build(
+        'const a = require("node:fs");\nconst b = require("./local");\nconst c = require("hery-package-that-does-not-exist/sub");\n',
+      ),
+    );
+
+    expect(check.ok).toBe(false);
+    expect(check.hint).toContain('"hery-package-that-does-not-exist"');
+    expect(check.hint).not.toContain('node:fs');
+    expect(check.hint).not.toContain('./local');
   });
 });
