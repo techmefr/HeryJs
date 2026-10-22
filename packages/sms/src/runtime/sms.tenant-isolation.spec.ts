@@ -29,11 +29,17 @@ describe('tenant isolation', () => {
   let consent: SmsConsentService;
   let sms: SmsService;
 
-  beforeAll(async () => {
+  beforeAll(() => {
     scoped = createTenantScopedPrismaClient();
     consent = new SmsConsentService(scoped);
     sms = new SmsService({ active: driver } as SmsDriverRegistry, consent);
+  });
 
+  beforeEach(async () => {
+    sent.length = 0;
+    await raw.smsConsent.deleteMany({
+      where: { tenantId: { in: [tenantA, tenantB] } },
+    });
     await runInTenant(tenantB, () => consent.grant(phone, 'form'));
   });
 
