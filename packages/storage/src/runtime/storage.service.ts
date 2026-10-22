@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
+import { isTenantFileKey } from '#kernel/tenancy/tenant-file-key';
 import { storageEnv } from './storage.env';
 import { StorageUploadRejectedException } from './storage-upload-rejected.exception';
 import { StorageNotInTenantException } from './storage-not-in-tenant.exception';
@@ -40,8 +41,6 @@ export interface ListedFile {
 }
 
 const LIST_LIMIT = 200;
-
-const UNSAFE_SEGMENTS = new Set(['', '.', '..']);
 
 export function allowedContentTypes(): string[] {
   return storageEnv.STORAGE_ALLOWED_CONTENT_TYPES
@@ -112,13 +111,7 @@ export class StorageService {
    * caller's tenant instead of trusting the client to name its own.
    */
   async removeOwn(key: string): Promise<void> {
-    const [tenant, ...rest] = key.split('/');
-
-    if (
-      tenant !== TenantContextStorage.getTenantId() ||
-      rest.length === 0 ||
-      rest.some((segment) => UNSAFE_SEGMENTS.has(segment))
-    ) {
+    if (!isTenantFileKey(key, TenantContextStorage.getTenantId())) {
       throw new StorageNotInTenantException(key);
     }
 

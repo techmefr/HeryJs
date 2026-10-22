@@ -38,9 +38,15 @@ export function richtextMaxLength(field: ScalarBlueprintField): number {
 
 // The size limit is on what the client sends, before the sanitiser shrinks it.
 function inputRuleFor(field: ScalarBlueprintField): string {
-  return field.type === 'richtext'
-    ? `z.string().min(1).max(${richtextMaxLength(field)})`
-    : ZOD_TYPES[field.type];
+  if (field.type === 'richtext') {
+    return `z.string().min(1).max(${richtextMaxLength(field)})`;
+  }
+
+  if (field.type === 'file') {
+    return `${ZOD_TYPES.file}.refine(isCurrentTenantFileKey)`;
+  }
+
+  return ZOD_TYPES[field.type];
 }
 
 // A slug is filled in by the service when the client sends none, so it is
@@ -65,7 +71,13 @@ export function prismaTypeFor(field: ScalarBlueprintField): string {
   return field.optional ? `${base}?` : base;
 }
 
-export function sampleValueFor(field: ScalarBlueprintField): string {
+// A `file` sample has to sit under the tenant the spec writes in, since the
+// input schema refuses any key outside it; `tenant` is the expression naming
+// that tenant in the generated spec, the default tenant when none is given.
+export function sampleValueFor(
+  field: ScalarBlueprintField,
+  tenant?: string,
+): string {
   switch (field.type) {
     case 'string':
       return `'${field.name}-value'`;
@@ -76,7 +88,9 @@ export function sampleValueFor(field: ScalarBlueprintField): string {
     case 'datetime':
       return 'new Date().toISOString()';
     case 'file':
-      return `'${field.name}-key.png'`;
+      return tenant === undefined
+        ? `'default/${field.name}-key.png'`
+        : `\`\${${tenant}}/${field.name}-key.png\``;
     case 'encrypted':
       return `'${field.name}-secret-value'`;
     case 'slug':

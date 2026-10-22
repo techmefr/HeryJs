@@ -4,7 +4,10 @@ import { AUTH_PROVIDER } from '#technical/auth/auth.types';
 import type { AuthProvider } from '#technical/auth/auth.types';
 import { resolveCallerOnce } from '#technical/auth/resolve-caller';
 import { TraceContextStorage } from '#technical/tracing/trace-context';
-import { TenantContextStorage } from './tenant-context';
+import {
+  TenantContextStorage,
+  UNAUTHENTICATED_TENANT_ID,
+} from './tenant-context';
 
 @Injectable()
 export class TenantMiddleware implements NestMiddleware {
@@ -29,7 +32,7 @@ export class TenantMiddleware implements NestMiddleware {
     const user = token
       ? await resolveCallerOnce(this.authProvider, token, req)
       : null;
-    const tenantId = user?.tenantId ?? 'unauthenticated';
+    const tenantId = user?.tenantId ?? UNAUTHENTICATED_TENANT_ID;
 
     TraceContextStorage.pushStep({
       stage: 'middleware',

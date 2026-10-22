@@ -6,9 +6,9 @@ import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
+import { isTenantFileKey } from '#technical/tenancy/tenant-file-key';
 import {
   anonymisedData,
-  ERASED_TEXT,
   erasedSlug,
   PersonalDataRegistry,
   personalSlugFields,
@@ -206,7 +206,7 @@ export class PrivacyExecutor {
         declaration.model,
         ids,
       );
-      const keys = await this.fileKeys(declaration, delegate, where);
+      const keys = await this.fileKeys(tenantId, declaration, delegate, where);
 
       resources[declaration.model] = await this.erase(
         declaration,
@@ -253,7 +253,7 @@ export class PrivacyExecutor {
         tenantId,
         models: [declaration.model],
       });
-      const keys = await this.fileKeys(declaration, delegate, {});
+      const keys = await this.fileKeys(tenantId, declaration, delegate, {});
 
       resources[declaration.model] = await this.erase(
         declaration,
@@ -337,9 +337,12 @@ export class PrivacyExecutor {
    * The objects behind the `file` fields an erasure is about to clear: every
    * one when the row is deleted, the personal ones when it is anonymised. Read
    * before the rows change, removed after, so a failed erasure leaves the row
-   * pointing at an object that still exists.
+   * pointing at an object that still exists. A key outside the tenant's prefix
+   * names someone else's object, so it is cleared from the row but never
+   * removed.
    */
   private async fileKeys(
+    tenantId: string,
     declaration: PersonalDataDeclaration,
     delegate: RowDelegate,
     where: Row,
@@ -364,7 +367,7 @@ export class PrivacyExecutor {
         .map((field) => row[field.name])
         .filter(
           (key): key is string =>
-            typeof key === 'string' && key !== '' && key !== ERASED_TEXT,
+            typeof key === 'string' && isTenantFileKey(key, tenantId),
         ),
     );
   }

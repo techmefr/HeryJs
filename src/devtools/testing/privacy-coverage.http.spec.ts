@@ -394,6 +394,32 @@ describe('privacy requests across module tables', () => {
     await purgeTenant(tenantId);
   });
 
+  it("never removes another tenant's file a user named in a file field", async () => {
+    const tenantId = createTestTenantId();
+    const foreignTenantId = createTestTenantId();
+    const foreign = await personIn(foreignTenantId);
+    const subject = await actingAs(app, { tenantId });
+
+    await request(app.getHttpServer())
+      .post('/snippets/create')
+      .set('Authorization', subject.authorization)
+      .send({ data: [{ title: foreign.fileKey }] })
+      .expect(201);
+
+    const id = await requested(subject, '/privacy/erasures/user', {
+      userId: subject.id,
+    });
+
+    expect(await settled(tenantId, id)).toMatchObject({
+      status: 'done',
+      error: null,
+    });
+    expect(await objectExists(foreign.fileKey)).toBe(true);
+
+    await purgeTenant(tenantId);
+    await purgeTenant(foreignTenantId);
+  });
+
   it('erases every module table of a tenant, and none of another tenant', async () => {
     const tenantId = createTestTenantId();
     const admin = await actingAs(app, { tenantId, role: 'admin' });
