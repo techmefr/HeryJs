@@ -22,6 +22,14 @@ describe('SharingService (real database)', () => {
   let grantee: string;
   let outsider: string;
   let team: string;
+  const extraUsers: string[] = [];
+
+  const makeUser = async (tenantId: string) =>
+    (
+      await rawClient.user.create({
+        data: { email: `share-${randomUUID()}@example.test`, tenantId },
+      })
+    ).id;
 
   const subjectOf = (id: string, teamIds: string[] = []) => ({
     id,
@@ -38,16 +46,9 @@ describe('SharingService (real database)', () => {
     service = moduleRef.get(SharingService);
     moduleClose = () => moduleRef.close();
 
-    const make = async (tenantId: string) =>
-      (
-        await rawClient.user.create({
-          data: { email: `share-${randomUUID()}@example.test`, tenantId },
-        })
-      ).id;
-
-    owner = await make(tenantA);
-    grantee = await make(tenantA);
-    outsider = await make(tenantB);
+    owner = await makeUser(tenantA);
+    grantee = await makeUser(tenantA);
+    outsider = await makeUser(tenantB);
     team = (
       await rawClient.team.create({
         data: { name: 'Sharing', tenantId: tenantA },
@@ -64,7 +65,7 @@ describe('SharingService (real database)', () => {
     });
     await rawClient.team.deleteMany({ where: { tenantId: tenantA } });
     await rawClient.user.deleteMany({
-      where: { id: { in: [owner, grantee, outsider] } },
+      where: { id: { in: [owner, grantee, outsider, ...extraUsers] } },
     });
     await rawClient.$disconnect();
     await moduleClose();
@@ -76,11 +77,13 @@ describe('SharingService (real database)', () => {
   it('folds the ids shared with a user into one lookup, directly and through a team', async () => {
     const direct = `rec-${randomUUID()}`;
     const viaTeam = `rec-${randomUUID()}`;
+    const reader = await makeUser(tenantA);
+    extraUsers.push(reader);
 
     await inA(async () => {
       await service.grant(resource, direct, owner, {
         granteeType: 'user',
-        granteeId: grantee,
+        granteeId: reader,
         access: 'read',
       });
       await service.grant(resource, viaTeam, owner, {
@@ -91,15 +94,15 @@ describe('SharingService (real database)', () => {
     });
 
     const ids = await inA(() =>
-      service.sharedRecordIds(resource, subjectOf(grantee, [team])),
+      service.sharedRecordIds(resource, subjectOf(reader, [team])),
     );
 
     expect(ids).toEqual(expect.arrayContaining([direct, viaTeam]));
     expect(
-      await inA(() => service.sharedRecordIds(resource, subjectOf(grantee))),
+      await inA(() => service.sharedRecordIds(resource, subjectOf(reader))),
     ).toEqual([direct]);
     expect(
-      await inA(() => service.sharedRecordIds('Other', subjectOf(grantee))),
+      await inA(() => service.sharedRecordIds('Other', subjectOf(reader))),
     ).toEqual([]);
   });
 

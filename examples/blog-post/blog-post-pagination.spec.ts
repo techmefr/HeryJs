@@ -33,10 +33,13 @@ describe('BlogPost pagination and caching', () => {
     await prisma.$disconnect();
   });
 
-  async function createBlogPost(title: string): Promise<string> {
+  async function createBlogPost(
+    title: string,
+    token = ownerToken,
+  ): Promise<string> {
     const response = await request(app.getHttpServer())
       .post('/blog-posts/create')
-      .set('Authorization', `Bearer ${ownerToken}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ data: [{ title }] })
       .expect(201);
 
@@ -46,30 +49,31 @@ describe('BlogPost pagination and caching', () => {
     return data[0]!.data.id;
   }
 
-  async function search(body: Record<string, unknown>) {
+  async function search(body: Record<string, unknown>, token = ownerToken) {
     return request(app.getHttpServer())
       .post('/blog-posts/search')
-      .set('Authorization', `Bearer ${ownerToken}`)
+      .set('Authorization', `Bearer ${token}`)
       .send(body)
       .expect(200);
   }
 
   describe('cursor pagination', () => {
     it('has no gaps or duplicates when a row is inserted mid-pagination, unlike offset pagination', async () => {
+      const { token } = await registerAndLogin(app);
       const ids: string[] = [];
       for (let i = 1; i <= 11; i++) {
-        ids.push(await createBlogPost(`cursor-row-${i}`));
+        ids.push(await createBlogPost(`cursor-row-${i}`, token));
       }
       const oldest = ids[0]!;
 
-      const offsetPage1 = await search({ page: 1, limit: 10 });
+      const offsetPage1 = await search({ page: 1, limit: 10 }, token);
       const offsetIdsPage1 = (
         offsetPage1.body as { data: { id: string }[] }
       ).data.map((record) => record.id);
       expect(offsetIdsPage1).toEqual([...ids].reverse().slice(0, 10));
       expect(offsetIdsPage1).not.toContain(oldest);
 
-      const cursorPage1 = await search({ limit: 10 });
+      const cursorPage1 = await search({ limit: 10 }, token);
       const cursorBody = cursorPage1.body as {
         data: { id: string }[];
         meta: { next_cursor: string | null };
@@ -81,15 +85,15 @@ describe('BlogPost pagination and caching', () => {
       expect(cursor).not.toBeNull();
       const lastOfPage1 = offsetIdsPage1[offsetIdsPage1.length - 1]!;
 
-      const inserted = await createBlogPost('cursor-inserted');
+      const inserted = await createBlogPost('cursor-inserted', token);
 
-      const offsetPage2 = await search({ page: 2, limit: 10 });
+      const offsetPage2 = await search({ page: 2, limit: 10 }, token);
       const offsetIdsPage2 = (
         offsetPage2.body as { data: { id: string }[] }
       ).data.map((record) => record.id);
       expect(offsetIdsPage2).toContain(lastOfPage1);
 
-      const cursorPage2 = await search({ limit: 10, cursor });
+      const cursorPage2 = await search({ limit: 10, cursor }, token);
       const cursorIdsPage2 = (
         cursorPage2.body as { data: { id: string }[] }
       ).data.map((record) => record.id);

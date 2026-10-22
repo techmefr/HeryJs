@@ -54,10 +54,7 @@ export class PeerGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {}
 
   async handleConnection(client: AuthenticatedSocket) {
-    const authenticated = await authenticateSocket(
-      client,
-      this.authProvider,
-    );
+    const authenticated = await authenticateSocket(client, this.authProvider);
 
     if (!authenticated) {
       client.disconnect(true);

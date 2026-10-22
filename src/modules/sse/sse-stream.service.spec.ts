@@ -31,17 +31,18 @@ describe('SseStreamService', () => {
     const firstId = await service.publish(tenantId, channel, 'export.started', {
       exportId: '1',
     });
-    const secondId = await service.publish(
-      tenantId,
-      channel,
-      'export.ready',
-      { exportId: '1', url: 'https://example.test/1' },
-    );
+    const secondId = await service.publish(tenantId, channel, 'export.ready', {
+      exportId: '1',
+      url: 'https://example.test/1',
+    });
 
     const missed = await service.replaySince(tenantId, channel, firstId);
 
     expect(collect(missed)).toEqual([
-      { event: 'export.ready', payload: { exportId: '1', url: 'https://example.test/1' } },
+      {
+        event: 'export.ready',
+        payload: { exportId: '1', url: 'https://example.test/1' },
+      },
     ]);
     expect(missed[0]?.id).toBe(secondId);
   });
@@ -103,11 +104,11 @@ describe('SseStreamService', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    expect(collect(missed)).toEqual([
-      { event: 'counter', payload: { n: 2 } },
-    ]);
+    expect(collect(missed)).toEqual([{ event: 'counter', payload: { n: 2 } }]);
     expect(missed[0]?.id).toBe(missedWhileDisconnected);
-    expect(collect(received)).toEqual([{ event: 'counter', payload: { n: 3 } }]);
+    expect(collect(received)).toEqual([
+      { event: 'counter', payload: { n: 3 } },
+    ]);
     expect(received[0]?.id).toBe(afterReconnect);
   });
 

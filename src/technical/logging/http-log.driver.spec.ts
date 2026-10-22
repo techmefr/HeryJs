@@ -36,6 +36,7 @@ describe('lokiPushBody', () => {
 });
 
 describe('HttpLogDriver', () => {
+  const REPORT_INTERVAL_PAST = 60_000;
   const options = {
     url: 'https://loki.example/loki/api/v1/push',
     token: 'secret-token',
@@ -92,6 +93,9 @@ describe('HttpLogDriver', () => {
 
   it('reports a refusing collector instead of throwing', async () => {
     const stderr = jest.spyOn(process.stderr, 'write').mockReturnValue(true);
+    const clock = jest
+      .spyOn(Date, 'now')
+      .mockReturnValue(Date.now() + REPORT_INTERVAL_PAST);
     const driver = new HttpLogDriver({
       ...options,
       fetch: () => Promise.resolve(new Response(null, { status: 503 })),
@@ -102,6 +106,7 @@ describe('HttpLogDriver', () => {
     await expect(driver.flush()).resolves.toBeUndefined();
     expect(stderr).toHaveBeenCalledWith(expect.stringContaining('503'));
 
+    clock.mockRestore();
     stderr.mockRestore();
   });
 

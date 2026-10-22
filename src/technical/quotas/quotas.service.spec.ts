@@ -17,18 +17,25 @@ describe('QuotasService against a real database', () => {
   const prisma = createTenantScopedPrismaClient();
   const overrides = new RateLimitOverrides(prisma);
   const service = new QuotasService(config, prisma, overrides);
-  const tenantA = `quota-a-${randomUUID()}`;
-  const tenantB = `quota-b-${randomUUID()}`;
+  const tenants: string[] = [];
 
   const asTenant = <T>(tenantId: string, run: () => Promise<T>) =>
     runInTenant(tenantId, async () => await run());
+
+  function freshTenants(): { tenantA: string; tenantB: string } {
+    const tenantA = `quota-a-${randomUUID()}`;
+    const tenantB = `quota-b-${randomUUID()}`;
+    tenants.push(tenantA, tenantB);
+
+    return { tenantA, tenantB };
+  }
 
   beforeAll(async () => {
     await prisma.$connect();
   });
 
   afterAll(async () => {
-    for (const tenantId of [tenantA, tenantB]) {
+    for (const tenantId of tenants) {
       await asTenant(tenantId, async () => {
         await prisma.quotaUsage.deleteMany({});
         await prisma.quotaOverride.deleteMany({});
@@ -38,6 +45,7 @@ describe('QuotasService against a real database', () => {
   });
 
   it('lets exactly the limit through when requests race for it', async () => {
+    const { tenantA } = freshTenants();
     const attempts = await asTenant(tenantA, () =>
       Promise.allSettled(
         Array.from({ length: 20 }, () => service.consume('seats')),
@@ -57,12 +65,18 @@ describe('QuotasService against a real database', () => {
   });
 
   it('counts a tenant on its own', async () => {
+    const { tenantA, tenantB } = freshTenants();
+    await asTenant(tenantA, () => service.consume('seats', 5));
+
     const result = await asTenant(tenantB, () => service.consume('seats'));
 
     expect(result).toMatchObject({ used: 1, remaining: 4 });
   });
 
   it('answers check without counting', async () => {
+    const { tenantB } = freshTenants();
+    await asTenant(tenantB, () => service.consume('seats'));
+
     const before = await asTenant(tenantB, () => service.check('seats', 4));
     const after = await asTenant(tenantB, () => service.check('seats', 5));
 
@@ -71,6 +85,10 @@ describe('QuotasService against a real database', () => {
   });
 
   it('takes an override set for one tenant, and only that tenant', async () => {
+    const { tenantA, tenantB } = freshTenants();
+    await asTenant(tenantA, () => service.consume('seats', 5));
+    await asTenant(tenantB, () => service.consume('seats'));
+
     await asTenant(tenantA, () => service.setOverride(tenantA, 'seats', 8));
 
     const raised = await asTenant(tenantA, () => service.consume('seats', 3));
@@ -86,6 +104,9 @@ describe('QuotasService against a real database', () => {
   });
 
   it('falls back to the default when the override is removed', async () => {
+    const { tenantA } = freshTenants();
+    await asTenant(tenantA, () => service.setOverride(tenantA, 'seats', 8));
+
     await asTenant(tenantA, () => service.setOverride(tenantA, 'seats', null));
 
     const status = await asTenant(tenantA, () => service.check('seats'));
@@ -94,6 +115,11 @@ describe('QuotasService against a real database', () => {
   });
 
   it('resets one tenant counter and leaves the others alone', async () => {
+    const { tenantA, tenantB } = freshTenants();
+    await asTenant(tenantA, () => service.setOverride(tenantA, 'seats', 8));
+    await asTenant(tenantA, () => service.consume('seats', 8));
+    await asTenant(tenantB, () => service.consume('seats'));
+
     const before = await asTenant(tenantA, () => service.check('seats'));
     await service.resetUsage(tenantA, 'seats');
 
@@ -113,6 +139,7 @@ describe('QuotasService against a real database', () => {
   });
 
   it('reads a rate-limit override set through the same table', async () => {
+    const { tenantA, tenantB } = freshTenants();
     await service.setOverride(tenantA, 'rate-limit:write', 77);
 
     await expect(

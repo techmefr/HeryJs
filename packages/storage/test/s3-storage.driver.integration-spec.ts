@@ -61,8 +61,29 @@ beforeAll(async () => {
     },
   });
 
-  await client.send(new CreateBucketCommand({ Bucket: bucket }));
-});
+  await createBucketOnceServing(client);
+}, 90_000);
+
+/**
+ * The Bitnami image answers its health probe once, then restarts the server
+ * after its first-boot setup, so the first request can still be reset. The
+ * bucket creation is retried until the server stays up long enough to answer.
+ */
+async function createBucketOnceServing(client: S3Client): Promise<void> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      await client.send(new CreateBucketCommand({ Bucket: bucket }));
+
+      return;
+    } catch (error) {
+      if (attempt >= 40) {
+        throw error;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+  }
+}
 
 describe('the S3 driver against a real S3-compatible server', () => {
   it('stores, reads, lists and removes an object', async () => {
