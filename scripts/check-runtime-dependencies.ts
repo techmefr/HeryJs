@@ -1,16 +1,10 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { builtinModules } from 'node:module';
 import * as path from 'node:path';
 import pc from 'picocolors';
 import { loadOfficialModules } from '../cli/lib/module-discovery';
+import { bareName, runtimeImports } from '../cli/lib/runtime-imports';
 
 const root = path.resolve(__dirname, '..');
-
-const STATIC_IMPORT =
-  /^\s*(import|export)\s+(type\s+)?(?:[^'";]*?\s+from\s+)?'([^']+)';/gm;
-const DYNAMIC_IMPORT = /\b(?:import|require)\(\s*'([^']+)'\s*\)/g;
-
-const BUILTINS = new Set(builtinModules);
 
 /**
  * Files that never reach a production build: specs, factories, the fakes and test support
@@ -38,54 +32,6 @@ function sourceFiles(dir: string): string[] {
 
     return entry.name.endsWith('.ts') && !isTestOnly(full) ? [full] : [];
   });
-}
-
-export function packageNameOf(specifier: string): string | undefined {
-  if (
-    specifier.startsWith('.') ||
-    specifier.startsWith('#') ||
-    specifier.startsWith('node:') ||
-    BUILTINS.has(specifier.split('/')[0] ?? '')
-  ) {
-    return undefined;
-  }
-
-  const parts = specifier.split('/');
-
-  return specifier.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
-}
-
-/** Every package a file loads at runtime: type-only imports are erased. */
-export function runtimeImports(source: string): string[] {
-  const names = new Set<string>();
-
-  for (const match of source.matchAll(STATIC_IMPORT)) {
-    const specifier = match[3];
-
-    if (match[2] === undefined && specifier !== undefined) {
-      const name = packageNameOf(specifier);
-
-      if (name !== undefined) {
-        names.add(name);
-      }
-    }
-  }
-
-  for (const match of source.matchAll(DYNAMIC_IMPORT)) {
-    const name = match[1] === undefined ? undefined : packageNameOf(match[1]);
-
-    if (name !== undefined) {
-      names.add(name);
-    }
-  }
-
-  return [...names];
-}
-
-function bareName(spec: string): string {
-  const at = spec.indexOf('@', spec.startsWith('@') ? 1 : 0);
-
-  return at === -1 ? spec : spec.slice(0, at);
 }
 
 /**

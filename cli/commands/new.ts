@@ -11,10 +11,12 @@ import { readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import type { Command } from 'commander';
 import pc from 'picocolors';
+import { APP_MODULE, unwireModule } from '../lib/app-module-patch';
 import { loadBlueprint } from '../lib/blueprint';
 import { frameworkRoot } from '../lib/framework-root';
 import { MODEL_REGISTRIES } from '../lib/model-set';
 import { pascalCase } from '../lib/naming';
+import { bareName, runtimeImports } from '../lib/runtime-imports';
 import { stripModelsFromSchema, withoutSetEntries } from '../lib/strip-example';
 
 const REPO_ROOT = frameworkRoot();
@@ -22,9 +24,9 @@ const REPO_ROOT = frameworkRoot();
 /**
  * Everything a fresh project needs to run `hery generate`/`hery install` on
  * its own: the CLI itself, every module's authoring package, the kernel
- * (technical/), the always-there DX tools (devtools/), the modules already
- * wired into AppModule by default (modules/), and the config each of those
- * depends on. Deliberately excluded: examples/ and docs/ (this framework's
+ * (technical/), the always-there DX tools (devtools/), the modules this
+ * repository has installed (modules/, trimmed by dropOptionalModules to the
+ * ones the kernel needs), and the config each of those depends on. Deliberately excluded: examples/ and docs/ (this framework's
  * own demo and doc site, not part of what ships), admin/ (installed later via
  * `hery install admin-astro`, same as any other opt-in module), and anything
  * that is this repository's own build/dev state (node_modules, dist, the
@@ -236,6 +238,144 @@ function dropExampleModels(destRoot: string): string[] {
   }
 
   return removed;
+}
+
+/**
+ * The modules a fresh project keeps out of those this repository has
+ * installed, each with the reason it cannot be left for `hery install`: its
+ * install wrote into kernel files, or the kernel reads its table, so taking it
+ * out would mean reverting the kernel rather than deleting a directory. Every
+ * other module is removed and installed on demand.
+ */
+export const MODULES_THE_KERNEL_NEEDS: Record<string, string> = {
+  impersonation:
+    'its install patches six kernel files (env schema, Better Auth instance, auth types, session provider, capabilities) and adds fields to User and Session',
+  'two-factor':
+    'its install patches src/technical/prisma/prisma.client.ts and adds relations to User',
+  push: 'src/technical/auth/guest-upgrade.ts moves the PushToken rows of a guest',
+};
+
+const PROJECT_SOURCE_DIRS = ['src', 'cli', 'scripts', 'test', 'prisma'];
+
+function typescriptFilesUnder(dir: string): string[] {
+  if (!existsSync(dir)) {
+    return [];
+  }
+
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = path.join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      return typescriptFilesUnder(full);
+    }
+
+    return entry.name.endsWith('.ts') ? [full] : [];
+  });
+}
+
+function packagesImportedUnder(dirs: string[]): Set<string> {
+  return new Set(
+    dirs
+      .flatMap(typescriptFilesUnder)
+      .flatMap((file) => runtimeImports(readFileSync(file, 'utf8'), true)),
+  );
+}
+
+/**
+ * The kernel-side files a module brings: its directory under src/modules, its
+ * Prisma models, its AppModule line, the compose file its install copies, the
+ * root dependencies nothing else imports, and any kernel spec written against
+ * it. All of it comes back with `hery install <name>`.
+ */
+function dropOptionalModules(destRoot: string): string[] {
+  const modulesDir = path.join(destRoot, 'src', 'modules');
+  const removable = readdirSync(modulesDir, { withFileTypes: true })
+    .filter(
+      (entry) =>
+        entry.isDirectory() &&
+        !(entry.name in MODULES_THE_KERNEL_NEEDS) &&
+        existsSync(path.join(destRoot, 'packages', entry.name, 'src')),
+    )
+    .map((entry) => entry.name);
+
+  if (removable.length === 0) {
+    return [];
+  }
+
+  const removedDirs = removable.map((name) => path.join(modulesDir, name));
+  const installedByRemoved = new Set<string>();
+  const models = new Set<string>();
+  const appModuleFile = path.join(destRoot, APP_MODULE);
+  let appModule = readFileSync(appModuleFile, 'utf8');
+
+  for (const name of removable) {
+    const definition = readFileSync(
+      path.join(destRoot, 'packages', name, 'src', 'module.ts'),
+      'utf8',
+    );
+
+    for (const match of definition.matchAll(/^model (\w+) \{/gm)) {
+      models.add(match[1]!);
+    }
+
+    const dependencies = /^ {2}dependencies: \[([^\]]*)\]/m.exec(definition);
+
+    for (const spec of dependencies?.[1]?.matchAll(/'([^']+)'/g) ?? []) {
+      installedByRemoved.add(bareName(spec[1]!));
+    }
+
+    appModule = unwireModule(appModule, name)?.source ?? appModule;
+
+    const packageDir = path.join(destRoot, 'packages', name);
+
+    for (const file of readdirSync(packageDir)) {
+      if (/^docker-compose\..+\.ya?ml$/.test(file)) {
+        rmSync(path.join(destRoot, file), { force: true });
+      }
+    }
+  }
+
+  writeFileSync(appModuleFile, appModule);
+  removedDirs.forEach((dir) => rmSync(dir, { recursive: true }));
+
+  const schemaFile = path.join(destRoot, 'prisma', 'schema.prisma');
+  writeFileSync(
+    schemaFile,
+    stripModelsFromSchema(readFileSync(schemaFile, 'utf8'), models).schema,
+  );
+
+  for (const { file, set } of MODEL_REGISTRIES) {
+    const target = path.join(destRoot, file);
+    writeFileSync(
+      target,
+      withoutSetEntries(readFileSync(target, 'utf8'), set, models),
+    );
+  }
+
+  const specifiers = new RegExp(
+    removable.map((name) => `'#modules/${name}/`).join('|'),
+  );
+  specFilesUnder(path.join(destRoot, 'src'))
+    .filter((file) => specifiers.test(readFileSync(file, 'utf8')))
+    .forEach((file) => rmSync(file));
+
+  const stillImported = packagesImportedUnder(
+    PROJECT_SOURCE_DIRS.map((dir) => path.join(destRoot, dir)),
+  );
+  const manifestFile = path.join(destRoot, 'package.json');
+  const manifest = JSON.parse(readFileSync(manifestFile, 'utf8')) as {
+    dependencies: Record<string, string>;
+  };
+
+  for (const name of installedByRemoved) {
+    if (!stillImported.has(name)) {
+      delete manifest.dependencies[name];
+    }
+  }
+
+  writeFileSync(manifestFile, `${JSON.stringify(manifest, null, 2)}\n`);
+
+  return removable;
 }
 
 /**
@@ -571,6 +711,7 @@ export function registerNewCommand(program: Command): void {
       );
       rewriteWorkflows(destRoot);
       rewritePackageJson(destRoot, name);
+      const removedModules = dropOptionalModules(destRoot);
       rewriteModuleManifests(destRoot);
       rewriteWorkspaceFile(destRoot);
       writeReadme(destRoot, name);
@@ -596,6 +737,14 @@ export function registerNewCommand(program: Command): void {
         console.log(
           pc.dim(
             `  with the ${droppedSpecs} kernel specs written against it — this repository proves the kernel, your project proves your resources`,
+          ),
+        );
+      }
+
+      if (removedModules.length > 0) {
+        console.log(
+          pc.dim(
+            `  left out for "pnpm hery install <module>" when you need them: ${removedModules.join(', ')}`,
           ),
         );
       }
