@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Body, Controller, Get, Module, Param, Post } from '@nestjs/common';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
@@ -8,6 +9,7 @@ import { grantPlatformOperator } from '#devtools/testing/platform-operator';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 import type { TestUser } from '#devtools/testing/register-and-login';
 import { env } from '#technical/config/env';
+import { heryConfig } from '#technical/config/hery-config';
 import { AuthModule } from '#technical/auth/auth.module';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { Capability } from '#technical/capabilities/capability.decorator';
@@ -261,6 +263,95 @@ describe('the admin studio in production', () => {
         where: { operation: 'probe-run', userId: member.id },
       }),
     ).resolves.toBe(0);
+  });
+});
+
+describe("the admin studio in production under studioAccess: 'tenant-admin'", () => {
+  let app: INestApplication<App>;
+  let adminOfA: TestUser;
+  let adminOfB: TestUser;
+  let memberOfB: TestUser;
+  const tenantB = `studio-tenant-b-${randomUUID()}`;
+  const originalNodeEnv = process.env.NODE_ENV;
+  const originalAdmin = heryConfig.admin;
+  const mutableEnv = env as unknown as Record<string, string | undefined>;
+  const originalEnabled = mutableEnv.ADMIN_STUDIO_ENABLED;
+
+  const promote = (
+    user: TestUser,
+    data: { role?: string; tenantId?: string },
+  ) => authPrismaClient.user.update({ where: { id: user.id }, data });
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule, ProbeStudioModule],
+    }).compile();
+    app = moduleRef.createNestApplication();
+    await app.init();
+
+    adminOfA = await registerAndLogin(app);
+    await promote(adminOfA, { role: 'admin' });
+    adminOfB = await registerAndLogin(app);
+    await promote(adminOfB, { role: 'admin', tenantId: tenantB });
+    memberOfB = await registerAndLogin(app);
+    await promote(memberOfB, { tenantId: tenantB });
+  });
+
+  beforeEach(() => {
+    process.env.NODE_ENV = 'production';
+    mutableEnv.ADMIN_STUDIO_ENABLED = 'true';
+    heryConfig.admin = { studioAccess: 'tenant-admin' };
+  });
+
+  afterEach(() => {
+    process.env.NODE_ENV = originalNodeEnv;
+    mutableEnv.ADMIN_STUDIO_ENABLED = originalEnabled;
+    heryConfig.admin = originalAdmin;
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  const as = (user: TestUser, route: string) =>
+    request(app.getHttpServer())
+      .get(route)
+      .set('Authorization', `Bearer ${user.token}`);
+
+  const listedUserIds = async (user: TestUser) =>
+    (
+      (await as(user, '/studio/access/users?perPage=100').expect(200)).body as {
+        data: Array<{ id: string }>;
+      }
+    ).data.map((row) => row.id);
+
+  it('opens the studio to the admin of each tenant, not to a member', async () => {
+    await as(adminOfA, '/introspect').expect(200);
+    await as(adminOfB, '/introspect').expect(200);
+    await as(memberOfB, '/introspect').expect(403);
+  });
+
+  it("shows each tenant admin its own tenant's accounts and never the other's", async () => {
+    const seenByA = await listedUserIds(adminOfA);
+    const seenByB = await listedUserIds(adminOfB);
+
+    expect(seenByA).toContain(adminOfA.id);
+    expect(seenByA).not.toContain(adminOfB.id);
+    expect(seenByA).not.toContain(memberOfB.id);
+    expect(seenByB).toEqual(
+      expect.arrayContaining([adminOfB.id, memberOfB.id]),
+    );
+    expect(seenByB).not.toContain(adminOfA.id);
+  });
+
+  it('keeps the operator-only sections closed to a tenant admin', async () => {
+    await as(adminOfB, '/studio/overview/environment').expect(403);
+  });
+
+  it("closes the studio to the same tenant admin under studioAccess: 'operator'", async () => {
+    heryConfig.admin = { studioAccess: 'operator' };
+
+    await as(adminOfB, '/introspect').expect(403);
   });
 });
 

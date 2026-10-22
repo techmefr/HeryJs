@@ -1,4 +1,5 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { heryConfig } from '#technical/config/hery-config';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import { PersonalDataRegistry } from '#technical/privacy/personal-data.registry';
@@ -6,7 +7,9 @@ import type { PersonalDataSubject } from '#technical/privacy/personal-data.types
 
 /**
  * A share names two users: the one it was granted to and the one who granted
- * it. Both go with either of them.
+ * it. Both export it. Erasing the grantee always removes it; erasing the
+ * grantor removes it too unless hery.config.ts sets
+ * `sharing.onGrantorErasure: 'keep'`, read per erasure.
  */
 @Injectable()
 export class SharingPersonalData implements OnModuleInit {
@@ -36,13 +39,25 @@ export class SharingPersonalData implements OnModuleInit {
       eraseUser: async (subject) =>
         (
           await this.prisma.recordShare.deleteMany({
-            where: this.naming(subject),
+            where: this.erasing(subject),
           })
         ).count,
       eraseTenant: async (tenantId) =>
         (await this.prisma.recordShare.deleteMany({ where: { tenantId } }))
           .count,
     });
+  }
+
+  private erasing(subject: PersonalDataSubject) {
+    if (heryConfig.sharing?.onGrantorErasure === 'keep') {
+      return {
+        tenantId: subject.tenantId,
+        granteeType: 'user',
+        granteeId: subject.userId,
+      };
+    }
+
+    return this.naming(subject);
   }
 
   private naming(subject: PersonalDataSubject) {
