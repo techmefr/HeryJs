@@ -91,6 +91,10 @@ export interface HeryConfigLogging extends HeryConfigDrivers {
  * opt-in for a deployed environment, and the routes are then behind an admin
  * capability rather than gone.
  */
+export interface HeryConfigPrivacy {
+  exportRetentionDays?: number;
+}
+
 export interface HeryConfigDevDashboard {
   enabled?: boolean;
   retentionHours?: number;
@@ -121,6 +125,7 @@ export interface HeryConfig {
   i18n?: HeryConfigI18n;
   logging?: HeryConfigLogging;
   devDashboard?: HeryConfigDevDashboard;
+  privacy?: HeryConfigPrivacy;
   mail?: HeryConfigDrivers;
   export?: HeryConfigDrivers;
   import?: HeryConfigDrivers;

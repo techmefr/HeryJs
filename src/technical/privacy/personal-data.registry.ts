@@ -4,6 +4,8 @@ import { resolveDefaultLocale } from '#technical/i18n/locale.config';
 import type {
   PersonalDataDeclaration,
   PersonalDataField,
+  PersonalDataHook,
+  StoredFileRemover,
 } from './personal-data.types';
 
 export const ERASED_TEXT = '[erased]';
@@ -135,6 +137,8 @@ export function eraseOrder(
 @Injectable()
 export class PersonalDataRegistry {
   private readonly declarations = new Map<string, PersonalDataDeclaration>();
+  private readonly registeredHooks = new Map<string, PersonalDataHook>();
+  private remover: StoredFileRemover | null = null;
 
   register(declaration: PersonalDataDeclaration): void {
     this.declarations.set(declaration.model, declaration);
@@ -142,5 +146,21 @@ export class PersonalDataRegistry {
 
   all(): PersonalDataDeclaration[] {
     return eraseOrder([...this.declarations.values()]);
+  }
+
+  registerHook(hook: PersonalDataHook): void {
+    this.registeredHooks.set(hook.name, hook);
+  }
+
+  hooks(): PersonalDataHook[] {
+    return [...this.registeredHooks.values()];
+  }
+
+  registerFileRemover(remover: StoredFileRemover): void {
+    this.remover = remover;
+  }
+
+  fileRemover(): StoredFileRemover | null {
+    return this.remover;
   }
 }

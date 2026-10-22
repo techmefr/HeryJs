@@ -5,6 +5,7 @@ import { HeryConfigModule } from '#kernel/config/hery-config.module';
 import { DriversModule } from '#kernel/drivers/drivers.module';
 import { JobsModule } from '#kernel/jobs/jobs.module';
 import { PrismaModule } from '#kernel/prisma/prisma.module';
+import { PrivacyModule } from '#kernel/privacy/privacy.module';
 import { NOTIFIER_MAIL_CHANNEL } from '#kernel/notifier/notifier-mail-channel';
 import { AUTH_MAILER_PROVIDER, AuthMailAdapter } from './auth-mail.adapter';
 import { LogMailDriver } from './log-mail.driver';
@@ -12,6 +13,7 @@ import { MailAdminController } from './mail-admin.controller';
 import { MailController } from './mail.controller';
 import { MailDriverRegistry } from './mail-driver.registry';
 import { MailProcessor } from './mail.processor';
+import { MailPersonalData } from './mail.personal-data';
 import { MailService } from './mail.service';
 
 // Global because the kernel's auth flows resolve AUTH_MAILER by token from
@@ -24,10 +26,12 @@ import { MailService } from './mail.service';
     JobsModule,
     HeryConfigModule,
     DriversModule,
+    PrivacyModule,
   ],
   controllers: [MailController, MailAdminController],
   providers: [
     MailService,
+    MailPersonalData,
     MailProcessor,
     MailDriverRegistry,
     LogMailDriver,
