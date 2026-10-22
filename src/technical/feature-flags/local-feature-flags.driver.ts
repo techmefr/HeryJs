@@ -92,15 +92,17 @@ export class LocalFeatureFlagsDriver implements FeatureFlagDriver {
     return rows.map(toRecord);
   }
 
-  async listAll(page: PageQuery) {
+  async listAll(page: PageQuery, tenantId?: string) {
+    const where = tenantId === undefined ? {} : { tenantId };
     const [rows, total] = await Promise.all([
       this.prisma.featureFlag.findMany({
+        where,
         // key is unique per tenant, so it is already a stable order on its own.
         orderBy: [{ key: 'asc' }, { id: 'asc' }],
         skip: page.skip,
         take: page.take,
       }),
-      this.prisma.featureFlag.count(),
+      this.prisma.featureFlag.count({ where }),
     ]);
 
     return { records: rows.map(toRecord), total };

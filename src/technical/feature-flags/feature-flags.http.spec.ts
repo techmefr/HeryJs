@@ -5,6 +5,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { grantPlatformOperator } from '#devtools/testing/platform-operator';
 import {
   registerAndLogin,
   type TestUser,
@@ -34,6 +35,7 @@ describe('feature flags over HTTP', () => {
       where: { id: admin.id },
       data: { role: 'admin' },
     });
+    grantPlatformOperator(admin.id);
     member = await registerAndLogin(app);
   });
 

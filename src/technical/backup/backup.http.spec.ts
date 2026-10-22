@@ -7,6 +7,7 @@ import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
+import { grantPlatformOperator } from '#devtools/testing/platform-operator';
 import { env } from '#technical/config/env';
 import { databaseNameOf } from './database-backup';
 
@@ -34,6 +35,7 @@ describe('backup routes', () => {
       where: { id: admin.id },
       data: { role: 'admin' },
     });
+    grantPlatformOperator(admin.id);
     adminToken = admin.token;
     userToken = (await registerAndLogin(app)).token;
 

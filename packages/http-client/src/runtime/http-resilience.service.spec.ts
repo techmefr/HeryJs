@@ -1,7 +1,8 @@
 import { HeryConfig } from '#kernel/config/hery-config.types';
 import { HealthRegistry } from '#kernel/health/health-registry';
 import { metricsRegistry } from '#kernel/monitoring/metrics.registry';
-import { adminAbility } from '#kernel/capabilities/ability';
+import { operatorAbility } from '#kernel/capabilities/ability';
+import { env } from '#kernel/config/env';
 import { FakeHttpClientDriver } from './fake-http-client.driver';
 import { HttpClientDriverRegistry } from './http-client-driver.registry';
 import { HttpClientService } from './http-client.service';
@@ -108,13 +109,22 @@ describe('HTTP client resilience', () => {
       );
     });
 
-    it('is reserved to admins', () => {
-      const member = { role: 'member' } as Parameters<typeof adminAbility>[0];
-      const admin = { role: 'admin' } as Parameters<typeof adminAbility>[0];
+    it('is reserved to the platform operator, never a tenant admin', () => {
+      type Subject = Parameters<typeof operatorAbility>[0];
+      const mutableEnv = env as unknown as Record<string, string | undefined>;
+      const saved = mutableEnv.PLATFORM_OPERATOR_IDS;
+      const member = { id: 'member', role: 'member' } as Subject;
+      const admin = { id: 'admin', role: 'admin' } as Subject;
+      const operator = { id: 'operator', role: null } as Subject;
+      mutableEnv.PLATFORM_OPERATOR_IDS = 'operator';
 
       expect(canReadHttpCircuits(member).allowed).toBe(false);
       expect(canManageHttpCircuits(member).allowed).toBe(false);
-      expect(canManageHttpCircuits(admin).allowed).toBe(true);
+      expect(canManageHttpCircuits(admin).allowed).toBe(false);
+      expect(canReadHttpCircuits(admin).allowed).toBe(false);
+      expect(canManageHttpCircuits(operator).allowed).toBe(true);
+
+      mutableEnv.PLATFORM_OPERATOR_IDS = saved;
     });
   });
 });

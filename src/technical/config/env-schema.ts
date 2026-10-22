@@ -230,6 +230,11 @@ export function buildServerSchema(nodeEnv: string | undefined) {
     ADMIN_STUDIO_ENABLED: z.enum(['true', 'false']).default('false'),
     ADMIN_STUDIO_ALLOWED_IPS: z.string().optional(),
     ADMIN_STUDIO_REQUIRE_2FA: z.enum(['true', 'false']).default('false'),
+    /**
+     * Comma-separated user ids of the platform operators: the people who run
+     * the deployment, above every tenant. Unset means nobody, never everyone.
+     */
+    PLATFORM_OPERATOR_IDS: z.string().optional(),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.string().min(1).optional(),
     OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: z.string().min(1).optional(),
     OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: z.string().min(1).optional(),

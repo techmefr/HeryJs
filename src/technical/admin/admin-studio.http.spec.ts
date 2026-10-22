@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
+import { grantPlatformOperator } from '#devtools/testing/platform-operator';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 import type { TestUser } from '#devtools/testing/register-and-login';
 import { env } from '#technical/config/env';
@@ -81,6 +82,7 @@ describe('the admin studio in production', () => {
       where: { id: admin.id },
       data: { role: 'admin' },
     });
+    grantPlatformOperator(admin.id);
     member = await registerAndLogin(app);
   });
 
@@ -124,6 +126,17 @@ describe('the admin studio in production', () => {
     for (const [method, route] of studioRoutes) {
       await call(admin, method, route).expect(404);
     }
+  });
+
+  it('refuses a tenant admin who is not a platform operator', async () => {
+    const tenantAdmin = await registerAndLogin(app);
+    await authPrismaClient.user.update({
+      where: { id: tenantAdmin.id },
+      data: { role: 'admin' },
+    });
+    production();
+
+    await as(tenantAdmin, '/introspect').expect(403);
   });
 
   it('answers 404 rather than 401 to a caller who is not signed in', async () => {
