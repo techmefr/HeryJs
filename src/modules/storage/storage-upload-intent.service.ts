@@ -77,6 +77,10 @@ export class StorageUploadIntentService {
   }
 
   async confirm(key: string): Promise<UploadIntent> {
+    if (!key.startsWith(`${TenantContextStorage.getTenantId()}/`)) {
+      throw new StorageUploadIntentNotFoundException(key);
+    }
+
     const cacheKey = `${INTENT_CACHE_PREFIX}${key}`;
     const intent = await this.cache.take<StoredIntent>(cacheKey);
 

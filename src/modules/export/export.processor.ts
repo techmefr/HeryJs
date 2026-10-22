@@ -9,6 +9,7 @@ import type { NotificationProvider } from '#technical/notifications/notification
 import type { ExportRow } from '#technical/export/export-driver';
 import { STORAGE_MODULE } from '#technical/storage/storage-driver';
 import type { StorageDriver } from '#technical/storage/storage-driver';
+import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import {
   EXPORT_GENERATE_JOB,
   EXPORT_READY_NOTIFICATION,
@@ -22,6 +23,7 @@ interface ExportJobData {
   headers?: Record<string, string>;
   rows: ExportRow[];
   userId: string;
+  tenantId?: string;
   storage?: string;
 }
 
@@ -47,8 +49,23 @@ export class ExportProcessor extends WorkerHost {
       return;
     }
 
-    const { format, filename, columns, headers, rows, userId, storage } =
-      job.data as ExportJobData;
+    const data = job.data as ExportJobData;
+    const tenantId = data.tenantId ?? TenantContextStorage.findTenantId();
+
+    if (!tenantId) {
+      this.logger.error(
+        `Refused export "${data.filename}": the job names no tenant to store it under.`,
+      );
+      return;
+    }
+
+    await TenantContextStorage.run({ tenantId, userId: data.userId }, () =>
+      this.generate(data, tenantId),
+    );
+  }
+
+  private async generate(data: ExportJobData, tenantId: string): Promise<void> {
+    const { format, filename, columns, headers, rows, userId, storage } = data;
 
     const driver = this.registry.resolve(format);
     const name = `${filename}.${driver.extension}`;
@@ -59,7 +76,12 @@ export class ExportProcessor extends WorkerHost {
       rows: () => rows,
     });
 
-    const key = await this.store(name, body, driver.contentType, storage);
+    const key = await this.store(
+      `${tenantId}/exports/${userId}/${name}`,
+      body,
+      driver.contentType,
+      storage,
+    );
 
     await this.notifications.send(userId, EXPORT_READY_NOTIFICATION, {
       filename: name,
@@ -82,7 +104,7 @@ export class ExportProcessor extends WorkerHost {
    * export finished, and an app that wants the file installs storage.
    */
   private async store(
-    name: string,
+    key: string,
     body: Buffer,
     contentType: string,
     keyword: string | undefined,
@@ -94,12 +116,12 @@ export class ExportProcessor extends WorkerHost {
 
     if (!driver) {
       this.logger.warn(
-        `Generated ${name} but no storage driver is installed to keep it. Run "pnpm hery install storage" to have exports persisted.`,
+        `Generated ${key} but no storage driver is installed to keep it. Run "pnpm hery install storage" to have exports persisted.`,
       );
       return null;
     }
 
-    const stored = await driver.put(`exports/${name}`, body, contentType);
+    const stored = await driver.put(key, body, contentType);
 
     return stored.key;
   }

@@ -10,6 +10,7 @@ import { importableToken } from '#kernel/import/import-driver';
 import type { Importable } from '#kernel/import/import-driver';
 import { STORAGE_MODULE } from '#kernel/storage/storage-driver';
 import type { StorageDriver } from '#kernel/storage/storage-driver';
+import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
 import {
   IMPORT_CONSUME_JOB,
   IMPORT_DONE_NOTIFICATION,
@@ -22,6 +23,7 @@ interface ImportJobData {
   importable: string;
   key: string;
   userId: string;
+  tenantId?: string;
 }
 
 @Processor(IMPORT_QUEUE)
@@ -43,7 +45,23 @@ export class ImportProcessor extends WorkerHost {
       return;
     }
 
-    const { format, importable, key, userId } = job.data as ImportJobData;
+    const data = job.data as ImportJobData;
+    const tenantId = data.tenantId ?? TenantContextStorage.findTenantId();
+
+    if (!tenantId || !data.key.startsWith(`${tenantId}/`)) {
+      this.logger.error(
+        `Refused import of key "${data.key}": it does not belong to the tenant that queued it.`,
+      );
+      return;
+    }
+
+    await TenantContextStorage.run({ tenantId, userId: data.userId }, () =>
+      this.consume(data),
+    );
+  }
+
+  private async consume(data: ImportJobData): Promise<void> {
+    const { format, importable, key, userId } = data;
 
     const target = this.find(importable);
 
