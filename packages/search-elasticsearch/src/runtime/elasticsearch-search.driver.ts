@@ -73,11 +73,24 @@ export class ElasticsearchSearchDriver implements SearchDriver {
     });
   }
 
-  async remove(collection: string, id: string): Promise<void> {
-    // Deletion is by id alone -- a Prisma cuid is already globally unique, so
-    // there is no ambiguity a tenant filter would resolve here. tenantId is
-    // part of the shared SearchDriver contract for consistency with
-    // index()/search(), not because this call needs it.
+  // An id alone is not proof of ownership: every tenant shares the
+  // collection, so a caller holding another tenant's id would delete that
+  // tenant's document. The stored tenant is read first, and a document that
+  // belongs to someone else is left alone exactly like a missing one.
+  async remove(
+    collection: string,
+    id: string,
+    tenantId: string,
+  ): Promise<void> {
+    const stored = await this.client.get<Record<string, unknown>>(
+      { index: collection, id, _source_includes: [TENANT_FIELD] },
+      { ignore: [404] },
+    );
+
+    if (stored._source?.[TENANT_FIELD] !== tenantId) {
+      return;
+    }
+
     await this.client.delete({ index: collection, id }, { ignore: [404] });
   }
 

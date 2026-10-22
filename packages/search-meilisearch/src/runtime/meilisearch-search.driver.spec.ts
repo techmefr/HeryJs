@@ -4,6 +4,7 @@ import { MeilisearchTaskFailedException } from './meilisearch-task-failed.except
 interface FakeIndex {
   updateFilterableAttributes: jest.Mock;
   addDocuments: jest.Mock;
+  getDocument: jest.Mock;
   deleteDocument: jest.Mock;
   search: jest.Mock;
 }
@@ -18,6 +19,7 @@ function fakeClient(hitIds: string[] = []): FakeClient {
   const theIndex: FakeIndex = {
     updateFilterableAttributes: jest.fn().mockResolvedValue({ taskUid: 1 }),
     addDocuments: jest.fn().mockResolvedValue({ taskUid: 2 }),
+    getDocument: jest.fn().mockResolvedValue({ tenantId: 'acme' }),
     deleteDocument: jest.fn().mockResolvedValue({ taskUid: 3 }),
     search: jest.fn().mockResolvedValue({ hits: hitIds.map((id) => ({ id })) }),
   };
@@ -196,7 +198,7 @@ describe('the Meilisearch driver', () => {
   it('waits for the deletion task too', async () => {
     const client = fakeClient();
 
-    await driverWith(client).remove('blog_posts', 'post-1');
+    await driverWith(client).remove('blog_posts', 'post-1', 'acme');
 
     expect(client.theIndex.deleteDocument).toHaveBeenCalledWith('post-1');
     expect(client.tasks.waitForTask).toHaveBeenCalledWith(3);
