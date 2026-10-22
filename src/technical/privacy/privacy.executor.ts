@@ -8,11 +8,16 @@ import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import {
   anonymisedData,
+  ERASED_TEXT,
   erasedSlug,
   PersonalDataRegistry,
   personalSlugFields,
 } from './personal-data.registry';
-import type { PersonalDataDeclaration } from './personal-data.types';
+import type {
+  PersonalDataDeclaration,
+  PersonalDataField,
+  PersonalDataSubject,
+} from './personal-data.types';
 
 const TOMBSTONE_DOMAIN = 'erased.invalid';
 const TOMBSTONE_REASON = 'erased';
@@ -41,6 +46,7 @@ export interface ErasureOutcome {
     resources: Record<string, number>;
     auditEntriesRedacted: number;
     snapshotsPurged: number;
+    filesRemoved: number;
     identities: number;
   };
 }
@@ -59,7 +65,7 @@ function delegateFor<T>(client: object, model: string): T {
  * blueprint generated are not here: they point at their owner through
  * `ownerId`, and answer through their declaration.
  */
-function userKeyedModels(): string[] {
+export function userKeyedModels(): string[] {
   return Prisma.dmmf.datamodel.models
     .filter((model) => {
       const names = new Set(model.fields.map((field) => field.name));
@@ -125,7 +131,7 @@ export class PrivacyExecutor {
       throw new RecordNotFoundException('user');
     }
 
-    const resources: Record<string, Row[]> = {};
+    const resources: Record<string, unknown[]> = {};
 
     for (const declaration of this.registry.all()) {
       const rows = await this.rowsOf(declaration).findMany({
@@ -136,6 +142,12 @@ export class PrivacyExecutor {
       resources[declaration.model] = rows.map((row) =>
         this.exportedRow(declaration, row),
       );
+    }
+
+    const subject = this.subjectOf(tenantId, identity);
+
+    for (const hook of this.registry.hooks()) {
+      resources[hook.name] = await hook.exportUser(subject);
     }
 
     return {
@@ -162,7 +174,7 @@ export class PrivacyExecutor {
   async eraseUser(tenantId: string, userId: string): Promise<ErasureOutcome> {
     const identity = await authPrismaClient.user.findFirst({
       where: { id: userId, tenantId },
-      select: { id: true },
+      select: { id: true, email: true, phoneNumber: true },
     });
 
     if (!identity) {
@@ -172,6 +184,7 @@ export class PrivacyExecutor {
     const resources: Record<string, number> = {};
     let auditEntriesRedacted = 0;
     let snapshotsPurged = 0;
+    let filesRemoved = 0;
 
     for (const declaration of this.registry.all()) {
       const delegate = this.rowsOf(declaration);
@@ -193,11 +206,20 @@ export class PrivacyExecutor {
         declaration.model,
         ids,
       );
+      const keys = await this.fileKeys(declaration, delegate, where);
+
       resources[declaration.model] = await this.erase(
         declaration,
         delegate,
         where,
       );
+      filesRemoved += await this.removeFiles(keys);
+    }
+
+    const subject = this.subjectOf(tenantId, identity);
+
+    for (const hook of this.registry.hooks()) {
+      resources[hook.name] = await hook.eraseUser(subject);
     }
 
     return {
@@ -205,6 +227,7 @@ export class PrivacyExecutor {
         resources,
         auditEntriesRedacted,
         snapshotsPurged,
+        filesRemoved,
         identities: await this.tombstone(tenantId, [userId]),
       },
     };
@@ -221,17 +244,27 @@ export class PrivacyExecutor {
   ): Promise<ErasureOutcome> {
     const resources: Record<string, number> = {};
     let auditEntriesRedacted = 0;
+    let filesRemoved = 0;
 
     for (const declaration of this.registry.all()) {
+      const delegate = this.rowsOf(declaration);
+
       auditEntriesRedacted += await redactAuditEntries(authPrismaClient, {
         tenantId,
         models: [declaration.model],
       });
+      const keys = await this.fileKeys(declaration, delegate, {});
+
       resources[declaration.model] = await this.erase(
         declaration,
-        this.rowsOf(declaration),
+        delegate,
         {},
       );
+      filesRemoved += await this.removeFiles(keys);
+    }
+
+    for (const hook of this.registry.hooks()) {
+      resources[hook.name] = await hook.eraseTenant(tenantId, requesterId);
     }
 
     const snapshotsPurged = (
@@ -255,7 +288,13 @@ export class PrivacyExecutor {
     }
 
     return {
-      summary: { resources, auditEntriesRedacted, snapshotsPurged, identities },
+      summary: {
+        resources,
+        auditEntriesRedacted,
+        snapshotsPurged,
+        filesRemoved,
+        identities,
+      },
     };
   }
 
@@ -280,6 +319,68 @@ export class PrivacyExecutor {
     }
 
     return purged;
+  }
+
+  private subjectOf(
+    tenantId: string,
+    identity: { id: string; email: string; phoneNumber: string | null },
+  ): PersonalDataSubject {
+    return {
+      tenantId,
+      userId: identity.id,
+      email: identity.email,
+      phoneNumber: identity.phoneNumber,
+    };
+  }
+
+  /**
+   * The objects behind the `file` fields an erasure is about to clear: every
+   * one when the row is deleted, the personal ones when it is anonymised. Read
+   * before the rows change, removed after, so a failed erasure leaves the row
+   * pointing at an object that still exists.
+   */
+  private async fileKeys(
+    declaration: PersonalDataDeclaration,
+    delegate: RowDelegate,
+    where: Row,
+  ): Promise<string[]> {
+    const fields = declaration.fields.filter(
+      (field: PersonalDataField) =>
+        field.type === 'file' &&
+        (declaration.erase === 'delete' || field.personal),
+    );
+
+    if (fields.length === 0 || this.registry.fileRemover() === null) {
+      return [];
+    }
+
+    const rows = await delegate.findMany({
+      where,
+      select: Object.fromEntries(fields.map((field) => [field.name, true])),
+    });
+
+    return rows.flatMap((row) =>
+      fields
+        .map((field) => row[field.name])
+        .filter(
+          (key): key is string =>
+            typeof key === 'string' && key !== '' && key !== ERASED_TEXT,
+        ),
+    );
+  }
+
+  private async removeFiles(keys: readonly string[]): Promise<number> {
+    const remove = this.registry.fileRemover();
+
+    if (remove === null) {
+      return 0;
+    }
+
+    for (const key of keys) {
+      await remove(key);
+    }
+
+    return keys.length;
   }
 
   private rowsOf(declaration: PersonalDataDeclaration): RowDelegate {

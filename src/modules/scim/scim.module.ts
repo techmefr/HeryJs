@@ -2,6 +2,7 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { json } from 'express';
 import { AuthModule } from '#technical/auth/auth.module';
 import { PrismaModule } from '#technical/prisma/prisma.module';
+import { PrivacyModule } from '#technical/privacy/privacy.module';
 import { PrismaScimDirectoryStore } from './prisma-scim-directory.store';
 import { PrismaScimTokenStore } from './prisma-scim-token.store';
 import { ScimActivityService } from './scim-activity.service';
@@ -11,6 +12,7 @@ import { ScimTokenGuard } from './scim-token.guard';
 import { ScimTokenService } from './scim-token.service';
 import { ScimUsersService } from './scim-users.service';
 import { ScimController } from './scim.controller';
+import { ScimPersonalData } from './scim.personal-data';
 import {
   SCIM_BASE_PATH,
   SCIM_CONTENT_TYPE,
@@ -21,13 +23,14 @@ import {
 const SCIM_BODY_LIMIT = '1mb';
 
 @Module({
-  imports: [AuthModule, PrismaModule],
+  imports: [AuthModule, PrismaModule, PrivacyModule],
   controllers: [ScimController, ScimAdminController],
   providers: [
     { provide: SCIM_TOKEN_STORE, useClass: PrismaScimTokenStore },
     { provide: SCIM_DIRECTORY_STORE, useClass: PrismaScimDirectoryStore },
     ScimTokenService,
     ScimTokenGuard,
+    ScimPersonalData,
     ScimUsersService,
     ScimGroupsService,
     ScimActivityService,

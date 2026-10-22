@@ -15,6 +15,8 @@ import { StorageUploadIntentService } from './storage-upload-intent.service';
 import { StorageService } from './storage.service';
 import { storageDriverToken } from '#technical/storage/storage-driver';
 import './storage.catalogue';
+import { PrivacyModule } from '#technical/privacy/privacy.module';
+import { StoragePersonalData } from './storage.personal-data';
 
 const LOCAL_DRIVER_TOKEN = storageDriverToken('local');
 const S3_DRIVER_TOKEN = storageDriverToken('s3');
@@ -24,7 +26,7 @@ const S3_DRIVER_TOKEN = storageDriverToken('s3');
 // same gates apply either way -- but GET :key only exists for the local
 // driver, which is the one this app itself has to serve back out.
 @Module({
-  imports: [AuthModule, HeryConfigModule, DriversModule],
+  imports: [AuthModule, HeryConfigModule, DriversModule, PrivacyModule],
   controllers:
     storageEnv.STORAGE_DRIVER === 'local'
       ? [
@@ -44,6 +46,7 @@ const S3_DRIVER_TOKEN = storageDriverToken('s3');
     StorageDriverRegistry,
     StorageSignatureGuard,
     StorageService,
+    StoragePersonalData,
     StorageUploadIntentService,
     { provide: LOCAL_DRIVER_TOKEN, useExisting: LocalStorageDriver },
     // Bound here rather than shipped as its own package: the driver already
