@@ -2,6 +2,8 @@ import { Prisma } from '@prisma/client';
 
 const HISTORY_COLUMNS = new Set<string>([
   'Snippet.title',
+  'Snippet.summary',
+  'Snippet.status',
   'Snippet.deletedAt',
   'Snippet.version',
 ]);

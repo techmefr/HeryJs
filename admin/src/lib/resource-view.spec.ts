@@ -486,3 +486,49 @@ describe('a resource with a workflow', () => {
     }
   });
 });
+
+describe('editing a cell in place', () => {
+  it('offers a plain value, never a date or a rich text the one-line input would flatten', async () => {
+    server.handlers['/blog-posts/describe'] = () =>
+      envelope({
+        ...mockDescription,
+        fields: [
+          ...mockDescription.fields,
+          {
+            name: 'body',
+            type: 'richtext',
+            optional: true,
+            richtext: {
+              maxLength: 1000,
+              allow: { tags: ['p', 'strong'], attributes: {}, schemes: [] },
+            },
+          },
+        ],
+        selects: [...mockDescription.selects, 'publishedAt', 'body'],
+        rules: {
+          ...mockDescription.rules,
+          update: {
+            properties: {
+              ...mockDescription.rules.update.properties,
+              body: { type: 'string', maxLength: 1000 },
+            },
+          },
+        },
+      });
+    server.rows = [
+      {
+        ...mockRow('a', 'First'),
+        publishedAt: '2026-10-22T10:00:00.000Z',
+        body: '<p>Some <strong>bold</strong> text</p>',
+      },
+    ];
+    const root = await mount();
+    const edits = [...root.querySelectorAll('button.inline-edit')].map((item) =>
+      item.getAttribute('aria-label'),
+    );
+
+    expect(edits).toContain('Edit Title of a');
+    expect(edits.some((label) => label?.includes('Body'))).toBe(false);
+    expect(edits.some((label) => label?.includes('Published'))).toBe(false);
+  });
+});

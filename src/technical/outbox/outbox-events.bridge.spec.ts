@@ -44,6 +44,28 @@ describe('OutboxEventsBridge', () => {
     expect(registry.handlersFor('something.else')).toEqual([]);
   });
 
+  it('never tells listeners a record was written when only a share on it changed', async () => {
+    const seen: ModelChanged[] = [];
+    events.listen(ModelChanged, {
+      name: 'collector',
+      handle: (event) => {
+        seen.push(event);
+      },
+    });
+
+    await bridge.handle(
+      delivery('model.shared', {
+        model: 'BlogPost',
+        kind: 'updated',
+        recordId: 'post-1',
+        tenantId: 'tenant-1',
+        changedFields: [],
+      }),
+    );
+
+    expect(seen).toEqual([]);
+  });
+
   it('dispatches a model change as a ModelChanged event instance', async () => {
     const seen: ModelChanged[] = [];
 

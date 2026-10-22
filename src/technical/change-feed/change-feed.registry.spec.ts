@@ -51,4 +51,27 @@ describe('ChangeFeedRegistry', () => {
 
     expect(await registry.forModel('Gone')?.project('x')).toBeNull();
   });
+
+  it('carries the shares the loader attached into the visibility the feed decides on', async () => {
+    const registry = new ChangeFeedRegistry();
+    const shares = [
+      {
+        granteeType: 'user' as const,
+        granteeId: 'bob',
+        access: 'read' as const,
+      },
+    ];
+    registry.register({
+      ...definition('Doc', 'docs'),
+      load: () => Promise.resolve({ ownerId: 'alice', shares }),
+    });
+
+    expect(
+      (await registry.forModel('Doc')?.project('doc-1'))?.visibility,
+    ).toEqual({
+      ownerId: 'alice',
+      teamId: undefined,
+      shares,
+    });
+  });
 });

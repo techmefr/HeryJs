@@ -1,4 +1,5 @@
 import type { ScalarBlueprintField } from './blueprint';
+import { shareAccess } from './resource-context';
 import type { ResourceContext } from './resource-context';
 
 /**
@@ -13,13 +14,24 @@ export function historyFields(ctx: ResourceContext): ScalarBlueprintField[] {
   );
 }
 
-/** What the generator registers in HISTORY_COLUMNS, as `Model.column`. */
-export function historyColumnEntries(ctx: ResourceContext): string[] {
+/**
+ * Every column a snapshot keeps. The workflow state is kept so the past shows
+ * where the row stood, but it is not revertible: only a transition moves it.
+ */
+export function historySnapshotColumns(ctx: ResourceContext): string[] {
   return [
     ...historyFields(ctx).map((field) => field.name),
+    ...(ctx.workflow ? [ctx.workflow.field] : []),
     ...(ctx.softDeletes ? ['deletedAt'] : []),
     ...(ctx.versioned ? ['version'] : []),
-  ].map((column) => `${ctx.modelPascalName}.${column}`);
+  ];
+}
+
+/** What the generator registers in HISTORY_COLUMNS, as `Model.column`. */
+export function historyColumnEntries(ctx: ResourceContext): string[] {
+  return historySnapshotColumns(ctx).map(
+    (column) => `${ctx.modelPascalName}.${column}`,
+  );
 }
 
 export function historyPolicyBlock(ctx: ResourceContext): string {
@@ -29,19 +41,20 @@ export function historyPolicyBlock(ctx: ResourceContext): string {
 
   return `
 // The past of a record is read under the same rule as the record: whoever may
-// see it may see what it used to be. Its own check rather than canView${ctx.pascalName}
-// so a project can tighten history alone without touching the read route.
+// see it, a reader by share included, may see what it used to be. Its own check
+// rather than canView${ctx.pascalName} so a project can tighten history alone
+// without touching the read route.
 export const canViewHistory${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike> = (
   subject,
   record,
-) => (record ? resolveCapability(${ctx.screamingSnakeName}_PRESETS.view, subject, record) : { allowed: false });
+) => (record ? resolveCapability(${ctx.screamingSnakeName}_PRESETS.view, subject, record${shareAccess(ctx, 'read')}) : { allowed: false });
 
 // Putting a snapshot back is an update, whatever route it travels: it writes
 // the record, so the update preset decides, per record, like canUpdate${ctx.pascalName}.
 export const canRevert${ctx.pascalName}: PolicyCheck<${ctx.pascalName}RecordLike> = (
   subject,
   record,
-) => (record ? resolveCapability(${ctx.screamingSnakeName}_PRESETS.update, subject, record) : { allowed: false });
+) => (record ? resolveCapability(${ctx.screamingSnakeName}_PRESETS.update, subject, record${shareAccess(ctx, 'write')}) : { allowed: false });
 `;
 }
 

@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { lastValueFrom, of } from 'rxjs';
 import type { AuthenticatedUser } from '#technical/auth/auth.types';
 import { CacheService } from '#technical/cache/cache.service';
+import { modelChangeMessages } from '#technical/outbox/outbox-stage';
 import { OutboxRegistry } from '#technical/outbox/outbox.registry';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { CacheOutput } from './cache-output.decorator';
@@ -194,6 +195,44 @@ describe('OutputCacheInterceptor', () => {
     expect(
       await call({ tenantId: 'tenant-b', body: ['ignored'] }),
     ).toMatchObject({ result: ['b-kept'], ranHandler: false });
+  });
+
+  it('stops serving a reader by share the record once the share is revoked', async () => {
+    const reader = user({ id: 'reader' });
+    await call({ tenantId: 'tenant-a', caller: reader, body: ['shared-post'] });
+    const revoked = TenantContextStorage.run(
+      { tenantId: 'tenant-a', userId: 'owner' },
+      () =>
+        modelChangeMessages({
+          model: 'RecordShare',
+          operation: 'delete',
+          args: { where: { id: 'share-1' } },
+          result: {
+            id: 'share-1',
+            resource: 'Post',
+            recordId: 'post-1',
+            granteeType: 'user',
+            granteeId: 'reader',
+            access: 'read',
+          },
+          tenantId: 'tenant-a',
+        }),
+    );
+
+    for (const message of revoked) {
+      await invalidator.handle({
+        id: message.name,
+        name: message.name,
+        payload: message.payload,
+        tenantId: message.tenantId,
+        attempt: 1,
+        createdAt: new Date(),
+      });
+    }
+
+    expect(
+      await call({ tenantId: 'tenant-a', caller: reader, body: [] }),
+    ).toMatchObject({ result: [], ranHandler: true, header: 'MISS' });
   });
 
   it('ignores a write to a model whose name only starts the same', async () => {

@@ -1,5 +1,6 @@
 import { sampleValueFor } from './field-types';
 import { pascalCase } from './naming';
+import { shareAccess } from './resource-context';
 import type { ResourceContext } from './resource-context';
 
 type Workflow = NonNullable<ResourceContext['workflow']>;
@@ -76,11 +77,11 @@ ${transitionsOf(ctx)
       transition,
     ) => `// Its own capability: being allowed to edit a ${ctx.camelName} does not make
 // "${transition.name}" yours to fire. The preset comes from the blueprint's
-// transition, not from update.
+// transition, not from update.${ctx.sharing && transition.shareable ? ' A write share opens it, as it opens update.' : ''}
 export const ${transitionCheckName(ctx, transition.name)}: PolicyCheck<${ctx.pascalName}RecordLike> = (
   subject,
   record,
-) => (record ? resolveCapability(${ctx.screamingSnakeName}_TRANSITION_PRESETS.${transition.name}, subject, record) : { allowed: false });
+) => (record ? resolveCapability(${ctx.screamingSnakeName}_TRANSITION_PRESETS.${transition.name}, subject, record${transition.shareable ? shareAccess(ctx, 'write') : ''}) : { allowed: false });
 `,
   )
   .join('\n')}
