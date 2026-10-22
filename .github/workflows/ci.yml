@@ -153,6 +153,17 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+      # The production boot below opens its queues and its cache on it.
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports:
+          - 6479:6379
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v7
 
@@ -182,6 +193,52 @@ jobs:
           pnpm hery migrate --name init
           pnpm run typecheck
           pnpm run build
+
+      # What production runs is the build, with production's environment: a
+      # dependency that resolves only while developing, or a variable the
+      # production schema refuses, fails here rather than on a deploy.
+      - name: Boot the build in production
+        working-directory: ${{ runner.temp }}/scaffold/my-app
+        env:
+          NODE_ENV: production
+          PORT: '3917'
+          CORS_ORIGINS: https://app.example.com
+          SSO_REDIRECT_BASE_URL: https://api.example.com
+          OAUTH_REDIRECT_BASE_URL: https://api.example.com
+        run: |
+          secret() { openssl rand -base64 32; }
+          export BETTER_AUTH_SECRET="$(secret)" SIGNAL_TOKEN_SECRET="$(secret)" \
+            SSE_TOKEN_SECRET="$(secret)" OAUTH_STATE_SECRET="$(secret)" \
+            STORAGE_URL_SECRET="$(secret)" SSO_STATE_SECRET="$(secret)" \
+            SSO_SECRET_KEY="$(secret)" SECRETS_KEYS="1:$(secret)"
+          node dist/src/main > boot.log 2>&1 &
+          pid=$!
+          for _ in $(seq 1 60); do
+            if curl -fsS http://localhost:3917/health/live; then
+              kill "$pid"
+              exit 0
+            fi
+            if ! kill -0 "$pid" 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          tail -n 60 boot.log
+          exit 1
+
+      # view: all is the preset the generated bin spec used to get wrong: the
+      # stranger can open the record there, so it is in their bin too.
+      - name: Generate a resource everyone can view and run its specs
+        working-directory: ${{ runner.temp }}/scaffold/my-app
+        run: |
+          pnpm hery create:blueprint Note -y
+          sed -i 's/view: own/view: all/' blueprints/note.yaml
+          pnpm hery generate Note
+          sed -i "1i import { NoteModule } from '#functional/note/note.module';" src/app.module.ts
+          sed -i 's/^  imports: \[$/  imports: [\n    NoteModule,/' src/app.module.ts
+          pnpm hery migrate --name note
+          pnpm run typecheck
+          NODE_OPTIONS=--experimental-vm-modules pnpm exec jest src/functional/note
 
   # The specs that boot a module for real: the two search drivers against
   # live engines, and the GraphQL module against a live HTTP server. They

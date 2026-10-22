@@ -13,7 +13,13 @@ export const ssoEnv = parseModuleEnv('sso', {
     (value) => Buffer.from(value, 'base64').length === SECRET_KEY_BYTES,
     { message: 'must be 32 bytes encoded as base64 (openssl rand -base64 32)' },
   ),
-  SSO_REDIRECT_BASE_URL: z.url().optional(),
+  SSO_REDIRECT_BASE_URL: z
+    .url()
+    .optional()
+    .refine((value) => value || process.env.NODE_ENV !== 'production', {
+      message:
+        'must be set in production: the public origin the sso callbacks are built on',
+    }),
   SSO_DNS_TXT_PREFIX: z.string().min(1).default('_hery-sso'),
   SSO_ALLOW_PRIVATE_ISSUERS: z
     .string()

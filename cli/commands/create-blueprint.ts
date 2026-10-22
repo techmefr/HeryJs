@@ -126,6 +126,16 @@ async function promptFields(): Promise<BlueprintField[]> {
   console.log(
     pc.cyan('Add the fields for this resource (empty name to stop):'),
   );
+  console.log(
+    pc.dim(
+      [
+        'translatable is offered for a string only, and is refused with history: true;',
+        'a slug or richtext field cannot be translatable, nor can a slug come from one.',
+        'personal data, erasure, workflow and history are written by hand: run',
+        '"hery create:blueprint <Name> --all-options" to see each of them commented.',
+      ].join('\n'),
+    ),
+  );
 
   for (;;) {
     const nameResponse = (await prompts({
@@ -352,7 +362,7 @@ async function promptFilters(fieldNames: string[]): Promise<string[]> {
   return parseCommaList(response.filters);
 }
 
-function allOptionsTemplate(name: string): string {
+export function allOptionsTemplate(name: string): string {
   return `${SCHEMA_MODELINE}# Every option the generator understands, laid out and commented so you
 # can see the full menu at once. Trim what you don't need, then run
 # "hery generate ${name}". Policies, controller, and middleware are not
@@ -361,10 +371,21 @@ function allOptionsTemplate(name: string): string {
 name: ${name}
 
 fields:
-  # type: string | int | boolean | datetime | slug (slug also takes source: <string field>)
+  # type: string | int | boolean | datetime | file | encrypted | vector | slug | richtext
+  #   file: a storage key returned by POST /storage/upload, the storage module's route
+  #   encrypted: AES-256-GCM at rest with SECRETS_KEYS, never returned unless reveal: true
+  #   vector: an embedding of another string field, for similarity search; takes
+  #     source: <string field> and dimensions: <width of the embedding model>
+  #   slug: a unique URL-safe handle made from source: <required, visible string
+  #     field>; stable: true keeps the slug it got at creation
+  #   richtext: HTML sanitised by an allow-list on write and on read; takes
+  #     maxLength and allow: { tags, attributes, schemes }; never a sort or filter
   # optional: true if the field can be null
   # hidden: true to strip the field from every API response (see <name>.view.ts)
-  # translatable: true (string only) keeps one value per locale in a Json column
+  # translatable: true (string only) keeps one value per locale in a Json column.
+  #   Not compatible with history: true, and a slug or a richtext field cannot be
+  #   translatable (nor can a slug be made from a translatable field)
+  # personal: true marks personal data, rewritten by erasure: anonymise below
   - name: title
     type: string
     optional: false
@@ -385,6 +406,46 @@ fields:
   #   type: string
   #   optional: true
   #   hidden: true
+  # - name: attachment
+  #   type: file
+  #   optional: true
+  # - name: apiToken
+  #   type: encrypted
+  #   reveal: false
+  # - name: handle
+  #   type: slug
+  #   source: title
+  #   stable: false
+  # - name: body
+  #   type: richtext
+  #   maxLength: 100000
+  # - name: embedding
+  #   type: vector
+  #   source: title
+  #   dimensions: 1536
+  # - name: contactEmail
+  #   type: string
+  #   personal: true
+
+# Off unless you say so. How the resource answers a privacy request: delete
+# removes every row a user owns; anonymise keeps the rows and rewrites the
+# fields marked personal: true (at least one). A personal field needs one of
+# them, and anonymise refuses a personal field that feeds a vector.
+# erasure: delete
+
+# Off unless you say so. A lifecycle on a status column the client cannot write:
+# it starts at "initial" and only moves through POST /<plural>/transition naming
+# one of these. "requires" lists fields that must hold a value first.
+# workflow:
+#   initial: draft
+#   transitions:
+#     - name: publish
+#       from: [draft]
+#       to: published
+#       requires: [title]
+#     - name: archive
+#       from: [draft, published]
+#       to: archived
 
 # On unless you say otherwise. Left in: DELETE flags the row (deletedAt), the
 # record leaves every listing, and "withTrashed"/"onlyTrashed"/the restore route
@@ -404,7 +465,8 @@ versioned: false
 # Off unless you say so. Turn it on and every write stores a snapshot of the
 # record (never of a hidden or encrypted field), and the resource gains routes to
 # list its history, diff an entry against the record as it is now, and restore
-# one through the normal update path. Snapshots age out with prune.
+# one through the normal update path. Snapshots age out with prune. Refused
+# alongside a translatable field, which a snapshot does not hold yet.
 history: false
 
 # Off unless you say so. Turn it on and the owner can grant a user or a team read or
@@ -459,6 +521,18 @@ export function registerCreateBlueprintCommand(program: Command): void {
         if (!/^[A-Z][a-zA-Z0-9]*$/.test(name)) {
           console.error(
             pc.red('a resource name must be PascalCase, e.g. BlogCategory'),
+          );
+          process.exitCode = 1;
+          return;
+        }
+
+        // Without a terminal every prompt answers itself with nothing, and the
+        // command used to write a blueprint of defaults nobody chose.
+        if (!options.yes && !options.allOptions && !process.stdin.isTTY) {
+          console.error(
+            pc.red(
+              'create:blueprint asks its questions in a terminal, and there is none here: pass -y for the defaults or --all-options for a commented blueprint to edit.',
+            ),
           );
           process.exitCode = 1;
           return;

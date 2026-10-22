@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import type { Command } from 'commander';
 import pc from 'picocolors';
 import { replaceUrlPort, upsertEnvVar } from '../lib/env-file';
-import { runInfraChecks } from '../lib/infra-checks';
+import { reportChecks, runInfraChecks } from '../lib/infra-checks';
 import { openMaintenanceStore } from './down';
 
 const STARTUP_GRACE_MS = 30_000;
@@ -147,15 +147,6 @@ export function registerUpCommand(program: Command): void {
         waitMs: options.start ? STARTUP_GRACE_MS : 0,
       });
 
-      let allOk = true;
-
-      for (const check of checks) {
-        const icon = check.ok ? pc.green('✔') : pc.red('✘');
-        const hint = check.hint ? pc.dim(` — ${check.hint}`) : '';
-        console.log(`${icon} ${check.label}${hint}`);
-        allOk &&= check.ok;
-      }
-
-      process.exitCode = allOk ? 0 : 1;
+      process.exitCode = reportChecks(checks) ? 0 : 1;
     });
 }

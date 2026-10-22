@@ -13,6 +13,14 @@ function isValidSecretKeyList(value: string): boolean {
   }
 }
 
+function isOrigin(value: string): boolean {
+  try {
+    return new URL(value).origin === value;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Split from env.ts so this file has no side effect: env.ts's bottom-level
  * call to parseEnv against the live process environment throws on an invalid
@@ -52,6 +60,32 @@ export function buildServerSchema(nodeEnv: string | undefined) {
           'must be a comma-separated list of <id>:<base64 key>, each key 32 bytes (openssl rand -base64 32)',
       }),
     SECRETS_ACTIVE_KEY_ID: z.string().min(1).optional(),
+    CORS_ORIGINS: z
+      .string()
+      .optional()
+      .transform((value) =>
+        value === undefined
+          ? undefined
+          : value
+              .split(',')
+              .map((origin) => origin.trim())
+              .filter((origin) => origin.length > 0),
+      )
+      .refine(
+        (origins) =>
+          origins === undefined ||
+          origins.every((origin) => origin === '*' || isOrigin(origin)),
+        {
+          message:
+            'must be a comma-separated list of origins (https://app.example.com), or "*"',
+        },
+      )
+      .refine(
+        (origins) => !origins?.includes('*') || nodeEnv !== 'production',
+        {
+          message: 'must not allow any origin ("*") under NODE_ENV=production',
+        },
+      ),
     RLS_ENABLED: z
       .string()
       .default('false')

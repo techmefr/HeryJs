@@ -1,6 +1,9 @@
 import { execSync } from 'node:child_process';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import * as path from 'node:path';
 import type { Command } from 'commander';
 import pc from 'picocolors';
+import { APP_MODULE, unwireModule } from '../lib/app-module-patch';
 import { findModule, loadModules } from '../lib/module-discovery';
 
 // module.dependencies holds pnpm-add specs ("@elastic/elasticsearch@^8.17.0"),
@@ -18,16 +21,17 @@ function packageName(spec: string): string {
  * finishes, possibly edited since. Reversing either automatically would mean
  * guessing whether what is on disk today still matches what was generated,
  * which is exactly the kind of silent rewrite "own your code" rules out
- * elsewhere in this framework. So uninstalling only ever automates the part
- * that is safe to automate outright -- the module's own npm dependencies,
- * nothing this project's developer could have touched -- and leaves the rest
- * as an explicit, honest list of what to remove by hand.
+ * elsewhere in this framework. So uninstalling automates the two parts that
+ * are mechanical -- the module's own npm dependencies and its line in
+ * AppModule -- and leaves the rest as an explicit, honest list. Applied
+ * migrations stay applied: dropping a table is a migration the developer
+ * writes, not a side effect of this command.
  */
 export function registerUninstallCommand(program: Command): void {
   program
     .command('uninstall <module>')
     .description(
-      "Remove a module's own dependencies and print what to clean up by hand (see hery module:list)",
+      "Remove a module's own dependencies and its AppModule import, and print what to clean up by hand (see hery module:list)",
     )
     .action((name: string) => {
       const module = findModule(loadModules(), name);
@@ -47,19 +51,34 @@ export function registerUninstallCommand(program: Command): void {
       if (module.dependencies?.length) {
         const names = module.dependencies.map(packageName);
         execSync(`pnpm remove -w ${names.join(' ')}`, { stdio: 'inherit' });
+        console.log(pc.green(`✔ removed ${names.join(', ')}`));
+      } else {
+        console.log(pc.dim(`  ${module.name} has no dependencies of its own`));
       }
 
-      console.log(pc.green(`✔ ${module.name}'s own dependencies removed`));
+      const appModule = path.resolve(process.cwd(), APP_MODULE);
+      const unwired = existsSync(appModule)
+        ? unwireModule(readFileSync(appModule, 'utf8'), module.name)
+        : undefined;
+
+      if (unwired) {
+        writeFileSync(appModule, unwired.source);
+        console.log(
+          pc.green(`✔ removed ${unwired.className} from ${APP_MODULE}`),
+        );
+      } else {
+        console.log(
+          pc.dim(`  ${APP_MODULE} imports nothing from ${module.name}`),
+        );
+      }
+
       console.log('');
       console.log(pc.cyan('Left for you to do by hand:'));
       console.log(
-        `  1. Remove ${pc.bold(`${module.name}Module`)}'s import from src/app.module.ts`,
+        `  1. Remove the files hery install copied into ${module.dest} and review the kernel files it patched for this module -- they are yours now, revert whatever no longer applies`,
       );
       console.log(
-        '  2. Review the files hery install copied or patched for this module -- they are yours now, delete or revert whatever no longer applies',
-      );
-      console.log(
-        '  3. If it added a Prisma model or field, write and run the migration that drops it',
+        '  2. If it added a Prisma model or field, remove it from the schema and run "pnpm hery migrate" to write the migration that drops it -- the migrations already applied stay as they are',
       );
     });
 }

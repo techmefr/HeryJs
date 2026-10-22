@@ -25,15 +25,15 @@ services:
 
   valkey:
     image: valkey/valkey:8-alpine
-    # Bounded on purpose. Every CacheService key carries a TTL, so growth is
-    # normally write-rate times TTL -- but nothing enforced a ceiling, and the
-    # default policy is noeviction: at the memory limit Valkey starts refusing
-    # writes rather than shedding keys, which turns a full cache into failing
-    # requests. allkeys-lru degrades instead, and the cache is the one store
-    # here whose contents are all reconstructible.
+    # Bounded on purpose, and never evicting. The cache is not the only thing
+    # stored here: BullMQ keeps every queued job, its locks and the outbox
+    # relay in the same server, and an eviction policy drops those as readily
+    # as a cache entry -- a job that silently disappears. noeviction refuses
+    # writes at the limit instead, which fails loudly; "pnpm hery doctor"
+    # checks the policy of whatever Valkey REDIS_URL points at.
     command: >-
       valkey-server --maxmemory ${HERYJS_VALKEY_MAXMEMORY:-256mb}
-      --maxmemory-policy allkeys-lru
+      --maxmemory-policy noeviction
     restart: unless-stopped
     ports:
       - '6379'
