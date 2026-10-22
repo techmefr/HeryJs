@@ -4,6 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { grantPlatformOperator } from '#devtools/testing/platform-operator';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 
 /**
@@ -53,9 +54,20 @@ describe('Monitoring routes', () => {
       .expect(403);
   });
 
-  it('answers an admin session', async () => {
+  it('refuses a tenant admin who is not a platform operator', async () => {
     const admin = await registerAndLogin(app);
     await promoteToAdmin(admin.id);
+
+    await request(app.getHttpServer())
+      .get('/health')
+      .set('Authorization', `Bearer ${admin.token}`)
+      .expect(403);
+  });
+
+  it('answers a platform operator session', async () => {
+    const admin = await registerAndLogin(app);
+    await promoteToAdmin(admin.id);
+    grantPlatformOperator(admin.id);
 
     const health = await request(app.getHttpServer())
       .get('/health')
@@ -68,6 +80,7 @@ describe('Monitoring routes', () => {
   it('answers a scrape carrying an API key', async () => {
     const admin = await registerAndLogin(app);
     await promoteToAdmin(admin.id);
+    grantPlatformOperator(admin.id);
 
     const created = await request(app.getHttpServer())
       .post('/api-keys')

@@ -1,4 +1,4 @@
-import { adminAbility } from '#technical/capabilities/ability';
+import { operatorAbility } from '#technical/capabilities/ability';
 import type { PolicyCheck } from '#technical/capabilities/capability-check';
 
 // Both of these describe the deployment, not a tenant's data: the route table
@@ -6,8 +6,8 @@ import type { PolicyCheck } from '#technical/capabilities/capability-check';
 // database and the queue on the other. Neither has an own/team/all scope that
 // means anything, so both ask the same question canReadAuditLog does -- is
 // this caller trusted with something tenant scoping cannot contain.
-export const canReadMetrics: PolicyCheck = adminAbility;
+export const canReadMetrics: PolicyCheck = operatorAbility;
 
-export const canReadHealth: PolicyCheck = adminAbility;
+export const canReadHealth: PolicyCheck = operatorAbility;
 
-export const canReadDeployment: PolicyCheck = adminAbility;
+export const canReadDeployment: PolicyCheck = operatorAbility;

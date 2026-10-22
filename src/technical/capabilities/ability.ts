@@ -1,3 +1,4 @@
+import { env } from '#technical/config/env';
 import type { PolicyCheck } from './capability-check';
 import type { CapabilityScope, CapabilitySubject } from './capabilities.types';
 
@@ -29,6 +30,32 @@ export function ability(
  */
 export const adminAbility: PolicyCheck = ability(
   (subject) => subject.role === 'admin',
+);
+
+/**
+ * A tenant admin is an admin of its own tenant only. What reaches across
+ * tenants -- another tenant's flags, a global flag, a circuit every request
+ * goes through, a database dump -- belongs to the platform operator, a user id
+ * listed in PLATFORM_OPERATOR_IDS. The list is read on every decision and an
+ * empty one names nobody, so a deployment that never set it has no operator.
+ */
+export function isPlatformOperator(userId: string | null | undefined): boolean {
+  if (!userId) {
+    return false;
+  }
+
+  return (env.PLATFORM_OPERATOR_IDS ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .some((entry) => entry !== '' && entry === userId);
+}
+
+export const operatorAbility: PolicyCheck = ability((subject) =>
+  isPlatformOperator(subject.id),
+);
+
+export const adminOrOperatorAbility: PolicyCheck = ability(
+  (subject) => subject.role === 'admin' || isPlatformOperator(subject.id),
 );
 
 /**

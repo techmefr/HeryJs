@@ -35,6 +35,10 @@ export class FeatureFlagsService {
     return this.drivers.active.listAll(page);
   }
 
+  listForTenant(tenantId: string, page: PageQuery) {
+    return this.drivers.active.listAll(page, tenantId);
+  }
+
   set(key: string, patch: boolean | FeatureFlagPatch, tenantId?: string) {
     return this.drivers.active.set(
       key,
