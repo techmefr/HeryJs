@@ -13,6 +13,10 @@ category is called out here explicitly.
 
 First public release.
 
+### Search removal stays inside the tenant
+
+The Elasticsearch and Meilisearch drivers deleted a document by its id alone, so a tenant holding another tenant's id removed that tenant's document from the shared collection. `remove()` now reads the tenant stored on the document and deletes it only when it matches the caller's; a document owned by another tenant is left alone like a missing one. The Meilisearch driver also treats a missing index as a missing document. **Upgrade note:** a project that installed `search-elasticsearch` or `search-meilisearch` copies `elasticsearch-search.driver.ts` or `meilisearch-search.driver.ts` by hand.
+
 ### Configurable grantor erasure and studio access
 
 Two behaviours are now a choice in `hery.config.ts`, with the previous behaviour as the default. `sharing.onGrantorErasure` says what an erasure does to the shares the erased user granted: `revoke` (default) deletes them, `keep` leaves them in place; shares granted to the user are deleted either way. `admin.studioAccess` says who opens the admin studio in production: `operator` (default) is the platform operator alone, `tenant-admin` also lets a tenant admin in, who only reads its own tenant's data and still cannot reach the operator-only sections. An unknown value for either stops the boot with the key named. **Upgrade note:** copy by hand `hery-config.ts`, `hery-config.types.ts`, `admin-settings.ts`, `admin-studio.policy.ts` and `sharing.personal-data.ts`; the two keys are optional in an existing `hery.config.ts`.

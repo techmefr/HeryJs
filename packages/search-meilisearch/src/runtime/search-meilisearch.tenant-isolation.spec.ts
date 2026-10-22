@@ -15,7 +15,25 @@ function engine(): { client: object; stored: StoredDocument[] } {
       stored.push(...documents);
       return Promise.resolve({ taskUid: 2 });
     }),
-    deleteDocument: jest.fn().mockResolvedValue({ taskUid: 3 }),
+    getDocument: jest.fn((id: string) => {
+      const document = stored.find((candidate) => candidate.id === id);
+
+      return document
+        ? Promise.resolve({ tenantId: document.tenantId })
+        : Promise.reject(
+            Object.assign(new Error('missing'), {
+              cause: { code: 'document_not_found' },
+            }),
+          );
+    }),
+    deleteDocument: jest.fn((id: string) => {
+      const position = stored.findIndex((document) => document.id === id);
+      if (position >= 0) {
+        stored.splice(position, 1);
+      }
+
+      return Promise.resolve({ taskUid: 3 });
+    }),
     search: jest.fn((term: string, options: { filter: string }) => {
       const tenant = JSON.parse(
         options.filter.replace(/^tenantId = /, ''),
@@ -93,5 +111,23 @@ describe('tenant isolation', () => {
     );
 
     expect(matches.ids).toEqual([]);
+  });
+
+  it('never lets tenant A remove a document tenant B indexed', async () => {
+    const { client } = engine();
+    const driver = driverOn(client);
+    await driver.index('posts', 'b-1', { title: 'hello world' }, 'tenant-b');
+
+    await driver.remove('posts', 'b-1', 'tenant-a');
+
+    const matches = await driver.search(
+      'posts',
+      'hello',
+      ['title'],
+      'tenant-b',
+      10,
+    );
+
+    expect(matches.ids).toEqual(['b-1']);
   });
 });
