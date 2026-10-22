@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { OutboxMessage } from '@prisma/client';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { runInLocale } from '#technical/i18n/recipient-locale';
 import { LockService } from '#technical/lock/lock.service';
 import { runInTenant } from '#technical/tenancy/run-in-tenant';
 import {
@@ -146,13 +147,15 @@ export class OutboxRelay {
       createdAt: message.createdAt,
     };
 
-    if (message.tenantId === null) {
-      await handler.handle(delivery);
-    } else {
-      await runInTenant(message.tenantId, async () => {
+    await runInLocale(message.locale, async () => {
+      if (message.tenantId === null) {
         await handler.handle(delivery);
-      });
-    }
+      } else {
+        await runInTenant(message.tenantId, async () => {
+          await handler.handle(delivery);
+        });
+      }
+    });
 
     await authPrismaClient.outboxReceipt.createMany({
       data: [{ messageId: message.id, handler: handler.name }],

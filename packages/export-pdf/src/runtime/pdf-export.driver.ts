@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import PDFDocument from 'pdfkit';
+import { exportCellText, exportHeaders } from '#kernel/export/export-driver';
 import type {
   ExportDriver,
   Exportable,
@@ -30,7 +31,7 @@ export class PdfExportDriver implements ExportDriver {
     const bottom = document.page.height - PAGE_MARGIN - ROW_HEIGHT;
     let y = PAGE_MARGIN;
 
-    this.writeRow(document, [...exportable.columns], columnWidth, y, true);
+    this.writeRow(document, exportHeaders(exportable), columnWidth, y, true);
     y += ROW_HEIGHT;
 
     for (const row of rows) {
@@ -39,7 +40,13 @@ export class PdfExportDriver implements ExportDriver {
       if (y > bottom) {
         document.addPage();
         y = PAGE_MARGIN;
-        this.writeRow(document, [...exportable.columns], columnWidth, y, true);
+        this.writeRow(
+          document,
+          exportHeaders(exportable),
+          columnWidth,
+          y,
+          true,
+        );
         y += ROW_HEIGHT;
       }
 
@@ -100,5 +107,5 @@ function collect(document: PDFKit.PDFDocument): Promise<Buffer> {
 function cell(value: ExportRow[string] | undefined): string {
   // A missing column and an explicit null both render as empty rather than as
   // "undefined"/"null": those two words read as real content in a table.
-  return value === undefined || value === null ? '' : String(value);
+  return exportCellText(value);
 }

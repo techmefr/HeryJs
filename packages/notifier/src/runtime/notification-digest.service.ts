@@ -1,5 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { authPrismaClient } from '#kernel/auth/better-auth.instance';
+import { recipientLocale } from '#kernel/i18n/recipient-locale';
+import { translateMessage as translated } from '#kernel/i18n/translate';
 import { notifierMailChannel } from '#kernel/notifier/notifier-mail-channel';
 import { PRISMA_CLIENT } from '#kernel/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#kernel/prisma/prisma.client';
@@ -7,6 +9,7 @@ import { runInTenant } from '#kernel/tenancy/run-in-tenant';
 import { escapeHtml } from './escape-html';
 import { localHour } from './local-time';
 import { DEFAULT_SETTINGS } from './notification-rules';
+import './notifier.catalogue';
 
 const MAX_ENTRIES_PER_DIGEST = 500;
 
@@ -93,10 +96,21 @@ export class NotificationDigestService {
       .map((entry) => `<li>${escapeHtml(entry.subject)}</li>`)
       .join('');
     const count = entries.length;
+    const locale = recipientLocale(
+      await authPrismaClient.user.findUnique({
+        where: { id: recipient.userId },
+        select: { locale: true },
+      }),
+    );
+    const plural = new Intl.PluralRules(locale).select(count);
     const message = {
       to: latest.email,
-      subject: `You have ${count} new notification${count === 1 ? '' : 's'}`,
-      html: `<p>Here is what you missed:</p><ul>${items}</ul>`,
+      subject: translated(
+        `notifications.digest.subject.${plural === 'one' ? 'one' : 'other'}`,
+        { count },
+        locale,
+      ),
+      html: `<p>${translated('notifications.digest.intro', {}, locale)}</p><ul>${items}</ul>`,
     };
 
     await channel.send({ to: latest.email, build: () => message });

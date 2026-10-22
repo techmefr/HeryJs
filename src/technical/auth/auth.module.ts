@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AccountLocaleController } from './account-locale.controller';
 import { ApiKeyController } from './api-key.controller';
 import { ApiKeyService } from './api-key.service';
 import { AuthController } from './auth.controller';
@@ -21,6 +22,7 @@ import { SessionGuard } from './session.guard';
     ApiKeyController,
     BetterAuthController,
     SessionController,
+    AccountLocaleController,
   ],
   providers: [
     ApiKeyService,

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import ExcelJS from 'exceljs';
+import { exportCellText, exportHeaders } from '#kernel/export/export-driver';
 import type {
   ExportDriver,
   Exportable,
@@ -19,7 +20,7 @@ export class XlsxExportDriver implements ExportDriver {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet(SHEET_NAME);
 
-    sheet.addRow([...exportable.columns]);
+    sheet.addRow(exportHeaders(exportable));
     for (const row of rows) {
       sheet.addRow(exportable.columns.map((column) => cell(row[column])));
     }
@@ -31,8 +32,16 @@ export class XlsxExportDriver implements ExportDriver {
   }
 }
 
-function cell(value: ExportRow[string] | undefined): ExportRow[string] {
+function cell(
+  value: ExportRow[string] | undefined,
+): string | number | boolean | null {
   // A missing column becomes an empty cell rather than the string
   // "undefined", which a spreadsheet cannot be told apart from real data.
-  return value === undefined ? null : value;
+  if (value === undefined) {
+    return null;
+  }
+
+  return typeof value === 'object' && value !== null
+    ? exportCellText(value)
+    : value;
 }

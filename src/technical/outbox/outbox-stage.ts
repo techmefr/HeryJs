@@ -1,3 +1,4 @@
+import { currentLocale } from '#technical/i18n/recipient-locale';
 import { TenantContextStorage } from '../tenancy/tenant-context';
 import {
   OUTBOX_EXCLUDED_MODELS,
@@ -38,6 +39,7 @@ export async function stageOutboxMessages(
       tenantId: message.tenantId,
       name: message.name,
       payload: message.payload,
+      locale: currentLocale(),
     })),
   });
 }

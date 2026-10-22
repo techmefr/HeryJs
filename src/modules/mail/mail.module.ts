@@ -15,6 +15,7 @@ import { MailDriverRegistry } from './mail-driver.registry';
 import { MailProcessor } from './mail.processor';
 import { MailPersonalData } from './mail.personal-data';
 import { MailService } from './mail.service';
+import './mail.catalogue';
 
 // Global because the kernel's auth flows resolve AUTH_MAILER by token from
 // outside this module's import graph, the same way every driver is found.

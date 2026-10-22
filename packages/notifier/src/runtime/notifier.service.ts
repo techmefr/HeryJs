@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { recipientLocale, runInLocale } from '#kernel/i18n/recipient-locale';
 import { notifierMailChannel } from '#kernel/notifier/notifier-mail-channel';
 import { notifierPushChannel } from '#kernel/notifier/notifier-push-channel';
 import {
@@ -54,17 +55,36 @@ export class NotifierService {
     private readonly inApp: NotificationProvider,
   ) {}
 
-  send(
+  /**
+   * Every channel renders inside the recipient's locale, so a notification's
+   * `toMail`, `toSms` and `toPush` write in their language by calling
+   * `translateMessage()` -- not in the language of whoever triggered it.
+   */
+  async send(
     recipient: NotificationRecipient,
     notification: Notification,
   ): Promise<NotifierChannelResult[]> {
-    if (recipient.tenantId) {
-      return runInTenant(recipient.tenantId, () =>
-        this.dispatch(recipient, notification),
-      );
+    const locale = await this.localeOf(recipient);
+
+    return runInLocale(locale, () => {
+      if (recipient.tenantId) {
+        return runInTenant(recipient.tenantId, () =>
+          this.dispatch(recipient, notification),
+        );
+      }
+
+      return this.dispatch(recipient, notification);
+    });
+  }
+
+  private async localeOf(recipient: NotificationRecipient): Promise<string> {
+    if (recipient.locale !== undefined || !recipient.userId) {
+      return recipientLocale(recipient);
     }
 
-    return this.dispatch(recipient, notification);
+    return recipientLocale({
+      locale: await this.preferences.localeOf(recipient.userId),
+    });
   }
 
   private async dispatch(

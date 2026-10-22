@@ -1,6 +1,7 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
+import { runInJobLocale } from '#kernel/jobs/job-locale';
 import { DriverResolver } from '#kernel/drivers/driver-resolver';
 import { EXPORT_QUEUE } from '#kernel/jobs/jobs.constants';
 import { NOTIFICATION_PROVIDER } from '#kernel/notifications/notification.types';
@@ -18,6 +19,7 @@ interface ExportJobData {
   format: string;
   filename: string;
   columns: string[];
+  headers?: Record<string, string>;
   rows: ExportRow[];
   userId: string;
   storage?: string;
@@ -36,17 +38,26 @@ export class ExportProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job): Promise<void> {
+  process(job: Job): Promise<void> {
+    return runInJobLocale(job.data, () => this.handle(job));
+  }
+
+  private async handle(job: Job): Promise<void> {
     if (job.name !== EXPORT_GENERATE_JOB) {
       return;
     }
 
-    const { format, filename, columns, rows, userId, storage } =
+    const { format, filename, columns, headers, rows, userId, storage } =
       job.data as ExportJobData;
 
     const driver = this.registry.resolve(format);
     const name = `${filename}.${driver.extension}`;
-    const body = await driver.render({ filename, columns, rows: () => rows });
+    const body = await driver.render({
+      filename,
+      columns,
+      headers,
+      rows: () => rows,
+    });
 
     const key = await this.store(name, body, driver.contentType, storage);
 

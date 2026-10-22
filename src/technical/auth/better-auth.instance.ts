@@ -6,6 +6,7 @@ import { loginThrottle } from './login-throttle';
 import { sendAuthMail } from './auth-mailer';
 import { ResetPasswordMailable, VerifyEmailMailable } from './auth.mailables';
 import { buildPasswordlessPlugins } from './passwordless-plugins';
+import { localeOfEmail, signUpLocale } from './recipient-locale';
 import { buildSocialProviders } from './social-providers';
 
 const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
@@ -41,7 +42,13 @@ async function createAuth() {
       revokeSessionsOnPasswordReset: true,
       resetPasswordTokenExpiresIn: authEnv.AUTH_RESET_PASSWORD_EXPIRES_SECONDS,
       sendResetPassword: async ({ user, url }) => {
-        await sendAuthMail(new ResetPasswordMailable(user.email, url));
+        await sendAuthMail(
+          new ResetPasswordMailable(
+            user.email,
+            url,
+            await localeOfEmail(authPrismaClient, user.email),
+          ),
+        );
       },
     },
     emailVerification: {
@@ -49,10 +56,31 @@ async function createAuth() {
       autoSignInAfterVerification: true,
       expiresIn: authEnv.AUTH_EMAIL_VERIFICATION_EXPIRES_SECONDS,
       sendVerificationEmail: async ({ user, url }) => {
-        await sendAuthMail(new VerifyEmailMailable(user.email, url));
+        await sendAuthMail(
+          new VerifyEmailMailable(
+            user.email,
+            url,
+            await localeOfEmail(authPrismaClient, user.email),
+          ),
+        );
       },
     },
     socialProviders: buildSocialProviders(authEnv),
+    user: {
+      additionalFields: {
+        locale: { type: 'string', required: false, input: false },
+      },
+    },
+    databaseHooks: {
+      user: {
+        create: {
+          before: (user) =>
+            Promise.resolve({
+              data: { ...user, locale: signUpLocale() },
+            }),
+        },
+      },
+    },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
         if (ctx.path === SIGN_IN_PATH) {
