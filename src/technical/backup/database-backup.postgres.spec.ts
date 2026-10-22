@@ -89,6 +89,7 @@ if (skipReason) {
   const suffix = randomBytes(4).toString('hex');
   const source = `hery_bak_${suffix}`;
   const fresh = `hery_bak_${suffix}_fresh`;
+  const overwritten = `hery_bak_${suffix}_overwritten`;
   let admin: Client;
   let directory: string;
 
@@ -98,6 +99,7 @@ if (skipReason) {
     await admin.connect();
     await admin.query(`CREATE DATABASE "${source}"`);
     await admin.query(`CREATE DATABASE "${fresh}"`);
+    await admin.query(`CREATE DATABASE "${overwritten}"`);
     await inDatabase(source, async (client) => {
       await client.query('CREATE TABLE note (id int PRIMARY KEY, body text)');
       await client.query("INSERT INTO note VALUES (1, 'first'), (2, 'second')");
@@ -107,6 +109,7 @@ if (skipReason) {
   afterAll(async () => {
     await admin.query(`DROP DATABASE IF EXISTS "${source}" WITH (FORCE)`);
     await admin.query(`DROP DATABASE IF EXISTS "${fresh}" WITH (FORCE)`);
+    await admin.query(`DROP DATABASE IF EXISTS "${overwritten}" WITH (FORCE)`);
     await admin.end();
     await rm(directory, { recursive: true, force: true });
   });
@@ -132,33 +135,43 @@ if (skipReason) {
   });
 
   it('refuses to restore over data, and overwrites it with --force', async () => {
-    const [newest] = await listBackups(directory);
-    const dump = path.join(directory, (newest as { name: string }).name);
+    const own = await mkdtemp(path.join(directory, 'force-'));
+    const { path: dump } = await createBackup({
+      databaseUrl: urlFor(source),
+      directory: own,
+      keep: 5,
+      now: new Date('2026-10-20T04:00:00Z'),
+    });
+    await restoreBackup({
+      databaseUrl: urlFor(overwritten),
+      file: dump,
+      isForced: false,
+    });
 
-    await inDatabase(fresh, (client) =>
+    await inDatabase(overwritten, (client) =>
       client.query("UPDATE note SET body = 'changed' WHERE id = 1"),
     );
 
     await expect(
       restoreBackup({
-        databaseUrl: urlFor(fresh),
+        databaseUrl: urlFor(overwritten),
         file: dump,
         isForced: false,
       }),
     ).rejects.toThrow(/already holds data/);
 
-    const untouched = await inDatabase(fresh, (client) =>
+    const untouched = await inDatabase(overwritten, (client) =>
       client.query<{ body: string }>('SELECT body FROM note WHERE id = 1'),
     );
     expect(untouched.rows[0]?.body).toBe('changed');
 
     await restoreBackup({
-      databaseUrl: urlFor(fresh),
+      databaseUrl: urlFor(overwritten),
       file: dump,
       isForced: true,
     });
 
-    const restored = await inDatabase(fresh, (client) =>
+    const restored = await inDatabase(overwritten, (client) =>
       client.query<{ body: string }>('SELECT body FROM note WHERE id = 1'),
     );
     expect(restored.rows[0]?.body).toBe('first');
