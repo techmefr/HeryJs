@@ -104,6 +104,7 @@ export class PrismaScimDirectoryStore implements ScimDirectoryStore {
       try {
         const record = await this.prisma.user.create({
           data: {
+            tenantId,
             email: input.email,
             name: input.name,
             emailVerified: true,
@@ -128,7 +129,9 @@ export class PrismaScimDirectoryStore implements ScimDirectoryStore {
     input: ScimUserInput,
   ): Promise<ScimUserRow | null> {
     return runInTenant(tenantId, async () => {
-      const current = await this.prisma.user.findUnique({ where: { id } });
+      const current = await this.prisma.user.findFirst({
+        where: { id, tenantId },
+      });
 
       if (!current) {
         return null;
@@ -138,7 +141,7 @@ export class PrismaScimDirectoryStore implements ScimDirectoryStore {
 
       try {
         await this.prisma.user.update({
-          where: { id },
+          where: { id, tenantId },
           data: {
             email: input.email,
             name: input.name,
@@ -162,7 +165,7 @@ export class PrismaScimDirectoryStore implements ScimDirectoryStore {
   async existingUserIds(tenantId: string, ids: string[]): Promise<string[]> {
     const records = await runInTenant(tenantId, () =>
       this.prisma.user.findMany({
-        where: { id: { in: ids } },
+        where: { id: { in: ids }, tenantId },
         select: { id: true },
       }),
     );
@@ -191,7 +194,7 @@ export class PrismaScimDirectoryStore implements ScimDirectoryStore {
         'group',
         records.map((record) => record.id),
       );
-      const emails = await this.memberEmails(records);
+      const emails = await this.memberEmails(tenantId, records);
 
       return {
         rows: records.map((record) =>
@@ -297,14 +300,18 @@ export class PrismaScimDirectoryStore implements ScimDirectoryStore {
     const filter = query.filter;
 
     if (!filter) {
-      return {};
+      return { tenantId };
     }
 
     if (filter.attribute === 'username') {
-      return { email: { equals: filter.value, mode: 'insensitive' } };
+      return {
+        tenantId,
+        email: { equals: filter.value, mode: 'insensitive' },
+      };
     }
 
     return {
+      tenantId,
       id: { in: await this.idsByExternalId(tenantId, 'user', filter.value) },
     };
   }
@@ -361,7 +368,9 @@ export class PrismaScimDirectoryStore implements ScimDirectoryStore {
     tenantId: string,
     id: string,
   ): Promise<ScimUserRow | null> {
-    const record = await this.prisma.user.findUnique({ where: { id } });
+    const record = await this.prisma.user.findFirst({
+      where: { id, tenantId },
+    });
 
     if (!record) {
       return null;
@@ -385,13 +394,14 @@ export class PrismaScimDirectoryStore implements ScimDirectoryStore {
     return record
       ? this.toGroup(
           record,
-          await this.memberEmails([record]),
+          await this.memberEmails(tenantId, [record]),
           (await this.identities(tenantId, 'group', [id])).get(id),
         )
       : null;
   }
 
   private async memberEmails(
+    tenantId: string,
     records: Array<{ members: Array<{ userId: string }> }>,
   ): Promise<Map<string, string>> {
     const ids = [
@@ -407,7 +417,7 @@ export class PrismaScimDirectoryStore implements ScimDirectoryStore {
     }
 
     const users = await this.prisma.user.findMany({
-      where: { id: { in: ids } },
+      where: { id: { in: ids }, tenantId },
       select: { id: true, email: true },
     });
 

@@ -41,6 +41,8 @@ export interface ListedFile {
 
 const LIST_LIMIT = 200;
 
+const UNSAFE_SEGMENTS = new Set(['', '.', '..']);
+
 export function allowedContentTypes(): string[] {
   return storageEnv.STORAGE_ALLOWED_CONTENT_TYPES
     ? storageEnv.STORAGE_ALLOWED_CONTENT_TYPES.split(',').map((type) =>
@@ -110,7 +112,13 @@ export class StorageService {
    * caller's tenant instead of trusting the client to name its own.
    */
   async removeOwn(key: string): Promise<void> {
-    if (!key.startsWith(`${TenantContextStorage.getTenantId()}/`)) {
+    const [tenant, ...rest] = key.split('/');
+
+    if (
+      tenant !== TenantContextStorage.getTenantId() ||
+      rest.length === 0 ||
+      rest.some((segment) => UNSAFE_SEGMENTS.has(segment))
+    ) {
       throw new StorageNotInTenantException(key);
     }
 
