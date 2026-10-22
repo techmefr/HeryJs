@@ -102,3 +102,14 @@ export function buildResourceContext(blueprint: Blueprint): ResourceContext {
     relations: blueprint.relations,
   };
 }
+
+/**
+ * What a share can grant: reading and writing, never deleting, so only the
+ * decisions that read or write a record of a sharing resource name an access.
+ */
+export function shareAccess(
+  ctx: ResourceContext,
+  access: 'read' | 'write',
+): string {
+  return ctx.sharing ? `, '${access}'` : '';
+}

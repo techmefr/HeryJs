@@ -44,6 +44,7 @@ Off unless declared. `workflow` only applies to a routed resource.
 | `transitions[].to` | The state it arrives in. |
 | `transitions[].permission` | `own`, `team`, `all` or `none`, default `own`. Resolved per record, like the four presets. |
 | `transitions[].requires` | Declared fields that must hold a value before the transition runs. |
+| `transitions[].shareable` | On a resource with `sharing: true`, whether a `write` share lets its holder fire this transition, as it lets them update. Default `true`; `false` keeps the transition to whoever `permission` names. |
 
 ## What it generates
 

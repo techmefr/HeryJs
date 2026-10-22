@@ -252,16 +252,22 @@ function drawTable(view: View): void {
   );
 }
 
+const NOT_INLINE_KINDS: ReadonlySet<FormField['kind']> = new Set([
+  'datetime',
+  'richtext',
+]);
+
 function inlineOf(view: View) {
   if (view.query.trashed || isDisabled(view.extension, 'update')) {
     return undefined;
   }
 
-  // Only a plain value is edited in place: a date has a picker of its own and
-  // a relation its own panel, both of which the full form already has.
+  // Only a plain value is edited in place: a date has a picker of its own, a
+  // rich text an editor that a one-line input would flatten to markup, and
+  // a relation its own panel, all of which the full form already has.
   const fields = new Map<string, FormField>(
     formFieldsOf(view.description, 'update', view.extension.fields ?? {})
-      .filter((field) => !field.readonly && field.kind !== 'datetime')
+      .filter((field) => !field.readonly && !NOT_INLINE_KINDS.has(field.kind))
       .map((field) => [field.name, field]),
   );
 

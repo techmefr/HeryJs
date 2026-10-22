@@ -4,6 +4,7 @@ import { ModelChanged } from './model-changed.event';
 import {
   OUTBOX_EVENT_NAME_PREFIX,
   OUTBOX_MODEL_NAME_PREFIX,
+  OUTBOX_SHARED_NAME,
 } from './outbox.constants';
 import { OutboxRegistry } from './outbox.registry';
 import type {
@@ -50,6 +51,10 @@ export class OutboxEventsBridge implements OutboxHandler, OnModuleInit {
         delivery.name.slice(OUTBOX_EVENT_NAME_PREFIX.length),
         delivery.payload,
       );
+      return;
+    }
+
+    if (delivery.name === OUTBOX_SHARED_NAME) {
       return;
     }
 

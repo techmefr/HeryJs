@@ -19,7 +19,7 @@ import {
   typeNameOf,
 } from './openapi-contract';
 import type { RecordProperty } from './openapi-contract';
-import { historyFields } from './history-templates';
+import { historySnapshotColumns } from './history-templates';
 
 const FIELD_TS_TYPES: Record<RecordProperty['type'], string> = {
   string: 'string',
@@ -214,11 +214,7 @@ function historyDeclarations(ctx: ResourceContext): string {
     return '';
   }
 
-  const keys = [
-    ...historyFields(ctx).map((field) => field.name),
-    ...(ctx.softDeletes ? ['deletedAt'] : []),
-    ...(ctx.versioned ? ['version'] : []),
-  ];
+  const keys = historySnapshotColumns(ctx);
 
   return `export type ${typeNameOf(ctx)}Snapshot = Partial<Pick<${typeNameOf(ctx)}, ${union(keys)}>>;`;
 }
@@ -228,7 +224,7 @@ function describeDeclaration(ctx: ResourceContext): string {
   const pagination = ctx.pagination
     ? `  limits: number[];\n  defaultLimit: number;\n  paginated: true;`
     : '  paginated: false;';
-  const versioned = `${ctx.versioned ? `\n  versioned: { field: 'version'; header: 'If-Match' };` : ''}${ctx.history ? '\n  history: true;' : ''}${ctx.workflow ? `\n  workflow: { field: '${ctx.workflow.field}'; initial: '${ctx.workflow.initial}'; states: string[]; transitions: Array<{ name: ${name}Transition; from: string[]; to: string; requires: string[] }> };` : ''}`;
+  const versioned = `${ctx.versioned ? `\n  versioned: { field: 'version'; header: 'If-Match' };` : ''}${ctx.history ? '\n  history: true;' : ''}${ctx.sharing ? '\n  sharing: true;' : ''}${ctx.workflow ? `\n  workflow: { field: '${ctx.workflow.field}'; initial: '${ctx.workflow.initial}'; states: string[]; transitions: Array<{ name: ${name}Transition; from: string[]; to: string; requires: string[] }> };` : ''}`;
 
   return `export interface ${name}Describe {
   version: ${ctx.version};
@@ -319,6 +315,18 @@ function clientFunction(ctx: ResourceContext): string {
     );
   }
 
+  if (ctx.sharing) {
+    const id = 'encodeURIComponent(id)';
+    members.push(
+      `    shares: (id: string) =>
+      request<Envelope<RecordShareView[]>>('POST', \`${route}/\${${id}}/shares/search\`, {}),`,
+      `    grantShare: (id: string, share: GrantShareBody) =>
+      request<Envelope<RecordShareView>>('POST', \`${route}/\${${id}}/shares\`, share),`,
+      `    revokeShare: (id: string, shareId: string) =>
+      request<Envelope<RecordShareView>>('DELETE', \`${route}/\${${id}}/shares/\${encodeURIComponent(shareId)}\`),`,
+    );
+  }
+
   members.push(
     `    describe: () => request<Envelope<${name}Describe>>('GET', '${route}/describe'),`,
   );
@@ -337,7 +345,7 @@ function clientKey(ctx: ResourceContext): string {
 }
 
 const PRELUDE = `export type HeryRequest = <T>(
-  method: 'GET' | 'POST',
+  method: 'GET' | 'POST' | 'DELETE',
   path: string,
   body?: unknown,
 ) => Promise<T>;
@@ -413,6 +421,20 @@ export interface HistoryDiff<S> {
   from: HistoryEntry<S>;
   to: HistoryEntry<S> | null;
   changes: Array<{ field: string; before: unknown; after: unknown }>;
+}
+
+export interface GrantShareBody {
+  granteeType: 'user' | 'team';
+  granteeId: string;
+  access: 'read' | 'write';
+}
+
+export interface RecordShareView extends GrantShareBody {
+  id: string;
+  resource: string;
+  recordId: string;
+  grantedById: string;
+  createdAt: string;
 }
 
 export interface DescribedRelation {
