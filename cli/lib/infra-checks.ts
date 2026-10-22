@@ -1,10 +1,10 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { isBuiltin } from 'node:module';
 import { connect } from 'node:net';
 import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { Client } from 'pg';
 import pc from 'picocolors';
+import { packageNameOf } from './runtime-imports';
 
 export interface CheckResult {
   label: string;
@@ -304,21 +304,6 @@ function compiledFiles(dir: string): string[] {
   });
 }
 
-function bareSpecifier(specifier: string): string | undefined {
-  if (
-    specifier.startsWith('.') ||
-    specifier.startsWith('#') ||
-    specifier.startsWith('node:') ||
-    isBuiltin(specifier)
-  ) {
-    return undefined;
-  }
-
-  const parts = specifier.split('/');
-
-  return specifier.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
-}
-
 /**
  * The build is what production runs, and a package that resolves while
  * developing only because something else pulls it in does not resolve there:
@@ -341,7 +326,7 @@ export function checkBuildImports(root = process.cwd()): CheckResult {
 
   for (const file of compiledFiles(dist)) {
     for (const match of readFileSync(file, 'utf8').matchAll(REQUIRE_CALL)) {
-      const name = match[1] === undefined ? undefined : bareSpecifier(match[1]);
+      const name = match[1] === undefined ? undefined : packageNameOf(match[1]);
 
       if (name === undefined || missing.has(name)) {
         continue;

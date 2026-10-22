@@ -67,11 +67,32 @@ export function withoutSetEntries(
   }
 
   const end = source.indexOf(']', start);
+  const removedEntry = (entry: string) =>
+    names.has(entry) || names.has(entry.split('.')[0]!);
+
+  // Written one entry per line, a registry carries comments between entries
+  // (an apostrophe in one used to read as the start of a name) and patches
+  // anchored on its layout: only the lines of removed entries go.
+  if (source.slice(start, end).includes('\n')) {
+    const body = source
+      .slice(start + marker.length, end)
+      .split('\n')
+      .filter((line) => {
+        const entry = /^\s*'([^']+)',?\s*$/.exec(line)?.[1];
+
+        return entry === undefined || !removedEntry(entry);
+      })
+      .join('\n');
+    const remaining = /^\s*'[^']+',?\s*$/m.test(body) ? body : '';
+
+    return `${source.slice(0, start)}${marker}${remaining}${source.slice(end)}`;
+  }
+
   const kept = [
     ...source.slice(start + marker.length, end).matchAll(/'([^']+)'/g),
   ]
     .map((entry) => entry[1]!)
-    .filter((entry) => !names.has(entry) && !names.has(entry.split('.')[0]!));
+    .filter((entry) => !removedEntry(entry));
 
   return `${source.slice(0, start)}${marker}${kept
     .map((entry) => `'${entry}'`)
