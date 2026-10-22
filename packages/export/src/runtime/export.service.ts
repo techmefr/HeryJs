@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { EXPORT_QUEUE } from '#kernel/jobs/jobs.constants';
 import { JobsService } from '#kernel/jobs/jobs.service';
 import type { Exportable, ExportResult } from '#kernel/export/export-driver';
+import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
 import {
   EXPORT_GENERATE_JOB,
   EXPORT_GENERATE_POLICY,
@@ -62,6 +63,7 @@ export class ExportService {
             headers: exportable.headers ?? {},
             rows: await exportable.rows(),
             userId,
+            tenantId: TenantContextStorage.getTenantId(),
           },
           EXPORT_GENERATE_POLICY,
         );

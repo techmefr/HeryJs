@@ -49,8 +49,9 @@ function buildJob(overrides: Partial<Record<string, unknown>> = {}): Job {
     data: {
       format: 'csv',
       importable: 'tasks',
-      key: 'uploads/tasks.csv',
+      key: 'tenant-1/uploads/tasks.csv',
       userId: 'user-1',
+      tenantId: 'tenant-1',
       ...overrides,
     },
   } as Job;
@@ -96,7 +97,7 @@ describe('ImportProcessor', () => {
 
     await processor.process(buildJob());
 
-    expect(get).toHaveBeenCalledWith('uploads/tasks.csv');
+    expect(get).toHaveBeenCalledWith('tenant-1/uploads/tasks.csv');
     expect(consume).toHaveBeenCalledWith([{ title: 'first' }]);
     expect(send).toHaveBeenCalledWith(
       'user-1',
