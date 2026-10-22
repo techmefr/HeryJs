@@ -188,6 +188,7 @@ jobs:
       - name: Install, migrate, typecheck and build it
         working-directory: ${{ runner.temp }}/scaffold/my-app
         run: |
+          test "$(ls src/modules | tr '\n' ' ')" = 'impersonation push two-factor '
           cp .env.example .env
           pnpm install
           pnpm hery migrate --name init
@@ -203,14 +204,11 @@ jobs:
           NODE_ENV: production
           PORT: '3917'
           CORS_ORIGINS: https://app.example.com
-          SSO_REDIRECT_BASE_URL: https://api.example.com
-          OAUTH_REDIRECT_BASE_URL: https://api.example.com
         run: |
           secret() { openssl rand -base64 32; }
           export BETTER_AUTH_SECRET="$(secret)" SIGNAL_TOKEN_SECRET="$(secret)" \
             SSE_TOKEN_SECRET="$(secret)" OAUTH_STATE_SECRET="$(secret)" \
-            STORAGE_URL_SECRET="$(secret)" SSO_STATE_SECRET="$(secret)" \
-            SSO_SECRET_KEY="$(secret)" SECRETS_KEYS="1:$(secret)"
+            STORAGE_URL_SECRET="$(secret)" SECRETS_KEYS="1:$(secret)"
           node dist/src/main > boot.log 2>&1 &
           pid=$!
           for _ in $(seq 1 60); do
@@ -239,6 +237,14 @@ jobs:
           pnpm hery migrate --name note
           pnpm run typecheck
           NODE_OPTIONS=--experimental-vm-modules pnpm exec jest src/functional/note
+
+      # Left out of the scaffold, a module has to come back whole.
+      - name: Install a module on demand
+        working-directory: ${{ runner.temp }}/scaffold/my-app
+        run: |
+          pnpm hery install scim sso storage
+          pnpm exec prisma generate
+          pnpm run typecheck
 
   # The specs that boot a module for real: the two search drivers against
   # live engines, and the GraphQL module against a live HTTP server. They

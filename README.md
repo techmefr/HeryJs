@@ -51,7 +51,7 @@ pnpm hery create:blueprint BlogPost
 pnpm hery generate blueprints/blog-post.yaml
 ```
 
-`heryjs new` scaffolds a standalone project: the kernel, the CLI and the modules, none of HeryJs's own demo or docs. The CLI travels into the project, so every later command is `pnpm hery` from inside it. There is nothing global to install and nothing to keep in step with a release.
+`heryjs new` scaffolds a standalone project: the kernel, the CLI and every module's package ready for `pnpm hery install`, none of HeryJs's own demo or docs. Only three modules come installed, because their install writes into kernel files: impersonation, two-factor and push. The CLI travels into the project, so every later command is `pnpm hery` from inside it. There is nothing global to install and nothing to keep in step with a release.
 
 ## What a blueprint gives you
 
@@ -86,7 +86,7 @@ One `hery generate` later you have ten files in `functional/blog-post/` and a Pr
 
 ## What's included
 
-A kernel that is always there, and modules you install only when you need them (`pnpm hery module:list`, `pnpm hery install <name>`).
+A kernel that is always there, and modules you install only when you need them (`pnpm hery module:list`, `pnpm hery install <name>`). A new project comes with impersonation, two-factor and push already installed, since the kernel depends on them. Every other module listed below is installed when you ask for it.
 
 **In the kernel**
 
@@ -115,7 +115,6 @@ Every module follows one convention: a module exposes one capability, a driver i
 HeryJs covers a common backend core and says plainly what it does not.
 
 - **Metering** ships per-tenant limits and usage counts, in the database, readable in the admin. Pricing that usage, meaning usage-based billing, is not shipped.
-- **Not shipped yet:** SCIM.
 - **API only.** There is no server-rendered view layer; the admin dashboard is the one UI.
 
 For anything outside that core, you write ordinary NestJS in a clean, conventional project. HeryJs never gets in the way, and it does not pretend to replace judgment.

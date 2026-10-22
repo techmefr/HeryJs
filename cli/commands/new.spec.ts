@@ -1,6 +1,10 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
-import { projectManifest, withoutKernelDependency } from './new';
+import {
+  MODULES_THE_KERNEL_NEEDS,
+  projectManifest,
+  withoutKernelDependency,
+} from './new';
 
 const REPO_MANIFEST = JSON.parse(
   readFileSync(path.join(__dirname, '..', '..', 'package.json'), 'utf8'),
@@ -140,4 +144,16 @@ describe('a module manifest inside a generated project', () => {
     expect(rewritten.devDependencies?.heryjs).toBeUndefined();
     expect(rewritten.devDependencies?.typescript).toBeDefined();
   });
+});
+
+describe('the modules a fresh project keeps', () => {
+  it.each(Object.entries(MODULES_THE_KERNEL_NEEDS))(
+    '%s is installed here and says why the kernel needs it',
+    (name, reason) => {
+      expect(
+        existsSync(path.join(__dirname, '..', '..', 'src', 'modules', name)),
+      ).toBe(true);
+      expect(reason.length).toBeGreaterThan(0);
+    },
+  );
 });
