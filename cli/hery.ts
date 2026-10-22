@@ -1,5 +1,7 @@
 import '#technical/config/load-env';
 import { Command } from 'commander';
+import pc from 'picocolors';
+import { BlueprintError } from './lib/blueprint';
 import { registerConsoleCommand } from './commands/console';
 import { registerCreateBlueprintCommand } from './commands/create-blueprint';
 import { registerDbBackupCommands } from './commands/db-backup';
@@ -80,4 +82,11 @@ registerEmbeddingsBackfillCommand(program);
 registerUninstallCommand(program);
 registerUpCommand(program);
 
-void program.parseAsync(process.argv);
+program.parseAsync(process.argv).catch((error: unknown) => {
+  if (!(error instanceof BlueprintError)) {
+    throw error;
+  }
+
+  console.error(pc.red(error.message));
+  process.exitCode = 1;
+});

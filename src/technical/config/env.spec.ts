@@ -74,3 +74,34 @@ describe('SECRETS_KEYS', () => {
     },
   );
 });
+
+describe('CORS_ORIGINS', () => {
+  it('stays unset when absent, so cors.config.ts decides', () => {
+    expect(parseEnv({ ...BASE }).CORS_ORIGINS).toBeUndefined();
+  });
+
+  it('splits a comma-separated list of origins', () => {
+    expect(
+      parseEnv({
+        ...BASE,
+        CORS_ORIGINS: 'https://app.example.com, https://admin.example.com',
+      }).CORS_ORIGINS,
+    ).toEqual(['https://app.example.com', 'https://admin.example.com']);
+  });
+
+  it('reads an empty value as no origin at all', () => {
+    expect(parseEnv({ ...BASE, CORS_ORIGINS: '' }).CORS_ORIGINS).toEqual([]);
+  });
+
+  it('refuses something that is not an origin at boot', () => {
+    expect(() =>
+      parseEnv({ ...BASE, CORS_ORIGINS: 'app.example.com' }),
+    ).toThrow(/CORS_ORIGINS/);
+  });
+
+  it('refuses any origin under NODE_ENV=production', () => {
+    expect(() =>
+      parseEnv({ ...BASE, NODE_ENV: 'production', CORS_ORIGINS: '*' }),
+    ).toThrow(/CORS_ORIGINS/);
+  });
+});

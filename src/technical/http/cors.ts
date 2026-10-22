@@ -62,6 +62,22 @@ export function loadCorsConfig(): CorsConfig | null {
 }
 
 /**
+ * CORS_ORIGINS replaces the file's origins when it is set, so a deployment
+ * names its own front ends without editing a file baked into the image. Set
+ * to an empty value, it turns CORS off the same way an empty list does.
+ */
+export function withOriginsFromEnv(
+  config: CorsConfig | null,
+  origins: readonly string[] | undefined,
+): CorsConfig | null {
+  if (origins === undefined) {
+    return config;
+  }
+
+  return { ...(config ?? {}), origins };
+}
+
+/**
  * Turns the declaration into what Nest needs, or `false` for "send no CORS
  * header at all". Two combinations are refused outright rather than shipped:
  * `'*'` in production, which is the value that is convenient locally and wrong
@@ -81,7 +97,7 @@ export function resolveCorsOptions(
 
   if (anyOrigin && nodeEnv === 'production') {
     throw new Error(
-      `${CONFIG_FILENAME} allows any origin ("${ANY_ORIGIN}"), which is refused under NODE_ENV=production. List the origins that may call this API, or leave origins empty to send no CORS header at all.`,
+      `${CONFIG_FILENAME} allows any origin ("${ANY_ORIGIN}"), which is refused under NODE_ENV=production. Set CORS_ORIGINS to the origins that may call this API (comma-separated), or list them in ${CONFIG_FILENAME}; an empty list sends no CORS header at all.`,
     );
   }
 

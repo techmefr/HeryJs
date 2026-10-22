@@ -2,6 +2,7 @@ import {
   DEFAULT_CORS_ALLOWED_HEADERS,
   loadCorsConfig,
   resolveCorsOptions,
+  withOriginsFromEnv,
 } from './cors';
 
 describe('cors configuration', () => {
@@ -52,5 +53,27 @@ describe('cors configuration', () => {
       origin: '*',
     });
     expect(() => resolveCorsOptions(config, 'production')).toThrow();
+  });
+
+  it('lets CORS_ORIGINS replace the origins of the file, which is how production gets off "*"', () => {
+    const config = withOriginsFromEnv(loadCorsConfig(), [
+      'https://app.example.com',
+    ]);
+
+    expect(resolveCorsOptions(config, 'production')).toMatchObject({
+      origin: ['https://app.example.com'],
+    });
+  });
+
+  it('keeps the file as it stands when CORS_ORIGINS is unset', () => {
+    const config = loadCorsConfig();
+
+    expect(withOriginsFromEnv(config, undefined)).toBe(config);
+  });
+
+  it('turns CORS off when CORS_ORIGINS is set to nothing, even without a file', () => {
+    expect(resolveCorsOptions(withOriginsFromEnv(null, []), 'production')).toBe(
+      false,
+    );
   });
 });
