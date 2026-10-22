@@ -95,6 +95,29 @@ export interface HeryConfigPrivacy {
   exportRetentionDays?: number;
 }
 
+/**
+ * What becomes of the shares a user granted once that user is erased. `revoke`
+ * (the default) deletes them with the user; `keep` leaves them in place, so a
+ * record shared by someone who left stays shared. Shares granted to the user
+ * go with the user either way.
+ */
+export type HeryConfigGrantorErasure = 'revoke' | 'keep';
+
+export interface HeryConfigSharing {
+  onGrantorErasure?: HeryConfigGrantorErasure;
+}
+
+/**
+ * Who may open the admin studio in production. `operator` (the default) is
+ * the platform operator alone; `tenant-admin` also lets a tenant admin in,
+ * bounded to its own tenant by the same tenant context every route runs in.
+ */
+export type HeryConfigStudioAccess = 'operator' | 'tenant-admin';
+
+export interface HeryConfigAdmin {
+  studioAccess?: HeryConfigStudioAccess;
+}
+
 export interface HeryConfigDevDashboard {
   enabled?: boolean;
   retentionHours?: number;
@@ -126,6 +149,8 @@ export interface HeryConfig {
   logging?: HeryConfigLogging;
   devDashboard?: HeryConfigDevDashboard;
   privacy?: HeryConfigPrivacy;
+  sharing?: HeryConfigSharing;
+  admin?: HeryConfigAdmin;
   mail?: HeryConfigDrivers;
   export?: HeryConfigDrivers;
   import?: HeryConfigDrivers;

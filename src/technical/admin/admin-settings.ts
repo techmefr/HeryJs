@@ -1,4 +1,6 @@
 import { env } from '#technical/config/env';
+import { heryConfig } from '#technical/config/hery-config';
+import type { HeryConfigStudioAccess } from '#technical/config/hery-config.types';
 
 /**
  * Read on every call, the way DevOnlyGuard reads NODE_ENV: the answer is a
@@ -11,6 +13,7 @@ export interface AdminStudioSettings {
   enabled: boolean;
   allowedIps: string[];
   requireTwoFactor: boolean;
+  access: HeryConfigStudioAccess;
 }
 
 export function adminStudioSettings(): AdminStudioSettings {
@@ -22,6 +25,7 @@ export function adminStudioSettings(): AdminStudioSettings {
       .map((entry) => entry.trim())
       .filter((entry) => entry !== ''),
     requireTwoFactor: env.ADMIN_STUDIO_REQUIRE_2FA === 'true',
+    access: heryConfig.admin?.studioAccess ?? 'operator',
   };
 }
 

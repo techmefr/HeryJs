@@ -1,5 +1,6 @@
 import { ExecutionContext } from '@nestjs/common';
 import { env } from '#technical/config/env';
+import { heryConfig } from '#technical/config/hery-config';
 import { subjectOf } from '#technical/capabilities/subject';
 import type { AuthenticatedUser } from '#technical/auth/auth.types';
 import {
@@ -142,6 +143,32 @@ describe('admin studio production access', () => {
       configure({ NODE_ENV: 'production', PLATFORM_OPERATOR_IDS: 'user-1' });
 
       expect(canUseAdminStudio(subjectOf(user(null))).allowed).toBe(true);
+    });
+
+    describe("under admin.studioAccess: 'tenant-admin'", () => {
+      const originalAdmin = heryConfig.admin;
+
+      afterEach(() => {
+        heryConfig.admin = originalAdmin;
+      });
+
+      it('also lets a tenant admin in, and still not a member', () => {
+        heryConfig.admin = { studioAccess: 'tenant-admin' };
+        configure({ NODE_ENV: 'production' });
+
+        expect(canUseAdminStudio(subjectOf(user('admin'))).allowed).toBe(true);
+        expect(canUseAdminStudio(subjectOf(user('member'))).allowed).toBe(
+          false,
+        );
+        expect(canUseAdminStudio(subjectOf(user(null))).allowed).toBe(false);
+      });
+
+      it("keeps the operator alone under an explicit 'operator'", () => {
+        heryConfig.admin = { studioAccess: 'operator' };
+        configure({ NODE_ENV: 'production' });
+
+        expect(canUseAdminStudio(subjectOf(user('admin'))).allowed).toBe(false);
+      });
     });
   });
 

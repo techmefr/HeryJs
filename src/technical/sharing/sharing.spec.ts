@@ -4,6 +4,8 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import { AppModule } from '#app.module';
 import { env } from '#technical/config/env';
+import { heryConfig } from '#technical/config/hery-config';
+import { PersonalDataRegistry } from '#technical/privacy/personal-data.registry';
 import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
 import { runInTenant } from '#technical/tenancy/run-in-tenant';
 import { SharingModule } from './sharing.module';
@@ -17,6 +19,7 @@ describe('SharingService (real database)', () => {
   const tenantB = `tenant-share-b-${randomUUID()}`;
   const resource = 'BlogPost';
   let service: SharingService;
+  let registry: PersonalDataRegistry;
   let moduleClose: () => Promise<void>;
   let owner: string;
   let grantee: string;
@@ -44,6 +47,7 @@ describe('SharingService (real database)', () => {
     }).compile();
     await moduleRef.init();
     service = moduleRef.get(SharingService);
+    registry = moduleRef.get(PersonalDataRegistry);
     moduleClose = () => moduleRef.close();
 
     owner = await makeUser(tenantA);
@@ -210,6 +214,90 @@ describe('SharingService (real database)', () => {
       inB(() => service.revoke(resource, recordId, share.id)),
     ).rejects.toBeInstanceOf(RecordNotFoundException);
     expect(await inA(() => service.list(resource, recordId))).toHaveLength(1);
+  });
+
+  describe('when the user who granted shares is erased', () => {
+    const originalSharing = heryConfig.sharing;
+
+    afterEach(() => {
+      heryConfig.sharing = originalSharing;
+    });
+
+    const eraseUser = (userId: string) => {
+      const hook = registry
+        .hooks()
+        .find((candidate) => candidate.name === 'RecordShare');
+
+      if (!hook?.eraseUser) {
+        throw new Error('the RecordShare personal-data hook is not registered');
+      }
+
+      return inA(() =>
+        hook.eraseUser({
+          tenantId: tenantA,
+          userId,
+          email: `${userId}@example.test`,
+          phoneNumber: null,
+        }),
+      );
+    };
+
+    const grantedAndReceivedBy = async () => {
+      const grantor = await makeUser(tenantA);
+      extraUsers.push(grantor);
+      const recordId = `rec-${randomUUID()}`;
+      const given = await inA(() =>
+        service.grant(resource, recordId, grantor, {
+          granteeType: 'user',
+          granteeId: grantee,
+          access: 'read',
+        }),
+      );
+      const received = await inA(() =>
+        service.grant(resource, recordId, owner, {
+          granteeType: 'user',
+          granteeId: grantor,
+          access: 'read',
+        }),
+      );
+
+      return { grantor, given, received };
+    };
+
+    const stillThere = (ids: string[]) =>
+      rawClient.recordShare.findMany({
+        where: { id: { in: ids } },
+        select: { id: true },
+      });
+
+    it('revokes them by default, with the shares the user received', async () => {
+      heryConfig.sharing = undefined;
+      const { grantor, given, received } = await grantedAndReceivedBy();
+
+      await eraseUser(grantor);
+
+      expect(await stillThere([given.id, received.id])).toEqual([]);
+    });
+
+    it("keeps them under onGrantorErasure: 'keep', and still drops what the user received", async () => {
+      heryConfig.sharing = { onGrantorErasure: 'keep' };
+      const { grantor, given, received } = await grantedAndReceivedBy();
+
+      await eraseUser(grantor);
+
+      expect(await stillThere([given.id, received.id])).toEqual([
+        { id: given.id },
+      ]);
+    });
+
+    it("revokes them under an explicit onGrantorErasure: 'revoke'", async () => {
+      heryConfig.sharing = { onGrantorErasure: 'revoke' };
+      const { grantor, given } = await grantedAndReceivedBy();
+
+      await eraseUser(grantor);
+
+      expect(await stillThere([given.id])).toEqual([]);
+    });
   });
 
   it('audits every grant and revoke with the acting user', async () => {
