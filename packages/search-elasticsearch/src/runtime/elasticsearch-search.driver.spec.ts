@@ -2,6 +2,7 @@ import { ElasticsearchSearchDriver } from './elasticsearch-search.driver';
 
 interface FakeClient {
   index: jest.Mock;
+  get: jest.Mock;
   delete: jest.Mock;
   search: jest.Mock;
   indices: { exists: jest.Mock; create: jest.Mock };
@@ -10,6 +11,7 @@ interface FakeClient {
 function fakeClient(hitIds: string[] = []): FakeClient {
   return {
     index: jest.fn().mockResolvedValue({}),
+    get: jest.fn().mockResolvedValue({ _source: { tenantId: 'acme' } }),
     delete: jest.fn().mockResolvedValue({}),
     search: jest
       .fn()
@@ -189,7 +191,7 @@ describe('the Elasticsearch driver', () => {
   it('ignores a 404 when removing a document that is already gone', async () => {
     const client = fakeClient();
 
-    await driverWith(client).remove('blog_posts', 'post-1');
+    await driverWith(client).remove('blog_posts', 'post-1', 'acme');
 
     expect(client.delete).toHaveBeenCalledWith(
       { index: 'blog_posts', id: 'post-1' },

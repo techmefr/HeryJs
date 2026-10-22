@@ -82,11 +82,37 @@ export class MeilisearchSearchDriver implements SearchDriver {
     );
   }
 
-  async remove(collection: string, id: string): Promise<void> {
-    // Deletion is by id alone -- a Prisma cuid is already globally unique, so
-    // there is no ambiguity a tenant filter would resolve here. tenantId is
-    // part of the shared SearchDriver contract for consistency with
-    // index()/search(), not because this call needs it.
+  // An id alone is not proof of ownership: every tenant shares the
+  // collection, so a caller holding another tenant's id would delete that
+  // tenant's document. The stored tenant is read first, and a document that
+  // belongs to someone else is left alone exactly like a missing one.
+  private async ownerOf(collection: string, id: string): Promise<unknown> {
+    try {
+      const stored = await this.client
+        .index(collection)
+        .getDocument<Record<string, unknown>>(id, { fields: [TENANT_FIELD] });
+
+      return stored[TENANT_FIELD];
+    } catch (error) {
+      const code = (error as { cause?: { code?: string } })?.cause?.code;
+
+      if (code === 'document_not_found' || code === 'index_not_found') {
+        return undefined;
+      }
+
+      throw error;
+    }
+  }
+
+  async remove(
+    collection: string,
+    id: string,
+    tenantId: string,
+  ): Promise<void> {
+    if ((await this.ownerOf(collection, id)) !== tenantId) {
+      return;
+    }
+
     await this.settle(
       await this.client.index(collection).deleteDocument(id),
       'remove a document',
