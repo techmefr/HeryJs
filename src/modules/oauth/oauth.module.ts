@@ -22,6 +22,7 @@ import { OAuthStateService } from './oauth-state.service';
 import { OAuthController } from './oauth.controller';
 import { OAUTH_CONFIG } from './oauth.types';
 import type { OAuthConfig, OAuthProviderCredentials } from './oauth.types';
+import './oauth.catalogue';
 
 const DEV_FALLBACK_BASE_URL = `http://localhost:${env.PORT}`;
 

@@ -9,6 +9,7 @@ import { TwoFactorRequirementService } from './two-factor-requirement.service';
 import { twoFactorEnv } from './two-factor.env';
 import { TwoFactorService } from './two-factor.service';
 import { TwoFactorSessionService } from './two-factor-session.service';
+import './two-factor.catalogue';
 
 @Module({
   imports: [PrismaModule, AuthModule],

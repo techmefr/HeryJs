@@ -1,19 +1,26 @@
 import type { DomainException } from '#technical/errors/domain.exception';
 import { CATALOGUE } from './catalogue';
 import { LocaleContextStorage } from './locale-context';
-import { FALLBACK_LOCALE } from './locale.config';
 
 export function translate(
   translationKey: string,
   details: unknown,
   fallbackMessage: string,
 ): string {
-  const locale = LocaleContextStorage.getLocale();
+  return translateIn(
+    LocaleContextStorage.getLocale(),
+    translationKey,
+    details,
+    fallbackMessage,
+  );
+}
 
-  if (locale === FALLBACK_LOCALE) {
-    return fallbackMessage;
-  }
-
+export function translateIn(
+  locale: string,
+  translationKey: string,
+  details: unknown,
+  fallbackMessage: string,
+): string {
   const template = CATALOGUE[translationKey]?.[locale];
 
   if (!template) {

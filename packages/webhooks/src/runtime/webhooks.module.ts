@@ -28,6 +28,7 @@ import { systemHostResolver, WEBHOOK_HOST_RESOLVER } from './webhook-url-guard';
 import { WebhooksController } from './webhooks.controller';
 import { WebhooksProcessor } from './webhooks.processor';
 import { WebhooksService } from './webhooks.service';
+import './webhooks.catalogue';
 
 @Module({
   imports: [

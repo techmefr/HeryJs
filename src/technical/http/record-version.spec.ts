@@ -1,5 +1,8 @@
-import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import {
+  IfMatchMalformedException,
+  IfMatchSingleEntryException,
+} from '#technical/errors/if-match.exception';
 import { VersionConflictException } from '#technical/errors/version-conflict.exception';
 import { VersionRequiredException } from '#technical/errors/version-required.exception';
 import {
@@ -24,13 +27,19 @@ describe('record version', () => {
     it.each(['*', '3', '"abc"', '"3", "4"', ''])(
       'refuses %p as a version',
       (header) => {
-        expect(() => ifMatchVersionOf(header, 1)).toThrow(BadRequestException);
+        expect(() => ifMatchVersionOf(header, 1)).toThrow(
+          IfMatchMalformedException,
+        );
       },
     );
 
     it('refuses a header on a request carrying several entries', () => {
-      expect(() => ifMatchVersionOf('"3"', 2)).toThrow(BadRequestException);
-      expect(() => ifMatchVersionOf('"3"', 0)).toThrow(BadRequestException);
+      expect(() => ifMatchVersionOf('"3"', 2)).toThrow(
+        IfMatchSingleEntryException,
+      );
+      expect(() => ifMatchVersionOf('"3"', 0)).toThrow(
+        IfMatchSingleEntryException,
+      );
     });
   });
 

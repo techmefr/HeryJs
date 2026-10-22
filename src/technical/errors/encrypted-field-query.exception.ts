@@ -7,6 +7,7 @@ export class EncryptedFieldQueryException extends DomainException {
       HttpStatus.INTERNAL_SERVER_ERROR,
       'secrets.encryptedFieldQuery',
       `${model}.${column} is encrypted and cannot be used to ${use}: a comparison of ciphertext is not a comparison of the secret.`,
+      { model, column, use },
     );
   }
 }

@@ -1,5 +1,8 @@
-import { BadRequestException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import {
+  IfMatchMalformedException,
+  IfMatchSingleEntryException,
+} from '#technical/errors/if-match.exception';
 import { VersionConflictException } from '#technical/errors/version-conflict.exception';
 import type { VersionSource } from '#technical/errors/version-conflict.exception';
 import { VersionRequiredException } from '#technical/errors/version-required.exception';
@@ -21,17 +24,13 @@ export function ifMatchVersionOf(
   }
 
   if (entryCount !== 1) {
-    throw new BadRequestException(
-      'If-Match applies to a request carrying exactly one entry; send each entry\'s "version" in the body instead.',
-    );
+    throw new IfMatchSingleEntryException(entryCount);
   }
 
   const match = IF_MATCH_VERSION.exec(header.trim());
 
   if (!match) {
-    throw new BadRequestException(
-      'If-Match must carry the version you read, quoted: "3".',
-    );
+    throw new IfMatchMalformedException(header);
   }
 
   return Number(match[1]);

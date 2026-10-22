@@ -26,6 +26,7 @@ import { SsoSecretService } from './sso-secret.service';
 import { SsoStateService } from './sso-state.service';
 import { SSO_HOST_RESOLVER, systemHostResolver } from './sso-url-guard';
 import { SsoController } from './sso.controller';
+import './sso.catalogue';
 
 @Module({
   imports: [AuthModule],

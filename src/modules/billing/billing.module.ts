@@ -10,6 +10,7 @@ import { BillingWebhookController } from './billing.webhook.controller';
 import { BillingWebhookGuard } from './billing-webhook.guard';
 import { BillingWebhookProcessor } from './billing.webhook.processor';
 import { LogBillingDriver } from './log-billing.driver';
+import './billing.catalogue';
 
 @Module({
   imports: [PrismaModule, HeryConfigModule, DriversModule, JobsModule],

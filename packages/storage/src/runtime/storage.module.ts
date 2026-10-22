@@ -14,6 +14,7 @@ import { StorageUploadIntentController } from './storage-upload-intent.controlle
 import { StorageUploadIntentService } from './storage-upload-intent.service';
 import { StorageService } from './storage.service';
 import { storageDriverToken } from '#kernel/storage/storage-driver';
+import './storage.catalogue';
 
 const LOCAL_DRIVER_TOKEN = storageDriverToken('local');
 const S3_DRIVER_TOKEN = storageDriverToken('s3');

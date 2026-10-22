@@ -5,6 +5,7 @@ import { EMBEDDER } from '#technical/embeddings/embedding-driver';
 import { EmbeddingDriverRegistry } from './embedding-driver.registry';
 import { EmbeddingsService } from './embeddings.service';
 import { FakeEmbeddingDriver } from './fake-embedding.driver';
+import './embeddings.catalogue';
 
 @Global()
 @Module({
