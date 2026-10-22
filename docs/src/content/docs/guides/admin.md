@@ -212,9 +212,10 @@ Both sit behind `@AdminStudio()` and admin-only capabilities (`canManageTenantAc
 | --- | --- |
 | `ADMIN_STUDIO_ENABLED` | Must be exactly `true` in production; otherwise the routes answer 404, signed in or not. Ignored outside production, where the studio opens to any signed-in developer as before. |
 | `ADMIN_STUDIO_ALLOWED_IPS` | Comma separated peer addresses; any other caller gets 404. It reads the address Express resolved, so set `trust proxy` deliberately behind a proxy. |
-| `ADMIN_STUDIO_REQUIRE_2FA` | `true` makes a platform admin without an enrolled second factor get 403. |
+| `ADMIN_STUDIO_REQUIRE_2FA` | `true` makes a platform operator without an enrolled second factor get 403. |
+| `PLATFORM_OPERATOR_IDS` | Comma separated user ids of the platform operators. Unset, nobody passes `canUseAdminStudio` in production. |
 
-The capability `canUseAdminStudio` is the platform admin role in production. No header, query parameter or client value can switch the checks off.
+The capability `canUseAdminStudio` is the platform operator in production (`PLATFORM_OPERATOR_IDS`), never a tenant admin. No header, query parameter or client value can switch the checks off.
 ## Before you deploy any of this
 
 `/introspect` is a map of your application, and the protections on it are worth understanding precisely.

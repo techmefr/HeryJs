@@ -1,4 +1,4 @@
-import { adminAbility } from '#technical/capabilities/ability';
+import { adminAbility, operatorAbility } from '#technical/capabilities/ability';
 import type { PolicyCheck } from '#technical/capabilities/capability-check';
 
 // Reading answers about the caller's own tenant, which scoping already
@@ -7,11 +7,11 @@ import type { PolicyCheck } from '#technical/capabilities/capability-check';
 // cut), so they stay with the operator until a project decides otherwise.
 export const canReadQuotas: PolicyCheck = adminAbility;
 
-export const canReadTenantQuotas: PolicyCheck = adminAbility;
+export const canReadTenantQuotas: PolicyCheck = operatorAbility;
 
-export const canResetQuota: PolicyCheck = adminAbility;
+export const canResetQuota: PolicyCheck = operatorAbility;
 
 // Setting an override names the tenant it applies to, so it reaches across the
 // tenant boundary exactly like feature-flags does, and asks the same of the
 // caller.
-export const canSetQuotaOverride: PolicyCheck = adminAbility;
+export const canSetQuotaOverride: PolicyCheck = operatorAbility;

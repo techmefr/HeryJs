@@ -47,7 +47,12 @@ A bare tenant id is still accepted, as before. `evaluate` takes the same argumen
 
 ## Editing at runtime
 
-Nothing caches a flag, so a change is live on the next evaluation, with no redeploy. All of these routes are admin-only, because they reach every tenant:
+Nothing caches a flag, so a change is live on the next evaluation, with no redeploy. These routes answer a tenant admin and the platform operator, with a different reach:
+
+- A **tenant admin** (`role: admin`) only ever touches its own tenant. The tenant comes from the session: an omitted `tenantId` means its own, and naming another tenant or `null` (the global flag) is refused with `403 featureFlags.operatorOnly`. `GET /feature-flags` lists its own tenant's flags only.
+- The **platform operator** (a user id listed in `PLATFORM_OPERATOR_IDS`, see [Security](../guides/security/#tenant-admin-and-platform-operator)) sees every tenant, writes global flags (no `tenantId`) and any tenant's override.
+
+The routes:
 
 - `PATCH /feature-flags/:key` creates or updates a flag. Only the fields you send are written, so changing the percentage keeps the rules. `tenantId` in the body targets a tenant override.
 - `DELETE /feature-flags/:key?tenantId=` removes a flag or an override.

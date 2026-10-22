@@ -55,6 +55,22 @@ API keys exist for CI and scripts, and are stored the way GitHub stores its toke
 
 An admin can act as another user; the session is time-limited from the moment it opens, a scheduled task ends the ones that have expired, and the whole of it is audited. There is no role-management endpoint: `admin` is granted in the database by hand, because who may impersonate is a product decision and not a convention to ship.
 
+## Tenant admin and platform operator
+
+`role: admin` is an admin of its own tenant. Anything whose effect crosses the tenant boundary belongs to a **platform operator** instead: a user id listed in `PLATFORM_OPERATOR_IDS` (comma separated). The list is read on every decision and fails closed: unset or empty, there is no operator, and no role, header or database value grants it. Operator-only routes:
+
+| Route | Capability | Why |
+| --- | --- | --- |
+| `GET /feature-flags` across tenants, global flags, another tenant's flag | the controller pins the tenant | a flag change reaches other tenants |
+| `GET /http-client/circuits`, `POST /http-client/circuits/:host/{open,reset,settings}` | `canReadHttpCircuits`, `canManageHttpCircuits` | a circuit is shared by every tenant calling that host |
+| `/backups` (list, create, schedule, download, restore) | `canManageBackups` | a dump holds every tenant, a restore overwrites them all |
+| `GET /metrics`, `GET /health`, `GET /deployment` | `canReadMetrics`, `canReadHealth`, `canReadDeployment` | they describe the deployment, not a tenant |
+| `GET /quotas/tenants`, `PUT /quotas/:name/override`, `POST /quotas/:name/reset` | `canReadTenantQuotas`, `canSetQuotaOverride`, `canResetQuota` | the request names any tenant |
+| `GET /studio/overview/{health,scheduler,environment}` | `canReadStudioOverview` | process and scheduler state |
+| `/introspect` and every `@AdminStudio()` route in production | `canUseAdminStudio` | the studio is the operator's console |
+
+What stays with the tenant admin is bounded by the tenant context: its audit log and sinks, logs, output cache, prune, job flows, mail, SSO, SCIM, webhooks, storage and two-factor requirements. `adminAbility` remains for those; `operatorAbility` and `adminOrOperatorAbility` sit next to it in `src/technical/capabilities/ability.ts`. `/health/live` and `/health/ready` stay public probes. Maintenance mode has no route (it is set from the CLI), so it has nothing to gate.
+
 ## The audit trail records the actor
 
 Audited writes are appended with the acting user, so "who changed this" is answerable after the fact. The list of audited models is one declaration, read and rewritten by the generator rather than maintained in several places.

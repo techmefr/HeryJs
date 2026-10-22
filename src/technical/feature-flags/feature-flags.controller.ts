@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   NotFoundException,
   Param,
@@ -13,6 +14,8 @@ import {
 import { Capability } from '#technical/capabilities/capability.decorator';
 import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
+import { isPlatformOperator } from '#technical/capabilities/ability';
+import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { SessionGuard } from '#technical/auth/session.guard';
 import { ok } from '#technical/http/envelope';
 import { okPage, parsePageQuery } from '#technical/http/page-query';
@@ -42,7 +45,17 @@ export class FeatureFlagsController {
   async list(@Query() query: unknown) {
     const page = parsePageQuery(query);
 
-    return okPage(await this.featureFlags.listAll(page), page);
+    if (callerIsOperator()) {
+      return okPage(await this.featureFlags.listAll(page), page);
+    }
+
+    return okPage(
+      await this.featureFlags.listForTenant(
+        TenantContextStorage.getTenantId(),
+        page,
+      ),
+      page,
+    );
   }
 
   /**
@@ -57,9 +70,14 @@ export class FeatureFlagsController {
     @Body(new ZodValidationPipe(evaluateFeatureFlagSchema))
     body: EvaluateFeatureFlagDto,
   ) {
-    const { key, ...context } = body;
+    const { key, tenantId, ...context } = body;
 
-    return ok(await this.featureFlags.evaluate(key, context));
+    return ok(
+      await this.featureFlags.evaluate(key, {
+        ...context,
+        tenantId: targetTenant(tenantId),
+      }),
+    );
   }
 
   @RateLimit('write')
@@ -71,7 +89,7 @@ export class FeatureFlagsController {
   ) {
     const { tenantId, ...patch } = body;
 
-    return ok(await this.featureFlags.set(key, patch, tenantId ?? undefined));
+    return ok(await this.featureFlags.set(key, patch, targetTenant(tenantId)));
   }
 
   @RateLimit('write')
@@ -81,10 +99,38 @@ export class FeatureFlagsController {
     @Param('key') key: string,
     @Query('tenantId') tenantId?: string,
   ) {
-    if (!(await this.featureFlags.remove(key, tenantId || undefined))) {
+    const target = targetTenant(tenantId || undefined);
+
+    if (!(await this.featureFlags.remove(key, target))) {
       throw new NotFoundException('Feature flag not found');
     }
 
-    return ok({ key, tenantId: tenantId || null });
+    return ok({ key, tenantId: target ?? null });
   }
+}
+
+function callerIsOperator(): boolean {
+  return isPlatformOperator(TenantContextStorage.getUserId());
+}
+
+/**
+ * The tenant a flag write or preview applies to. The operator names any
+ * tenant, or none for a global flag. A tenant admin always gets its own:
+ * omitting the tenant means its own, naming another tenant or asking for the
+ * global flag (null) is refused rather than silently redirected.
+ */
+function targetTenant(
+  requested: string | null | undefined,
+): string | undefined {
+  if (callerIsOperator()) {
+    return requested ?? undefined;
+  }
+
+  const own = TenantContextStorage.getTenantId();
+
+  if (requested === undefined || requested === own) {
+    return own;
+  }
+
+  throw new ForbiddenException('featureFlags.operatorOnly');
 }

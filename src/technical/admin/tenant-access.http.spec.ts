@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
+import { grantPlatformOperator } from '#devtools/testing/platform-operator';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 import type { TestUser } from '#devtools/testing/register-and-login';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
@@ -34,6 +35,7 @@ describe('the studio users and access sections', () => {
       where: { id: admin.id },
       data: { role: 'admin' },
     });
+    grantPlatformOperator(admin.id);
     member = await registerAndLogin(app);
 
     const user = await authPrismaClient.user.create({

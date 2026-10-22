@@ -40,6 +40,7 @@ describe('admin studio production access', () => {
     'ADMIN_STUDIO_ENABLED',
     'ADMIN_STUDIO_ALLOWED_IPS',
     'ADMIN_STUDIO_REQUIRE_2FA',
+    'PLATFORM_OPERATOR_IDS',
   ];
   const savedEnv = Object.fromEntries(names.map((n) => [n, mutableEnv[n]]));
 
@@ -131,12 +132,16 @@ describe('admin studio production access', () => {
       expect(canUseAdminStudio(subjectOf(user(null))).allowed).toBe(true);
     });
 
-    it('narrows to the platform admin in production', () => {
+    it('narrows to the platform operator in production', () => {
       configure({ NODE_ENV: 'production' });
 
       expect(canUseAdminStudio(subjectOf(user(null))).allowed).toBe(false);
       expect(canUseAdminStudio(subjectOf(user('member'))).allowed).toBe(false);
-      expect(canUseAdminStudio(subjectOf(user('admin'))).allowed).toBe(true);
+      expect(canUseAdminStudio(subjectOf(user('admin'))).allowed).toBe(false);
+
+      configure({ NODE_ENV: 'production', PLATFORM_OPERATOR_IDS: 'user-1' });
+
+      expect(canUseAdminStudio(subjectOf(user(null))).allowed).toBe(true);
     });
   });
 

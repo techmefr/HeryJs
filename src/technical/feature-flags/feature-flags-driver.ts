@@ -53,6 +53,7 @@ export interface FeatureFlagDriver {
   list(tenantId?: string): Promise<FeatureFlagRecord[]>;
   listAll(
     page: PageQuery,
+    tenantId?: string,
   ): Promise<{ records: FeatureFlagRecord[]; total: number }>;
   set(
     key: string,
