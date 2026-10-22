@@ -42,6 +42,12 @@ export default {
       s3: { driver: 's3' },
     },
   },
+  sharing: {
+    onGrantorErasure: 'revoke',
+  },
+  admin: {
+    studioAccess: 'operator',
+  },
   logging: {
     default: 'stdout',
     drivers: {

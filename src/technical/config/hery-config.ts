@@ -46,7 +46,48 @@ export function loadHeryConfig(): HeryConfig {
     );
   }
 
+  assertHeryConfigChoices(config);
+
   return config;
+}
+
+const CHOICES: Array<{
+  path: string;
+  read: (config: HeryConfig) => unknown;
+  allowed: readonly string[];
+}> = [
+  {
+    path: 'sharing.onGrantorErasure',
+    read: (config) => config.sharing?.onGrantorErasure,
+    allowed: ['revoke', 'keep'],
+  },
+  {
+    path: 'admin.studioAccess',
+    read: (config) => config.admin?.studioAccess,
+    allowed: ['operator', 'tenant-admin'],
+  },
+];
+
+/**
+ * `satisfies HeryConfig` catches a typo at typecheck, but a value built from
+ * an environment variable or a cast does not go through it. These choices
+ * widen who sees what, so an unknown one stops the boot rather than reading
+ * as whichever branch happens to come last.
+ */
+export function assertHeryConfigChoices(config: HeryConfig): void {
+  const issues = CHOICES.flatMap(({ path: key, read, allowed }) => {
+    const value = read(config);
+
+    return value === undefined || allowed.includes(value as string)
+      ? []
+      : [
+          `  ${key}: ${JSON.stringify(value)} is not one of ${allowed.join(', ')}`,
+        ];
+  });
+
+  if (issues.length > 0) {
+    throw new Error(`Invalid ${CONFIG_FILENAME}:\n${issues.join('\n')}`);
+  }
 }
 
 export const heryConfig = loadHeryConfig();
