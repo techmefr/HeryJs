@@ -13,12 +13,12 @@ const DYNAMIC_IMPORT = /\b(?:import|require)\(\s*'([^']+)'\s*\)/g;
 const BUILTINS = new Set(builtinModules);
 
 /**
- * Files that never reach a production build: specs, the fakes and test support
+ * Files that never reach a production build: specs, factories, the fakes and test support
  * they import, and declaration files.
  */
 function isTestOnly(file: string): boolean {
   return (
-    /\.(spec|fakes|e2e-spec)\.ts$/.test(file) ||
+    /\.(spec|fakes|factory|e2e-spec)\.ts$/.test(file) ||
     file.endsWith('.d.ts') ||
     file.includes(`${path.sep}testing${path.sep}`)
   );

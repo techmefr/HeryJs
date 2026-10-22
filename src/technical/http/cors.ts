@@ -74,7 +74,7 @@ export function withOriginsFromEnv(
     return config;
   }
 
-  return { ...(config ?? {}), origins };
+  return { ...config, origins };
 }
 
 /**
