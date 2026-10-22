@@ -1,3 +1,5 @@
+import { LocaleContextStorage } from '#technical/i18n/locale-context';
+
 /**
  * The shell every mail shares, so a Mailable writes what it has to say and not
  * the HTML around it. Before this, a second mail meant copying the first one's
@@ -16,6 +18,8 @@ export interface MailLayoutOptions {
    * which kind of message this is.
    */
   optOut?: { label: string; url: string };
+  /** The recipient's locale; omitted, the locale the mail is built in. */
+  lang?: string;
 }
 
 // Inline styles and a table-free single column: every mail client strips a
@@ -29,7 +33,7 @@ export function mailLayout(body: string, options: MailLayoutOptions): string {
     : '';
 
   return `<!doctype html>
-<html lang="en">
+<html lang="${options.lang ?? LocaleContextStorage.getLocale()}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />

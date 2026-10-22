@@ -1,6 +1,7 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
+import { runInJobLocale } from '#technical/jobs/job-locale';
 import { EVENTS_QUEUE } from '#technical/jobs/jobs.constants';
 import { runInTenant } from '#technical/tenancy/run-in-tenant';
 import { EventDispatcher } from './event-dispatcher.service';
@@ -15,7 +16,11 @@ export class EventsProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job): Promise<void> {
+  process(job: Job): Promise<void> {
+    return runInJobLocale(job.data, () => this.handle(job));
+  }
+
+  private async handle(job: Job): Promise<void> {
     if (job.name !== EVENT_DISPATCH_JOB) {
       return;
     }

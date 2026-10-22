@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
+import { authPrismaClient } from '#kernel/auth/better-auth.instance';
 import { PRISMA_CLIENT } from '#kernel/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#kernel/prisma/prisma.client';
 import type { NotifierChannel } from './notification';
@@ -29,6 +30,15 @@ export class NotificationPreferenceService {
   constructor(
     @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,
   ) {}
+
+  async localeOf(userId: string): Promise<string | null> {
+    const user = await authPrismaClient.user.findUnique({
+      where: { id: userId },
+      select: { locale: true },
+    });
+
+    return user?.locale ?? null;
+  }
 
   async rulesFor(userId: string): Promise<NotificationRules> {
     const [rules, settings] = await Promise.all([

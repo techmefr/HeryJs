@@ -40,6 +40,7 @@ export interface OutboxStageClient {
         tenantId: string | null;
         name: string;
         payload: object;
+        locale: string;
       }[];
     }): PromiseLike<unknown>;
   };

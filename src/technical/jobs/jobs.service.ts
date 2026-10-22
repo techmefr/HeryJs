@@ -1,6 +1,7 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import type { Queue } from 'bullmq';
+import { withJobLocale } from './job-locale';
 import { jobOptions } from './job-policy';
 import type { JobPolicy } from './job-policy';
 import {
@@ -45,7 +46,7 @@ export class JobsService {
     data: Record<string, unknown> = {},
     policy?: JobPolicy,
   ) {
-    return this.queue.add(name, data, jobOptions(policy));
+    return this.queue.add(name, withJobLocale(data), jobOptions(policy));
   }
 
   /**
@@ -69,6 +70,6 @@ export class JobsService {
       );
     }
 
-    return queue.add(name, data, jobOptions(policy));
+    return queue.add(name, withJobLocale(data), jobOptions(policy));
   }
 }
