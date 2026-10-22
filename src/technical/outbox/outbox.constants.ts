@@ -21,3 +21,6 @@ export const OUTBOX_MODEL_NAME_PREFIX = 'model.';
 export const OUTBOX_EXCLUDED_MODELS: ReadonlySet<string> = new Set([
   'AppNotification',
 ]);
+
+export const OUTBOX_SHARE_MODEL = 'RecordShare';
+export const OUTBOX_SHARED_NAME = `${OUTBOX_MODEL_NAME_PREFIX}shared`;

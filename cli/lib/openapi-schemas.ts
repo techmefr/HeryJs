@@ -614,6 +614,14 @@ export function historySchemas(ctx: ResourceContext): SchemaRegistry {
         optional: field.optional,
       }),
     ]),
+    ...(ctx.workflow
+      ? [
+          [
+            ctx.workflow.field,
+            { type: 'string', enum: ctx.workflow.states },
+          ] as [string, JsonSchema],
+        ]
+      : []),
     ...(ctx.softDeletes
       ? [
           [
@@ -987,6 +995,7 @@ export function describeSchema(ctx: ResourceContext): JsonSchema {
       ...(ctx.vector ? { similar: { const: true } } : {}),
       paginated: { const: Boolean(ctx.pagination) },
       ...(ctx.history ? { history: { const: true } } : {}),
+      ...(ctx.sharing ? { sharing: { const: true } } : {}),
       ...(ctx.versioned
         ? {
             versioned: {

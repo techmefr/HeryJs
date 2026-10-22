@@ -47,14 +47,15 @@ export const canUpdateAnySnippet: PolicyCheck = (subject) =>
   resolveCollectionCapability(SNIPPET_PRESETS.update, subject);
 
 // The past of a record is read under the same rule as the record: whoever may
-// see it may see what it used to be. Its own check rather than canViewSnippet
-// so a project can tighten history alone without touching the read route.
+// see it, a reader by share included, may see what it used to be. Its own check
+// rather than canViewSnippet so a project can tighten history alone
+// without touching the read route.
 export const canViewHistorySnippet: PolicyCheck<SnippetRecordLike> = (
   subject,
   record,
 ) =>
   record
-    ? resolveCapability(SNIPPET_PRESETS.view, subject, record)
+    ? resolveCapability(SNIPPET_PRESETS.view, subject, record, 'read')
     : { allowed: false };
 
 // Putting a snapshot back is an update, whatever route it travels: it writes
@@ -64,7 +65,7 @@ export const canRevertSnippet: PolicyCheck<SnippetRecordLike> = (
   record,
 ) =>
   record
-    ? resolveCapability(SNIPPET_PRESETS.update, subject, record)
+    ? resolveCapability(SNIPPET_PRESETS.update, subject, record, 'write')
     : { allowed: false };
 
 export const canDeleteSnippet: PolicyCheck<SnippetRecordLike> = (
@@ -133,35 +134,50 @@ export const canListTrashedSnippet: PolicyCheck = (subject) =>
 
 // Its own capability: being allowed to edit a snippet does not make
 // "publish" yours to fire. The preset comes from the blueprint's
-// transition, not from update.
+// transition, not from update. A write share opens it, as it opens update.
 export const canPublishSnippet: PolicyCheck<SnippetRecordLike> = (
   subject,
   record,
 ) =>
   record
-    ? resolveCapability(SNIPPET_TRANSITION_PRESETS.publish, subject, record)
+    ? resolveCapability(
+        SNIPPET_TRANSITION_PRESETS.publish,
+        subject,
+        record,
+        'write',
+      )
     : { allowed: false };
 
 // Its own capability: being allowed to edit a snippet does not make
 // "archive" yours to fire. The preset comes from the blueprint's
-// transition, not from update.
+// transition, not from update. A write share opens it, as it opens update.
 export const canArchiveSnippet: PolicyCheck<SnippetRecordLike> = (
   subject,
   record,
 ) =>
   record
-    ? resolveCapability(SNIPPET_TRANSITION_PRESETS.archive, subject, record)
+    ? resolveCapability(
+        SNIPPET_TRANSITION_PRESETS.archive,
+        subject,
+        record,
+        'write',
+      )
     : { allowed: false };
 
 // Its own capability: being allowed to edit a snippet does not make
 // "reopen" yours to fire. The preset comes from the blueprint's
-// transition, not from update.
+// transition, not from update. A write share opens it, as it opens update.
 export const canReopenSnippet: PolicyCheck<SnippetRecordLike> = (
   subject,
   record,
 ) =>
   record
-    ? resolveCapability(SNIPPET_TRANSITION_PRESETS.reopen, subject, record)
+    ? resolveCapability(
+        SNIPPET_TRANSITION_PRESETS.reopen,
+        subject,
+        record,
+        'write',
+      )
     : { allowed: false };
 
 // The outer gate on the transition route: there is no single record yet, so

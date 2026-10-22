@@ -1,3 +1,4 @@
+import { shareAccess } from './resource-context';
 import type { ResourceContext } from './resource-context';
 import {
   historyCapabilityKeys,
@@ -63,12 +64,6 @@ import {
  */
 function ownedByTeam(ctx: ResourceContext): boolean {
   return Object.values(ctx.permissions).includes('team');
-}
-
-// What a share can grant: reading and writing, never deleting, so only the
-// view and update decisions of a sharing resource name an access.
-function shareAccess(ctx: ResourceContext, access: 'read' | 'write'): string {
-  return ctx.sharing ? `, '${access}'` : '';
 }
 
 export function presetsFile(ctx: ResourceContext): string {

@@ -209,6 +209,10 @@ export const blueprintWorkflowSchema = z.strictObject({
         permission: permissionPresetSchema.default('own'),
         // The guard: fields that must hold a value before the row may move.
         requires: z.array(fieldNameSchema).default([]),
+        // On a sharing resource, whether a write share lets its holder fire
+        // this transition, as it lets them update. False keeps the transition
+        // to the subjects its permission names.
+        shareable: z.boolean().default(true),
       }),
     )
     .min(1),

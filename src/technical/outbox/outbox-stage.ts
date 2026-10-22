@@ -2,6 +2,8 @@ import { TenantContextStorage } from '../tenancy/tenant-context';
 import {
   OUTBOX_EXCLUDED_MODELS,
   OUTBOX_MODEL_NAME_PREFIX,
+  OUTBOX_SHARED_NAME,
+  OUTBOX_SHARE_MODEL,
 } from './outbox.constants';
 import type {
   ModelChangeKind,
@@ -124,7 +126,7 @@ export function modelChangeMessages(input: {
   const impersonatedBy = TenantContextStorage.getImpersonatedBy();
   const changedFields = kind === 'created' ? [] : changedFieldsOf(input.args);
 
-  return records.map((record) => {
+  const messages = records.map((record) => {
     const payload: ModelChangePayload = {
       model: input.model,
       kind,
@@ -143,4 +145,51 @@ export function modelChangeMessages(input: {
       tenantId: input.tenantId,
     };
   });
+
+  if (input.model !== OUTBOX_SHARE_MODEL) {
+    return messages;
+  }
+
+  return [
+    ...messages,
+    ...records.flatMap((share) =>
+      sharedRecordMessages(share, input.tenantId, userId, impersonatedBy),
+    ),
+  ];
+}
+
+/**
+ * Granting, changing or revoking a share changes who may read the shared
+ * record without writing it. It is announced as a change of that record under
+ * a name of its own, `model.shared`: the output cache drops what it served for
+ * the record's model and the live feed re-decides who sees the record, while
+ * the handlers bound to real writes (`model.updated`, embeddings, the
+ * `ModelChanged` event) are not told the record was written.
+ */
+function sharedRecordMessages(
+  share: unknown,
+  tenantId: string,
+  userId: string | null,
+  impersonatedBy: string | null,
+): OutboxMessageInput[] {
+  const model = stringFieldOf(share, 'resource');
+  const recordId = stringFieldOf(share, 'recordId');
+
+  if (model === null || recordId === null) {
+    return [];
+  }
+
+  const payload: ModelChangePayload = {
+    model,
+    kind: 'updated',
+    recordId,
+    tenantId,
+    changedFields: [],
+    ownerId: null,
+    teamId: null,
+    userId,
+    impersonatedBy,
+  };
+
+  return [{ name: OUTBOX_SHARED_NAME, payload, tenantId }];
 }

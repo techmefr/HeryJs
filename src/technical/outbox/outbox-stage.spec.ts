@@ -178,3 +178,47 @@ describe('modelChangeMessages', () => {
     expect(message?.payload.recordId).toBeNull();
   });
 });
+
+describe('modelChangeMessages on a share', () => {
+  const share = {
+    id: 'share-1',
+    resource: 'Snippet',
+    recordId: 'snippet-1',
+    granteeType: 'user',
+    granteeId: 'bob',
+    access: 'read',
+  };
+
+  it.each(['create', 'update', 'delete'])(
+    'announces a share %s as a change of the shared record under its own name',
+    async (operation) => {
+      const messages = await messagesFor(operation, {}, share, 'RecordShare');
+
+      expect(messages.map((message) => message.name)).toEqual([
+        expect.stringMatching(/^model\.(created|updated|deleted)$/),
+        'model.shared',
+      ]);
+      expect(messages[1]).toEqual({
+        name: 'model.shared',
+        tenantId: 'tenant-1',
+        payload: {
+          model: 'Snippet',
+          kind: 'updated',
+          recordId: 'snippet-1',
+          tenantId: 'tenant-1',
+          changedFields: [],
+          ownerId: null,
+          teamId: null,
+          userId: 'user-1',
+          impersonatedBy: 'admin-1',
+        },
+      });
+    },
+  );
+
+  it('adds nothing for a write to any other model', async () => {
+    const messages = await messagesFor('create', {}, share);
+
+    expect(messages.map((message) => message.name)).toEqual(['model.created']);
+  });
+});

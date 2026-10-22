@@ -135,6 +135,14 @@ Nothing queries per row:
 
 The ids set is bounded (5000 most recent shares per resource and caller); a caller with more still reaches every shared record by id.
 
+### The rest of the contract follows the shares
+
+- **Live.** The change feed projects a record with its shares, so a `read` share delivers that record's changes to the grantee, and a revoked one stops them.
+- **Output cache.** Every grant, access change and revoke stages a `model.shared` outbox message naming the shared record, in the same transaction as the share. The output cache drops what it served for that record's model, and the change feed re-decides who sees the record, so a revoked reader is not served the record from a cached route, nor told about it live. `ModelChanged` listeners are not told: the record itself was not written. A webhook subscribed to `model.*` receives `model.shared`.
+- **History.** A `read` share opens the record's history, a `write` share opens revert.
+- **Workflow.** A `write` share lets its holder fire a transition, as it lets them update, unless the transition declares `shareable: false`. The transition's own `permission` still has to be something other than `none`.
+- **OpenAPI.** `GET /describe` and the OpenAPI describe schema both publish `sharing: true`, and the typed client has `shares(id)`, `grantShare(id, share)` and `revokeShare(id, shareId)`.
+
 ### Tenant isolation is untouched
 
 `RecordShare` carries a `tenantId`, goes through the tenant-scoped Prisma client and has its own row-level security policy. A grantee has to exist in the caller's tenant: a user or team of another tenant is refused with a 404 rather than stored as an inert row.

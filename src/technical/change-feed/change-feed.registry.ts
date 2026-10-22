@@ -40,7 +40,11 @@ export class ChangeFeedRegistry {
 
         return {
           view: definition.toView(record),
-          visibility: { ownerId: record.ownerId, teamId: record.teamId },
+          visibility: {
+            ownerId: record.ownerId,
+            teamId: record.teamId,
+            ...(record.shares ? { shares: record.shares } : {}),
+          },
         };
       },
     };
