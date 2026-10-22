@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import * as os from 'node:os';
@@ -30,10 +31,61 @@ async function inDatabase<T>(
   }
 }
 
-// Needs a live Postgres and the pg_dump / pg_restore client tools, so it only
-// runs where CI provides both. The point is the round trip: a dump that was
-// never restored is not a backup.
-describe('database backup and restore', () => {
+const SERVER_MAJOR_SCRIPT = `
+const { Client } = require(process.argv[1]);
+const client = new Client({ connectionString: process.argv[2] });
+client
+  .connect()
+  .then(() => client.query('SHOW server_version_num'))
+  .then((result) => {
+    process.stdout.write(String(Math.floor(Number(result.rows[0].server_version_num) / 10000)));
+    return client.end();
+  });
+`;
+
+function majorOf(versionOutput: string): number {
+  return Number(/(\d+)(?:\.\d+)?/.exec(versionOutput)?.[1]);
+}
+
+function missingBackupTools(): string | null {
+  if (process.env.CI) {
+    return null;
+  }
+
+  let clientMajor: number;
+  try {
+    clientMajor = majorOf(
+      execFileSync('pg_dump', ['--version'], { encoding: 'utf8' }),
+    );
+  } catch {
+    return 'pg_dump is not on the PATH';
+  }
+
+  const serverMajor = Number(
+    execFileSync(
+      process.execPath,
+      ['-e', SERVER_MAJOR_SCRIPT, require.resolve('pg'), urlFor('postgres')],
+      { encoding: 'utf8' },
+    ),
+  );
+
+  return clientMajor < serverMajor
+    ? `pg_dump ${clientMajor} cannot dump a PostgreSQL ${serverMajor} server`
+    : null;
+}
+
+const skipReason = missingBackupTools();
+
+if (skipReason) {
+  console.warn(`Skipping the backup round trip locally: ${skipReason}.`);
+}
+
+// Needs a live Postgres and the pg_dump / pg_restore client tools. On a
+// workstation without matching client tools it is skipped with the reason
+// above; under CI it always runs, so a broken runner fails instead of
+// skipping. The point is the round trip: a dump that was never restored is
+// not a backup.
+(skipReason ? describe.skip : describe)('database backup and restore', () => {
   const suffix = randomBytes(4).toString('hex');
   const source = `hery_bak_${suffix}`;
   const fresh = `hery_bak_${suffix}_fresh`;

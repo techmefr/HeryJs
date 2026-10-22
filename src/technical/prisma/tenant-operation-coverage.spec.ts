@@ -32,6 +32,10 @@ describe('tenant scoping across every Prisma operation', () => {
     tenantARecordId = record.id;
   });
 
+  beforeEach(async () => {
+    await rawClient.blogPost.deleteMany({ where: { tenantId: tenantB } });
+  });
+
   afterAll(async () => {
     await rawClient.blogPost.deleteMany({ where: { ownerId } });
     await rawClient.user.delete({ where: { id: ownerId } });

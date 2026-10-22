@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import {
+  DOC_EXAMPLES_STEP,
   MODULES_THE_KERNEL_NEEDS,
   projectManifest,
   withoutKernelDependency,
@@ -102,6 +103,28 @@ describe('the manifest a generated project starts from', () => {
 
     expect(scripts.lint).not.toContain('examples');
     expect(scripts.lint).not.toContain('pnpm --filter admin');
+  });
+
+  it('checks formatting in lint and fixes it only in lint:fix', () => {
+    const scripts = generated().scripts as Record<string, string>;
+
+    expect(scripts.lint).not.toContain('--fix');
+    expect(scripts['lint:fix']).toBe(`${scripts.lint} --fix`);
+  });
+
+  it('drops docs:examples, which captures examples/blog-post', () => {
+    expect(
+      (REPO_MANIFEST.scripts as Record<string, string>)['docs:examples'],
+    ).toBeDefined();
+    expect(
+      (generated().scripts as Record<string, string>)['docs:examples'],
+    ).toBeUndefined();
+    expect(
+      readFileSync(
+        path.join(__dirname, '..', '..', '.github/workflows/ci.yml'),
+        'utf8',
+      ),
+    ).toContain(DOC_EXAMPLES_STEP);
   });
 
   it('runs its suite over its own src only', () => {

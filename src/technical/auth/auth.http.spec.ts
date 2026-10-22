@@ -107,6 +107,12 @@ describe('auth over a real HTTP round trip', () => {
     });
 
     it('never shows the raw key again once listed', async () => {
+      await request(app.getHttpServer())
+        .post('/api-keys')
+        .set('Authorization', `Bearer ${sessionToken}`)
+        .send({ name: 'ci-script' })
+        .expect(201);
+
       const list = await request(app.getHttpServer())
         .get('/api-keys')
         .set('Authorization', `Bearer ${sessionToken}`)

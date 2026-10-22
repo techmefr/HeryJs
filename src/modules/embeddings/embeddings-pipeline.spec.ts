@@ -104,14 +104,25 @@ describe('embedding pipeline (outbox handler, fake driver, pgvector)', () => {
     await admin.$disconnect();
   });
 
+  async function seedNeighbours(tenantId: string): Promise<{
+    squat: string;
+    bread: string;
+  }> {
+    const squat = `squat-${tenantId}`;
+    const bread = `bread-${tenantId}`;
+    await insert(squat, tenantId, 'barbell back squat form');
+    await insert(bread, tenantId, 'banana bread recipe');
+    await handler.handle(delivered(squat, tenantId, 'created'));
+    await handler.handle(delivered(bread, tenantId, 'created'));
+
+    return { squat, bread };
+  }
+
   it('embeds a created record, then finds it by the text it was written with', async () => {
-    await insert('squat', tenantA, 'barbell back squat form');
-    await insert('bread', tenantA, 'banana bread recipe');
+    const tenantId = `tenant-own-${randomUUID()}`;
+    const { squat, bread } = await seedNeighbours(tenantId);
 
-    await handler.handle(delivered('squat', tenantA, 'created'));
-    await handler.handle(delivered('bread', tenantA, 'created'));
-
-    const matches = await runInTenant(tenantA, () =>
+    const matches = await runInTenant(tenantId, () =>
       vectors.similar(target, {
         text: 'back squat',
         scope: {},
@@ -119,27 +130,31 @@ describe('embedding pipeline (outbox handler, fake driver, pgvector)', () => {
       }),
     );
 
-    expect(matches.ids).toEqual(['squat', 'bread']);
+    expect(matches.ids).toEqual([squat, bread]);
     expect(matches.truncated).toBe(false);
   });
 
   it('re-embeds when the source changed and leaves the vector when it did not', async () => {
-    await insert('note', tenantA, 'first text');
-    await handler.handle(delivered('note', tenantA, 'created'));
+    const tenantId = `tenant-own-${randomUUID()}`;
+    const note = `note-${tenantId}`;
+    await seedNeighbours(tenantId);
+    await insert(note, tenantId, 'first text');
+    await handler.handle(delivered(note, tenantId, 'created'));
     await admin.$executeRawUnsafe(
-      `UPDATE "${table}" SET "body" = 'chocolate cake' WHERE "id" = 'note'`,
+      `UPDATE "${table}" SET "body" = 'chocolate cake' WHERE "id" = $1`,
+      note,
     );
 
-    await handler.handle(delivered('note', tenantA, 'updated', ['title']));
-    const stale = await runInTenant(tenantA, () =>
+    await handler.handle(delivered(note, tenantId, 'updated', ['title']));
+    const stale = await runInTenant(tenantId, () =>
       vectors.similar(target, {
         text: 'chocolate cake',
         scope: {},
         trash: 'absent',
       }),
     );
-    await handler.handle(delivered('note', tenantA, 'updated', ['body']));
-    const fresh = await runInTenant(tenantA, () =>
+    await handler.handle(delivered(note, tenantId, 'updated', ['body']));
+    const fresh = await runInTenant(tenantId, () =>
       vectors.similar(target, {
         text: 'chocolate cake',
         scope: {},
@@ -147,8 +162,8 @@ describe('embedding pipeline (outbox handler, fake driver, pgvector)', () => {
       }),
     );
 
-    expect(stale.ids[0]).not.toBe('note');
-    expect(fresh.ids[0]).toBe('note');
+    expect(stale.ids[0]).not.toBe(note);
+    expect(fresh.ids[0]).toBe(note);
   });
 
   it('never ranks another tenant row, even for the exact text', async () => {

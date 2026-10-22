@@ -78,6 +78,9 @@ describe('GET /logs with a persisted store declared', () => {
         select: { tenantId: true },
       })
     ).tenantId;
+  });
+
+  beforeEach(async () => {
     await clearSpecLines();
   });
 

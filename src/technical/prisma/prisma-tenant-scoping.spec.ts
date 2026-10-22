@@ -45,6 +45,10 @@ describe('tenant-scoped Prisma client (real database)', () => {
     ownerId = owner.id;
   });
 
+  beforeEach(async () => {
+    await rawClient.blogPost.deleteMany({ where: { ownerId } });
+  });
+
   afterAll(async () => {
     await rawClient.blogPost.deleteMany({ where: { ownerId } });
     await rawClient.user.delete({ where: { id: ownerId } });
@@ -139,6 +143,7 @@ describe('tenant-scoped Prisma client (real database)', () => {
 
   it('never lets tenant B read a record created under tenant A', async () => {
     await TenantContextStorage.run({ tenantId: tenantA }, async () => {
+      await createBlogPost({ title: 'from tenant A', ownerId });
       await createBlogPost({ title: 'still tenant A', ownerId });
     });
     await TenantContextStorage.run({ tenantId: tenantB }, async () => {

@@ -7,7 +7,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "lint": "eslint \"src/**/*.{ts,astro}\" --fix && prettier --write \"src/**/*.{ts,astro}\"",
+    "lint": "eslint \"src/**/*.{ts,astro}\" && prettier --check \"src/**/*.{ts,astro}\"",
+    "lint:fix": "eslint \"src/**/*.{ts,astro}\" --fix && prettier --write \"src/**/*.{ts,astro}\"",
     "test": "vitest run --environment jsdom"
   },
   "dependencies": {
