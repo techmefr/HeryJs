@@ -264,9 +264,9 @@ export const createScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'INSERT INTO "public"."OutboxMessage" ("id","tenantId","name","payload","status","attempts","nextAttemptAt","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+          sql: 'INSERT INTO "public"."OutboxMessage" ("id","tenantId","name","payload","status","attempts","nextAttemptAt","createdAt","locale") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
           params:
-            '["cxmpl00000000000000000008","default","model.created","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"created\\",\\"recordId\\":\\"cxmpl00000000000000000006\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:05.000Z","2026-01-15T09:00:05.000Z"]',
+            '["cxmpl00000000000000000008","default","model.created","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"created\\",\\"recordId\\":\\"cxmpl00000000000000000006\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:05.000Z","2026-01-15T09:00:05.000Z","en"]',
         },
       },
       {
@@ -420,9 +420,9 @@ export const updateScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'INSERT INTO "public"."OutboxMessage" ("id","tenantId","name","payload","status","attempts","nextAttemptAt","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+          sql: 'INSERT INTO "public"."OutboxMessage" ("id","tenantId","name","payload","status","attempts","nextAttemptAt","createdAt","locale") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
           params:
-            '["cxmpl00000000000000000011","default","model.updated","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"updated\\",\\"recordId\\":\\"cxmpl00000000000000000009\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[\\"title\\",\\"slug\\"],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:09.000Z","2026-01-15T09:00:09.000Z"]',
+            '["cxmpl00000000000000000011","default","model.updated","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"updated\\",\\"recordId\\":\\"cxmpl00000000000000000009\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[\\"title\\",\\"slug\\"],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:09.000Z","2026-01-15T09:00:09.000Z","en"]',
         },
       },
       {
@@ -556,9 +556,9 @@ export const updateScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'INSERT INTO "public"."OutboxMessage" ("id","tenantId","name","payload","status","attempts","nextAttemptAt","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+          sql: 'INSERT INTO "public"."OutboxMessage" ("id","tenantId","name","payload","status","attempts","nextAttemptAt","createdAt","locale") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
           params:
-            '["cxmpl00000000000000000015","default","model.updated","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"updated\\",\\"recordId\\":\\"cxmpl00000000000000000012\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:12.000Z","2026-01-15T09:00:12.000Z"]',
+            '["cxmpl00000000000000000015","default","model.updated","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"updated\\",\\"recordId\\":\\"cxmpl00000000000000000012\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:12.000Z","2026-01-15T09:00:12.000Z","en"]',
         },
       },
       {
@@ -693,9 +693,9 @@ export const deleteScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'INSERT INTO "public"."OutboxMessage" ("id","tenantId","name","payload","status","attempts","nextAttemptAt","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+          sql: 'INSERT INTO "public"."OutboxMessage" ("id","tenantId","name","payload","status","attempts","nextAttemptAt","createdAt","locale") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
           params:
-            '["cxmpl00000000000000000018","default","model.deleted","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"deleted\\",\\"recordId\\":\\"cxmpl00000000000000000016\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[\\"deletedAt\\"],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:18.000Z","2026-01-15T09:00:18.000Z"]',
+            '["cxmpl00000000000000000018","default","model.deleted","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"deleted\\",\\"recordId\\":\\"cxmpl00000000000000000016\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[\\"deletedAt\\"],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:18.000Z","2026-01-15T09:00:18.000Z","en"]',
         },
       },
       {
@@ -819,9 +819,9 @@ export const deleteScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'INSERT INTO "public"."OutboxMessage" ("id","tenantId","name","payload","status","attempts","nextAttemptAt","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+          sql: 'INSERT INTO "public"."OutboxMessage" ("id","tenantId","name","payload","status","attempts","nextAttemptAt","createdAt","locale") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
           params:
-            '["cxmpl00000000000000000022","default","model.deleted","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"deleted\\",\\"recordId\\":\\"cxmpl00000000000000000019\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[],\\"ownerId\\":\\"cxmpl00000000000000000020\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000020\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:21.000Z","2026-01-15T09:00:21.000Z"]',
+            '["cxmpl00000000000000000022","default","model.deleted","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"deleted\\",\\"recordId\\":\\"cxmpl00000000000000000019\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[],\\"ownerId\\":\\"cxmpl00000000000000000020\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000020\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:21.000Z","2026-01-15T09:00:21.000Z","en"]',
         },
       },
       {
@@ -929,9 +929,9 @@ export const restoreScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'INSERT INTO "public"."OutboxMessage" ("id","tenantId","name","payload","status","attempts","nextAttemptAt","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+          sql: 'INSERT INTO "public"."OutboxMessage" ("id","tenantId","name","payload","status","attempts","nextAttemptAt","createdAt","locale") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
           params:
-            '["cxmpl00000000000000000025","default","model.updated","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"updated\\",\\"recordId\\":\\"cxmpl00000000000000000023\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[\\"deletedAt\\"],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:25.000Z","2026-01-15T09:00:25.000Z"]',
+            '["cxmpl00000000000000000025","default","model.updated","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"updated\\",\\"recordId\\":\\"cxmpl00000000000000000023\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[\\"deletedAt\\"],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:25.000Z","2026-01-15T09:00:25.000Z","en"]',
         },
       },
       {
@@ -1046,9 +1046,9 @@ export const restoreScenarios: PlaygroundScenario[] = [
         label: 'query',
         status: 'ok',
         detail: {
-          sql: 'INSERT INTO "public"."OutboxMessage" ("id","tenantId","name","payload","status","attempts","nextAttemptAt","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+          sql: 'INSERT INTO "public"."OutboxMessage" ("id","tenantId","name","payload","status","attempts","nextAttemptAt","createdAt","locale") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
           params:
-            '["cxmpl00000000000000000028","default","model.updated","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"updated\\",\\"recordId\\":\\"cxmpl00000000000000000026\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[\\"title\\",\\"slug\\",\\"deletedAt\\"],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:29.000Z","2026-01-15T09:00:29.000Z"]',
+            '["cxmpl00000000000000000028","default","model.updated","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"updated\\",\\"recordId\\":\\"cxmpl00000000000000000026\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[\\"title\\",\\"slug\\",\\"deletedAt\\"],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:29.000Z","2026-01-15T09:00:29.000Z","en"]',
         },
       },
       {
