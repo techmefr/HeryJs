@@ -13,6 +13,10 @@ category is called out here explicitly.
 
 First public release.
 
+### Search indexing stays inside the tenant
+
+The Elasticsearch and Meilisearch drivers indexed a document as an upsert by id alone, so a tenant holding another tenant's id overwrote that tenant's document, content and tenant stamp alike. `index()` now reads the tenant stored on an existing document first and drops the write silently when it belongs to another tenant, as `remove()` does; a tenant still creates new ids and updates its own documents. The check is a read before the write, not an atomic condition. **Upgrade note:** a project that installed `search-elasticsearch` or `search-meilisearch` copies `elasticsearch-search.driver.ts` or `meilisearch-search.driver.ts` by hand.
+
 ### Search removal stays inside the tenant
 
 The Elasticsearch and Meilisearch drivers deleted a document by its id alone, so a tenant holding another tenant's id removed that tenant's document from the shared collection. `remove()` now reads the tenant stored on the document and deletes it only when it matches the caller's; a document owned by another tenant is left alone like a missing one. The Meilisearch driver also treats a missing index as a missing document. **Upgrade note:** a project that installed `search-elasticsearch` or `search-meilisearch` copies `elasticsearch-search.driver.ts` or `meilisearch-search.driver.ts` by hand.

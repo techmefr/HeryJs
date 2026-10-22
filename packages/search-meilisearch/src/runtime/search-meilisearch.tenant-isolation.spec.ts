@@ -12,7 +12,16 @@ function engine(): { client: object; stored: StoredDocument[] } {
   const theIndex = {
     updateFilterableAttributes: jest.fn().mockResolvedValue({ taskUid: 1 }),
     addDocuments: jest.fn((documents: StoredDocument[]) => {
-      stored.push(...documents);
+      for (const document of documents) {
+        const position = stored.findIndex(
+          (candidate) => candidate.id === document.id,
+        );
+        if (position >= 0) {
+          stored.splice(position, 1, document);
+        } else {
+          stored.push(document);
+        }
+      }
       return Promise.resolve({ taskUid: 2 });
     }),
     getDocument: jest.fn((id: string) => {
@@ -129,5 +138,37 @@ describe('tenant isolation', () => {
     );
 
     expect(matches.ids).toEqual(['b-1']);
+  });
+
+  it('never lets tenant A overwrite a document tenant B indexed', async () => {
+    const { client, stored } = engine();
+    const driver = driverOn(client);
+    await driver.index('posts', 'b-1', { title: 'hello world' }, 'tenant-b');
+
+    await driver.index('posts', 'b-1', { title: 'hijacked' }, 'tenant-a');
+
+    expect(stored).toEqual([
+      { id: 'b-1', title: 'hello world', tenantId: 'tenant-b' },
+    ]);
+    const matches = await driver.search(
+      'posts',
+      'hello',
+      ['title'],
+      'tenant-b',
+      10,
+    );
+    expect(matches.ids).toEqual(['b-1']);
+  });
+
+  it('still lets a tenant update its own document', async () => {
+    const { client, stored } = engine();
+    const driver = driverOn(client);
+    await driver.index('posts', 'a-1', { title: 'draft' }, 'tenant-a');
+
+    await driver.index('posts', 'a-1', { title: 'final' }, 'tenant-a');
+
+    expect(stored).toEqual([
+      { id: 'a-1', title: 'final', tenantId: 'tenant-a' },
+    ]);
   });
 });

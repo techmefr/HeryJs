@@ -64,6 +64,10 @@ export class MeilisearchSearchDriver implements SearchDriver {
   // The primary key is named rather than inferred: a document carrying both
   // `id` and `tenantId` gives Meilisearch two candidates ending in "id", and
   // it declines to pick one.
+  //
+  // addDocuments replaces by id, so the same id held by another tenant would
+  // be overwritten. Such a write is dropped silently, as remove() drops it:
+  // an error would tell the caller that id exists elsewhere.
   async index(
     collection: string,
     id: string,
@@ -71,6 +75,12 @@ export class MeilisearchSearchDriver implements SearchDriver {
     tenantId: string,
   ): Promise<void> {
     await this.ensureFilterable(collection);
+
+    const owner = await this.ownerOf(collection, id);
+    if (owner !== undefined && owner !== tenantId) {
+      return;
+    }
+
     await this.settle(
       await this.client
         .index(collection)
