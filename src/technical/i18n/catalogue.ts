@@ -1,3 +1,5 @@
+import { ADMIN_MESSAGES } from './messages/admin.messages';
+import { AUTH_MAIL_MESSAGES } from './messages/auth-mail.messages';
 import { AUTH_MESSAGES } from './messages/auth.messages';
 import { PLATFORM_MESSAGES } from './messages/platform.messages';
 import { QUERY_MESSAGES } from './messages/query.messages';
@@ -29,6 +31,8 @@ export type { Catalogue, TranslationTemplate } from './catalogue.types';
  */
 export const CATALOGUE: Catalogue = {
   ...AUTH_MESSAGES,
+  ...AUTH_MAIL_MESSAGES,
+  ...ADMIN_MESSAGES,
   ...RECORD_MESSAGES,
   ...QUERY_MESSAGES,
   ...PLATFORM_MESSAGES,

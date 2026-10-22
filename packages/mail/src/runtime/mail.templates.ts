@@ -1,12 +1,19 @@
+import { translateMessage } from '#kernel/i18n/translate';
+import './mail.catalogue';
+
 interface MailTemplate {
   subject: string;
   html: string;
 }
 
+/**
+ * A template is a pair of catalogue keys, so its wording exists once per
+ * locale and the recipient's is picked when it is rendered.
+ */
 const templates: Record<string, MailTemplate> = {
   welcome: {
-    subject: 'Welcome to {{app}}',
-    html: '<p>Hi {{name}}, welcome to {{app}}.</p>',
+    subject: 'mail.template.welcome.subject',
+    html: 'mail.template.welcome.html',
   },
 };
 
@@ -44,6 +51,7 @@ function interpolate(
 export function renderTemplate(
   name: string,
   data: Record<string, string> = {},
+  locale?: string,
 ): { subject: string; html: string } {
   const template = templates[name];
   if (!template) {
@@ -53,8 +61,12 @@ export function renderTemplate(
   return {
     // The subject is plain text in every mail client, so escaping it would
     // show a reader `&amp;` where they wrote `&`.
-    subject: interpolate(template.subject, data, false),
-    html: interpolate(template.html, data, true),
+    subject: interpolate(
+      translateMessage(template.subject, {}, locale),
+      data,
+      false,
+    ),
+    html: interpolate(translateMessage(template.html, {}, locale), data, true),
   };
 }
 

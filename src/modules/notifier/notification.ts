@@ -13,6 +13,8 @@ export interface NotificationRecipient {
   tenantId?: string;
   email?: string;
   phone?: string;
+  /** Omitted, the user's stored locale, then the app's default. */
+  locale?: string;
 }
 
 /**

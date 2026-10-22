@@ -5,6 +5,8 @@ import { EmailOtpMailable, MagicLinkMailable } from './auth.mailables';
 import { sendAuthMail } from './auth-mailer';
 import { sendAuthSms } from './auth-sms';
 import { moveGuestOwnership } from './guest-upgrade';
+import { localeOfEmail, localeOfPhone } from './recipient-locale';
+import { translateMessage } from '#technical/i18n/translate';
 
 const PHONE_NUMBER_PATTERN = /^\+[1-9]\d{6,14}$/;
 const PHONE_TEMP_EMAIL_DOMAIN = 'phone.heryjs.local';
@@ -17,8 +19,8 @@ export function phoneTempEmail(phoneNumber: string): string {
   return `${phoneNumber.replace('+', '')}@${PHONE_TEMP_EMAIL_DOMAIN}`;
 }
 
-export function otpSmsBody(code: string): string {
-  return `Your verification code is ${code}. If you did not ask for it, ignore this message.`;
+export function otpSmsBody(code: string, locale?: string): string {
+  return translateMessage('sms.otp.body', { code }, locale);
 }
 
 /**
@@ -47,7 +49,13 @@ export async function buildPasswordlessPlugins(
         disableSignUp: !config.AUTH_PASSWORDLESS_ALLOW_SIGN_UP,
         storeToken: 'hashed',
         sendMagicLink: async ({ email, url }) => {
-          await sendAuthMail(new MagicLinkMailable(email, url));
+          await sendAuthMail(
+            new MagicLinkMailable(
+              email,
+              url,
+              await localeOfEmail(client, email),
+            ),
+          );
         },
       }),
     );
@@ -62,7 +70,14 @@ export async function buildPasswordlessPlugins(
         disableSignUp: !config.AUTH_PASSWORDLESS_ALLOW_SIGN_UP,
         storeOTP: 'hashed',
         sendVerificationOTP: async ({ email, otp, type }) => {
-          await sendAuthMail(new EmailOtpMailable(email, otp, type));
+          await sendAuthMail(
+            new EmailOtpMailable(
+              email,
+              otp,
+              type,
+              await localeOfEmail(client, email),
+            ),
+          );
         },
       }),
     );
@@ -77,7 +92,10 @@ export async function buildPasswordlessPlugins(
         phoneNumberValidator: isE164,
         requireVerification: true,
         sendOTP: async ({ phoneNumber: to, code }) => {
-          await sendAuthSms({ to, body: otpSmsBody(code) });
+          await sendAuthSms({
+            to,
+            body: otpSmsBody(code, await localeOfPhone(client, to)),
+          });
         },
         signUpOnVerification: config.AUTH_PASSWORDLESS_ALLOW_SIGN_UP
           ? {

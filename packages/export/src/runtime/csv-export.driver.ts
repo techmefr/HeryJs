@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { exportCellText, exportHeaders } from '#kernel/export/export-driver';
 import type {
   ExportDriver,
   Exportable,
@@ -23,7 +24,7 @@ export class CsvExportDriver implements ExportDriver {
   async render(exportable: Exportable): Promise<Buffer> {
     const rows = await exportable.rows();
     const lines = [
-      exportable.columns.map(quote).join(','),
+      exportHeaders(exportable).map(quote).join(','),
       ...rows.map((row) => this.line(row, exportable.columns)),
     ];
 
@@ -34,15 +35,10 @@ export class CsvExportDriver implements ExportDriver {
   }
 
   private line(row: ExportRow, columns: readonly string[]): string {
-    return columns.map((column) => quote(cell(row[column]))).join(',');
+    return columns
+      .map((column) => quote(exportCellText(row[column])))
+      .join(',');
   }
-}
-
-function cell(value: ExportRow[string] | undefined): string {
-  // A missing column and an explicit null both render as empty rather than as
-  // "undefined"/"null": those two words are indistinguishable from real data
-  // once they are sitting in a spreadsheet cell.
-  return value === undefined || value === null ? '' : String(value);
 }
 
 function quote(value: string): string {

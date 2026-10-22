@@ -25,6 +25,7 @@ model User {
   phoneNumber         String?   @unique
   phoneNumberVerified Boolean   @default(false)
   isAnonymous         Boolean   @default(false)
+  locale              String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
@@ -434,6 +435,7 @@ model OutboxMessage {
   createdAt     DateTime  @default(now())
   deliveredAt   DateTime?
   deadAt        DateTime?
+  locale        String?
 
   receipts OutboxReceipt[]
 

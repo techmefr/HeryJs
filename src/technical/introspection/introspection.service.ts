@@ -1,6 +1,10 @@
 import { Injectable, RequestMethod } from '@nestjs/common';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { DiscoveryService, MetadataScanner } from '@nestjs/core';
+import {
+  translateAdminAction,
+  translateAdminSection,
+} from '#technical/admin/admin-labels';
 import { CAPABILITY_CHECK } from '#technical/capabilities/capability.decorator';
 import type { PolicyCheck } from '#technical/capabilities/capability-check';
 import {
@@ -112,9 +116,9 @@ export class IntrospectionService {
           controller,
         ),
         admin: section
-          ? { kind: 'section', ...section }
+          ? { kind: 'section', ...translateAdminSection(section) }
           : action
-            ? { kind: 'action', ...action }
+            ? { kind: 'action', ...translateAdminAction(action) }
             : undefined,
       },
     ];

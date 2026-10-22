@@ -1,3 +1,4 @@
+import { LocaleContextStorage } from '#kernel/i18n/locale-context';
 import type { MailMessage } from '#kernel/mail/mail-driver';
 import { setNotifierMailChannel } from '#kernel/notifier/notifier-mail-channel';
 import type { NotifierMailChannel } from '#kernel/notifier/notifier-mail-channel';
@@ -78,6 +79,7 @@ function wire(options: {
   rules?: NotificationRules;
   held?: DigestEntryInput[];
   inAppSent?: Array<{ userId: string; type: string }>;
+  userLocale?: string;
 }): NotifierService {
   const mailSent = options.mailSent ?? [];
   const smsSent = options.smsSent ?? [];
@@ -102,6 +104,7 @@ function wire(options: {
   );
 
   const preferences = {
+    localeOf: () => Promise.resolve(options.userLocale ?? null),
     rulesFor: () =>
       Promise.resolve(
         options.rules ?? { rules: [], settings: DEFAULT_SETTINGS },
@@ -477,5 +480,37 @@ describe('NotifierService preferences', () => {
       status: 'skipped',
       reason: 'Recipient has no user id to store the notification for.',
     });
+  });
+});
+
+describe('NotifierService locale', () => {
+  const greeting: Notification = {
+    type: 'greeting',
+    toMail: () => ({
+      to: '',
+      subject: LocaleContextStorage.getLocale() === 'fr' ? 'Bonjour' : 'Hello',
+      html: '',
+    }),
+  };
+
+  it("renders every channel in the user's stored locale, not the caller's", async () => {
+    const mailSent: MailMessage[] = [];
+    const service = wire({ mailSent, userLocale: 'fr' });
+
+    await service.send({ userId: 'u1', email: 'ada@example.com' }, greeting);
+
+    expect(mailSent[0]?.subject).toBe('Bonjour');
+  });
+
+  it('lets the caller name the locale outright', async () => {
+    const mailSent: MailMessage[] = [];
+    const service = wire({ mailSent, userLocale: 'fr' });
+
+    await service.send(
+      { userId: 'u1', email: 'ada@example.com', locale: 'en' },
+      greeting,
+    );
+
+    expect(mailSent[0]?.subject).toBe('Hello');
   });
 });

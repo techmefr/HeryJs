@@ -59,6 +59,7 @@ export class ExportService {
             format: format ?? this.registry.defaultKeyword,
             filename: exportable.filename,
             columns: [...exportable.columns],
+            headers: exportable.headers ?? {},
             rows: await exportable.rows(),
             userId,
           },

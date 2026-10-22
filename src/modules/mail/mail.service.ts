@@ -49,8 +49,9 @@ export class MailService {
     to: string,
     template: string,
     data: Record<string, string> = {},
+    locale?: string,
   ): Promise<void> {
-    const { subject, html } = renderTemplate(template, data);
+    const { subject, html } = renderTemplate(template, data, locale);
 
     await this.enqueue({ to, subject, html });
   }
