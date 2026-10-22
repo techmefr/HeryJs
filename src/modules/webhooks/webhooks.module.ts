@@ -3,6 +3,7 @@ import { AuthModule } from '#technical/auth/auth.module';
 import { ExpositionModule } from '#technical/exposition/exposition.module';
 import { JobsModule } from '#technical/jobs/jobs.module';
 import { NotificationsModule } from '#technical/notifications/notifications.module';
+import { PrivacyModule } from '#technical/privacy/privacy.module';
 import { OutboxModule } from '#technical/outbox/outbox.module';
 import { SchedulerModule } from '#technical/scheduler/scheduler.module';
 import { SignalModule } from '#technical/signal/signal.module';
@@ -26,6 +27,7 @@ import { WebhookSubscriptionController } from './webhook-subscription.controller
 import { WebhookSubscriptionService } from './webhook-subscription.service';
 import { systemHostResolver, WEBHOOK_HOST_RESOLVER } from './webhook-url-guard';
 import { WebhooksController } from './webhooks.controller';
+import { WebhooksPersonalData } from './webhooks.personal-data';
 import { WebhooksProcessor } from './webhooks.processor';
 import { WebhooksService } from './webhooks.service';
 import './webhooks.catalogue';
@@ -37,6 +39,7 @@ import './webhooks.catalogue';
     JobsModule,
     NotificationsModule,
     OutboxModule,
+    PrivacyModule,
     SchedulerModule,
     SignalModule,
   ],
@@ -47,6 +50,7 @@ import './webhooks.catalogue';
   ],
   providers: [
     WebhooksService,
+    WebhooksPersonalData,
     WebhooksProcessor,
     WebhookSignatureGuard,
     { provide: OUTBOUND_WEBHOOK_POLICY, useValue: DELIVERY_POLICY },

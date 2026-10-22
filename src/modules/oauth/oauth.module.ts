@@ -1,5 +1,6 @@
 import { DynamicModule, Module, Type } from '@nestjs/common';
 import { AuthModule } from '#technical/auth/auth.module';
+import { PrivacyModule } from '#technical/privacy/privacy.module';
 import { env } from '#technical/config/env';
 import { PrismaModule } from '#technical/prisma/prisma.module';
 import { OAuthAccountService } from './oauth-account.service';
@@ -23,6 +24,7 @@ import { OAuthController } from './oauth.controller';
 import { OAUTH_CONFIG } from './oauth.types';
 import type { OAuthConfig, OAuthProviderCredentials } from './oauth.types';
 import './oauth.catalogue';
+import { OAuthPersonalData } from './oauth.personal-data';
 
 const DEV_FALLBACK_BASE_URL = `http://localhost:${env.PORT}`;
 
@@ -72,9 +74,10 @@ function configFromEnv(): OAuthConfig {
 }
 
 @Module({
-  imports: [AuthModule, PrismaModule],
+  imports: [AuthModule, PrismaModule, PrivacyModule],
   controllers: [OAuthController],
   providers: [
+    OAuthPersonalData,
     { provide: OAUTH_CONFIG, useFactory: configFromEnv },
     { provide: OAUTH_FETCH, useValue: fetch },
     { provide: OAUTH_IDENTITY_STORE, useClass: PrismaOAuthIdentityStore },
