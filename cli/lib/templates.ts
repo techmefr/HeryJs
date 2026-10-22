@@ -230,7 +230,7 @@ export function dtoFile(ctx: ResourceContext): string {
   const hasRelations = ctx.relations.length > 0;
 
   return `import { z } from 'zod';
-import { MAX_BATCH_ENTRIES } from '#technical/http/batch';${translatableFields(ctx).length > 0 ? `\nimport { translatableInputSchema } from '#technical/i18n/translatable';` : ''}${richtextFields(ctx).length > 0 ? `\nimport type { RichtextFieldSpec } from '#technical/richtext/richtext';` : ''}
+import { MAX_BATCH_ENTRIES } from '#technical/http/batch';${translatableFields(ctx).length > 0 ? `\nimport { translatableInputSchema } from '#technical/i18n/translatable';` : ''}${richtextFields(ctx).length > 0 ? `\nimport type { RichtextFieldSpec } from '#technical/richtext/richtext';` : ''}${ctx.fields.some((field) => field.type === 'file') ? `\nimport { isCurrentTenantFileKey } from '#technical/tenancy/tenant-file-key';` : ''}
 ${
   richtextFields(ctx).length > 0
     ? `
@@ -4261,11 +4261,20 @@ function privacySpecBlock(ctx: ResourceContext, createBody: string): string {
     (field) =>
       field.type === 'string' && !field.optional && !field.translatable,
   );
+  const sample = (field: ResourceContext['fields'][number]): string =>
+    sampleValueFor(field, 'tenantId');
+  const tenantBody =
+    createBody === '{}'
+      ? createBody
+      : `{ ${ctx.fields
+          .filter((field) => !isOptionalOnInput(field))
+          .map((field) => `${field.name}: ${sample(field)}`)
+          .join(', ')} }`;
   const ownedFields = ctx.fields
     .filter((field) => !field.optional && field.type !== 'slug')
     .map(
       (field) =>
-        `${field.name}: ${field === markerField ? 'marker' : sampleValueFor(field)}`,
+        `${field.name}: ${field === markerField ? 'marker' : sample(field)}`,
     );
   const ownedBody = `{ ${ownedFields.join(', ')} }`;
   // An encrypted field is the one that proves the export opens what the row
@@ -4274,7 +4283,7 @@ function privacySpecBlock(ctx: ResourceContext, createBody: string): string {
     ...ownedFields,
     ...ctx.fields
       .filter((field) => field.type === 'encrypted' && field.optional)
-      .map((field) => `${field.name}: ${sampleValueFor(field)}`),
+      .map((field) => `${field.name}: ${sample(field)}`),
   ].join(', ')} }`;
   const exportedChecks = ctx.fields
     .filter(
@@ -4285,7 +4294,7 @@ function privacySpecBlock(ctx: ResourceContext, createBody: string): string {
         field.type !== 'slug' &&
         field !== markerField,
     )
-    .map((field) => `        ${field.name}: ${sampleValueFor(field)},`)
+    .map((field) => `        ${field.name}: ${sample(field)},`)
     .join('\n');
   // What an anonymised row holds. A sealed or translatable required value is
   // not readable back through a raw client, so only what can be compared is.
@@ -4431,7 +4440,7 @@ ${slugChecks}`;
 
     it('exports the rows a user owns, opened, and none of anyone else', async () => {
 ${markerDeclaration('export')}      const ownId = await createAs(subject, ${richBody});
-      const otherId = await createAs(bystander, ${createBody});
+      const otherId = await createAs(bystander, ${tenantBody});
 
       const id = await requestAs(subject, '/privacy/exports', {}, 202);
       const bundle = await collect(subject, id);
@@ -4487,7 +4496,7 @@ ${exportedChecks}
 
     it('erases a user, redacts what the audit trail held and keeps the request itself', async () => {
 ${markerDeclaration('erase')}      const ownId = await createAs(subject, ${ownedBody});
-${slugChecks && markerField ? `      await createAs(subject, ${ownedBody});\n` : ''}      const keptId = await createAs(bystander, ${createBody});
+${slugChecks && markerField ? `      await createAs(subject, ${ownedBody});\n` : ''}      const keptId = await createAs(bystander, ${tenantBody});
 
       const id = await requestAs(
         subject,
@@ -4533,7 +4542,7 @@ ${markerField ? `      expect(JSON.stringify(trail)).not.toContain(marker);\n` :
     });
 
     it('erases a whole tenant and leaves every other tenant alone', async () => {
-      await createAs(bystander, ${createBody});
+      await createAs(bystander, ${tenantBody});
       const foreign = await actingAs(app);
       const foreignId = await createAs(foreign, ${createBody});
 

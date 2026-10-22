@@ -10,6 +10,8 @@ export interface TenantContext {
   impersonatedBy?: string | null;
 }
 
+export const UNAUTHENTICATED_TENANT_ID = 'unauthenticated';
+
 const storage = new AsyncLocalStorage<TenantContext>();
 
 export const TenantContextStorage = {
