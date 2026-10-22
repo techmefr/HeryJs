@@ -186,4 +186,21 @@ describe('StorageService admin operations', () => {
     ).rejects.toThrow(StorageNotInTenantException);
     await expect(driver.stat(key)).resolves.not.toBeNull();
   });
+
+  it.each([
+    (own: string, other: string) => `${own}/../${other}`,
+    (own: string, other: string) => `${own}/./../${other}`,
+    (own: string, other: string) => `${own}//../${other}`,
+    (own: string) => `${own}/`,
+  ])(
+    'refuses a key that walks out of the tenant prefix (%#), and leaves the file',
+    async (craft) => {
+      const key = await uploadAs('admin-b');
+
+      await expect(
+        inTenant('admin-a', () => service.removeOwn(craft('admin-a', key))),
+      ).rejects.toThrow(StorageNotInTenantException);
+      await expect(driver.stat(key)).resolves.not.toBeNull();
+    },
+  );
 });

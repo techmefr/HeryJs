@@ -17,6 +17,7 @@ import type { PersonalDataDeclaration } from './personal-data.types';
 const TOMBSTONE_DOMAIN = 'erased.invalid';
 const TOMBSTONE_REASON = 'erased';
 const USER_BATCH_SIZE = 500;
+const SNAPSHOT_ID_CHUNK_SIZE = 1000;
 
 type Row = Record<string, unknown>;
 
@@ -39,6 +40,7 @@ export interface ErasureOutcome {
   summary: {
     resources: Record<string, number>;
     auditEntriesRedacted: number;
+    snapshotsPurged: number;
     identities: number;
   };
 }
@@ -169,6 +171,7 @@ export class PrivacyExecutor {
 
     const resources: Record<string, number> = {};
     let auditEntriesRedacted = 0;
+    let snapshotsPurged = 0;
 
     for (const declaration of this.registry.all()) {
       const delegate = this.rowsOf(declaration);
@@ -185,6 +188,11 @@ export class PrivacyExecutor {
         models: [declaration.model],
         recordIds: ids,
       });
+      snapshotsPurged += await this.purgeSnapshots(
+        tenantId,
+        declaration.model,
+        ids,
+      );
       resources[declaration.model] = await this.erase(
         declaration,
         delegate,
@@ -196,6 +204,7 @@ export class PrivacyExecutor {
       summary: {
         resources,
         auditEntriesRedacted,
+        snapshotsPurged,
         identities: await this.tombstone(tenantId, [userId]),
       },
     };
@@ -225,6 +234,10 @@ export class PrivacyExecutor {
       );
     }
 
+    const snapshotsPurged = (
+      await authPrismaClient.recordSnapshot.deleteMany({ where: { tenantId } })
+    ).count;
+
     const users = await authPrismaClient.user.findMany({
       where: {
         tenantId,
@@ -241,7 +254,32 @@ export class PrivacyExecutor {
       identities += await this.tombstone(tenantId, batch);
     }
 
-    return { summary: { resources, auditEntriesRedacted, identities } };
+    return {
+      summary: { resources, auditEntriesRedacted, snapshotsPurged, identities },
+    };
+  }
+
+  /**
+   * A row's history keeps every value it ever held, and a revert writes one
+   * back: an erased row loses its snapshots before the row itself is touched,
+   * for the same retry reason as the audit entries.
+   */
+  private async purgeSnapshots(
+    tenantId: string,
+    model: string,
+    recordIds: readonly string[],
+  ): Promise<number> {
+    let purged = 0;
+
+    for (const chunk of chunked(recordIds, SNAPSHOT_ID_CHUNK_SIZE)) {
+      purged += (
+        await authPrismaClient.recordSnapshot.deleteMany({
+          where: { tenantId, model, recordId: { in: chunk } },
+        })
+      ).count;
+    }
+
+    return purged;
   }
 
   private rowsOf(declaration: PersonalDataDeclaration): RowDelegate {
