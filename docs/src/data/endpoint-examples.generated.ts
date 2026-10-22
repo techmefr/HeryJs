@@ -311,7 +311,7 @@ export const createScenarios: PlaygroundScenario[] = [
     request:
       'POST /blog-posts/create\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  "data": [\n    {}\n  ]\n}',
     response:
-      '{\n  "error": {\n    "status": 400,\n    "key": "http.error",\n    "message": "Bad Request Exception",\n    "details": {\n      "formErrors": [],\n      "fieldErrors": {\n        "data": [\n          "Invalid input: expected string, received undefined"\n        ]\n      },\n      "issues": [\n        {\n          "path": [\n            "data",\n            0,\n            "title"\n          ],\n          "message": "Invalid input: expected string, received undefined"\n        }\n      ]\n    }\n  }\n}',
+      '{\n  "error": {\n    "status": 400,\n    "key": "validation.failed",\n    "message": "The request is invalid. Each issue is listed in details.issues.",\n    "details": {\n      "formErrors": [],\n      "fieldErrors": {\n        "data": [\n          "Invalid input: expected string, received undefined"\n        ]\n      },\n      "issues": [\n        {\n          "path": [\n            "data",\n            0,\n            "title"\n          ],\n          "code": "invalid_type",\n          "message": "Invalid input: expected string, received undefined"\n        }\n      ]\n    }\n  }\n}',
     flow: [
       {
         stage: 'middleware',
@@ -343,7 +343,8 @@ export const createScenarios: PlaygroundScenario[] = [
         label: 'BlogPostController.create',
         status: 'error',
         detail: {
-          message: 'Bad Request Exception',
+          message:
+            'The request is invalid. Each issue is listed in details.issues.',
         },
       },
     ],
