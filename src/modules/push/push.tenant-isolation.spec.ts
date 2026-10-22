@@ -51,13 +51,12 @@ describe('tenant isolation', () => {
         data: { email: `push-b-${suffix}@example.test`, tenantId: tenantB },
       })
     ).id;
-
-    await runInTenant(tenantA, () => tokens.register(userA, tokenA, 'web'));
-    await runInTenant(tenantB, () => tokens.register(userB, tokenB, 'ios'));
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     reached.length = 0;
+    await runInTenant(tenantA, () => tokens.register(userA, tokenA, 'web'));
+    await runInTenant(tenantB, () => tokens.register(userB, tokenB, 'ios'));
   });
 
   afterAll(async () => {
