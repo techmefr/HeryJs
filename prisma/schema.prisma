@@ -8,7 +8,7 @@ generator client {
 // Writes the /// @hery.* annotations below next to the client, where the
 // kernel reads its tenant boundary, audit, history and encryption at startup.
 generator hery {
-  provider = "node cli/prisma-registry-generator.cjs"
+  provider = "node cli/prisma-registry-generator.mjs"
 }
 
 datasource db {

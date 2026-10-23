@@ -1,9 +1,8 @@
 #!/usr/bin/env node
-'use strict';
 
-const { mkdirSync, writeFileSync } = require('node:fs');
-const path = require('node:path');
-const readline = require('node:readline');
+import { mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import readline from 'node:readline';
 
 const OUTPUT_FILE = 'hery-annotations.json';
 
