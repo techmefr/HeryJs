@@ -24,7 +24,7 @@ export const PROJECT_CONVENTIONS_STEP = '- run: pnpm hery check\n';
  */
 export function isFrameworkConventionScript(command: string): boolean {
   return (
-    command.includes('scripts/check-conventions.ts') ||
+    command.includes('scripts/check-') ||
     /^pnpm run lint:conventions\b/.test(command)
   );
 }
