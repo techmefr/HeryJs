@@ -6,16 +6,16 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { SessionGuard } from '#technical/public/auth';
+import { SessionGuard } from '@heryjs/core/auth';
 import {
   DevOnlyGuard,
   okPage,
   parsePageQuery,
   RateLimit,
   UnpaginatedRoute,
-} from '#technical/public/http';
-import { CapabilitiesGuard, Capability } from '#technical/public/capabilities';
-import { TenantContextStorage } from '#technical/public/tenancy';
+} from '@heryjs/core/http';
+import { CapabilitiesGuard, Capability } from '@heryjs/core/capabilities';
+import { TenantContextStorage } from '@heryjs/core/tenancy';
 import { canReadMailLog } from './mail.policy';
 import { MailService } from './mail.service';
 import { renderTemplate, templateNames } from './mail.templates';

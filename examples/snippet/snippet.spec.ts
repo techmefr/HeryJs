@@ -7,8 +7,8 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
 import { SnippetModule } from './snippet.module';
-import { env } from '#technical/config/env';
-import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
+import { env } from '@heryjs/core/env';
+import { MAX_BATCH_ENTRIES } from '@heryjs/core/http';
 import {
   actingAs,
   createTestTenantId,

@@ -30,7 +30,7 @@ describe('the mailable make:mail writes', () => {
    */
   it('imports the contract from the kernel', () => {
     expect(buildMailable('WelcomeMail').source).toContain(
-      "from '#technical/mail/mail-driver'",
+      "from '@heryjs/core/drivers'",
     );
   });
 

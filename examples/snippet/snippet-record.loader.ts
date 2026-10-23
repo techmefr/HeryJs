@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
-import type { RecordLoader } from '#technical/capabilities/capability-check';
-import { SharingService } from '#technical/sharing/sharing.service';
+import { PRISMA_CLIENT } from '@heryjs/core/database';
+import type { TenantScopedPrismaClient } from '@heryjs/core/database';
+import type { RecordLoader } from '@heryjs/core/capabilities';
+import { SharingService } from '@heryjs/core/resources';
 import type { SnippetRecordLike } from './snippet.policy';
 
 export const SNIPPET_RECORD_LOADER = Symbol('SNIPPET_RECORD_LOADER');

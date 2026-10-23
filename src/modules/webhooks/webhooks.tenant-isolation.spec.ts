@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { authPrismaClient } from '#technical/public/auth';
-import { SecretsService } from '#technical/public/env';
+import { authPrismaClient } from '@heryjs/core/auth';
+import { SecretsService } from '@heryjs/core/env';
 import { WebhookNotFoundException } from './webhook-not-found.exception';
 import { WebhookSecretService } from './webhook-secret.service';
 import { WebhookSubscriptionService } from './webhook-subscription.service';

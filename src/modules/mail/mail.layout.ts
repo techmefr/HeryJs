@@ -1,4 +1,4 @@
-import { LocaleContextStorage } from '#technical/public/i18n';
+import { LocaleContextStorage } from '@heryjs/core/i18n';
 
 /**
  * The shell every mail shares, so a Mailable writes what it has to say and not

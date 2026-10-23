@@ -3,8 +3,9 @@ export type { NotificationProvider } from '../notifications/notification.types';
 export { NotificationsModule } from '../notifications/notifications.module';
 export {
   NOTIFIER_MAIL_CHANNEL,
-  NotifierMailChannelResolver,
   notifierMailChannel,
+  NotifierMailChannelResolver,
+  setNotifierMailChannel,
 } from '../notifier/notifier-mail-channel';
 export {
   NOTIFIER_PUSH_CHANNEL,

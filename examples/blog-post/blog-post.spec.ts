@@ -7,12 +7,12 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
 import { BlogPostModule } from './blog-post.module';
-import { env } from '#technical/config/env';
-import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
+import { env } from '@heryjs/core/env';
+import { MAX_BATCH_ENTRIES } from '@heryjs/core/http';
 import {
   resolveDefaultLocale,
   resolveSupportedLocales,
-} from '#technical/i18n/locale.config';
+} from '@heryjs/core/i18n';
 import {
   actingAs,
   createTestTenantId,

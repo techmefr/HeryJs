@@ -262,6 +262,6 @@ export function renderDriver(
     driverFileName: `${baseName}.driver.ts`,
     moduleFileName: `${baseName}.module.ts`,
     driverSource: `import { Injectable } from '@nestjs/common';\n${imports}\n\n@Injectable()\nexport class ${className} implements ${contract.interfaceName} {\n${members}\n}\n`,
-    moduleSource: `import { Global, Module } from '@nestjs/common';\nimport { driverToken } from '#technical/drivers/driver-token';\nimport { ${className} } from './${baseName}.driver';\n\nconst TOKEN = driverToken('${moduleKebab}', '${driverKebab}');\n\n@Global()\n@Module({\n  providers: [\n    ${className},\n    { provide: TOKEN, useExisting: ${className} },\n  ],\n  exports: [TOKEN],\n})\nexport class ${moduleClassName} {}\n`,
+    moduleSource: `import { Global, Module } from '@nestjs/common';\nimport { driverToken } from '@heryjs/core/drivers';\nimport { ${className} } from './${baseName}.driver';\n\nconst TOKEN = driverToken('${moduleKebab}', '${driverKebab}');\n\n@Global()\n@Module({\n  providers: [\n    ${className},\n    { provide: TOKEN, useExisting: ${className} },\n  ],\n  exports: [TOKEN],\n})\nexport class ${moduleClassName} {}\n`,
   };
 }

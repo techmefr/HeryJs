@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
-import { translatableInputSchema } from '#technical/i18n/translatable';
-import type { RichtextFieldSpec } from '#technical/richtext/richtext';
+import { MAX_BATCH_ENTRIES } from '@heryjs/core/http';
+import { translatableInputSchema } from '@heryjs/core/i18n';
+import type { RichtextFieldSpec } from '@heryjs/core/resources';
 
 // The size limit and the allow-list of each richtext field. The limit is
 // checked on what the client sends; the service sanitises on write and the

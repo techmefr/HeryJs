@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { PersonalDataRegistry } from '#technical/privacy/personal-data.registry';
+import { PersonalDataRegistry } from '@heryjs/core/privacy';
 
 @Injectable()
 export class SnippetPersonalData implements OnModuleInit {

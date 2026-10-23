@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
-import { env } from '#technical/public/env';
-import type { JobsService } from '#technical/public/jobs';
-import { createTenantScopedPrismaClient } from '#technical/public/testing';
-import type { TenantScopedPrismaClient } from '#technical/public/database';
-import { runInTenant } from '#technical/public/tenancy';
+import { env } from '@heryjs/core/env';
+import type { JobsService } from '@heryjs/core/jobs';
+import { createTenantScopedPrismaClient } from '@heryjs/core/testing';
+import type { TenantScopedPrismaClient } from '@heryjs/core/database';
+import { runInTenant } from '@heryjs/core/tenancy';
 import { MailController } from './mail.controller';
 import { MailService } from './mail.service';
 

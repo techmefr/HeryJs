@@ -1,4 +1,4 @@
-import '#technical/config/load-env';
+import '@heryjs/core/load-env';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from '#app.module';
 import { createApp } from './create-app';
@@ -6,16 +6,16 @@ import {
   devEnvironmentsOf,
   isDevEnvironment,
   sharedDevEnvironmentWarning,
-} from '#technical/config/dev-environments';
-import { env } from '#technical/config/env';
-import { heryConfig } from '#technical/config/hery-config';
+  heryConfig,
+} from '@heryjs/core/config';
+import { env } from '@heryjs/core/env';
 import {
   loadCorsConfig,
   resolveCorsOptions,
   withOriginsFromEnv,
-} from '#technical/http/cors';
-import { mountBullBoard } from '#technical/jobs/bull-board';
-import { startTelemetry } from '#technical/telemetry/start-telemetry';
+} from '@heryjs/core/http';
+import { mountBullBoard } from '@heryjs/core/jobs';
+import { startTelemetry } from '@heryjs/core/observability';
 
 async function bootstrap() {
   await startTelemetry();

@@ -685,7 +685,7 @@ function copyInto(destRoot: string): void {
 
     const destination = path.join(destRoot, entry);
     mkdirSync(path.dirname(destination), { recursive: true });
-    cpSync(source, destination, { recursive: true });
+    cpSync(source, destination, { recursive: true, verbatimSymlinks: true });
   }
 }
 

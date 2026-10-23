@@ -8,10 +8,10 @@ import * as prettier from 'prettier';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
-import { env } from '#technical/config/env';
-import { authPrismaClient } from '#technical/auth/better-auth.instance';
-import { PipelineStore } from '#devtools/pipeline/pipeline.store';
-import type { TraceStep } from '#technical/tracing/trace-context';
+import { env } from '@heryjs/core/env';
+import { authPrismaClient } from '@heryjs/core/auth';
+import { PipelineStore } from '@heryjs/core/devtools';
+import type { TraceStep } from '@heryjs/core/observability';
 import {
   registerAndLogin,
   type TestUser,

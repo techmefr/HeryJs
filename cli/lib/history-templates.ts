@@ -86,12 +86,12 @@ export function historyControllerImports(ctx: ResourceContext): string {
   historyDiffSchema,
   historyListSchema,
   historyRestoreSchema,
-} from '#technical/history/history.schemas';
+} from '@heryjs/core/resources';
 import type {
   HistoryDiffBody,
   HistoryListBody,
   HistoryRestoreBody,
-} from '#technical/history/history.schemas';
+} from '@heryjs/core/resources';
 `;
 }
 
@@ -165,11 +165,11 @@ export function historyServiceImports(ctx: ResourceContext): string {
     return '';
   }
 
-  return `import { HistoryService } from '#technical/history/history.service';
-import { HistoryOperationStorage } from '#technical/history/history-operation';
-import { revertPatchOf } from '#technical/history/snapshot';
-import type { HistoryDiffBody, HistoryListBody } from '#technical/history/history.schemas';
-import type { HistoryEntry } from '#technical/history/history.types';
+  return `import { HistoryService } from '@heryjs/core/resources';
+import { HistoryOperationStorage } from '@heryjs/core/resources';
+import { revertPatchOf } from '@heryjs/core/resources';
+import type { HistoryDiffBody, HistoryListBody } from '@heryjs/core/resources';
+import type { HistoryEntry } from '@heryjs/core/resources';
 `;
 }
 

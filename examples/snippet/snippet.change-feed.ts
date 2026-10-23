@@ -1,5 +1,5 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { ChangeFeedRegistry } from '#technical/change-feed/change-feed.registry';
+import { ChangeFeedRegistry } from '@heryjs/core/realtime';
 import {
   canUpdateAnySnippet,
   canViewSnippet,

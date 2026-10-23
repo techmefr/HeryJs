@@ -1,5 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
-import { DomainException } from '#technical/public/errors';
+import { DomainException } from '@heryjs/core/errors';
 
 export class TwoFactorEnrolmentRequiredException extends DomainException {
   constructor() {

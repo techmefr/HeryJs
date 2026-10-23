@@ -7,6 +7,7 @@
   "testPathIgnorePatterns": ["/node_modules/", "packages/admin-astro/"],
   "globalSetup": "<rootDir>/test/global-setup.ts",
   "moduleNameMapper": {
+    "^@heryjs/core/devtools$": "<rootDir>/src/devtools/public",
     "^@heryjs/core/(.*)$": "<rootDir>/src/technical/public/$1",
     "^#kernel/(.*)$": "<rootDir>/src/technical/$1",
     "^#technical/(.*)$": "<rootDir>/src/technical/$1",
@@ -15,7 +16,12 @@
     "^#functional/(.*)$": "<rootDir>/src/functional/$1"
   },
   "transform": {
-    "^.+\\.(t|j)s$": ["ts-jest", { "tsconfig": "test/tsconfig.modules.json" }]
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      {
+        "tsconfig": "test/tsconfig.modules.json"
+      }
+    ]
   },
   "testTimeout": 15000,
   "forceExit": true

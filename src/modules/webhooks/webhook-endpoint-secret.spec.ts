@@ -4,8 +4,8 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
-import type { AuthenticatedUser } from '#technical/auth/auth.types';
-import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import type { AuthenticatedUser } from '@heryjs/core/auth';
+import { authPrismaClient } from '@heryjs/core/auth';
 import { WebhookEndpointSecretService } from './webhook-endpoint-secret.service';
 import { WebhooksService } from './webhooks.service';
 

@@ -2,7 +2,7 @@ import type { ResourceContext } from './resource-context';
 
 export function vectorServiceImports(ctx: ResourceContext): string {
   return ctx.vector
-    ? `\nimport { VectorSearchService } from '#technical/vector/vector-search.service';\nimport type { VectorMetric, VectorTarget } from '#technical/vector/vector-target';`
+    ? `\nimport { VectorSearchService } from '@heryjs/core/resources';\nimport type { VectorMetric, VectorTarget } from '@heryjs/core/resources';`
     : '';
 }
 
@@ -138,9 +138,7 @@ ${trashedWhere}    const matches = await this.vectors.similar(VECTOR_TARGET, {
 }
 
 export function vectorSpecImports(ctx: ResourceContext): string {
-  return ctx.vector
-    ? `\nimport { EMBEDDER } from '#technical/embeddings/embedding-driver';`
-    : '';
+  return ctx.vector ? `\nimport { EMBEDDER } from '@heryjs/core/drivers';` : '';
 }
 
 export function vectorSpecFixtures(ctx: ResourceContext): string {

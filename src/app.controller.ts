@@ -1,7 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
-import { PublicRoute } from '#technical/capabilities/public-route.decorator';
+import { PublicRoute } from '@heryjs/core/capabilities';
 import { AppService } from './app.service';
-import { UnpaginatedRoute } from '#technical/http/unpaginated-route.decorator';
+import { UnpaginatedRoute } from '@heryjs/core/http';
 
 @Controller()
 export class AppController {

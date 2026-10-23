@@ -17,3 +17,8 @@ export { OutboxRegistry } from '../outbox/outbox.registry';
 export type { OutboxDelivery, OutboxHandler } from '../outbox/outbox.types';
 export { ScheduledTaskStore } from '../scheduler/scheduled-task.store';
 export { SchedulerModule } from '../scheduler/scheduler.module';
+export { JobFlowsModule } from '../job-flows/job-flows.module';
+export { mountBullBoard } from '../jobs/bull-board';
+export { OutboxRelay } from '../outbox/outbox.relay';
+export { OutboxService } from '../outbox/outbox.service';
+export { OutboxRunner } from '../outbox/outbox.runner';

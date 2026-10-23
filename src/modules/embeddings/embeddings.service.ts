@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import {
   type Embedder,
   EmbeddingDimensionMismatchException,
-} from '#technical/public/drivers';
+} from '@heryjs/core/drivers';
 import { EmbeddingDriverRegistry } from './embedding-driver.registry';
 
 @Injectable()

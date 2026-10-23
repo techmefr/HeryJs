@@ -1,4 +1,4 @@
-import { registerCatalogue } from '#technical/public/i18n';
+import { registerCatalogue } from '@heryjs/core/i18n';
 
 export const STORAGE_CATALOGUE = registerCatalogue({
   'storage.key.invalid': {

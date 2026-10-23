@@ -4,7 +4,7 @@ import {
   randomBytes,
   timingSafeEqual,
 } from 'node:crypto';
-import { isLocalEnvironmentNow } from '#technical/public/config';
+import { isLocalEnvironmentNow } from '@heryjs/core/config';
 import { Injectable } from '@nestjs/common';
 import type { CookieOptions } from 'express';
 import { SsoRefusedException } from './sso-refused.exception';

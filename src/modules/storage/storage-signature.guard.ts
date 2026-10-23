@@ -1,7 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import type { Request } from 'express';
 import { NotFoundException } from '@nestjs/common';
-import { TraceContextStorage } from '#technical/public/observability';
+import { TraceContextStorage } from '@heryjs/core/observability';
 import { LocalStorageDriver } from './local-storage.driver';
 
 /**

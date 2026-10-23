@@ -5,7 +5,7 @@ import {
   jobOptions,
   type JobPolicy,
   WEBHOOK_DELIVERY_QUEUE,
-} from '#technical/public/jobs';
+} from '@heryjs/core/jobs';
 import {
   OUTBOUND_WEBHOOK_JOB,
   OUTBOUND_WEBHOOK_POLICY,

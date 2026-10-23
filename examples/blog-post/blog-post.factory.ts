@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { resolveDefaultLocale } from '#technical/i18n/locale.config';
+import { resolveDefaultLocale } from '@heryjs/core/i18n';
 
 export interface BlogPostFactoryOverrides {
   ownerId: string;

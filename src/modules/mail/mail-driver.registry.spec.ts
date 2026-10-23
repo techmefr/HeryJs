@@ -1,7 +1,7 @@
 import type { ModuleRef } from '@nestjs/core';
-import type { HeryConfig } from '#technical/public/config';
-import { DriverResolver, type MailDriver } from '#technical/public/drivers';
-import { driverToken } from '#technical/public/testing';
+import type { HeryConfig } from '@heryjs/core/config';
+import { DriverResolver, type MailDriver } from '@heryjs/core/drivers';
+import { driverToken } from '@heryjs/core/testing';
 import { LogMailDriver } from './log-mail.driver';
 import { MailDriverRegistry } from './mail-driver.registry';
 

@@ -3,16 +3,16 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
-import { env } from '#technical/public/env';
-import { type OutboxDelivery, OutboxModule } from '#technical/public/jobs';
+import { env } from '@heryjs/core/env';
+import { type OutboxDelivery, OutboxModule } from '@heryjs/core/jobs';
 import {
   OUTBOX_RELAY_OPTIONS,
   VectorEmbeddingHandler,
   VectorModule,
   VectorSearchService,
   type VectorTarget,
-} from '#technical/public/testing';
-import { runInTenant } from '#technical/public/tenancy';
+} from '@heryjs/core/testing';
+import { runInTenant } from '@heryjs/core/tenancy';
 import { DEFAULT_EMBEDDING_DIMENSIONS } from './embeddings.env';
 import { EmbeddingsModule } from './embeddings.module';
 

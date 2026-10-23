@@ -1,4 +1,4 @@
-import { adminAbility, type PolicyCheck } from '#technical/public/capabilities';
+import { adminAbility, type PolicyCheck } from '@heryjs/core/capabilities';
 
 // The log lists every message the tenant sent, with each recipient's address:
 // that is the tenant's whole correspondence, not the caller's own, so it asks

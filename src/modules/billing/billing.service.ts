@@ -1,10 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { HERY_CONFIG, type HeryConfig } from '#technical/public/config';
+import { HERY_CONFIG, type HeryConfig } from '@heryjs/core/config';
 import {
   PRISMA_CLIENT,
   type TenantScopedPrismaClient,
-} from '#technical/public/database';
-import type { BillingSubscriptionStatus } from '#technical/public/drivers';
+} from '@heryjs/core/database';
+import type { BillingSubscriptionStatus } from '@heryjs/core/drivers';
 import { QuotaExceededException } from './quota-exceeded.exception';
 
 /**

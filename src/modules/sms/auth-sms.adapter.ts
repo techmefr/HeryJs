@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { AUTH_SMS_SENDER, type AuthSmsSender } from '#technical/public/auth';
-import type { SmsMessage } from '#technical/public/drivers';
+import { AUTH_SMS_SENDER, type AuthSmsSender } from '@heryjs/core/auth';
+import type { SmsMessage } from '@heryjs/core/drivers';
 import { SmsService } from './sms.service';
 
 /**

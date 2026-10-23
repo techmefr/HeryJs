@@ -1,11 +1,11 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { HERY_CONFIG, type HeryConfig } from '#technical/public/config';
+import { HERY_CONFIG, type HeryConfig } from '@heryjs/core/config';
 import {
   BILLING_MODULE,
   type BillingDriver,
   DriverResolver,
   missingDriverMessage,
-} from '#technical/public/drivers';
+} from '@heryjs/core/drivers';
 import { LogBillingDriver } from './log-billing.driver';
 
 const BUILTIN_DRIVER = 'log';
