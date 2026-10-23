@@ -412,9 +412,9 @@ jobs:
           grep -q 'src/technical/config/env.ts' refusal.log
           test -d src/technical
           test -d packages/core
-          git -C ../old-app status --porcelain > ../untouched.status
-          git status --porcelain | grep -v -e ' src/technical/config/env.ts$' -e ' refusal.log$' > ../refused.status
-          diff ../untouched.status ../refused.status
+          diff -rq --exclude=node_modules --exclude=.git ../old-app . > ../refused.diff || true
+          cat ../refused.diff
+          test "$(grep -vc -e 'src/technical/config/env.ts differ$' -e 'Only in .: refusal.log$' ../refused.diff)" = 0
 
       - name: Migrate it onto the package, then install, migrate, typecheck and build it
         working-directory: ${{ runner.temp }}/old/old-app
