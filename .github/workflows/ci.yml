@@ -412,7 +412,9 @@ jobs:
           grep -q 'src/technical/config/env.ts' refusal.log
           test -d src/technical
           test -d packages/core
-          test "$(git status --porcelain --untracked-files=no)" = ' M src/technical/config/env.ts'
+          git -C ../old-app status --porcelain > ../untouched.status
+          git status --porcelain | grep -v -e ' src/technical/config/env.ts$' -e ' refusal.log$' > ../refused.status
+          diff ../untouched.status ../refused.status
 
       - name: Migrate it onto the package, then install, migrate, typecheck and build it
         working-directory: ${{ runner.temp }}/old/old-app
