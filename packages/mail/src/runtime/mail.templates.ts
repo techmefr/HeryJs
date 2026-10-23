@@ -1,4 +1,4 @@
-import { translateMessage } from '#kernel/i18n/translate';
+import { translateMessage } from '#kernel/public/i18n';
 import './mail.catalogue';
 
 interface MailTemplate {

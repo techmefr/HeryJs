@@ -1,4 +1,4 @@
-import { registerCatalogue } from '#technical/i18n/catalogue';
+import { registerCatalogue } from '#technical/public/i18n';
 import type { WebhookNotFoundSubject } from './webhook-not-found.exception';
 import type { WebhookRefusedReason } from './webhook-refused.exception';
 

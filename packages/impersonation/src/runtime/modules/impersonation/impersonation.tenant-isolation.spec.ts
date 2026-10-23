@@ -1,9 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import type { AuthenticatedUser } from '#kernel/auth/auth.types';
-import { authPrismaClient } from '#kernel/auth/better-auth.instance';
-import { RecordNotFoundException } from '#kernel/errors/record-not-found.exception';
-import { createTenantScopedPrismaClient } from '#kernel/prisma/prisma.client';
-import { runInTenant } from '#kernel/tenancy/run-in-tenant';
+import { type AuthenticatedUser, authPrismaClient } from '#kernel/public/auth';
+import { RecordNotFoundException } from '#kernel/public/errors';
+import { createTenantScopedPrismaClient } from '#kernel/public/testing';
+import { runInTenant } from '#kernel/public/tenancy';
 import { ImpersonationService } from './impersonation.service';
 
 describe('tenant isolation', () => {

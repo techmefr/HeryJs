@@ -142,6 +142,8 @@
     "lint:template-imports": "pnpm run lint:conventions template-imports",
     "lint:tenant-isolation": "pnpm run lint:conventions tenant-isolation",
     "lint:kernel-version": "pnpm run lint:conventions kernel-version",
+    "lint:kernel-boundary": "pnpm run lint:conventions kernel-boundary",
+    "lint:package-manifests": "pnpm run lint:conventions package-manifests",
     "lint:example": "pnpm run lint:conventions example-freshness",
     "lint:hery": "NODE_OPTIONS=--conditions=development ts-node cli/hery.ts lint --min-score 100",
     "hery": "NODE_OPTIONS=--conditions=development ts-node cli/hery.ts"

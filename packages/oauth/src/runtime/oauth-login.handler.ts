@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Response } from 'express';
-import { getAuthContext } from '#kernel/auth/better-auth.instance';
-import { ok } from '#kernel/http/envelope';
+import { getAuthContext } from '#kernel/public/auth';
+import { ok } from '#kernel/public/http';
 import type { OAuthLoginResult } from './oauth.types';
 
 export const OAUTH_LOGIN_HANDLER = Symbol('OAUTH_LOGIN_HANDLER');

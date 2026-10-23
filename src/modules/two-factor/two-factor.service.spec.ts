@@ -1,5 +1,5 @@
-import type { AuthenticatedUser } from '#technical/auth/auth.types';
-import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
+import type { AuthenticatedUser } from '#technical/public/auth';
+import type { TenantScopedPrismaClient } from '#technical/public/database';
 import { decryptSecret } from './secret-cipher';
 import { base32Decode, hotp, stepAt } from './totp';
 import { InvalidTwoFactorCodeException } from './invalid-two-factor-code.exception';

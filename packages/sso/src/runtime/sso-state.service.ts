@@ -4,7 +4,7 @@ import {
   randomBytes,
   timingSafeEqual,
 } from 'node:crypto';
-import { isLocalEnvironmentNow } from '#kernel/config/module-env';
+import { isLocalEnvironmentNow } from '#kernel/public/config';
 import { Injectable } from '@nestjs/common';
 import type { CookieOptions } from 'express';
 import { SsoRefusedException } from './sso-refused.exception';

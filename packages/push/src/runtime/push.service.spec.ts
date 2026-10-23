@@ -2,9 +2,9 @@ import type {
   PushDriver,
   PushMessage,
   PushOutcome,
-} from '#kernel/push/push-driver';
-import { TelemetryBus } from '#kernel/tracing/telemetry-bus';
-import type { TelemetryRecord } from '#kernel/tracing/telemetry-bus';
+} from '#kernel/public/drivers';
+import { TelemetryBus } from '#kernel/public/observability';
+import type { TelemetryRecord } from '#kernel/public/testing';
 import { PushDriverRegistry } from './push-driver.registry';
 import { PushService } from './push.service';
 import { PushTokenService } from './push.tokens';

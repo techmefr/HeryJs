@@ -1,4 +1,4 @@
-import type { MailMessage, Mailable } from '#kernel/mail/mail-driver';
+import type { Mailable, MailMessage } from '#kernel/public/drivers';
 import { mailLayout } from './mail.layout';
 
 /**

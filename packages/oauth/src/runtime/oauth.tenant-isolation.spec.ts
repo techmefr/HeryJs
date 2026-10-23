@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { authPrismaClient } from '#kernel/auth/better-auth.instance';
-import { createTenantScopedPrismaClient } from '#kernel/prisma/prisma.client';
-import { PersonalDataRegistry } from '#kernel/privacy/personal-data.registry';
-import { runInTenant } from '#kernel/tenancy/run-in-tenant';
+import { authPrismaClient } from '#kernel/public/auth';
+import { createTenantScopedPrismaClient } from '#kernel/public/testing';
+import { PersonalDataRegistry } from '#kernel/public/privacy';
+import { runInTenant } from '#kernel/public/tenancy';
 import { OAuthAccountService } from './oauth-account.service';
 import { PrismaOAuthIdentityStore } from './oauth-identity.store';
 import { OAuthRefusedException } from './oauth-refused.exception';

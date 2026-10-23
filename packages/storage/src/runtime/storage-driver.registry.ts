@@ -1,17 +1,17 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { HERY_CONFIG } from '#kernel/config/hery-config';
-import type {
-  HeryConfig,
-  HeryConfigDrivers,
-} from '#kernel/config/hery-config.types';
+import {
+  HERY_CONFIG,
+  type HeryConfig,
+  type HeryConfigDrivers,
+} from '#kernel/public/config';
 import {
   DriverResolver,
   missingDriverMessage,
-} from '#kernel/drivers/driver-resolver';
+  STORAGE_MODULE,
+  type StorageDriver,
+} from '#kernel/public/drivers';
 import { LocalStorageDriver } from './local-storage.driver';
 import { storageEnv } from './storage.env';
-import { STORAGE_MODULE } from '#kernel/storage/storage-driver';
-import type { StorageDriver } from '#kernel/storage/storage-driver';
 
 const BUILTIN_DRIVER = 'local';
 

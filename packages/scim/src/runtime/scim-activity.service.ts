@@ -1,9 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { writeAuditLog } from '#kernel/audit/audit-log';
-import { authPrismaClient } from '#kernel/auth/better-auth.instance';
-import type { PageQuery } from '#kernel/http/page-query';
-import { PRISMA_CLIENT } from '#kernel/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#kernel/prisma/prisma.client';
+import { writeAuditLog } from '#kernel/public/privacy';
+import { authPrismaClient } from '#kernel/public/auth';
+import type { PageQuery } from '#kernel/public/http';
+import {
+  PRISMA_CLIENT,
+  type TenantScopedPrismaClient,
+} from '#kernel/public/database';
 import type { ScimResourceKind } from './scim.types';
 
 export const SCIM_ACTIVITY_MODELS = ['ScimUser', 'ScimGroup', 'ScimToken'];

@@ -1,5 +1,8 @@
-import { adminAbility, everyone } from '#technical/capabilities/ability';
-import type { PolicyCheck } from '#technical/capabilities/capability-check';
+import {
+  adminAbility,
+  everyone,
+  type PolicyCheck,
+} from '#technical/public/capabilities';
 
 export const canManageOwnTwoFactor: PolicyCheck = everyone('own');
 

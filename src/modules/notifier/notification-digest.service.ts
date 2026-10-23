@@ -1,11 +1,15 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { authPrismaClient } from '#technical/auth/better-auth.instance';
-import { recipientLocale } from '#technical/i18n/recipient-locale';
-import { translateMessage as translated } from '#technical/i18n/translate';
-import { notifierMailChannel } from '#technical/notifier/notifier-mail-channel';
-import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
-import { runInTenant } from '#technical/tenancy/run-in-tenant';
+import { authPrismaClient } from '#technical/public/auth';
+import {
+  recipientLocale,
+  translateMessage as translated,
+} from '#technical/public/i18n';
+import { notifierMailChannel } from '#technical/public/notifications';
+import {
+  PRISMA_CLIENT,
+  type TenantScopedPrismaClient,
+} from '#technical/public/database';
+import { runInTenant } from '#technical/public/tenancy';
 import { escapeHtml } from './escape-html';
 import { localHour } from './local-time';
 import { DEFAULT_SETTINGS } from './notification-rules';

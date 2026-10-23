@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma, WebhookDelivery } from '@prisma/client';
-import { authPrismaClient } from '#technical/auth/better-auth.instance';
-import type { Page, PageQuery } from '#technical/http/page-query';
+import { authPrismaClient } from '#technical/public/auth';
+import type { Page, PageQuery } from '#technical/public/http';
 import {
   DELIVERY_STATUS_DEAD,
   DELIVERY_STATUS_PENDING,

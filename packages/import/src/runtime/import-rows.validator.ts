@@ -2,7 +2,7 @@ import type {
   ImportOutcome,
   ImportRow,
   ImportRowError,
-} from '#kernel/import/import-driver';
+} from '#kernel/public/drivers';
 
 export interface PartitionedRows {
   valid: ImportRow[];

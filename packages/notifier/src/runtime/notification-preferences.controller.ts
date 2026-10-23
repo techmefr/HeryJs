@@ -8,14 +8,14 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { SessionGuard } from '#kernel/auth/session.guard';
-import type { RequestWithUser } from '#kernel/auth/session.guard';
-import { CapabilitiesGuard } from '#kernel/capabilities/capabilities.guard';
-import { Capability } from '#kernel/capabilities/capability.decorator';
-import { ok } from '#kernel/http/envelope';
-import { UnpaginatedRoute } from '#kernel/http/unpaginated-route.decorator';
-import { RateLimit } from '#kernel/rate-limit/rate-limit.decorator';
-import { ZodValidationPipe } from '#kernel/validation/zod-validation.pipe';
+import { type RequestWithUser, SessionGuard } from '#kernel/public/auth';
+import { CapabilitiesGuard, Capability } from '#kernel/public/capabilities';
+import {
+  ok,
+  RateLimit,
+  UnpaginatedRoute,
+  ZodValidationPipe,
+} from '#kernel/public/http';
 import { NotificationPreferenceService } from './notification-preference.service';
 import type {
   NotificationRuleInput,

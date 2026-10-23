@@ -1,5 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
-import { DomainException } from '#technical/errors/domain.exception';
+import { DomainException } from '#technical/public/errors';
 
 export class QuotaExceededException extends DomainException {
   constructor(feature: string, limit: number) {

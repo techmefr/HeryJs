@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from '#technical/auth/auth.module';
-import { NotificationsModule } from '#technical/notifications/notifications.module';
-import { NotifierMailChannelResolver } from '#technical/notifier/notifier-mail-channel';
-import { NotifierPushChannelResolver } from '#technical/notifier/notifier-push-channel';
-import { NotifierSmsChannelResolver } from '#technical/notifier/notifier-sms-channel';
-import { PrismaModule } from '#technical/prisma/prisma.module';
-import { SchedulerModule } from '#technical/scheduler/scheduler.module';
+import { AuthModule } from '#technical/public/auth';
+import {
+  NotificationsModule,
+  NotifierMailChannelResolver,
+  NotifierPushChannelResolver,
+  NotifierSmsChannelResolver,
+} from '#technical/public/notifications';
+import { PrismaModule } from '#technical/public/database';
+import { SchedulerModule } from '#technical/public/jobs';
 import { NotificationDigestService } from './notification-digest.service';
 import { NotificationDigestTask } from './notification-digest.task';
 import { NotificationPreferenceService } from './notification-preference.service';

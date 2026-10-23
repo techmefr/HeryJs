@@ -1,4 +1,4 @@
-import { registerCatalogue } from '#technical/i18n/catalogue';
+import { registerCatalogue } from '#technical/public/i18n';
 
 export const STORAGE_CATALOGUE = registerCatalogue({
   'storage.key.invalid': {

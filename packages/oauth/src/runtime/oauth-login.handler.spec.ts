@@ -1,9 +1,9 @@
 import type { Response } from 'express';
-import { getAuthContext } from '#kernel/auth/better-auth.instance';
+import { getAuthContext } from '#kernel/public/auth';
 import { SessionOAuthLoginHandler } from './oauth-login.handler';
 import type { OAuthLoginResult } from './oauth.types';
 
-jest.mock('#kernel/auth/better-auth.instance', () => ({
+jest.mock('#kernel/public/auth', () => ({
   getAuthContext: jest.fn(),
 }));
 

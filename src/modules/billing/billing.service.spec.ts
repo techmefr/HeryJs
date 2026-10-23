@@ -1,5 +1,5 @@
-import type { HeryConfig } from '#technical/config/hery-config.types';
-import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
+import type { HeryConfig } from '#technical/public/config';
+import type { TenantScopedPrismaClient } from '#technical/public/database';
 import { BillingService } from './billing.service';
 import { QuotaExceededException } from './quota-exceeded.exception';
 

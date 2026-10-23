@@ -1,4 +1,4 @@
-import { registerCatalogue } from '#kernel/i18n/catalogue';
+import { registerCatalogue } from '#kernel/public/i18n';
 import type { SmsRefusalReason } from './sms.guard';
 
 const REFUSED_FR: Record<

@@ -7,15 +7,17 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { AdminAction, AdminSection } from '#kernel/admin/admin-metadata';
-import { SessionGuard } from '#kernel/auth/session.guard';
-import type { RequestWithUser } from '#kernel/auth/session.guard';
-import { CapabilitiesGuard } from '#kernel/capabilities/capabilities.guard';
-import { Capability } from '#kernel/capabilities/capability.decorator';
-import { ok } from '#kernel/http/envelope';
-import { okPage, parsePageQuery } from '#kernel/http/page-query';
-import { UnpaginatedRoute } from '#kernel/http/unpaginated-route.decorator';
-import { RateLimit } from '#kernel/rate-limit/rate-limit.decorator';
+import {
+  AdminAction,
+  AdminSection,
+  ok,
+  okPage,
+  parsePageQuery,
+  RateLimit,
+  UnpaginatedRoute,
+} from '#kernel/public/http';
+import { type RequestWithUser, SessionGuard } from '#kernel/public/auth';
+import { CapabilitiesGuard, Capability } from '#kernel/public/capabilities';
 import { ScimActivityService } from './scim-activity.service';
 import { ScimTokenService } from './scim-token.service';
 import { canManageScim } from './scim.policy';

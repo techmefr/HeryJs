@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from '#technical/auth/auth.module';
-import { PrismaModule } from '#technical/prisma/prisma.module';
+import { AuthModule } from '#technical/public/auth';
+import { PrismaModule } from '#technical/public/database';
 import { TwoFactorCodeVerifier } from './two-factor-code.verifier';
 import { TwoFactorController } from './two-factor.controller';
 import { TwoFactorGuard } from './two-factor.guard';

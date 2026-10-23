@@ -1,5 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
-import { DomainException } from '#kernel/errors/domain.exception';
+import { DomainException } from '#kernel/public/errors';
 
 export class StorageBodyTooLargeException extends DomainException {
   constructor(bytes: number, maxBytes: number) {

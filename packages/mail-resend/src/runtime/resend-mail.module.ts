@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { mailDriverToken } from '#kernel/mail/mail-driver';
+import { mailDriverToken } from '#kernel/public/drivers';
 import { ResendMailDriver } from './resend-mail.driver';
 
 const TOKEN = mailDriverToken('resend');

@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { PersonalDataRegistry } from '#kernel/privacy/personal-data.registry';
+import { PersonalDataRegistry } from '#kernel/public/privacy';
 import { StorageService } from './storage.service';
 
 /**

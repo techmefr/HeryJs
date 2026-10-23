@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { ScheduledTaskStore } from '#technical/scheduler/scheduled-task.store';
+import { ScheduledTaskStore } from '#technical/public/jobs';
 import { outboundWebhookEnv } from './outbound-webhook.env';
 import { WebhookDeliveryService } from './webhook-delivery.service';
 

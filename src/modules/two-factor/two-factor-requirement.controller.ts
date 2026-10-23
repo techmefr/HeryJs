@@ -8,14 +8,15 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
-import { Capability } from '#technical/capabilities/capability.decorator';
-import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
-import { SessionGuard } from '#technical/auth/session.guard';
-import type { RequestWithUser } from '#technical/auth/session.guard';
-import { ok } from '#technical/http/envelope';
-import { okPage, parsePageQuery } from '#technical/http/page-query';
-import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
+import { CapabilitiesGuard, Capability } from '#technical/public/capabilities';
+import {
+  ok,
+  okPage,
+  parsePageQuery,
+  RateLimit,
+  ZodValidationPipe,
+} from '#technical/public/http';
+import { type RequestWithUser, SessionGuard } from '#technical/public/auth';
 import { canManageTwoFactorRequirements } from './two-factor.policy';
 import { roleParamSchema } from './two-factor.schemas';
 import { TwoFactorRequirementService } from './two-factor-requirement.service';

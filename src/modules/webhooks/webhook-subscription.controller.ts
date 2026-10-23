@@ -9,14 +9,14 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { SessionGuard } from '#technical/auth/session.guard';
-import type { RequestWithUser } from '#technical/auth/session.guard';
-import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
-import { Capability } from '#technical/capabilities/capability.decorator';
-import { ok } from '#technical/http/envelope';
-import { UnpaginatedRoute } from '#technical/http/unpaginated-route.decorator';
-import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
-import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
+import { type RequestWithUser, SessionGuard } from '#technical/public/auth';
+import { CapabilitiesGuard, Capability } from '#technical/public/capabilities';
+import {
+  ok,
+  RateLimit,
+  UnpaginatedRoute,
+  ZodValidationPipe,
+} from '#technical/public/http';
 import {
   createSubscriptionSchema,
   rotateSecretSchema,

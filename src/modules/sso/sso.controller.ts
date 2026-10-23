@@ -9,10 +9,12 @@ import {
   Res,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { PublicRoute } from '#technical/capabilities/public-route.decorator';
-import { UnpaginatedRoute } from '#technical/http/unpaginated-route.decorator';
-import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
-import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
+import { PublicRoute } from '#technical/public/capabilities';
+import {
+  RateLimit,
+  UnpaginatedRoute,
+  ZodValidationPipe,
+} from '#technical/public/http';
 import { SSO_LOGIN_HANDLER } from './sso-login.handler';
 import type { SsoLoginHandler } from './sso-login.handler';
 import { SsoLoginService } from './sso-login.service';

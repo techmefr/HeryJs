@@ -1,5 +1,4 @@
-import { DEFAULT_JOB_POLICY } from '#kernel/jobs/job-policy';
-import type { JobPolicy } from '#kernel/jobs/job-policy';
+import { DEFAULT_JOB_POLICY, type JobPolicy } from '#kernel/public/jobs';
 
 export const IMPORT_CONSUME_JOB = 'import.consume';
 export const IMPORT_DONE_NOTIFICATION = 'import.done';

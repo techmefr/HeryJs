@@ -1,12 +1,15 @@
 import { EventEmitter } from 'node:events';
 import type { Request, Response } from 'express';
-import { ChangeFeedHub } from '#kernel/change-feed/change-feed.hub';
-import { ChangeFeedRegistry } from '#kernel/change-feed/change-feed.registry';
-import { ChangeFeedTokenService } from '#kernel/change-feed/change-feed-token.service';
-import type { ChangeFeedSubscriber } from '#kernel/change-feed/change-feed.types';
-import { InMemoryChangeFeedBackend } from '#kernel/change-feed/in-memory-change-feed.backend';
-import { InvalidSessionException } from '#kernel/errors/invalid-session.exception';
-import { CapabilityForbiddenException } from '#kernel/errors/capability-forbidden.exception';
+import { ChangeFeedHub, ChangeFeedTokenService } from '#kernel/public/realtime';
+import {
+  ChangeFeedRegistry,
+  type ChangeFeedSubscriber,
+  InMemoryChangeFeedBackend,
+} from '#kernel/public/testing';
+import {
+  CapabilityForbiddenException,
+  InvalidSessionException,
+} from '#kernel/public/errors';
 import { SseChangesController } from './sse-changes.controller';
 
 function fakeResponse() {

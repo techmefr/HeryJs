@@ -1,5 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
-import { DomainException } from '#kernel/errors/domain.exception';
+import { DomainException } from '#kernel/public/errors';
 
 // The message stays generic on purpose: telling a caller whether the
 // endpoint id, the signature, or the timestamp window was the problem hands

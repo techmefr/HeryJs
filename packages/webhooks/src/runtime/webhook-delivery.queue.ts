@@ -1,9 +1,11 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable } from '@nestjs/common';
 import type { Queue } from 'bullmq';
-import { jobOptions } from '#kernel/jobs/job-policy';
-import type { JobPolicy } from '#kernel/jobs/job-policy';
-import { WEBHOOK_DELIVERY_QUEUE } from '#kernel/jobs/jobs.constants';
+import {
+  jobOptions,
+  type JobPolicy,
+  WEBHOOK_DELIVERY_QUEUE,
+} from '#kernel/public/jobs';
 import {
   OUTBOUND_WEBHOOK_JOB,
   OUTBOUND_WEBHOOK_POLICY,

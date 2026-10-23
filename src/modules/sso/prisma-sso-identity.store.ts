@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { authPrismaClient } from '#technical/public/auth';
 import type {
   SsoIdentityStore,
   SsoLocalUser,

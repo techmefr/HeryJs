@@ -1,6 +1,6 @@
 import { DynamicModule, Module, Type } from '@nestjs/common';
-import { AuthModule } from '#technical/auth/auth.module';
-import { PrivacyModule } from '#technical/privacy/privacy.module';
+import { AuthModule } from '#technical/public/auth';
+import { PrivacyModule } from '#technical/public/privacy';
 import { SSO_CONNECTION_STORE } from './sso-connection.store';
 import { PrismaSsoConnectionStore } from './prisma-sso-connection.store';
 import { SsoConnectionTestService } from './sso-connection-test.service';

@@ -1,4 +1,4 @@
-import { registerCatalogue } from '#technical/i18n/catalogue';
+import { registerCatalogue } from '#technical/public/i18n';
 import type { SsoConflictReason } from './sso-connection-conflict.exception';
 import type { SsoRefusalReason } from './sso-refused.exception';
 

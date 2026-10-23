@@ -1,11 +1,11 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { JobsService } from '#technical/jobs/jobs.service';
-import { WEBHOOK_QUEUE } from '#technical/jobs/jobs.constants';
-import { OutboxRegistry } from '#technical/outbox/outbox.registry';
-import type {
-  OutboxDelivery,
-  OutboxHandler,
-} from '#technical/outbox/outbox.types';
+import {
+  JobsService,
+  type OutboxDelivery,
+  type OutboxHandler,
+  OutboxRegistry,
+  WEBHOOK_QUEUE,
+} from '#technical/public/jobs';
 import {
   INBOUND_WEBHOOK_HANDLER,
   INBOUND_WEBHOOK_JOB,

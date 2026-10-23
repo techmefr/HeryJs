@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
-import { env } from '#kernel/config/env';
-import { createTenantScopedPrismaClient } from '#kernel/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#kernel/prisma/prisma.client';
-import { runInTenant } from '#kernel/tenancy/run-in-tenant';
-import type { BillingEvent } from '#kernel/billing/billing-driver';
+import { env } from '#kernel/public/env';
+import { createTenantScopedPrismaClient } from '#kernel/public/testing';
+import type { TenantScopedPrismaClient } from '#kernel/public/database';
+import { runInTenant } from '#kernel/public/tenancy';
+import type { BillingEvent } from '#kernel/public/drivers';
 import { BillingSubscriptionMirror } from './billing-subscription.mirror';
 import { BillingService } from './billing.service';
 import { QuotaExceededException } from './quota-exceeded.exception';

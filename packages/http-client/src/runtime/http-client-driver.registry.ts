@@ -1,12 +1,11 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { HERY_CONFIG } from '#kernel/config/hery-config';
-import type { HeryConfig } from '#kernel/config/hery-config.types';
+import { HERY_CONFIG, type HeryConfig } from '#kernel/public/config';
 import {
   DriverResolver,
+  HTTP_CLIENT_MODULE,
+  type HttpClientDriver,
   missingDriverMessage,
-} from '#kernel/drivers/driver-resolver';
-import { HTTP_CLIENT_MODULE } from '#kernel/http-client/http-client-driver';
-import type { HttpClientDriver } from '#kernel/http-client/http-client-driver';
+} from '#kernel/public/drivers';
 import { FakeHttpClientDriver } from './fake-http-client.driver';
 
 const BUILTIN_DRIVER = 'fake';

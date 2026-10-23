@@ -1,12 +1,14 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from '#technical/auth/auth.module';
-import { ExpositionModule } from '#technical/exposition/exposition.module';
-import { JobsModule } from '#technical/jobs/jobs.module';
-import { NotificationsModule } from '#technical/notifications/notifications.module';
-import { PrivacyModule } from '#technical/privacy/privacy.module';
-import { OutboxModule } from '#technical/outbox/outbox.module';
-import { SchedulerModule } from '#technical/scheduler/scheduler.module';
-import { SignalModule } from '#technical/signal/signal.module';
+import { AuthModule } from '#technical/public/auth';
+import { ExpositionModule } from '#technical/public/platform';
+import {
+  JobsModule,
+  OutboxModule,
+  SchedulerModule,
+} from '#technical/public/jobs';
+import { NotificationsModule } from '#technical/public/notifications';
+import { PrivacyModule } from '#technical/public/privacy';
+import { SignalModule } from '#technical/public/realtime';
 import {
   DELIVERY_POLICY,
   OUTBOUND_WEBHOOK_POLICY,

@@ -1,8 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import type { AuthenticatedUser } from '#kernel/auth/auth.types';
-import { authPrismaClient } from '#kernel/auth/better-auth.instance';
-import { createTenantScopedPrismaClient } from '#kernel/prisma/prisma.client';
-import { runInTenant } from '#kernel/tenancy/run-in-tenant';
+import { type AuthenticatedUser, authPrismaClient } from '#kernel/public/auth';
+import { createTenantScopedPrismaClient } from '#kernel/public/testing';
+import { runInTenant } from '#kernel/public/tenancy';
 import { TwoFactorCodeVerifier } from './two-factor-code.verifier';
 import { TwoFactorRequirementService } from './two-factor-requirement.service';
 import { TwoFactorSessionService } from './two-factor-session.service';

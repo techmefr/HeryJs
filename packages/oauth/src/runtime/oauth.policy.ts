@@ -1,4 +1,4 @@
-import type { PolicyCheck } from '#kernel/capabilities/capability-check';
+import type { PolicyCheck } from '#kernel/public/capabilities';
 
 export const canLinkOAuthIdentity: PolicyCheck = () => ({
   allowed: true,

@@ -1,4 +1,4 @@
-import type { Exportable } from '#kernel/export/export-driver';
+import type { Exportable } from '#kernel/public/drivers';
 import { PdfExportDriver } from './pdf-export.driver';
 
 const driver = new PdfExportDriver();

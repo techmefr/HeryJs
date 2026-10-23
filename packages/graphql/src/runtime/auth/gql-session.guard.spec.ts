@@ -1,10 +1,10 @@
 import type { ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
-import type { AuthenticatedUser, AuthProvider } from '#kernel/auth/auth.types';
+import type { AuthenticatedUser, AuthProvider } from '#kernel/public/auth';
 import {
   InvalidSessionException,
   MissingSessionException,
-} from '#kernel/errors/invalid-session.exception';
+} from '#kernel/public/errors';
 import { GqlSessionGuard } from './gql-session.guard';
 import type { GqlRequestWithUser } from './gql-session.guard';
 

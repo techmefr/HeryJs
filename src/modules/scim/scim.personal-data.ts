@@ -1,7 +1,9 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
-import { PersonalDataRegistry } from '#technical/privacy/personal-data.registry';
+import {
+  PRISMA_CLIENT,
+  type TenantScopedPrismaClient,
+} from '#technical/public/database';
+import { PersonalDataRegistry } from '#technical/public/privacy';
 
 /**
  * The directory's own copy of a user's name and external id, kept beside the

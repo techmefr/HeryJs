@@ -1,7 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
-import type { AuthenticatedUser } from '#technical/auth/auth.types';
+import {
+  PRISMA_CLIENT,
+  type TenantScopedPrismaClient,
+} from '#technical/public/database';
+import type { AuthenticatedUser } from '#technical/public/auth';
 import { generateRecoveryCodes, hashRecoveryCode } from './recovery-code';
 import { encryptSecret } from './secret-cipher';
 import { generateSecret, otpauthUrl } from './totp';

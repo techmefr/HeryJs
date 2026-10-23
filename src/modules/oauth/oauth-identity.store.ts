@@ -1,7 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
+import {
+  PRISMA_CLIENT,
+  type TenantScopedPrismaClient,
+} from '#technical/public/database';
 
 export const OAUTH_IDENTITY_STORE = Symbol('OAUTH_IDENTITY_STORE');
 

@@ -1,6 +1,8 @@
-import type { MailMessage } from '#technical/mail/mail-driver';
-import type { PushMessage } from '#technical/push/push-driver';
-import type { SmsMessage } from '#technical/sms/sms-driver';
+import type {
+  MailMessage,
+  PushMessage,
+  SmsMessage,
+} from '#technical/public/drivers';
 
 /**
  * Whatever the notifier needs to reach someone. No field is required because

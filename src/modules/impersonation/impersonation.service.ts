@@ -1,16 +1,20 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { writeAuditLog } from '#technical/audit/audit-log';
+import { writeAuditLog } from '#technical/public/privacy';
 import {
+  type AuthenticatedUser,
   authPrismaClient,
   getAuthContext,
-} from '#technical/auth/better-auth.instance';
-import type { AuthenticatedUser } from '#technical/auth/auth.types';
-import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
+} from '#technical/public/auth';
+import {
+  CapabilityForbiddenException,
+  RecordNotFoundException,
+} from '#technical/public/errors';
 import { NotImpersonatingException } from '#technical/errors/not-impersonating.exception';
-import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
 import { SelfImpersonationException } from '#technical/errors/self-impersonation.exception';
-import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
+import {
+  PRISMA_CLIENT,
+  type TenantScopedPrismaClient,
+} from '#technical/public/database';
 
 export interface ImpersonationSession {
   token: string;

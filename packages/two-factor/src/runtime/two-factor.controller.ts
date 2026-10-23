@@ -7,14 +7,14 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { CapabilitiesGuard } from '#kernel/capabilities/capabilities.guard';
-import { Capability } from '#kernel/capabilities/capability.decorator';
-import { UnpaginatedRoute } from '#kernel/http/unpaginated-route.decorator';
-import { RateLimit } from '#kernel/rate-limit/rate-limit.decorator';
-import { SessionGuard } from '#kernel/auth/session.guard';
-import type { RequestWithUser } from '#kernel/auth/session.guard';
-import { ok } from '#kernel/http/envelope';
-import { ZodValidationPipe } from '#kernel/validation/zod-validation.pipe';
+import { CapabilitiesGuard, Capability } from '#kernel/public/capabilities';
+import {
+  ok,
+  RateLimit,
+  UnpaginatedRoute,
+  ZodValidationPipe,
+} from '#kernel/public/http';
+import { type RequestWithUser, SessionGuard } from '#kernel/public/auth';
 import { bearerToken } from './bearer-token';
 import { canManageOwnTwoFactor } from './two-factor.policy';
 import { codeSchema, verifySchema } from './two-factor.schemas';

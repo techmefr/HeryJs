@@ -7,5 +7,5 @@
 export {
   authenticateSocket as authenticateLiveSocket,
   SocketAuthGuard as LiveAuthGuard,
-} from '#kernel/websocket/socket-auth.guard';
-export type { AuthenticatedSocket as LiveSocket } from '#kernel/websocket/socket-auth.guard';
+} from '#kernel/public/auth';
+export type { AuthenticatedSocket as LiveSocket } from '#kernel/public/auth';

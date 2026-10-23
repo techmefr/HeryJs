@@ -1,5 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
-import { DomainException } from '#technical/errors/domain.exception';
+import { DomainException } from '#technical/public/errors';
 
 export class StorageUploadIntentMismatchException extends DomainException {
   constructor(reason: string, details: Record<string, unknown>) {

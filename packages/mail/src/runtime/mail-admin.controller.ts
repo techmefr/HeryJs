@@ -1,13 +1,17 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
-import { AdminAction, AdminSection } from '#kernel/admin/admin-metadata';
-import { AdminStudio } from '#kernel/admin/admin-studio.guard';
-import { Capability } from '#kernel/capabilities/capability.decorator';
-import { ok } from '#kernel/http/envelope';
-import { okPage, parsePageQuery } from '#kernel/http/page-query';
-import { UnpaginatedRoute } from '#kernel/http/unpaginated-route.decorator';
-import { RateLimit } from '#kernel/rate-limit/rate-limit.decorator';
-import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
-import { ZodValidationPipe } from '#kernel/validation/zod-validation.pipe';
+import {
+  AdminAction,
+  AdminSection,
+  AdminStudio,
+  ok,
+  okPage,
+  parsePageQuery,
+  RateLimit,
+  UnpaginatedRoute,
+  ZodValidationPipe,
+} from '#kernel/public/http';
+import { Capability } from '#kernel/public/capabilities';
+import { TenantContextStorage } from '#kernel/public/tenancy';
 import { MailDriverRegistry } from './mail-driver.registry';
 import { canReadMailLog, canSendTestMail } from './mail.policy';
 import { MailService } from './mail.service';

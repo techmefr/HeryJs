@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { exportCellText, exportHeaders } from '#kernel/export/export-driver';
-import type {
-  ExportDriver,
-  Exportable,
-  ExportRow,
-} from '#kernel/export/export-driver';
+import {
+  type Exportable,
+  exportCellText,
+  type ExportDriver,
+  exportHeaders,
+  type ExportRow,
+} from '#kernel/public/drivers';
 
 /**
  * Export's zero-config default, and the counterpart of mail's log driver: a

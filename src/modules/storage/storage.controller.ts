@@ -1,7 +1,7 @@
 import { Controller, Get, Param, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
-import { PublicRoute } from '#technical/capabilities/public-route.decorator';
-import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
+import { PublicRoute } from '#technical/public/capabilities';
+import { RateLimit } from '#technical/public/http';
 import { LocalStorageDriver } from './local-storage.driver';
 import { StorageSignatureGuard } from './storage-signature.guard';
 

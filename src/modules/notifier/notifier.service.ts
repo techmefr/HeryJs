@@ -1,15 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { recipientLocale, runInLocale } from '#technical/i18n/recipient-locale';
-import { notifierMailChannel } from '#technical/notifier/notifier-mail-channel';
-import { notifierPushChannel } from '#technical/notifier/notifier-push-channel';
+import { recipientLocale, runInLocale } from '#technical/public/i18n';
 import {
+  NOTIFICATION_PROVIDER,
+  type NotificationProvider,
+  notifierMailChannel,
+  notifierPushChannel,
   notifierSmsChannel,
   notifierSmsConsent,
-} from '#technical/notifier/notifier-sms-channel';
-import { NOTIFICATION_PROVIDER } from '#technical/notifications/notification.types';
-import type { NotificationProvider } from '#technical/notifications/notification.types';
-import { runInTenant } from '#technical/tenancy/run-in-tenant';
-import { TenantContextStorage } from '#technical/tenancy/tenant-context';
+} from '#technical/public/notifications';
+import { runInTenant, TenantContextStorage } from '#technical/public/tenancy';
 import { decideDelivery } from './delivery-policy';
 import type { DeliveryDecision } from './delivery-policy';
 import type {

@@ -1,8 +1,12 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { PRISMA_CLIENT } from '#kernel/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#kernel/prisma/prisma.client';
-import { PersonalDataRegistry } from '#kernel/privacy/personal-data.registry';
-import type { PersonalDataSubject } from '#kernel/privacy/personal-data.types';
+import {
+  PRISMA_CLIENT,
+  type TenantScopedPrismaClient,
+} from '#kernel/public/database';
+import {
+  PersonalDataRegistry,
+  type PersonalDataSubject,
+} from '#kernel/public/privacy';
 
 /**
  * A mail log names its recipient by address, not by account, so the rows of a

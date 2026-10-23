@@ -3,8 +3,11 @@ import { Meilisearch } from 'meilisearch';
 import type { EnqueuedTask } from 'meilisearch';
 import { meilisearchEnv } from './meilisearch-search.env';
 import { MeilisearchTaskFailedException } from './meilisearch-task-failed.exception';
-import { matchesFrom } from '#kernel/search/search-driver';
-import type { SearchDriver, SearchMatches } from '#kernel/search/search-driver';
+import {
+  matchesFrom,
+  type SearchDriver,
+  type SearchMatches,
+} from '#kernel/public/drivers';
 
 const TENANT_FIELD = 'tenantId';
 const PRIMARY_KEY = 'id';

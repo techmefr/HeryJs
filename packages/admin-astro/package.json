@@ -26,6 +26,13 @@
   },
   "main": "dist/module.js",
   "types": "dist/module.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/module.d.ts",
+      "default": "./dist/module.js"
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist",
     "src/runtime"
@@ -35,7 +42,7 @@
     "prepack": "pnpm --filter heryjs run build:scaffold && pnpm run build"
   },
   "peerDependencies": {
-    "@nestjs/common": "^12.0.0"
+    "heryjs": "workspace:^"
   },
   "devDependencies": {
     "astro": "^7.3.1",

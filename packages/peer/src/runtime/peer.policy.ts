@@ -1,5 +1,4 @@
-import { everyone } from '#kernel/capabilities/ability';
-import type { PolicyCheck } from '#kernel/capabilities/capability-check';
+import { everyone, type PolicyCheck } from '#kernel/public/capabilities';
 
 /**
  * A peer room is not a generated resource with an owner column and presets of

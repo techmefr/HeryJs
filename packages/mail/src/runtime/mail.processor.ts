@@ -1,10 +1,12 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject } from '@nestjs/common';
 import type { Job } from 'bullmq';
-import { DEFAULT_QUEUE } from '#kernel/jobs/jobs.constants';
-import { TelemetryBus } from '#kernel/tracing/telemetry-bus';
-import { PRISMA_CLIENT } from '#kernel/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#kernel/prisma/prisma.client';
+import { DEFAULT_QUEUE } from '#kernel/public/jobs';
+import { TelemetryBus } from '#kernel/public/observability';
+import {
+  PRISMA_CLIENT,
+  type TenantScopedPrismaClient,
+} from '#kernel/public/database';
 import { MAIL_SEND_JOB } from './mail.constants';
 import { MailDriverRegistry } from './mail-driver.registry';
 

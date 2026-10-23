@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from '#kernel/auth/auth.module';
-import { HeryConfigModule } from '#kernel/config/hery-config.module';
-import { DriversModule } from '#kernel/drivers/drivers.module';
+import { AuthModule } from '#kernel/public/auth';
+import { HeryConfigModule } from '#kernel/public/config';
+import { DriversModule, storageDriverToken } from '#kernel/public/drivers';
 import { LocalStorageDriver } from './local-storage.driver';
 import { S3StorageDriver } from './s3-storage.driver';
 import { StorageAdminController } from './storage-admin.controller';
@@ -13,9 +13,8 @@ import { StorageUploadController } from './storage-upload.controller';
 import { StorageUploadIntentController } from './storage-upload-intent.controller';
 import { StorageUploadIntentService } from './storage-upload-intent.service';
 import { StorageService } from './storage.service';
-import { storageDriverToken } from '#kernel/storage/storage-driver';
 import './storage.catalogue';
-import { PrivacyModule } from '#kernel/privacy/privacy.module';
+import { PrivacyModule } from '#kernel/public/privacy';
 import { StoragePersonalData } from './storage.personal-data';
 
 const LOCAL_DRIVER_TOKEN = storageDriverToken('local');

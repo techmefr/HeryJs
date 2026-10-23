@@ -1,4 +1,4 @@
-import type { PolicyCheck } from '#kernel/capabilities/capability-check';
+import type { PolicyCheck } from '#kernel/public/capabilities';
 
 /**
  * A token grants a stream of whatever the caller's own tenant publishes,

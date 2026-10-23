@@ -1,13 +1,13 @@
 import { Test } from '@nestjs/testing';
-import { CacheService } from '#kernel/cache/cache.service';
-import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
+import { CacheService } from '#kernel/public/platform';
+import { TenantContextStorage } from '#kernel/public/tenancy';
 import type {
   PresignedUpload,
   StorageDriver,
   StoredObject,
   StoredObjectStat,
   StoredObjectSummary,
-} from '#kernel/storage/storage-driver';
+} from '#kernel/public/drivers';
 import { StorageDriverRegistry } from './storage-driver.registry';
 import { StorageUploadIntentMismatchException } from './storage-upload-intent-mismatch.exception';
 import { StorageUploadIntentNotFoundException } from './storage-upload-intent-not-found.exception';

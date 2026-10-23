@@ -1,23 +1,23 @@
-import { LocaleContextStorage } from '#technical/i18n/locale-context';
-import type { MailMessage } from '#technical/mail/mail-driver';
-import { setNotifierMailChannel } from '#technical/notifier/notifier-mail-channel';
-import type { NotifierMailChannel } from '#technical/notifier/notifier-mail-channel';
-import { setNotifierPushChannel } from '#technical/notifier/notifier-push-channel';
+import { LocaleContextStorage } from '#technical/public/i18n';
 import type {
-  NotifierPushChannel,
-  NotifierPushDelivery,
-} from '#technical/notifier/notifier-push-channel';
+  MailMessage,
+  PushMessage,
+  SmsMessage,
+} from '#technical/public/drivers';
 import {
+  type NotifierMailChannel,
+  type NotifierPushChannel,
+  type NotifierPushDelivery,
+  type NotifierSmsConsentDecision,
+  setNotifierMailChannel,
+  setNotifierPushChannel,
   setNotifierSmsChannel,
   setNotifierSmsConsent,
-} from '#technical/notifier/notifier-sms-channel';
+} from '#technical/public/testing';
 import type {
+  NotificationProvider,
   NotifierSmsChannel,
-  NotifierSmsConsentDecision,
-} from '#technical/notifier/notifier-sms-channel';
-import type { NotificationProvider } from '#technical/notifications/notification.types';
-import type { PushMessage } from '#technical/push/push-driver';
-import type { SmsMessage } from '#technical/sms/sms-driver';
+} from '#technical/public/notifications';
 import type { Notification, NotificationRecipient } from './notification';
 import { NotificationDigestService } from './notification-digest.service';
 import type { DigestEntryInput } from './notification-digest.service';

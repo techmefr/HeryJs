@@ -1,5 +1,4 @@
-import { DEFAULT_JOB_POLICY } from '#kernel/jobs/job-policy';
-import type { JobPolicy } from '#kernel/jobs/job-policy';
+import { DEFAULT_JOB_POLICY, type JobPolicy } from '#kernel/public/jobs';
 
 export const EXPORT_GENERATE_JOB = 'export.generate';
 export const EXPORT_READY_NOTIFICATION = 'export.ready';
