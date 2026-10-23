@@ -7,6 +7,7 @@ import {
   pendingRlsModels,
   writeRlsMigration,
 } from '../lib/rls';
+import { runSync } from './sync';
 
 /**
  * `prisma migrate dev` does not always regenerate the client -- applying an
@@ -44,9 +45,16 @@ function runPrismaMigrate(name?: string): number {
 export function registerMigrateCommand(program: Command): void {
   program
     .command('migrate')
-    .description('Run Prisma migrate dev')
+    .description('Sync the kernel schema, then run Prisma migrate dev')
     .option('--name <name>', 'Migration name')
     .action((options: { name?: string }) => {
+      const synced = runSync(process.cwd(), false);
+
+      if (synced !== 0) {
+        process.exitCode = synced;
+        return;
+      }
+
       const status = runPrismaMigrate(options.name);
 
       if (status !== 0) {

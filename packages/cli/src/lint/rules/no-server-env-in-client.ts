@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
-import { publicEnvKeys } from '../../../../src/technical/config/env-schema';
+import { publicEnvKeys } from '@heryjs/core/technical/config/env-schema';
 import { walkFiles } from '../walk';
 import type { LintRule, Violation } from '../types';
 

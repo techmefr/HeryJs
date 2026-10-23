@@ -1,0 +1,52 @@
+{
+  "name": "@heryjs/cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The HeryJs project tooling: the hery lint rules and the kernel schema sync a project runs against its own code.",
+  "author": "Gaetan Compigni",
+  "license": "MIT",
+  "homepage": "https://techmefr.github.io/HeryJs/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/techmefr/HeryJs.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/techmefr/HeryJs/issues"
+  },
+  "keywords": [
+    "heryjs",
+    "nestjs"
+  ],
+  "engines": {
+    "node": ">=24.20"
+  },
+  "sideEffects": false,
+  "exports": {
+    "./lint": {
+      "heryjs-source": "./src/lint/index.ts",
+      "types": "./dist/lint/index.d.ts",
+      "default": "./dist/lint/index.js"
+    },
+    "./sync": {
+      "heryjs-source": "./src/sync/index.ts",
+      "types": "./dist/sync/index.d.ts",
+      "default": "./dist/sync/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json"
+  },
+  "peerDependencies": {
+    "@heryjs/core": "^0.1.0",
+    "typescript": "^6.0.3"
+  },
+  "devDependencies": {
+    "@heryjs/core": "workspace:*",
+    "typescript": "^6.0.3"
+  }
+}

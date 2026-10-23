@@ -17,20 +17,24 @@ datasource db {
 
 /// @hery.appEnforcedTenant Written by better-auth's own adapter, which runs its own transactions.
 model User {
-  id                  String   @id @default(cuid())
-  email               String   @unique
-  emailVerified       Boolean  @default(false)
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  emailVerified       Boolean   @default(false)
   name                String?
   image               String?
-  tenantId            String   @default("default")
+  tenantId            String    @default("default")
   currentTeamId       String?
-  twoFactorEnabled    Boolean  @default(false)
-  phoneNumber         String?  @unique
-  phoneNumberVerified Boolean  @default(false)
-  isAnonymous         Boolean  @default(false)
+  role                String?
+  banned              Boolean   @default(false)
+  banReason           String?
+  banExpires          DateTime?
+  twoFactorEnabled    Boolean   @default(false)
+  phoneNumber         String?   @unique
+  phoneNumberVerified Boolean   @default(false)
+  isAnonymous         Boolean   @default(false)
   locale              String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   sessions      Session[]
   accounts      Account[]
