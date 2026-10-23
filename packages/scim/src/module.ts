@@ -1,6 +1,7 @@
 import type { ModuleDefinition } from 'heryjs';
 
 const SCIM_MODELS = `
+/// @hery.appEnforcedTenant Looked up by the hash of the bearer token a directory sends, which is how the tenant is learned in the first place: there is no ambient tenant to scope the lookup by, and each row carries the one it belongs to.
 model ScimToken {
   id         String    @id @default(cuid())
   tenantId   String    @unique
@@ -11,6 +12,7 @@ model ScimToken {
   lastUsedAt DateTime?
 }
 
+/// @hery.tenantScoped
 model ScimIdentity {
   id         String   @id @default(cuid())
   tenantId   String
@@ -39,8 +41,7 @@ export default {
     context.addPrismaModels(SCIM_MODELS);
 
     context.nextSteps([
-      'Run "pnpm hery migrate --name add_scim"',
-      'Add "ScimIdentity" to TENANT_SCOPED_MODELS in src/technical/prisma/prisma.client.ts and enable row-level security on it in that migration (ENABLE and FORCE ROW LEVEL SECURITY plus a tenant_isolation policy on "tenantId" = current_setting(\'app.tenant_id\', true))',
+      'Run "pnpm hery migrate --name add_scim": ScimIdentity is annotated @hery.tenantScoped, so the same run emits its row-level security policy',
       'Import "ScimModule" into src/app.module.ts',
       'A tenant admin issues the tenant token with POST /scim/token (shown once; calling it again rotates it) and gives the identity provider the base URL "<origin>/scim/v2" with that token as a bearer token',
       'GET /scim/token shows whether a token is set and when it was last used, and GET /scim/activity lists what the directory created, updated and deactivated: both appear in the admin panel on their own',

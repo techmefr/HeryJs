@@ -1,4 +1,4 @@
-import { modelSetMarker } from './model-set';
+import { modelSetMarker } from './legacy-registries';
 
 // The comment lines directly above a model belong to it: leaving them behind
 // gives a scaffolded schema a paragraph about a pivot table that is no longer

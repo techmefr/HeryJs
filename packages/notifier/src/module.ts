@@ -1,6 +1,7 @@
 import type { ModuleDefinition } from 'heryjs';
 
 const NOTIFICATION_PREFERENCE_MODELS = `
+/// @hery.tenantScoped
 model NotificationPreference {
   id        String   @id @default(cuid())
   tenantId  String
@@ -18,6 +19,7 @@ model NotificationPreference {
   @@index([tenantId])
 }
 
+/// @hery.tenantScoped
 model NotificationSetting {
   id              String   @id @default(cuid())
   tenantId        String
@@ -34,6 +36,7 @@ model NotificationSetting {
   @@index([tenantId])
 }
 
+/// @hery.appEnforcedTenant Staged inside the transaction of the write it describes, and drained by a relay with no request behind it, so it can be neither stamped nor filtered by the ambient tenant.
 model NotificationDigestEntry {
   id        String   @id @default(cuid())
   tenantId  String

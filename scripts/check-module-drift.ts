@@ -79,11 +79,8 @@ function isBuildArtifact(relative: string): boolean {
 
 /**
  * The other direction, and it only works where a directory belongs to the module
- * outright: `src/modules/<name>` and the `admin` workspace. A module that drops
- * files into a shared kernel folder -- impersonation's two exceptions in
- * technical/errors, the search drivers in technical/search -- cannot be checked
- * this way, because nothing in a path distinguishes its file from the kernel's
- * own. Those are covered in the authored-to-installed direction only.
+ * outright: `src/modules/<name>` and the `admin` workspace, which is every
+ * module now that none may land in the kernel (`lint:module-destinations`).
  */
 function ownedInstalledFiles(module: ModulePackage): string[] {
   const owned = [

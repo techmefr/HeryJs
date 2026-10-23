@@ -12,6 +12,7 @@ import {
   historyServiceConstants,
   historyServiceImports,
   historyServiceMethods,
+  historySnapshotColumns,
   historySpecBlock,
 } from './history-templates';
 import {
@@ -2290,9 +2291,9 @@ export function resolverFile(ctx: ResourceContext): string {
 import {
 ${graphqlImports}
 } from '@nestjs/graphql';
-import { GqlSessionGuard } from '#technical/auth/gql-session.guard';
-import type { GqlRequestWithUser } from '#technical/auth/gql-session.guard';
-import { CurrentGqlRequest } from '#technical/auth/current-gql-request.decorator';
+import { GqlSessionGuard } from '#modules/graphql/auth/gql-session.guard';
+import type { GqlRequestWithUser } from '#modules/graphql/auth/gql-session.guard';
+import { CurrentGqlRequest } from '#modules/graphql/auth/current-gql-request.decorator';
 import { subjectOf } from '@heryjs/core/capabilities';
 import { CapabilityForbiddenException } from '@heryjs/core/errors';
 import { RecordNotFoundException } from '@heryjs/core/errors';
@@ -2451,7 +2452,7 @@ export function mcpToolsFile(ctx: ResourceContext): string {
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Inject, Injectable } from '@nestjs/common';
 import type { CapabilitySubject } from '@heryjs/core/capabilities';
-${ctx.versioned ? `import { VersionConflictException } from '@heryjs/core/errors';\n` : ''}import type { McpToolRegistrar } from '#technical/mcp/mcp-tool-registrar';
+${ctx.versioned ? `import { VersionConflictException } from '@heryjs/core/errors';\n` : ''}import type { McpToolRegistrar } from '#modules/mcp/mcp-tool-registrar';
 import { create${ctx.pascalName}Schema, update${ctx.pascalName}Schema } from './${ctx.kebabName}.dto';
 import {
   canCreate${ctx.pascalName},
@@ -5098,27 +5099,68 @@ export function ${ctx.camelName}Factory(
 `;
 }
 
+function annotatedField(
+  ctx: ResourceContext,
+  column: string,
+  line: string,
+  encrypted = false,
+): string {
+  const annotations = [
+    ...(ctx.history && historySnapshotColumns(ctx).includes(column)
+      ? ['  /// @hery.history']
+      : []),
+    ...(encrypted ? ['  /// @hery.encrypted'] : []),
+  ];
+
+  return [...annotations, line].join('\n');
+}
+
 export function prismaModelBlock(ctx: ResourceContext): string {
   const customFieldLines = ctx.fields
-    .map(
-      (field) =>
+    .map((field) =>
+      annotatedField(
+        ctx,
+        field.name,
         // A row written past the service (a seeder, a raw script) still gets a
         // valid, unique slug; the service always replaces it with a readable one.
         `  ${field.name} ${prismaTypeFor(field)}${field.type === 'slug' ? ' @default(cuid())' : ''}`,
+        field.type === 'encrypted',
+      ),
     )
     .join('\n');
   const vectorLine = ctx.vector
     ? `\n  ${ctx.vector.name} Unsupported("vector(${ctx.vector.dimensions})")?`
     : '';
+  const trailingLines = [
+    ...(ctx.softDeletes
+      ? [annotatedField(ctx, 'deletedAt', '  deletedAt DateTime?')]
+      : []),
+    ...(ctx.versioned
+      ? [annotatedField(ctx, 'version', '  version   Int       @default(1)')]
+      : []),
+    ...(ctx.workflow
+      ? [
+          annotatedField(
+            ctx,
+            ctx.workflow.field,
+            `  ${ctx.workflow.field.padEnd(9)} String    @default("${ctx.workflow.initial}")`,
+          ),
+        ]
+      : []),
+  ]
+    .map((line) => `\n${line}`)
+    .join('');
 
   return `
+/// @hery.tenantScoped
+/// @hery.audited
 model ${ctx.pascalName} {
   id        String    @id @default(cuid())
   tenantId  String
   ownerId   String${ownedByTeam(ctx) ? `\n  teamId    String` : ''}
 ${customFieldLines}${vectorLine}
   createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt${ctx.softDeletes ? `\n  deletedAt DateTime?` : ''}${ctx.versioned ? `\n  version   Int       @default(1)` : ''}${ctx.workflow ? `\n  ${ctx.workflow.field.padEnd(9)} String    @default("${ctx.workflow.initial}")` : ''}
+  updatedAt DateTime  @updatedAt${trailingLines}
 
   owner User @relation(fields: [ownerId], references: [id])${ownedByTeam(ctx) ? `\n  team  Team @relation(fields: [teamId], references: [id])` : ''}
 

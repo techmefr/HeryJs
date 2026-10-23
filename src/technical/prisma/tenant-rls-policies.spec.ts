@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
-import { modelSetIn } from '../../../cli/lib/rls';
+import { tenantScopedModelsIn } from '../../../cli/lib/rls';
 
 /**
  * lint:rls proves the migration exists. This proves the database it produced
@@ -16,9 +16,11 @@ describe('tenant isolation policies (real database)', () => {
   });
   const prisma = new PrismaClient({ adapter });
 
-  const governed = modelSetIn(
-    readFileSync(path.join(__dirname, 'prisma.client.ts'), 'utf8'),
-    'TENANT_SCOPED_MODELS',
+  const governed = tenantScopedModelsIn(
+    readFileSync(
+      path.join(__dirname, '..', '..', '..', 'prisma', 'schema.prisma'),
+      'utf8',
+    ),
   );
 
   beforeAll(async () => {

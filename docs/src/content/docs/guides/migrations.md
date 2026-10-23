@@ -10,8 +10,8 @@ Schema changes go through Prisma. `pnpm hery migrate --name <name>` wraps
 
 **A row-level-security pass.** A tenant-scoped model needs a Postgres policy
 behind the extension that scopes it. Writing that by hand is what got forgotten
-for the teams tables once, so the policy is emitted from the schema and
-`TENANT_SCOPED_MODELS` rather than remembered: after the tables exist, a second
+for the teams tables once, so the policy is emitted from the schema's
+`/// @hery.tenantScoped` annotations rather than remembered: after the tables exist, a second
 migration is written for any model still missing one, then applied.
 
 **A client regeneration.** `prisma migrate dev` does not always regenerate the

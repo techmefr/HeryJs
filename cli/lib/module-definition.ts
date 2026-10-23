@@ -105,8 +105,8 @@ export interface ModuleDefinition {
    * Where `src/runtime/` lands, relative to the project root. Omitted, it is
    * `src/modules/<name>` -- and declaring that value by hand is refused rather
    * than accepted, so one destination has one spelling. What is left to
-   * declare is a module that lands somewhere else: inside the kernel, or
-   * beside `src/` entirely.
+   * declare is a module that lands beside `src/` entirely. Never inside the
+   * kernel: `lint:module-destinations` refuses it.
    *
    * Declared here rather than hidden in a local constant so
    * `lint:module-drift` can compare the two copies of every file without

@@ -1,6 +1,7 @@
 import type { ModuleDefinition } from 'heryjs';
 
 const SMS_CONSENT_MODEL = `
+/// @hery.tenantScoped
 model SmsConsent {
   id        String   @id @default(cuid())
   tenantId  String

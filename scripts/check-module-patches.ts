@@ -24,9 +24,8 @@ function filesUnder(dir: string): string[] {
 
 /**
  * Whether this project holds the module's runtime, not whether its destination
- * exists: three modules land in a directory the kernel owns anyway
- * (`src/technical`, `src/technical/search`, `src` itself), so a check keyed on
- * the destination counted every one of them as installed and then looked for
+ * exists: a module used to land in a directory the kernel owns anyway, so a
+ * check keyed on the destination counted it as installed and then looked for
  * patches nothing had ever applied.
  */
 function isInstalled(module: LoadedModule): boolean {

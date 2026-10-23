@@ -6,7 +6,10 @@ import {
   writeFileSync,
 } from 'node:fs';
 import * as path from 'node:path';
-import { modelSetPattern } from './model-set';
+import {
+  annotatedModelsIn,
+  registriesFrom,
+} from '#technical/prisma/model-annotations';
 
 const MODEL_BLOCK = /^model\s+(\w+)\s*\{([\s\S]*?)^\}/gm;
 const TENANT_FIELD = /^\s*tenantId\s+String(\?)?/m;
@@ -47,18 +50,9 @@ export function declaredModelsIn(schemaSource: string): string[] {
   );
 }
 
-export function modelSetIn(source: string, setName: string): string[] {
-  // Comments go first: an apostrophe in one of them (better-auth's own adapter)
-  // is indistinguishable from a quote once the entries are read by pattern.
-  const match = modelSetPattern(setName).exec(
-    source.replace(/\/\/[^\n]*/g, ''),
-  );
-
-  if (!match) {
-    return [];
-  }
-
-  return [...(match[1] ?? '').matchAll(/'([^']+)'/g)].map((entry) => entry[1]!);
+/** The models the schema annotates `/// @hery.tenantScoped`. */
+export function tenantScopedModelsIn(schemaSource: string): string[] {
+  return [...registriesFrom(annotatedModelsIn(schemaSource)).tenantScoped];
 }
 
 export function rlsEnabledTablesIn(migrationsDir: string): Set<string> {
@@ -151,30 +145,22 @@ CREATE POLICY tenant_isolation ON "${model.name}"
 
 /**
  * The tenant-scoped models whose table has no policy yet. `hery generate`
- * patches TENANT_SCOPED_MODELS for the resource it writes, so this is what
- * turns that patch into the matching migration instead of leaving it to be
- * remembered -- which is how the teams tables went a month without one.
+ * annotates the model it writes `/// @hery.tenantScoped`, so this is what
+ * turns that annotation into the matching migration instead of leaving it to
+ * be remembered -- which is how the teams tables went a month without one.
  */
 export function pendingRlsModels(root: string): TenantModel[] {
   const schema = path.join(root, 'prisma', 'schema.prisma');
-  const clientPath = path.join(
-    root,
-    'src',
-    'technical',
-    'prisma',
-    'prisma.client.ts',
-  );
 
-  if (!existsSync(schema) || !existsSync(clientPath)) {
+  if (!existsSync(schema)) {
     return [];
   }
 
-  const governed = new Set(
-    modelSetIn(readFileSync(clientPath, 'utf8'), 'TENANT_SCOPED_MODELS'),
-  );
+  const source = readFileSync(schema, 'utf8');
+  const governed = new Set(tenantScopedModelsIn(source));
   const covered = rlsEnabledTablesIn(path.join(root, 'prisma', 'migrations'));
 
-  return tenantModelsIn(readFileSync(schema, 'utf8')).filter(
+  return tenantModelsIn(source).filter(
     (model) => governed.has(model.name) && !covered.has(model.name),
   );
 }

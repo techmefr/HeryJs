@@ -1,52 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import type { ResourceContext } from './resource-context';
-import { modelSetMarker } from './model-set';
 import { prismaModelBlock } from './templates';
-
-/**
- * Adds a model name to one of the model registries the kernel keeps, so a
- * generated resource is tenant-scoped and audited without the developer having
- * to remember two edits in two files.
- */
-export function patchModelSet(
-  filePath: string,
-  setName: string,
-  pascalName: string,
-): void {
-  const source = readFileSync(filePath, 'utf8');
-  const marker = modelSetMarker(setName);
-  const start = source.indexOf(marker);
-
-  if (start === -1) {
-    throw new Error(`Could not find ${setName} in ${filePath}`);
-  }
-
-  const end = source.indexOf(']', start);
-
-  if (end === -1) {
-    throw new Error(`${setName} in ${filePath} is never closed`);
-  }
-
-  if (source.slice(start, end).includes(`'${pascalName}'`)) {
-    return;
-  }
-
-  const body = source.slice(start + marker.length, end);
-  const items = body.trimEnd();
-  const trailing = body.slice(items.length);
-  const hasTrailingComma = items.endsWith(',');
-  const entry = `'${pascalName}'`;
-  let patchedBody = `${items}, ${entry}`;
-
-  if (items.trim() === '') {
-    patchedBody = entry;
-  } else if (hasTrailingComma) {
-    patchedBody = `${items} ${entry},`;
-  }
-
-  const patched = `${source.slice(0, start + marker.length)}${patchedBody}${trailing}${source.slice(end)}`;
-  writeFileSync(filePath, patched);
-}
 
 export const PRISMA_SCHEMA = 'prisma/schema.prisma';
 
@@ -82,8 +36,8 @@ export function addPrismaModels(filePath: string, models: string): boolean {
  * Adds field lines to an existing model block, for a module whose runtime
  * needs a column on a model it does not own (impersonation needs `role` on
  * `User`, which belongs to the kernel's auth schema, not to the module).
- * Guarded on the first field already being present, the same one-check
- * idempotence `patchModelSet` uses.
+ * Guarded on the first field already being present, so a second install is a
+ * no-op.
  */
 export function addModelFields(
   filePath: string,

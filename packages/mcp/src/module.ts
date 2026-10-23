@@ -5,7 +5,6 @@ export default {
   description:
     'Add an authenticated MCP gateway (Streamable HTTP, stateless) exposing generated resources as tools. Use "hery generate <Name> --mcp" to add write tools to a resource.',
   meta: { compatibility: '>=0.0.1' },
-  dest: 'src/technical/mcp',
   dependencies: ['@modelcontextprotocol/sdk'],
   install(context) {
     context.copyRuntime();

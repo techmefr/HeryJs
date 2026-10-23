@@ -45,7 +45,6 @@
     "@heryjs/core": "workspace:^",
     "@nestjs/common": "^12.0.0",
     "@nestjs/schedule": "^12.0.0",
-    "better-auth": "^1.0.0",
     "heryjs": "workspace:^"
   },
   "devDependencies": {

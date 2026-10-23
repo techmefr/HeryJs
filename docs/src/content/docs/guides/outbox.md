@@ -9,7 +9,7 @@ The outbox closes the gap the way Laravel's `afterCommit` and Supabase's in-data
 
 ## Generated CRUD goes through it already
 
-Every `create`, `update`, `upsert` and `delete` of a model in `TENANT_SCOPED_MODELS` stages one message inside the transaction of the write itself. The tenant-scoped Prisma client does it, so a generated service has nothing to remember and a hand-written one cannot forget.
+Every `create`, `update`, `upsert` and `delete` of a model annotated `/// @hery.tenantScoped` stages one message inside the transaction of the write itself. The tenant-scoped Prisma client does it, so a generated service has nothing to remember and a hand-written one cannot forget.
 
 | Write | Message |
 | --- | --- |

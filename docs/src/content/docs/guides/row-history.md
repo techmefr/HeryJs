@@ -12,7 +12,7 @@ history: true
 
 ## What is stored
 
-Every create, update, soft delete and restore writes one `RecordSnapshot` row: the record as it stood after the write, who wrote it, and the operation (`create`, `update`, `delete`, `restore` or `revert`). The columns kept are registered in `HISTORY_COLUMNS` by `hery generate`, and a field that is `hidden` or `encrypted` is never registered, so it is never stored, not merely filtered later. `version` and `deletedAt` are kept when the resource has them.
+Every create, update, soft delete and restore writes one `RecordSnapshot` row: the record as it stood after the write, who wrote it, and the operation (`create`, `update`, `delete`, `restore` or `revert`). The columns kept are annotated `/// @hery.history` in the schema by `hery generate`, and a field that is `hidden` or `encrypted` is never annotated, so it is never stored, not merely filtered later. `version` and `deletedAt` are kept when the resource has them.
 
 Writes made through the resource's Prisma client are recorded. `updateMany`, `deleteMany`, `createMany` and raw SQL are not, because their result carries no rows. A hard delete (and purge, and prune of a trashed row) removes the record's history with it.
 

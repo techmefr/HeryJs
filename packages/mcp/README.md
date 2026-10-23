@@ -10,7 +10,7 @@ already installable from any HeryJs project, so there is nothing to add to your
 pnpm hery install mcp
 ```
 
-The install copies this package's `src/runtime/` into `src/technical/mcp` and prints
+The install copies this package's `src/runtime/` into `src/modules/mcp` and prints
 what is left for you to wire up. From then on the code is yours: it is never
 resynchronised, and updating this package does not touch what it wrote.
 
