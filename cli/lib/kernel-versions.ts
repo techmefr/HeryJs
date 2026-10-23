@@ -1414,6 +1414,7 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
     ],
     'src/technical/i18n/catalogue-completeness.spec.ts': [
       '5e5baaebca75f42dc7b18719a3148a0308de8005120e8fb661ea277c2aaec1c8',
+      '9c56bbd3781826b210bd4de69dc02f1414a8c1f3313e08d8dfcb84515575f379',
     ],
     'src/technical/i18n/catalogue.ts': [
       '48a05c4e52259f5c9d93f816455c5e90317eedc9e03a6d94a018fa47f54032ef',
