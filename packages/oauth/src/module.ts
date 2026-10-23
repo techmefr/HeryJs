@@ -1,6 +1,7 @@
 import type { ModuleDefinition } from 'heryjs';
 
 const OAUTH_IDENTITY_MODEL = `
+/// @hery.tenantFree A provider identity hanging off a User, which carries the tenant; a sign-in looks it up by provider and provider user id before any session exists, so there is no tenant to scope the lookup by.
 model OauthIdentity {
   id             String   @id @default(cuid())
   userId         String

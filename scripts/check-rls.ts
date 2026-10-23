@@ -1,8 +1,11 @@
 import { existsSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import {
+  annotatedModelsIn,
+  registriesFrom,
+} from '#technical/prisma/model-annotations';
+import {
   declaredModelsIn,
-  modelSetIn,
   rlsEnabledTablesIn,
   tenantModelsIn,
 } from '../cli/lib/rls';
@@ -10,13 +13,6 @@ import {
 const REPO_ROOT = path.resolve(__dirname, '..');
 const SCHEMA = path.join(REPO_ROOT, 'prisma', 'schema.prisma');
 const MIGRATIONS = path.join(REPO_ROOT, 'prisma', 'migrations');
-const PRISMA_CLIENT = path.join(
-  REPO_ROOT,
-  'src',
-  'technical',
-  'prisma',
-  'prisma.client.ts',
-);
 
 /**
  * The tenant boundary is enforced twice on purpose -- once by the Prisma
@@ -25,8 +21,8 @@ const PRISMA_CLIENT = path.join(
  * governed by the extension with no policy behind them for a month.
  *
  * So every model carrying a tenantId now has to be accounted for: covered by a
- * row-level policy, or recorded in APP_ENFORCED_TENANT_MODELS with the reason
- * it cannot be. Silence is the one thing this check does not allow.
+ * row-level policy, or annotated `/// @hery.appEnforcedTenant <reason>` with
+ * the reason it cannot be. Silence is the one thing this check does not allow.
  */
 export function checkRls(): boolean {
   if (!existsSync(SCHEMA)) {
@@ -34,13 +30,11 @@ export function checkRls(): boolean {
     return false;
   }
 
-  const clientSource = readFileSync(PRISMA_CLIENT, 'utf8');
-  const governed = new Set(modelSetIn(clientSource, 'TENANT_SCOPED_MODELS'));
-  const appEnforced = new Set(
-    modelSetIn(clientSource, 'APP_ENFORCED_TENANT_MODELS'),
-  );
-  const tenantFree = new Set(modelSetIn(clientSource, 'TENANT_FREE_MODELS'));
   const schemaSource = readFileSync(SCHEMA, 'utf8');
+  const registries = registriesFrom(annotatedModelsIn(schemaSource));
+  const governed = registries.tenantScoped;
+  const appEnforced = registries.appEnforcedTenant;
+  const tenantFree = registries.tenantFree;
   const tenantModels = tenantModelsIn(schemaSource);
   const declared = declaredModelsIn(schemaSource);
   const covered = rlsEnabledTablesIn(MIGRATIONS);
@@ -54,13 +48,13 @@ export function checkRls(): boolean {
 
     if (!carriesTenant && !tenantFree.has(model)) {
       problems.push(
-        `${model} has no tenantId — give it one, or record it in TENANT_FREE_MODELS with the reason it cannot have one`,
+        `${model} has no tenantId — give it one, or annotate it /// @hery.tenantFree <the reason it cannot have one>`,
       );
     }
 
     if (carriesTenant && tenantFree.has(model)) {
       problems.push(
-        `TENANT_FREE_MODELS lists ${model}, which does carry a tenantId — decide which of the two it is`,
+        `${model} is @hery.tenantFree but does carry a tenantId — decide which of the two it is`,
       );
     }
   }
@@ -68,14 +62,14 @@ export function checkRls(): boolean {
   for (const model of appEnforced) {
     if (!tenantModels.some((entry) => entry.name === model)) {
       problems.push(
-        `APP_ENFORCED_TENANT_MODELS lists ${model}, which has no tenantId column — the list claims a boundary the table cannot hold`,
+        `${model} is @hery.appEnforcedTenant but has no tenantId column — the annotation claims a boundary the table cannot hold`,
       );
     }
   }
 
   if (governed.size === 0) {
     console.error(
-      'Found no TENANT_SCOPED_MODELS in prisma.client.ts. This check reports success\non an empty scan, so an empty scan has to be the failure instead.',
+      'Found no /// @hery.tenantScoped model in prisma/schema.prisma. This check reports\nsuccess on an empty scan, so an empty scan has to be the failure instead.',
     );
     return false;
   }
@@ -86,14 +80,14 @@ export function checkRls(): boolean {
 
     if (!isGoverned && !isAppEnforced) {
       problems.push(
-        `${model.name} carries a tenantId but appears in neither TENANT_SCOPED_MODELS nor APP_ENFORCED_TENANT_MODELS — decide which, in prisma.client.ts`,
+        `${model.name} carries a tenantId but is neither /// @hery.tenantScoped nor /// @hery.appEnforcedTenant <reason> — decide which, in prisma/schema.prisma`,
       );
       continue;
     }
 
     if (isGoverned && isAppEnforced) {
       problems.push(
-        `${model.name} appears in both TENANT_SCOPED_MODELS and APP_ENFORCED_TENANT_MODELS — it can only be one`,
+        `${model.name} is both @hery.tenantScoped and @hery.appEnforcedTenant — it can only be one`,
       );
       continue;
     }
@@ -108,7 +102,7 @@ export function checkRls(): boolean {
   for (const model of governed) {
     if (!tenantModels.some((entry) => entry.name === model)) {
       problems.push(
-        `TENANT_SCOPED_MODELS lists ${model}, which has no tenantId column in the schema — the extension would stamp a column that does not exist`,
+        `${model} is @hery.tenantScoped but has no tenantId column in the schema — the extension would stamp a column that does not exist`,
       );
     }
   }

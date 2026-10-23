@@ -57,8 +57,8 @@ export function registerMigrateCommand(program: Command): void {
       // Second pass, after the tables exist: a tenant-scoped model needs a
       // row-level policy behind the extension that scopes it, and writing that
       // migration by hand is what got forgotten for the teams tables. The
-      // schema and TENANT_SCOPED_MODELS already say which models those are, so
-      // the policy is emitted from them rather than remembered.
+      // schema's @hery.tenantScoped annotations already say which models those
+      // are, so the policy is emitted from them rather than remembered.
       const root = process.cwd();
       const pending = pendingRlsModels(root);
 

@@ -14,8 +14,7 @@ export const HISTORY_MODEL = 'RecordSnapshot';
  * A model is prunable exactly when it carries `deletedAt` and `tenantId` --
  * the two reserved fields the blueprint schema stamps on every generated
  * resource. Reading them off Prisma's own DMMF, rather than maintaining
- * another generator-patched model list alongside TENANT_SCOPED_MODELS and
- * AUDITED_MODELS, means a new soft-deletable resource is prunable the moment
+ * another annotation alongside @hery.tenantScoped and @hery.audited, means a new soft-deletable resource is prunable the moment
  * it exists, with nothing to wire up and nothing that can drift.
  *
  * `tenantId` is part of that condition and not an assumption: pruning reads

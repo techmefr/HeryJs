@@ -1,6 +1,7 @@
 import type { ModuleDefinition } from 'heryjs';
 
 const TWO_FACTOR_MODELS = `
+/// @hery.tenantScoped
 model TwoFactorEnrolment {
   id             String    @id @default(cuid())
   tenantId       String
@@ -18,6 +19,7 @@ model TwoFactorEnrolment {
   @@index([tenantId])
 }
 
+/// @hery.tenantScoped
 model TwoFactorRecoveryCode {
   id        String    @id @default(cuid())
   tenantId  String
@@ -31,6 +33,7 @@ model TwoFactorRecoveryCode {
   @@index([tenantId, userId])
 }
 
+/// @hery.tenantScoped
 model TwoFactorRoleRequirement {
   id        String   @id @default(cuid())
   tenantId  String
@@ -40,6 +43,7 @@ model TwoFactorRoleRequirement {
   @@unique([tenantId, role])
 }
 
+/// @hery.tenantScoped
 model TwoFactorVerifiedSession {
   id        String   @id @default(cuid())
   tenantId  String
@@ -53,9 +57,6 @@ model TwoFactorVerifiedSession {
   @@index([tenantId, userId])
 }
 `;
-
-const PRISMA_CLIENT_FILE = 'src/technical/prisma/prisma.client.ts';
-const TENANT_SCOPED_OPENING = 'const TENANT_SCOPED_MODELS = new Set<string>([';
 
 export default {
   name: 'two-factor',
@@ -71,23 +72,6 @@ export default {
       '  twoFactorRecoveryCodes  TwoFactorRecoveryCode[]',
       '  twoFactorVerifiedSessions TwoFactorVerifiedSession[]',
     ]);
-
-    context.patchExactStrings(
-      PRISMA_CLIENT_FILE,
-      [
-        [
-          TENANT_SCOPED_OPENING,
-          [
-            TENANT_SCOPED_OPENING,
-            "  'TwoFactorEnrolment',",
-            "  'TwoFactorRecoveryCode',",
-            "  'TwoFactorRoleRequirement',",
-            "  'TwoFactorVerifiedSession',",
-          ].join('\n'),
-        ],
-      ],
-      "'TwoFactorEnrolment',",
-    );
 
     context.nextSteps([
       'Run "pnpm hery migrate --name add_two_factor"',

@@ -36,7 +36,7 @@ type RecordWithId = { id: string };
  * Every query runs through the tenant-scoped client, and the table has its own
  * row-level policy, so a share can never be read, matched or revoked from
  * another tenant. Grants and revokes are audited by the Prisma audit layer
- * (RecordShare is in AUDITED_MODELS), with the acting user and any
+ * (RecordShare is annotated @hery.audited), with the acting user and any
  * impersonator.
  */
 @Injectable()

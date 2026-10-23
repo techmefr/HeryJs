@@ -2,7 +2,6 @@ import { Logger } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Prisma, PrismaClient } from '@prisma/client';
 import {
-  AUDITED_MODELS,
   AUDITED_OPERATIONS,
   writeAuditLog,
   writeAuditLogInTransaction,
@@ -21,6 +20,7 @@ import { encryptedFieldsExtension } from '../secrets/encrypted-fields.extension'
 import { TenantContextStorage } from '../tenancy/tenant-context';
 import { TelemetryBus } from '../tracing/telemetry-bus';
 import { TraceContextStorage } from '../tracing/trace-context';
+import { modelRegistries } from './model-annotations';
 import { warnWhenRowLevelSecurityDisabled } from './row-level-security';
 import { AmbientTransactionStorage } from './transaction-context';
 import type { AfterCommitCallback } from './transaction-context';
@@ -34,32 +34,6 @@ interface PrismaQueryEvent {
   params: string;
   duration: number;
 }
-
-const TENANT_SCOPED_MODELS = new Set<string>([
-  'TwoFactorEnrolment',
-  'TwoFactorRecoveryCode',
-  'TwoFactorRoleRequirement',
-  'TwoFactorVerifiedSession',
-  'Team',
-  'TeamMember',
-  'ScimIdentity',
-  'BlogPost',
-  'BlogPostNote',
-  'BlogPostTag',
-  'Tag',
-  'Comment',
-  'AppNotification',
-  'SmsConsent',
-  'PushToken',
-  'BillingSubscription',
-  'Snippet',
-  'NotificationPreference',
-  'NotificationSetting',
-  'PrivacyRequest',
-  'QuotaOverride',
-  'QuotaUsage',
-  'RecordShare',
-]);
 
 /**
  * A relation pulled in through `include` or a nested `select` is fetched by
@@ -98,8 +72,11 @@ function relationTargets(model: string): Map<string, string> {
 const RELATION_TARGETS = new Map<string, Map<string, string>>();
 
 function carriesTenantId(model: string): boolean {
+  const registries = modelRegistries();
+
   return (
-    TENANT_SCOPED_MODELS.has(model) || APP_ENFORCED_TENANT_MODELS.has(model)
+    registries.tenantScoped.has(model) ||
+    registries.appEnforcedTenant.has(model)
   );
 }
 
@@ -166,110 +143,6 @@ function scopeNestedRelations(
   }
 }
 
-/**
- * Models with no tenantId at all, and the reason each one has none. Everything
- * else in the schema carries one: multi-tenancy is not a feature a project turns
- * on later, it is the shape every table has from the first migration, because
- * retrofitting a boundary onto rows that were written without one is the part
- * that cannot be done safely afterwards.
- *
- * `pnpm lint:rls` refuses a model that is in neither this list nor one of the
- * two below.
- */
-export const TENANT_FREE_MODELS = new Set<string>([
-  // better-auth's own tables. Each row hangs off a User, which does carry a
-  // tenantId, and better-auth reads them through its own adapter with its own
-  // queries -- a column here would be stamped by nobody.
-  'Session',
-  'Account',
-  'ApiKey',
-  // Second-factor secrets and backup codes, hanging off a User like the rows
-  // above and written only by better-auth's own adapter.
-  'TwoFactor',
-  // WebAuthn credentials, hanging off a User and written only by better-auth's
-  // passkey plugin. A sign-in finds the row by its credential id before any
-  // session exists, so there is no tenant to scope the lookup by -- the user
-  // it resolves to carries the tenant.
-  'Passkey',
-  // Email-verification and password-reset tokens, looked up by their own value
-  // before any session exists, so there is no tenant to scope the lookup by.
-  'Verification',
-  'OauthIdentity',
-  // Bookkeeping keyed by an OutboxMessage id, which carries the tenant.
-  'OutboxReceipt',
-]);
-
-/**
- * The other side of the same question. A model carrying a tenantId is either
- * governed by the extension below -- filtered on every read, stamped on every
- * write, and covered by a Postgres row-level policy -- or it is written from
- * somewhere the extension cannot reach it: better-auth's own adapter, a queue
- * worker with no ambient request, or deliberately outside the extension chain.
- * None of those set `app.tenant_id`, so a policy there would block the very
- * writes that fill the table.
- *
- * Every one of these passes an explicit tenantId at the call site, which is
- * weaker than a boundary and recorded here for that reason: `pnpm lint:rls`
- * requires each tenantId-carrying model to appear in exactly one of the two
- * sets, so adding a tenant table forces the choice instead of defaulting to
- * "no policy, nobody noticed".
- */
-export const APP_ENFORCED_TENANT_MODELS = new Set<string>([
-  // Written by better-auth's own adapter, which runs its own transactions.
-  'User',
-  // Written by writeAuditLog against the raw client, deliberately outside the
-  // extension chain so an audit entry cannot be scoped away by the boundary it
-  // is recording a crossing of.
-  'AuditLog',
-  // Read by a streamer that walks every tenant's sinks with no request behind
-  // it, and written by the sink routes with the caller's tenantId passed
-  // explicitly, the way AuditLog itself is.
-  'AuditSink',
-  // Written by the same extension and for the same reason as AuditLog: the
-  // snapshot of a write must not be scoped away by the boundary it describes.
-  // HistoryService states the tenant in every read.
-  'RecordSnapshot',
-  // Global rows are the point of a feature flag: tenantId is nullable, and the
-  // extension would stamp the current tenant onto a flag meant for everyone.
-  'FeatureFlag',
-  // Written by a queue worker as well as by a request. A worker runs outside
-  // any request, so there is no ambient tenant to stamp or filter by, and the
-  // call site passes the tenantId the job carries instead.
-  'MailLog',
-  'WebhookEndpoint',
-  'WebhookEvent',
-  // Subscriptions are managed through the admin routes, but deliveries are
-  // written and updated by the outbox relay and a queue worker with no request
-  // behind them, and both read across tenants to fan a message out. Every
-  // query passes the tenantId explicitly.
-  'WebhookSubscription',
-  'WebhookDelivery',
-  'IdempotencyKey',
-  // Staged inside the transaction of the write it describes, and drained by a
-  // relay with no request behind it, so it can be neither stamped nor filtered
-  // by the ambient tenant.
-  'OutboxMessage',
-  'NotificationDigestEntry',
-  // Written from a buffer that flushes on a timer, long after the request that
-  // produced a line has ended, so there is no ambient tenant to stamp: each
-  // entry carries the tenant it was logged under, or `system` when it had none.
-  'LogEntry',
-  // Written in batches from a buffer that flushes on a timer, long after the
-  // request that produced an entry has ended, so there is no ambient tenant
-  // to stamp: each entry carries the tenant it was recorded under.
-  'DevtoolsEntry',
-  // Started from a request or from a worker, so a tenant cannot be stamped
-  // from the ambient context; every call names the tenant it acts for.
-  'JobFlow',
-  'SsoConnection',
-  'SsoDomain',
-  'SsoIdentity',
-  // Looked up by the hash of the bearer token a directory sends, which is how
-  // the tenant is learned in the first place: there is no ambient tenant to
-  // scope the lookup by, and each row carries the one it belongs to.
-  'ScimToken',
-]);
-
 type TenantHandling =
   'stamp-data' | 'stamp-entries' | 'stamp-and-filter' | 'filter';
 
@@ -302,10 +175,11 @@ const TENANT_HANDLING = new Map<string, TenantHandling>([
 ]);
 
 export function isRowLevelSecured(model: string): boolean {
-  return TENANT_SCOPED_MODELS.has(model);
+  return modelRegistries().tenantScoped.has(model);
 }
 
 export function createTenantScopedPrismaClient() {
+  const registries = modelRegistries();
   const rlsEnabled = warnWhenRowLevelSecurityDisabled(heryConfig, (message) =>
     new Logger('RowLevelSecurity').warn(message),
   );
@@ -353,7 +227,10 @@ export function createTenantScopedPrismaClient() {
         async $allOperations({ model, operation, args, query }) {
           const result = await query(args);
 
-          if (AUDITED_MODELS.has(model) && AUDITED_OPERATIONS.has(operation)) {
+          if (
+            registries.audited.has(model) &&
+            AUDITED_OPERATIONS.has(operation)
+          ) {
             const record = result as { id?: string } | null;
 
             const entry = {
@@ -393,7 +270,7 @@ export function createTenantScopedPrismaClient() {
     query: {
       $allModels: {
         $allOperations({ model, operation, args, query }) {
-          if (!TENANT_SCOPED_MODELS.has(model)) {
+          if (!registries.tenantScoped.has(model)) {
             // A model outside the boundary can still include one inside it
             // (a User with its BlogPosts), and the policy hides those rows
             // unless the tenant travels with the query.

@@ -1,6 +1,7 @@
 import type { ModuleDefinition } from 'heryjs';
 
 const BILLING_SUBSCRIPTION_MODEL = `
+/// @hery.tenantScoped
 model BillingSubscription {
   id                     String    @id @default(cuid())
   tenantId               String

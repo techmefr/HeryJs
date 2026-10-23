@@ -11,7 +11,7 @@ Tenancy in HeryJs is a boundary, not a scope you remember to add to every query.
 
 ## Enforcement: the tenant-scoped Prisma client
 
-`createTenantScopedPrismaClient()` wraps a plain `PrismaClient` in a Prisma `$extends` query extension. For every model listed in `TENANT_SCOPED_MODELS`:
+`createTenantScopedPrismaClient()` wraps a plain `PrismaClient` in a Prisma `$extends` query extension. For every model annotated `/// @hery.tenantScoped` in `prisma/schema.prisma`:
 
 - on `create` / `createMany`, the current tenant id is injected into the data automatically;
 - on every read/update/delete operation, a `tenantId` filter is injected into the `where` clause automatically.
@@ -26,7 +26,7 @@ There is deliberately no default tenant to fall back on. A worker that forgets t
 
 ## What this buys you
 
-A cross-tenant data leak would require either bypassing the extension entirely (using the raw, non-scoped client) or removing a model from `TENANT_SCOPED_MODELS` — both of which are visible in a code review, unlike a missing `WHERE tenant_id = ?` buried in one query among hundreds.
+A cross-tenant data leak would require either bypassing the extension entirely (using the raw, non-scoped client) or removing the `@hery.tenantScoped` annotation from a model — both of which are visible in a code review, unlike a missing `WHERE tenant_id = ?` buried in one query among hundreds.
 
 ## Provisioning a tenant is deliberately absent
 
@@ -44,15 +44,15 @@ The policy fails closed: `current_setting('app.tenant_id', true)` is `NULL` when
 
 ### The policy is emitted, not remembered
 
-Writing that migration by hand is how the teams tables spent a month scoped by the extension with nothing behind them. `pnpm hery migrate` now reads the schema and `TENANT_SCOPED_MODELS`, and emits the `ENABLE ROW LEVEL SECURITY` migration for any tenant-scoped table that has no policy yet — including the table `hery generate` just added. A model whose `tenantId` is nullable gets `"tenantId" IS NULL OR …`, so rows belonging to no tenant (a global feature flag) stay visible instead of disappearing.
+Writing that migration by hand is how the teams tables spent a month scoped by the extension with nothing behind them. `pnpm hery migrate` now reads the schema's `@hery.tenantScoped` annotations, and emits the `ENABLE ROW LEVEL SECURITY` migration for any tenant-scoped table that has no policy yet — including the table `hery generate` just added. A model whose `tenantId` is nullable gets `"tenantId" IS NULL OR …`, so rows belonging to no tenant (a global feature flag) stay visible instead of disappearing.
 
 `pnpm lint:rls` is the guarantee. It answers two questions about every model the schema declares.
 
-First: does it carry a `tenantId` at all? A table gets the column in the migration that creates it, or it is listed in `TENANT_FREE_MODELS` with the reason it cannot have one — today better-auth's own `Session`, `Account` and `ApiKey`, written by an adapter that would never stamp a column HeryJs added, and `Verification`, whose tokens are looked up by value before any session exists. Nothing else is allowed to have none. Retrofitting the column is the expensive half: adding it later means backfilling rows whose tenant nobody ever recorded, and there is no honest value to put in them.
+First: does it carry a `tenantId` at all? A table gets the column in the migration that creates it, or it is annotated `/// @hery.tenantFree <reason>` with the reason it cannot have one — today better-auth's own `Session`, `Account` and `ApiKey`, written by an adapter that would never stamp a column HeryJs added, and `Verification`, whose tokens are looked up by value before any session exists. Nothing else is allowed to have none. Retrofitting the column is the expensive half: adding it later means backfilling rows whose tenant nobody ever recorded, and there is no honest value to put in them.
 
 Second, for a model that carries one: which of the two enforcement paths is it on? The check fails if it is neither, both, or governed without a policy:
 
-- in `TENANT_SCOPED_MODELS` — filtered and stamped by the extension, and covered by a row-level policy;
-- in `APP_ENFORCED_TENANT_MODELS` — written through `authPrismaClient`, which has no extension and never sets `app.tenant_id`, so a policy there would block the writes that fill the table. Each of these passes an explicit `tenantId` at the call site. That is weaker than a boundary, which is why the list is written down rather than implied: `User`, `AuditLog`, `FeatureFlag`, `MailLog`, `WebhookEndpoint`, `WebhookEvent`.
+- annotated `/// @hery.tenantScoped` — filtered and stamped by the extension, and covered by a row-level policy;
+- annotated `/// @hery.appEnforcedTenant <reason>` — written through `authPrismaClient`, which has no extension and never sets `app.tenant_id`, so a policy there would block the writes that fill the table. Each of these passes an explicit `tenantId` at the call site. That is weaker than a boundary, which is why the reason is written down rather than implied: `User`, `AuditLog`, `FeatureFlag`, `MailLog`, `WebhookEndpoint`, `WebhookEvent`.
 
 A spec then reads `pg_policies` and `pg_class` on the real database, so a migration that was edited, reverted or never applied fails too — the check proves the file exists, the spec proves the database agrees.

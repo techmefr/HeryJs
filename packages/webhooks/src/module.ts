@@ -5,6 +5,7 @@ const WEBHOOK_MODELS = `
 // signature recomputes the sender's HMAC, so it cannot be a one-way hash, but
 // it does not have to sit readable in the table. deliveryId is the sender's own
 // event id, or a hash of the signed bytes, so a redelivery is recorded once.
+/// @hery.appEnforcedTenant Written by a queue worker as well as by a request. A worker runs outside any request, so there is no ambient tenant to stamp or filter by, and the call site passes the tenantId the job carries instead.
 model WebhookEndpoint {
   id        String   @id @default(cuid())
   tenantId  String
@@ -18,6 +19,7 @@ model WebhookEndpoint {
   @@index([tenantId])
 }
 
+/// @hery.appEnforcedTenant Written by a queue worker as well as by a request. A worker runs outside any request, so there is no ambient tenant to stamp or filter by, and the call site passes the tenantId the job carries instead.
 model WebhookEvent {
   id          String    @id @default(cuid())
   endpointId  String
@@ -42,6 +44,7 @@ const OUTBOUND_WEBHOOK_MODELS = `
 // one-way hash, but it does not have to sit readable in the table. During a
 // rotation the previous secret stays valid until previousSecretExpiresAt, and
 // every delivery in that window carries a signature for both.
+/// @hery.appEnforcedTenant Subscriptions are managed through the admin routes, but deliveries are written and updated by the outbox relay and a queue worker with no request behind them, and both read across tenants to fan a message out. Every query passes the tenantId explicitly.
 model WebhookSubscription {
   id                      String    @id @default(cuid())
   tenantId                String
@@ -64,6 +67,7 @@ model WebhookSubscription {
 // letter in the same table. The unique pair is what makes the fan-out
 // idempotent when the relay hands the same message over twice. round counts
 // manual redeliveries, so each run gets a queue job id of its own.
+/// @hery.appEnforcedTenant Subscriptions are managed through the admin routes, but deliveries are written and updated by the outbox relay and a queue worker with no request behind them, and both read across tenants to fan a message out. Every query passes the tenantId explicitly.
 model WebhookDelivery {
   id             String    @id @default(cuid())
   subscriptionId String

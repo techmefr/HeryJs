@@ -27,7 +27,7 @@ export function historySnapshotColumns(ctx: ResourceContext): string[] {
   ];
 }
 
-/** What the generator registers in HISTORY_COLUMNS, as `Model.column`. */
+/** The columns the generator annotates @hery.history, as `Model.column`. */
 export function historyColumnEntries(ctx: ResourceContext): string[] {
   return historySnapshotColumns(ctx).map(
     (column) => `${ctx.modelPascalName}.${column}`,

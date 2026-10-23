@@ -14,10 +14,9 @@ import pc from 'picocolors';
 import { APP_MODULE, unwireModule } from '../lib/app-module-patch';
 import { loadBlueprint } from '../lib/blueprint';
 import { frameworkRoot } from '../lib/framework-root';
-import { MODEL_REGISTRIES } from '../lib/model-set';
 import { pascalCase } from '../lib/naming';
 import { bareName, runtimeImports } from '../lib/runtime-imports';
-import { stripModelsFromSchema, withoutSetEntries } from '../lib/strip-example';
+import { stripModelsFromSchema } from '../lib/strip-example';
 
 const REPO_ROOT = frameworkRoot();
 
@@ -226,18 +225,6 @@ function dropExampleModels(destRoot: string): string[] {
   );
   writeFileSync(schemaFile, schema);
 
-  const gone = new Set(removed);
-
-  for (const { file, set: setName } of MODEL_REGISTRIES.filter(
-    (registry) => registry.stripped,
-  )) {
-    const target = path.join(destRoot, file);
-    writeFileSync(
-      target,
-      withoutSetEntries(readFileSync(target, 'utf8'), setName, gone),
-    );
-  }
-
   return removed;
 }
 
@@ -251,8 +238,7 @@ function dropExampleModels(destRoot: string): string[] {
 export const MODULES_THE_KERNEL_NEEDS: Record<string, string> = {
   impersonation:
     'its install patches six kernel files (env schema, Better Auth instance, auth types, session provider, capabilities) and adds fields to User and Session',
-  'two-factor':
-    'its install patches src/technical/prisma/prisma.client.ts and adds relations to User',
+  'two-factor': 'its install adds relations to User',
   push: 'src/technical/auth/guest-upgrade.ts moves the PushToken rows of a guest',
 };
 
@@ -344,14 +330,6 @@ function dropOptionalModules(destRoot: string): string[] {
     schemaFile,
     stripModelsFromSchema(readFileSync(schemaFile, 'utf8'), models).schema,
   );
-
-  for (const { file, set } of MODEL_REGISTRIES) {
-    const target = path.join(destRoot, file);
-    writeFileSync(
-      target,
-      withoutSetEntries(readFileSync(target, 'utf8'), set, models),
-    );
-  }
 
   const specifiers = new RegExp(
     removable.map((name) => `'#modules/${name}/`).join('|'),

@@ -50,7 +50,7 @@ Without it, `BlogPostV2` would be a model name, and the generator would emit a
 duplicate of a table that already exists.
 
 With it, the v2 resource reads and writes `BlogPost`, and declares nothing in
-`prisma/schema.prisma`, `TENANT_SCOPED_MODELS` or `AUDITED_MODELS` — the
+`prisma/schema.prisma`, nor annotates it `@hery.tenantScoped` or `@hery.audited` — the
 version that owns the model already did, and saying it twice would not make it
 truer.
 
