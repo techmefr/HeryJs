@@ -5,6 +5,7 @@ import { Logger } from 'nestjs-pino';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { env } from '#technical/config/env';
 import { waitFor } from '#devtools/testing/wait-for';
 import { logPipeline } from './log.pipeline';
 import type { LogDriver, LogEntry } from './log-driver';
@@ -20,11 +21,11 @@ class CapturingLogDriver implements LogDriver {
 describe('what reaches the logs', () => {
   const capture = new CapturingLogDriver();
   const consoleLines: string[] = [];
-  const previousLevel = process.env.LOG_LEVEL;
+  const previousLevel = env.LOG_LEVEL;
   let app: INestApplication<App>;
 
   beforeAll(async () => {
-    process.env.LOG_LEVEL = 'trace';
+    Object.assign(env, { LOG_LEVEL: 'trace' });
     const { AppModule } = await import('#app.module');
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
@@ -45,7 +46,7 @@ describe('what reaches the logs', () => {
     jest.restoreAllMocks();
     await app.close();
     await logPipeline.detach();
-    process.env.LOG_LEVEL = previousLevel;
+    Object.assign(env, { LOG_LEVEL: previousLevel });
   });
 
   it('never carries a name, an address, a phone number, a token or a password', async () => {

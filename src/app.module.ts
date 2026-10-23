@@ -58,6 +58,7 @@ import { telemetryPinoOptions } from '#technical/telemetry/telemetry-logs';
 import { tenantLogMixin } from '#technical/logging/tenant-log-mixin';
 import { logShippingStream } from '#technical/logging/log.pipeline';
 import { LogShippingModule } from '#technical/logging/log-shipping.module';
+import { env } from '#technical/config/env';
 import { httpLogRedaction } from '#technical/logging/http-log-redaction';
 
 const telemetryOptions = telemetryPinoOptions();
@@ -69,7 +70,7 @@ const telemetryOptions = telemetryPinoOptions();
         {
           ...telemetryOptions,
           level:
-            process.env.LOG_LEVEL ??
+            env.LOG_LEVEL ??
             (process.env.NODE_ENV === 'test'
               ? 'silent'
               : process.env.NODE_ENV === 'production'
