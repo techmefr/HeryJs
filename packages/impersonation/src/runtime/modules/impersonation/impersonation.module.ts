@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from '#kernel/auth/auth.module';
-import { PrismaModule } from '#kernel/prisma/prisma.module';
-import { SchedulerModule } from '#kernel/scheduler/scheduler.module';
+import { AuthModule } from '#kernel/public/auth';
+import { PrismaModule } from '#kernel/public/database';
+import { SchedulerModule } from '#kernel/public/jobs';
 import { ImpersonationController } from './impersonation.controller';
 import { ImpersonationExpiryTask } from './impersonation-expiry.task';
 import { ImpersonationService } from './impersonation.service';

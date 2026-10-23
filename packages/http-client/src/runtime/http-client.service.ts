@@ -1,8 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type {
-  HttpRequestOptions,
-  HttpResponse,
-} from '#kernel/http-client/http-client-driver';
+import type { HttpRequestOptions, HttpResponse } from '#kernel/public/drivers';
 import { HttpClientDriverRegistry } from './http-client-driver.registry';
 import { HttpResilienceService } from './http-resilience.service';
 

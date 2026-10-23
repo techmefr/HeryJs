@@ -213,10 +213,40 @@ describe('validating a module', () => {
   it('accepts a runtime reaching the kernel through #kernel/', () => {
     write(
       'src/runtime/probe.service.ts',
-      "import { subjectOf } from '#kernel/capabilities/subject';\nexport const probe = subjectOf;",
+      "import { subjectOf } from '#kernel/public/capabilities';\nexport const probe = subjectOf;",
     );
 
     expect(problems()).toEqual([]);
+  });
+
+  it.each([
+    '#kernel/capabilities/subject',
+    '#kernel/auth/session.guard',
+    '#kernel/public/unknown',
+  ])('refuses the internal kernel import %p', (specifier) => {
+    write(
+      'src/runtime/probe.service.ts',
+      `import { thing } from '${specifier}';\nexport const probe = thing;`,
+    );
+
+    expect(problems()).toEqual([
+      expect.stringContaining(`imports ${specifier}, which is internal`),
+    ]);
+  });
+
+  it('accepts a kernel path the module installs itself', () => {
+    write(
+      'src/runtime/technical/errors/probe.exception.ts',
+      'export class ProbeException extends Error {}',
+    );
+    write(
+      'src/runtime/probe.service.ts',
+      "import { ProbeException } from '#kernel/errors/probe.exception';\nexport const probe = ProbeException;",
+    );
+
+    expect(validateModule({ ...moduleAt(packageDir), dest: 'src' })).toEqual(
+      [],
+    );
   });
 
   // Nothing above src/runtime is copied, so a relative import climbing out of
@@ -263,7 +293,7 @@ describe('validating a module', () => {
     write('tsconfig.json', JSON.stringify({ compilerOptions: {} }));
     write(
       'src/runtime/probe.service.ts',
-      "import { subjectOf } from '#kernel/capabilities/subject';\nexport const probe = subjectOf;",
+      "import { subjectOf } from '#kernel/public/capabilities';\nexport const probe = subjectOf;",
     );
 
     expect(problems()).toEqual([
@@ -287,7 +317,7 @@ describe('validating a module', () => {
     rmSync(path.join(packageDir, 'tsconfig.json'));
     write(
       'src/runtime/probe.service.ts',
-      "import { subjectOf } from '#kernel/capabilities/subject';\nexport const probe = subjectOf;",
+      "import { subjectOf } from '#kernel/public/capabilities';\nexport const probe = subjectOf;",
     );
 
     expect(problems()).toEqual([]);

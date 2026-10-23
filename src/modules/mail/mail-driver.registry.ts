@@ -1,13 +1,12 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { HERY_CONFIG } from '#technical/config/hery-config';
-import type { HeryConfig } from '#technical/config/hery-config.types';
+import { HERY_CONFIG, type HeryConfig } from '#technical/public/config';
 import {
   DriverResolver,
+  MAIL_MODULE,
+  type MailDriver,
   missingDriverMessage,
-} from '#technical/drivers/driver-resolver';
+} from '#technical/public/drivers';
 import { LogMailDriver } from './log-mail.driver';
-import { MAIL_MODULE } from '#technical/mail/mail-driver';
-import type { MailDriver } from '#technical/mail/mail-driver';
 
 const BUILTIN_DRIVER = 'log';
 

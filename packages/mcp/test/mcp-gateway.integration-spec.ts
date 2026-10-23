@@ -5,11 +5,16 @@ import type { INestApplication } from '@nestjs/common';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { AUTH_PROVIDER } from '#kernel/auth/auth.types';
-import type { AuthProvider, AuthenticatedUser } from '#kernel/auth/auth.types';
-import { SessionGuard } from '#kernel/auth/session.guard';
-import { CapabilitiesGuard } from '#kernel/capabilities/capabilities.guard';
-import type { CapabilitySubject } from '#kernel/capabilities/capabilities.types';
+import {
+  AUTH_PROVIDER,
+  type AuthenticatedUser,
+  type AuthProvider,
+  SessionGuard,
+} from '#kernel/public/auth';
+import {
+  CapabilitiesGuard,
+  type CapabilitySubject,
+} from '#kernel/public/capabilities';
 import { McpGatewayController } from '../src/runtime/mcp-gateway.controller';
 import { MCP_TOOL_REGISTRARS } from '../src/runtime/mcp-tool-registrar';
 import type { McpToolRegistrar } from '../src/runtime/mcp-tool-registrar';

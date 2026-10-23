@@ -1,16 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { ofetch } from 'ofetch';
-import type {
-  HttpClientDriver,
-  HttpHeaders,
-  HttpQuery,
-  HttpRequestOptions,
-  HttpResponse,
-} from '#kernel/http-client/http-client-driver';
 import {
+  type HttpClientDriver,
+  type HttpHeaders,
+  type HttpQuery,
   HttpRequestFailedException,
+  type HttpRequestOptions,
   HttpRequestTimeoutException,
-} from '#kernel/http-client/http-client.exception';
+  type HttpResponse,
+} from '#kernel/public/drivers';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_RETRIES = 2;

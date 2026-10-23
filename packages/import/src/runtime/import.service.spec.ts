@@ -1,7 +1,6 @@
-import type { JobsService } from '#kernel/jobs/jobs.service';
-import { IMPORT_QUEUE } from '#kernel/jobs/jobs.constants';
-import type { Importable } from '#kernel/import/import-driver';
-import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
+import { IMPORT_QUEUE, type JobsService } from '#kernel/public/jobs';
+import type { Importable } from '#kernel/public/drivers';
+import { TenantContextStorage } from '#kernel/public/tenancy';
 import { CsvImportDriver } from './csv-import.driver';
 import { IMPORT_CONSUME_JOB } from './import.constants';
 import { ImportDriverRegistry } from './import-driver.registry';

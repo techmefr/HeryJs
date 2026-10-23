@@ -1,8 +1,8 @@
 import { rm } from 'node:fs/promises';
 import * as path from 'node:path';
 import type { ModuleRef } from '@nestjs/core';
-import { DriverResolver } from '#kernel/drivers/driver-resolver';
-import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
+import { DriverResolver } from '#kernel/public/drivers';
+import { TenantContextStorage } from '#kernel/public/tenancy';
 import { LocalStorageDriver } from './local-storage.driver';
 import { StorageDriverRegistry } from './storage-driver.registry';
 import { StorageService } from './storage.service';

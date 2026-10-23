@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import type {
-  HttpClientDriver,
-  HttpHeaders,
-  HttpRequestOptions,
-  HttpResponse,
-} from '#kernel/http-client/http-client-driver';
-import { UnstubbedHttpRequestException } from '#kernel/http-client/http-client.exception';
+import {
+  type HttpClientDriver,
+  type HttpHeaders,
+  type HttpRequestOptions,
+  type HttpResponse,
+  UnstubbedHttpRequestException,
+} from '#kernel/public/drivers';
 
 export interface HttpStub {
   status?: number;

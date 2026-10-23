@@ -7,14 +7,15 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { SessionGuard } from '#kernel/auth/session.guard';
-import type { RequestWithUser } from '#kernel/auth/session.guard';
-import { CapabilitiesGuard } from '#kernel/capabilities/capabilities.guard';
-import { Capability } from '#kernel/capabilities/capability.decorator';
-import { ok } from '#kernel/http/envelope';
-import { okPage, parsePageQuery } from '#kernel/http/page-query';
-import { RateLimit } from '#kernel/rate-limit/rate-limit.decorator';
-import { ZodValidationPipe } from '#kernel/validation/zod-validation.pipe';
+import { type RequestWithUser, SessionGuard } from '#kernel/public/auth';
+import { CapabilitiesGuard, Capability } from '#kernel/public/capabilities';
+import {
+  ok,
+  okPage,
+  parsePageQuery,
+  RateLimit,
+  ZodValidationPipe,
+} from '#kernel/public/http';
 import { deliveryFilterSchema } from './outbound-webhook.dto';
 import type { DeliveryFilter } from './outbound-webhook.dto';
 import { WebhookDeliveryService } from './webhook-delivery.service';

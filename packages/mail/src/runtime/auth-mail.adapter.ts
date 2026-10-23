@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { AUTH_MAILER } from '#kernel/auth/auth-mailer';
-import type { AuthMailer } from '#kernel/auth/auth-mailer';
-import type { Mailable } from '#kernel/mail/mail-driver';
+import { AUTH_MAILER, type AuthMailer } from '#kernel/public/auth';
+import type { Mailable } from '#kernel/public/drivers';
 import { MailService } from './mail.service';
 
 /**

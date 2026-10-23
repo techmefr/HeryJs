@@ -1,9 +1,9 @@
 import { DynamicModule, Module, Type } from '@nestjs/common';
-import { AuthModule } from '#technical/auth/auth.module';
-import { PrivacyModule } from '#technical/privacy/privacy.module';
-import { env } from '#technical/config/env';
-import { isLocalEnvironmentNow } from '#technical/config/module-env';
-import { PrismaModule } from '#technical/prisma/prisma.module';
+import { AuthModule } from '#technical/public/auth';
+import { PrivacyModule } from '#technical/public/privacy';
+import { isLocalEnvironmentNow } from '#technical/public/config';
+import { env } from '#technical/public/env';
+import { PrismaModule } from '#technical/public/database';
 import { OAuthAccountService } from './oauth-account.service';
 import { OAUTH_FETCH } from './oauth-http';
 import {

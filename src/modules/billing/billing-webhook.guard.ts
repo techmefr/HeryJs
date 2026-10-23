@@ -1,8 +1,8 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
-import { TraceContextStorage } from '#technical/tracing/trace-context';
-import type { BillingEvent } from '#technical/billing/billing-driver';
+import { TraceContextStorage } from '#technical/public/observability';
+import type { BillingEvent } from '#technical/public/drivers';
 import { BillingDriverRegistry } from './billing-driver.registry';
 import { InvalidBillingSignatureException } from './invalid-billing-signature.exception';
 

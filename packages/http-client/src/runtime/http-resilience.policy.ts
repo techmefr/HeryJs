@@ -1,5 +1,4 @@
-import { operatorAbility } from '#kernel/capabilities/ability';
-import type { PolicyCheck } from '#kernel/capabilities/capability-check';
+import { operatorAbility, type PolicyCheck } from '#kernel/public/capabilities';
 
 // What a circuit says is which third parties the deployment depends on and how
 // they are doing, and what an operator can do to it -- shed a dependency, let

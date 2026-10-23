@@ -1,4 +1,4 @@
-import { devOnlyDefault, parseModuleEnv } from '#kernel/config/module-env';
+import { devOnlyDefault, parseModuleEnv } from '#kernel/public/config';
 
 // coturn's use-auth-secret mechanism: the server and the TURN daemon share
 // one secret, never sent to a client. A production deployment must set both

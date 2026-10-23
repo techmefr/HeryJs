@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { devOnlyDefault, parseModuleEnv } from '#kernel/config/module-env';
+import { devOnlyDefault, parseModuleEnv } from '#kernel/public/config';
 
 export const storageEnv = parseModuleEnv('storage', {
   STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),

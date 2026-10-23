@@ -7,5 +7,5 @@
 export {
   authenticateSocket as authenticateLiveSocket,
   SocketAuthGuard as LiveAuthGuard,
-} from '#technical/websocket/socket-auth.guard';
-export type { AuthenticatedSocket as LiveSocket } from '#technical/websocket/socket-auth.guard';
+} from '#technical/public/auth';
+export type { AuthenticatedSocket as LiveSocket } from '#technical/public/auth';

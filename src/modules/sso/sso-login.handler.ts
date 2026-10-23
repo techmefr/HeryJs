@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Response } from 'express';
-import { getAuthContext } from '#technical/auth/better-auth.instance';
-import { ok } from '#technical/http/envelope';
+import { getAuthContext } from '#technical/public/auth';
+import { ok } from '#technical/public/http';
 import type { SsoLoginResult } from './sso.types';
 
 export const SSO_LOGIN_HANDLER = Symbol('SSO_LOGIN_HANDLER');

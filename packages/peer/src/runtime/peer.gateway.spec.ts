@@ -1,5 +1,8 @@
-import type { AuthenticatedUser, AuthProvider } from '#kernel/auth/auth.types';
-import type { AuthenticatedSocket } from '#kernel/websocket/socket-auth.guard';
+import type {
+  AuthenticatedSocket,
+  AuthenticatedUser,
+  AuthProvider,
+} from '#kernel/public/auth';
 import { PeerGateway } from './peer.gateway';
 import { PeerRoomPresenceService } from './peer-room-presence.service';
 import { PeerTurnCredentialsService } from './peer-turn-credentials.service';

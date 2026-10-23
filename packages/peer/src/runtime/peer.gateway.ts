@@ -9,15 +9,15 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import type { Server } from 'socket.io';
-import { AUTH_PROVIDER } from '#kernel/auth/auth.types';
-import type { AuthProvider } from '#kernel/auth/auth.types';
-import { subjectOf } from '#kernel/capabilities/subject';
 import {
+  AUTH_PROVIDER,
+  type AuthenticatedSocket,
   authenticateSocket,
+  type AuthProvider,
   SocketAuthGuard,
-} from '#kernel/websocket/socket-auth.guard';
-import type { AuthenticatedSocket } from '#kernel/websocket/socket-auth.guard';
-import { withTenant } from '#kernel/websocket/with-tenant';
+} from '#kernel/public/auth';
+import { subjectOf } from '#kernel/public/capabilities';
+import { withTenant } from '#kernel/public/tenancy';
 import { PeerRoomPresenceService } from './peer-room-presence.service';
 import { PeerTurnCredentialsService } from './peer-turn-credentials.service';
 import { canJoinPeerRoom, canViewPeerRoomParticipants } from './peer.policy';

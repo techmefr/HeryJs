@@ -1,4 +1,4 @@
-import { PersonalDataRegistry } from '#kernel/privacy/personal-data.registry';
+import { PersonalDataRegistry } from '#kernel/public/privacy';
 import { ElasticsearchSearchDriver } from './elasticsearch-search.driver';
 import { ElasticsearchSearchPersonalData } from './elasticsearch-search.personal-data';
 

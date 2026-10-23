@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from '#kernel/auth/auth.module';
-import { ChangeFeedModule } from '#kernel/change-feed/change-feed.module';
+import { AuthModule } from '#kernel/public/auth';
+import { ChangeFeedModule } from '#kernel/public/realtime';
 import { ChangeFeedGateway } from './change-feed.gateway';
 import { LiveAuthGuard } from './live-auth.guard';
 

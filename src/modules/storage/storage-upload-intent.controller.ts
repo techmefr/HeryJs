@@ -1,10 +1,7 @@
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
-import { SessionGuard } from '#technical/auth/session.guard';
-import { Capability } from '#technical/capabilities/capability.decorator';
-import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
-import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
-import { ok } from '#technical/http/envelope';
-import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
+import { SessionGuard } from '#technical/public/auth';
+import { CapabilitiesGuard, Capability } from '#technical/public/capabilities';
+import { ok, RateLimit, ZodValidationPipe } from '#technical/public/http';
 import {
   confirmUploadIntentSchema,
   createUploadIntentSchema,

@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Client } from '@elastic/elasticsearch';
 import { elasticsearchEnv } from './elasticsearch-search.env';
-import { matchesFrom } from '#kernel/search/search-driver';
-import type { SearchDriver, SearchMatches } from '#kernel/search/search-driver';
+import {
+  matchesFrom,
+  type SearchDriver,
+  type SearchMatches,
+} from '#kernel/public/drivers';
 
 const TENANT_FIELD = 'tenantId';
 

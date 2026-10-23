@@ -1,6 +1,6 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import IORedis from 'ioredis';
-import { env } from '#kernel/config/env';
+import { env } from '#kernel/public/env';
 
 const KEY_PREFIX = 'sse:';
 

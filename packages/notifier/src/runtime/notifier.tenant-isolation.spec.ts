@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { authPrismaClient } from '#kernel/auth/better-auth.instance';
-import { createTenantScopedPrismaClient } from '#kernel/prisma/prisma.client';
-import { inTenantTransaction } from '#kernel/prisma/row-level-security';
-import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
+import { authPrismaClient } from '#kernel/public/auth';
+import {
+  createTenantScopedPrismaClient,
+  inTenantTransaction,
+} from '#kernel/public/testing';
+import { TenantContextStorage } from '#kernel/public/tenancy';
 import { NotificationPreferenceService } from './notification-preference.service';
 
 function inTenant<T>(tenantId: string, run: () => Promise<T>): Promise<T> {

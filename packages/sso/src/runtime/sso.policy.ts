@@ -1,4 +1,3 @@
-import { adminAbility } from '#kernel/capabilities/ability';
-import type { PolicyCheck } from '#kernel/capabilities/capability-check';
+import { adminAbility, type PolicyCheck } from '#kernel/public/capabilities';
 
 export const canManageSso: PolicyCheck = adminAbility;

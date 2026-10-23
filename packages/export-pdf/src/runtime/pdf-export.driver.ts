@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import PDFDocument from 'pdfkit';
-import { exportCellText, exportHeaders } from '#kernel/export/export-driver';
-import type {
-  ExportDriver,
-  Exportable,
-  ExportRow,
-} from '#kernel/export/export-driver';
+import {
+  type Exportable,
+  exportCellText,
+  type ExportDriver,
+  exportHeaders,
+  type ExportRow,
+} from '#kernel/public/drivers';
 
 const PAGE_MARGIN = 40;
 const ROW_HEIGHT = 18;

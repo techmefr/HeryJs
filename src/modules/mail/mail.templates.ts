@@ -1,4 +1,4 @@
-import { translateMessage } from '#technical/i18n/translate';
+import { translateMessage } from '#technical/public/i18n';
 import './mail.catalogue';
 
 interface MailTemplate {

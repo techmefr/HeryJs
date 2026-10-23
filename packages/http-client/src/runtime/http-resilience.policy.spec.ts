@@ -1,5 +1,5 @@
-import type { CapabilitySubject } from '#kernel/capabilities/capabilities.types';
-import { env } from '#kernel/config/env';
+import type { CapabilitySubject } from '#kernel/public/capabilities';
+import { env } from '#kernel/public/env';
 import {
   canManageHttpCircuits,
   canReadHttpCircuits,

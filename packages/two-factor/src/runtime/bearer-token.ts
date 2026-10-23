@@ -1,5 +1,5 @@
 import type { Request } from 'express';
-import { MissingSessionException } from '#kernel/errors/invalid-session.exception';
+import { MissingSessionException } from '#kernel/public/errors';
 
 const BEARER_PREFIX = 'Bearer ';
 

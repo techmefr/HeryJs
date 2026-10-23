@@ -1,7 +1,6 @@
 import { Global, Module } from '@nestjs/common';
-import { HeryConfigModule } from '#technical/config/hery-config.module';
-import { DriversModule } from '#technical/drivers/drivers.module';
-import { EMBEDDER } from '#technical/embeddings/embedding-driver';
+import { HeryConfigModule } from '#technical/public/config';
+import { DriversModule, EMBEDDER } from '#technical/public/drivers';
 import { EmbeddingDriverRegistry } from './embedding-driver.registry';
 import { EmbeddingsService } from './embeddings.service';
 import { FakeEmbeddingDriver } from './fake-embedding.driver';

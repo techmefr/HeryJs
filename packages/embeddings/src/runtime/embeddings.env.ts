@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseModuleEnv } from '#kernel/config/module-env';
+import { parseModuleEnv } from '#kernel/public/config';
 
 export const DEFAULT_EMBEDDING_DIMENSIONS = 1536;
 

@@ -1,4 +1,4 @@
-import { RATE_LIMIT_BUCKET } from '#kernel/rate-limit/rate-limit.decorator';
+import { RATE_LIMIT_BUCKET } from '#kernel/public/testing';
 import { TwoFactorController } from './two-factor.controller';
 import { TwoFactorRequirementController } from './two-factor-requirement.controller';
 

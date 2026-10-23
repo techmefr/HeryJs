@@ -3,15 +3,16 @@ import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
-import { env } from '#kernel/config/env';
-import { OutboxModule } from '#kernel/outbox/outbox.module';
-import { OUTBOX_RELAY_OPTIONS } from '#kernel/outbox/outbox.runner';
-import type { OutboxDelivery } from '#kernel/outbox/outbox.types';
-import { runInTenant } from '#kernel/tenancy/run-in-tenant';
-import { VectorEmbeddingHandler } from '#kernel/vector/vector-embedding.handler';
-import { VectorModule } from '#kernel/vector/vector.module';
-import { VectorSearchService } from '#kernel/vector/vector-search.service';
-import type { VectorTarget } from '#kernel/vector/vector-target';
+import { env } from '#kernel/public/env';
+import { type OutboxDelivery, OutboxModule } from '#kernel/public/jobs';
+import {
+  OUTBOX_RELAY_OPTIONS,
+  VectorEmbeddingHandler,
+  VectorModule,
+  VectorSearchService,
+  type VectorTarget,
+} from '#kernel/public/testing';
+import { runInTenant } from '#kernel/public/tenancy';
 import { DEFAULT_EMBEDDING_DIMENSIONS } from './embeddings.env';
 import { EmbeddingsModule } from './embeddings.module';
 

@@ -6,13 +6,10 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { Capability } from '#kernel/capabilities/capability.decorator';
-import { RateLimit } from '#kernel/rate-limit/rate-limit.decorator';
-import { CapabilitiesGuard } from '#kernel/capabilities/capabilities.guard';
-import { MissingSessionException } from '#kernel/errors/invalid-session.exception';
-import { ok } from '#kernel/http/envelope';
-import { SessionGuard } from '#kernel/auth/session.guard';
-import type { RequestWithUser } from '#kernel/auth/session.guard';
+import { CapabilitiesGuard, Capability } from '#kernel/public/capabilities';
+import { ok, RateLimit } from '#kernel/public/http';
+import { MissingSessionException } from '#kernel/public/errors';
+import { type RequestWithUser, SessionGuard } from '#kernel/public/auth';
 import { canImpersonate, canStopImpersonation } from './impersonation.policy';
 import { ImpersonationService } from './impersonation.service';
 

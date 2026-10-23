@@ -2,8 +2,8 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import type { WebhookDelivery, WebhookSubscription } from '@prisma/client';
-import { authPrismaClient } from '#technical/auth/better-auth.instance';
-import { WEBHOOK_DELIVERY_QUEUE } from '#technical/jobs/jobs.constants';
+import { authPrismaClient } from '#technical/public/auth';
+import { WEBHOOK_DELIVERY_QUEUE } from '#technical/public/jobs';
 import {
   DELIVERY_STATUS_DEAD,
   DELIVERY_STATUS_DELIVERED,

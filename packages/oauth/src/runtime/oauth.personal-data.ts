@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { authPrismaClient } from '#kernel/auth/better-auth.instance';
-import { PersonalDataRegistry } from '#kernel/privacy/personal-data.registry';
+import { authPrismaClient } from '#kernel/public/auth';
+import { PersonalDataRegistry } from '#kernel/public/privacy';
 
 /**
  * The link between an account and its provider identity, with the address the

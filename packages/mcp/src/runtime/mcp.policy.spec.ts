@@ -1,9 +1,11 @@
 import { GUARDS_METADATA } from '@nestjs/common/constants';
-import type { CapabilitySubject } from '#kernel/capabilities/capabilities.types';
-import { CAPABILITY_CHECK } from '#kernel/capabilities/capability.decorator';
-import type { PolicyCheck } from '#kernel/capabilities/capability-check';
-import { SessionGuard } from '#kernel/auth/session.guard';
-import { CapabilitiesGuard } from '#kernel/capabilities/capabilities.guard';
+import {
+  CapabilitiesGuard,
+  type CapabilitySubject,
+  type PolicyCheck,
+} from '#kernel/public/capabilities';
+import { CAPABILITY_CHECK } from '#kernel/public/testing';
+import { SessionGuard } from '#kernel/public/auth';
 import { McpGatewayController } from './mcp-gateway.controller';
 import { canReachMcpGateway } from './mcp.policy';
 

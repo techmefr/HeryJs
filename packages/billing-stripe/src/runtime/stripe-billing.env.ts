@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseModuleEnv } from '#kernel/config/module-env';
+import { parseModuleEnv } from '#kernel/public/config';
 
 /**
  * Parsed lazily: an app declaring this driver in hery.config.ts but running on

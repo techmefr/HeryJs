@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
-import { HeryConfigModule } from '#kernel/config/hery-config.module';
-import { DriversModule } from '#kernel/drivers/drivers.module';
-import { NOTIFIER_PUSH_CHANNEL } from '#kernel/notifier/notifier-push-channel';
-import { PrismaModule } from '#kernel/prisma/prisma.module';
+import { HeryConfigModule } from '#kernel/public/config';
+import { DriversModule } from '#kernel/public/drivers';
+import { NOTIFIER_PUSH_CHANNEL } from '#kernel/public/notifications';
+import { PrismaModule } from '#kernel/public/database';
 import { LogPushDriver } from './log-push.driver';
 import { PushDriverRegistry } from './push-driver.registry';
 import { PushService } from './push.service';

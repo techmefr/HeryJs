@@ -1,5 +1,4 @@
-import { adminAbility } from '#technical/capabilities/ability';
-import type { PolicyCheck } from '#technical/capabilities/capability-check';
+import { adminAbility, type PolicyCheck } from '#technical/public/capabilities';
 
 // The log lists every message the tenant sent, with each recipient's address:
 // that is the tenant's whole correspondence, not the caller's own, so it asks

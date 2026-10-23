@@ -1,4 +1,4 @@
-import type { PolicyCheck } from '#kernel/capabilities/capability-check';
+import type { PolicyCheck } from '#kernel/public/capabilities';
 
 // An upload has no record to own until whatever the caller does next attaches
 // the returned key to one -- the tenant boundary and the gates in

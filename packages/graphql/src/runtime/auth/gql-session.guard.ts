@@ -6,13 +6,16 @@ import {
 } from '@nestjs/common';
 import { GqlExecutionContext } from '@nestjs/graphql';
 import { Request } from 'express';
-import { AUTH_PROVIDER } from '#kernel/auth/auth.types';
-import type { AuthenticatedUser, AuthProvider } from '#kernel/auth/auth.types';
-import { resolveCallerOnce } from '#kernel/auth/resolve-caller';
 import {
-  MissingSessionException,
+  AUTH_PROVIDER,
+  type AuthenticatedUser,
+  type AuthProvider,
+  resolveCallerOnce,
+} from '#kernel/public/auth';
+import {
   InvalidSessionException,
-} from '#kernel/errors/invalid-session.exception';
+  MissingSessionException,
+} from '#kernel/public/errors';
 
 export type GqlRequestWithUser = Request & { user: AuthenticatedUser };
 

@@ -1,5 +1,5 @@
 import { createHmac } from 'node:crypto';
-import { BillingEventUnattributedException } from '#kernel/billing/billing-driver';
+import { BillingEventUnattributedException } from '#kernel/public/drivers';
 import { StripeBillingDriver } from './stripe-billing.driver';
 
 const SECRET = 'whsec_isolation_secret';

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import { CacheService } from '#technical/cache/cache.service';
-import { TenantContextStorage } from '#technical/tenancy/tenant-context';
+import { CacheService } from '#technical/public/platform';
+import { TenantContextStorage } from '#technical/public/tenancy';
 import {
   EXTENSION_BY_CONTENT_TYPE,
   allowedContentTypes,

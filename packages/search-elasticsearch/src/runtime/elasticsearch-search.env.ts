@@ -1,4 +1,4 @@
-import { devOnlyDefault, parseModuleEnv } from '#kernel/config/module-env';
+import { devOnlyDefault, parseModuleEnv } from '#kernel/public/config';
 
 export const elasticsearchEnv = parseModuleEnv('search-elasticsearch', {
   ELASTICSEARCH_URL: devOnlyDefault(

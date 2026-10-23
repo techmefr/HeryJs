@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { TelemetryBus } from '#technical/tracing/telemetry-bus';
-import type { PushMessage } from '#technical/push/push-driver';
+import { TelemetryBus } from '#technical/public/observability';
+import type { PushMessage } from '#technical/public/drivers';
 import { PushDriverRegistry } from './push-driver.registry';
 import { PushTokenService } from './push.tokens';
 

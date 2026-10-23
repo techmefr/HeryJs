@@ -1,4 +1,4 @@
-import type { JobPolicy } from '#kernel/jobs/job-policy';
+import type { JobPolicy } from '#kernel/public/jobs';
 
 export const INBOUND_WEBHOOK_HANDLER = 'inbound-webhooks';
 export const INBOUND_WEBHOOK_MESSAGE = 'inbound-webhook.received';

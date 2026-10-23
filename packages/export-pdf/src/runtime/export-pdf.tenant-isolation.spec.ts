@@ -1,6 +1,6 @@
 import { inflateSync } from 'node:zlib';
-import type { Exportable } from '#kernel/export/export-driver';
-import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
+import type { Exportable } from '#kernel/public/drivers';
+import { TenantContextStorage } from '#kernel/public/tenancy';
 import { PdfExportDriver } from './pdf-export.driver';
 
 const driver = new PdfExportDriver();

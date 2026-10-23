@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { httpClientDriverToken } from '#kernel/http-client/http-client-driver';
+import { httpClientDriverToken } from '#kernel/public/drivers';
 import { OfetchHttpClientDriver } from './ofetch-http-client.driver';
 
 const TOKEN = httpClientDriverToken('ofetch');

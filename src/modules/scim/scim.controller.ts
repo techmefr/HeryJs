@@ -13,9 +13,8 @@ import {
   UseFilters,
   UseGuards,
 } from '@nestjs/common';
-import { PublicRoute } from '#technical/capabilities/public-route.decorator';
-import { UnpaginatedRoute } from '#technical/http/unpaginated-route.decorator';
-import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
+import { PublicRoute } from '#technical/public/capabilities';
+import { RateLimit, UnpaginatedRoute } from '#technical/public/http';
 import { SCIM_BASE_PATH } from './scim.types';
 import { ScimActivityService } from './scim-activity.service';
 import {

@@ -1,10 +1,9 @@
-import { ChangeFeedHub } from '#technical/change-feed/change-feed.hub';
-import { ChangeFeedRegistry } from '#technical/change-feed/change-feed.registry';
-import { InMemoryChangeFeedBackend } from '#technical/change-feed/in-memory-change-feed.backend';
-import type {
-  AuthenticatedUser,
-  AuthProvider,
-} from '#technical/auth/auth.types';
+import { ChangeFeedHub } from '#technical/public/realtime';
+import {
+  ChangeFeedRegistry,
+  InMemoryChangeFeedBackend,
+} from '#technical/public/testing';
+import type { AuthenticatedUser, AuthProvider } from '#technical/public/auth';
 import { ChangeFeedGateway } from './change-feed.gateway';
 import type { LiveSocket } from './live-auth.guard';
 

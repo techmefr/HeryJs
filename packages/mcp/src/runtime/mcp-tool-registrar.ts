@@ -1,5 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { CapabilitySubject } from '#kernel/capabilities/capabilities.types';
+import type { CapabilitySubject } from '#kernel/public/capabilities';
 
 export interface McpToolRegistrar {
   register(server: McpServer, subject: CapabilitySubject): void;

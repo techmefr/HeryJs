@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { NOTIFIER_SMS_CHANNEL } from '#kernel/notifier/notifier-sms-channel';
-import type { NotifierSmsChannel } from '#kernel/notifier/notifier-sms-channel';
-import type { SmsMessage } from '#kernel/sms/sms-driver';
+import {
+  NOTIFIER_SMS_CHANNEL,
+  type NotifierSmsChannel,
+} from '#kernel/public/notifications';
+import type { SmsMessage } from '#kernel/public/drivers';
 import { SmsService } from './sms.service';
 
 /**

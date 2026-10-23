@@ -1,4 +1,4 @@
-import { devOnlyDefault, parseModuleEnv } from '#kernel/config/module-env';
+import { devOnlyDefault, parseModuleEnv } from '#kernel/public/config';
 
 export const streamEnv = parseModuleEnv('stream', {
   LIVEKIT_URL: devOnlyDefault('LIVEKIT_URL', 'http://localhost:7880'),
