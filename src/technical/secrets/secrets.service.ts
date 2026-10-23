@@ -15,6 +15,10 @@ export class SecretsService {
     return defaultKeyring().open(envelope, context);
   }
 
+  isSealed(value: string): boolean {
+    return defaultKeyring().isEnvelope(value);
+  }
+
   isCurrent(envelope: string): boolean {
     return defaultKeyring().isCurrent(envelope);
   }

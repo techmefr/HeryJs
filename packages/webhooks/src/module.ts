@@ -1,9 +1,10 @@
 import type { ModuleDefinition } from 'heryjs';
 
 const WEBHOOK_MODELS = `
-// A webhook secret is stored in plaintext, unlike a password or an API key:
-// verifying an inbound signature means recomputing the same HMAC the sender
-// used, so this cannot be a one-way hash.
+// The secret is sealed with the kernel's SecretsService: verifying an inbound
+// signature recomputes the sender's HMAC, so it cannot be a one-way hash, but
+// it does not have to sit readable in the table. deliveryId is the sender's own
+// event id, or a hash of the signed bytes, so a redelivery is recorded once.
 model WebhookEndpoint {
   id        String   @id @default(cuid())
   tenantId  String
@@ -22,12 +23,14 @@ model WebhookEvent {
   endpointId  String
   tenantId    String
   source      String
+  deliveryId  String?
   payload     Json
   receivedAt  DateTime  @default(now())
   processedAt DateTime?
 
   endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
 
+  @@unique([tenantId, endpointId, deliveryId])
   @@index([tenantId])
   @@index([endpointId])
 }
@@ -100,7 +103,7 @@ export default {
     context.nextSteps([
       'Run "pnpm hery migrate --name add_webhooks"',
       `Import "WebhooksModule" into src/app.module.ts`,
-      "POST /webhooks/endpoints as an admin to mint an endpoint and its secret, then have the sender sign each request as HMAC-SHA256(secret, timestamp + '.' + rawBody) in the x-webhook-signature and x-webhook-timestamp headers",
+      "POST /webhooks/endpoints as an admin to mint an endpoint and its secret, then have the sender sign each request as HMAC-SHA256(secret, timestamp + '.' + rawBody) in the x-webhook-signature and x-webhook-timestamp headers, and its own event id in x-webhook-id so a redelivery is recorded once",
       'Tune the replay window with WEBHOOK_SIGNATURE_TOLERANCE_SECONDS (default 300)',
       'Outbound: a tenant admin POSTs /webhook-subscriptions with a public https url and the events it wants (webhook.* and model.* names), and keeps the returned secret, which is shown once',
       "Announce your own event next to a write with outbox.stage(tx, 'webhook.invoice.paid', payload); model.created, model.updated and model.deleted are delivered for every tenant-scoped model without any code",

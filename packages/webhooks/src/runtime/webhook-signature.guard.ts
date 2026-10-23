@@ -4,7 +4,9 @@ import type { Request } from 'express';
 import { authPrismaClient } from '#kernel/auth/better-auth.instance';
 import { env } from '#kernel/config/env';
 import { TraceContextStorage } from '#kernel/tracing/trace-context';
+import { WEBHOOK_TIMESTAMP_HEADER } from './inbound-webhook.constants';
 import { InvalidWebhookSignatureException } from './invalid-webhook-signature.exception';
+import { WebhookEndpointSecretService } from './webhook-endpoint-secret.service';
 import { verifyWebhookSignature } from './webhook-signature';
 
 export interface VerifiedWebhookEndpoint {
@@ -26,6 +28,8 @@ export type RequestWithWebhookEndpoint = RawBodyRequest<Request> & {
  */
 @Injectable()
 export class WebhookSignatureGuard implements CanActivate {
+  constructor(private readonly secrets: WebhookEndpointSecretService) {}
+
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const start = process.hrtime.bigint();
     const request = context
@@ -50,7 +54,7 @@ export class WebhookSignatureGuard implements CanActivate {
     };
 
     const signature = request.header('x-webhook-signature');
-    const timestamp = request.header('x-webhook-timestamp');
+    const timestamp = request.header(WEBHOOK_TIMESTAMP_HEADER);
 
     if (!signature || !timestamp) {
       throw rejection('missing signature or timestamp header');
@@ -65,7 +69,7 @@ export class WebhookSignatureGuard implements CanActivate {
     }
 
     const valid = verifyWebhookSignature({
-      secret: endpoint.secret,
+      secret: this.secrets.open(endpoint.secret, endpoint.id),
       timestamp,
       rawBody: request.rawBody ?? Buffer.alloc(0),
       signature,
