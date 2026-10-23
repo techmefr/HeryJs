@@ -4,7 +4,6 @@ import { Test } from '@nestjs/testing';
 import { Logger } from 'nestjs-pino';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { databaseOwnerClient } from '#devtools/testing/database-owner-client';
 import { env } from '#technical/config/env';
 import { waitFor } from '#devtools/testing/wait-for';
