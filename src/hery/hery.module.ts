@@ -13,9 +13,9 @@ import {
   OutputCacheModule,
   RateLimitModule,
   SecurityHeadersMiddleware,
-} from '#technical/public/http';
-import { AuditModule, PrivacyModule } from '#technical/public/privacy';
-import { AuthModule } from '#technical/public/auth';
+} from '../technical/public/http';
+import { AuditModule, PrivacyModule } from '../technical/public/privacy';
+import { AuthModule } from '../technical/public/auth';
 import {
   CacheModule,
   EventsModule,
@@ -25,8 +25,8 @@ import {
   MaintenanceMiddleware,
   MaintenanceModule,
   QuotasModule,
-} from '#technical/public/platform';
-import { ChangeFeedModule, SignalModule } from '#technical/public/realtime';
+} from '../technical/public/platform';
+import { ChangeFeedModule, SignalModule } from '../technical/public/realtime';
 import {
   ErrorReporterModule,
   LogShippingModule,
@@ -37,26 +37,26 @@ import {
   logShippingStream,
   telemetryPinoOptions,
   tenantLogMixin,
-} from '#technical/public/observability';
+} from '../technical/public/observability';
 import {
   JobFlowsModule,
   JobsModule,
   OutboxModule,
   SchedulerModule,
-} from '#technical/public/jobs';
-import { NotificationsModule } from '#technical/public/notifications';
+} from '../technical/public/jobs';
+import { NotificationsModule } from '../technical/public/notifications';
 import {
   BackupModule,
   PruneModule,
   SeedersModule,
-} from '#technical/public/database';
-import { SecretsModule, env } from '#technical/public/env';
-import { TeamsModule, TenantMiddleware } from '#technical/public/tenancy';
-import { LocaleMiddleware } from '#technical/public/i18n';
-import { DomainExceptionFilter } from '#technical/public/errors';
-import type { HeryConfig } from '#technical/public/config';
-import { resolveHeryModules } from '#technical/public/modules';
-import type { HeryModuleContract } from '#technical/public/modules';
+} from '../technical/public/database';
+import { SecretsModule, env } from '../technical/public/env';
+import { TeamsModule, TenantMiddleware } from '../technical/public/tenancy';
+import { LocaleMiddleware } from '../technical/public/i18n';
+import { DomainExceptionFilter } from '../technical/public/errors';
+import type { HeryConfig } from '../technical/public/config';
+import { resolveHeryModules } from '../technical/public/modules';
+import type { HeryModuleContract } from '../technical/public/modules';
 import {
   DevDashboardMiddleware,
   DevDashboardModule,
@@ -64,7 +64,7 @@ import {
   InspectorModule,
   PipelineMiddleware,
   PipelineModule,
-} from '#devtools/public';
+} from '../devtools/public';
 
 function loggerModule(): DynamicModule {
   const telemetryOptions = telemetryPinoOptions();
