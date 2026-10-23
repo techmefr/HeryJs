@@ -126,7 +126,7 @@
     "test:modules": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-modules.json",
     "test:module-specs": "NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-module-specs.json",
     "arch:check": "depcruise src --config .dependency-cruiser.cjs",
-    "lint:conventions": "NODE_OPTIONS=--conditions=development ts-node scripts/check-conventions.ts",
+    "lint:conventions": "NODE_OPTIONS=\"--conditions=development --conditions=heryjs-source\" ts-node scripts/check-conventions.ts",
     "lint:admin-contract": "pnpm run lint:conventions admin-contract",
     "lint:capabilities": "pnpm run lint:conventions capabilities",
     "lint:scope-parity": "pnpm run lint:conventions scope-parity",
@@ -148,8 +148,8 @@
     "lint:kernel-boundary": "pnpm run lint:conventions kernel-boundary",
     "lint:package-manifests": "pnpm run lint:conventions package-manifests",
     "lint:example": "pnpm run lint:conventions example-freshness",
-    "lint:hery": "NODE_OPTIONS=--conditions=development ts-node cli/hery.ts lint --min-score 100",
-    "hery": "NODE_OPTIONS=--conditions=development ts-node cli/hery.ts",
+    "lint:hery": "NODE_OPTIONS=\"--conditions=development --conditions=heryjs-source\" ts-node cli/hery.ts lint --min-score 100",
+    "hery": "NODE_OPTIONS=\"--conditions=development --conditions=heryjs-source\" ts-node cli/hery.ts",
     "codemod:kernel": "pnpm hery kernel:migrate packages examples --peer workspace:^"
   },
   "dependencies": {

@@ -65,6 +65,20 @@ export const KERNEL_PACKAGE_SPECIFIER = `${KERNEL_PACKAGE}/`;
 export const KERNEL_PACKAGE_DIR = path.join('packages', 'core');
 
 /**
+ * The export condition that points `@heryjs/core` at its TypeScript sources.
+ * It is this repository's own, not `development`: a project that turns
+ * `development` on would otherwise resolve to sources its tarball does not
+ * carry.
+ */
+export const KERNEL_SOURCE_CONDITION = 'heryjs-source';
+
+/**
+ * The subpath a generated project reaches kernel internals through, as
+ * `#technical/*`: its CLI and its test support still import them.
+ */
+export const KERNEL_INTERNAL_SUBPATH = 'technical';
+
+/**
  * `#kernel/public/<entry>` is the form modules were written in before the
  * kernel became a package. It still resolves, and `hery kernel:migrate`
  * rewrites it to `@heryjs/core/<entry>`.

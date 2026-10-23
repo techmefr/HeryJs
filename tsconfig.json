@@ -6,7 +6,7 @@
       "heryjs": ["./cli/module-contract.ts"]
     },
     "resolvePackageJsonExports": true,
-    "customConditions": ["development"],
+    "customConditions": ["heryjs-source"],
     "esModuleInterop": true,
     "isolatedModules": true,
     "declaration": true,
