@@ -12,7 +12,7 @@ import { LINT_RULES } from '../lib/lint/rules';
 import { scoreOf } from '../lib/lint/score';
 import type { Violation } from '../lib/lint/types';
 
-const DEFAULT_BASELINE_PATH = '.hery/lint-baseline.json';
+export const DEFAULT_BASELINE_PATH = '.hery/lint-baseline.json';
 
 // A violation can be anchored on a file that does not exist -- resource-shape
 // used to do exactly that for the companion file it flags as missing.
@@ -35,7 +35,44 @@ interface LintOptions {
   format: 'text' | 'json';
 }
 
-function report(
+function contentsOf(
+  repoRoot: string,
+  violations: Violation[],
+): Map<string, string> {
+  const fileContents = new Map<string, string>();
+
+  for (const violation of violations) {
+    if (!fileContents.has(violation.file)) {
+      fileContents.set(
+        violation.file,
+        readFileOrEmpty(repoRoot, violation.file),
+      );
+    }
+  }
+
+  return fileContents;
+}
+
+/**
+ * The violations the baseline does not grandfather, scored. `hery check` runs
+ * this too, so a project's lint rules and its convention checks pass or fail
+ * as one command.
+ */
+export function lintAgainstBaseline(
+  repoRoot: string,
+  baselinePath: string,
+): { fresh: Violation[]; grandfathered: number; score: number } {
+  const violations = LINT_RULES.flatMap((rule) => rule.run(repoRoot));
+  const { fresh, grandfathered } = partitionViolations(
+    violations,
+    loadBaseline(baselinePath),
+    contentsOf(repoRoot, violations),
+  );
+
+  return { fresh, grandfathered, score: scoreOf(fresh) };
+}
+
+export function report(
   fresh: Violation[],
   grandfathered: number,
   score: number,
@@ -108,20 +145,13 @@ export function registerLintCommand(program: Command): void {
       const repoRoot = path.resolve(__dirname, '..', '..');
       const baselinePath = path.resolve(repoRoot, options.baseline);
 
-      const violations = LINT_RULES.flatMap((rule) => rule.run(repoRoot));
-
-      const fileContents = new Map<string, string>();
-      for (const violation of violations) {
-        if (!fileContents.has(violation.file)) {
-          fileContents.set(
-            violation.file,
-            readFileOrEmpty(repoRoot, violation.file),
-          );
-        }
-      }
-
       if (options.writeBaseline) {
-        writeBaseline(baselinePath, baselineFrom(violations, fileContents));
+        const violations = LINT_RULES.flatMap((rule) => rule.run(repoRoot));
+
+        writeBaseline(
+          baselinePath,
+          baselineFrom(violations, contentsOf(repoRoot, violations)),
+        );
         console.log(
           pc.green(
             `✔ wrote ${violations.length} known violation${violations.length === 1 ? '' : 's'} to ${options.baseline}`,
@@ -130,13 +160,10 @@ export function registerLintCommand(program: Command): void {
         return;
       }
 
-      const baseline = loadBaseline(baselinePath);
-      const { fresh, grandfathered } = partitionViolations(
-        violations,
-        baseline,
-        fileContents,
+      const { fresh, grandfathered, score } = lintAgainstBaseline(
+        repoRoot,
+        baselinePath,
       );
-      const score = scoreOf(fresh);
 
       report(fresh, grandfathered, score, options.format);
 

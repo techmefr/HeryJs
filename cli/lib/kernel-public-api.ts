@@ -37,6 +37,7 @@ export const KERNEL_PUBLIC_ENTRIES = [
  */
 export const DEVTOOLS_PUBLIC_ENTRIES = {
   devtools: path.join('src', 'devtools', 'public.ts'),
+  conventions: path.join('src', 'devtools', 'conventions', 'index.ts'),
 } as const;
 
 export function isTestSupport(file: string): boolean {

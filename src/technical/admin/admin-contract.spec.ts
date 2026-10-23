@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
-import { adminContractViolations } from '../../../scripts/check-admin-contract';
+import { adminContractViolations } from '../../devtools/conventions/check-admin-contract';
 
 describe('the admin contract lint', () => {
   let dir: string;

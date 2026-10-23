@@ -15,8 +15,8 @@ function findControllerFiles(dir: string): string[] {
   });
 }
 
-export function checkNoInlineDevGuard(): boolean {
-  const srcDir = path.resolve(__dirname, '..', 'src');
+export function checkNoInlineDevGuard(repoRoot: string): boolean {
+  const srcDir = path.join(repoRoot, 'src');
   const controllerFiles = findControllerFiles(srcDir);
 
   const violations = controllerFiles.filter((filePath) =>

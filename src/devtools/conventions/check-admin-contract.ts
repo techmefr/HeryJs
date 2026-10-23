@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import * as path from 'node:path';
 import * as ts from 'typescript';
-import { ADMIN_ICONS } from '../src/technical/admin/admin-icons';
+import { ADMIN_ICONS } from '../../technical/admin/admin-icons';
 
 const ROUTE_DECORATORS = new Set(['Get', 'Post', 'Patch', 'Put', 'Delete']);
 const SCOPES = new Set(['row', 'bulk', 'global']);
@@ -267,8 +267,7 @@ function isInstalledRuntimeCopy(repoRoot: string, file: string): boolean {
   );
 }
 
-export function checkAdminContract(): boolean {
-  const repoRoot = path.resolve(__dirname, '..');
+export function checkAdminContract(repoRoot: string): boolean {
   const files = ROOTS.flatMap((root) => {
     const dir = path.join(repoRoot, root);
 
