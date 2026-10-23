@@ -276,6 +276,7 @@ jobs:
       # packages/core/src holds into this repository.
       - name: Build the kernel and check what its tarball carries
         run: |
+          pnpm run db:generate
           pnpm run build:core
           cd packages/core
           npm pack --dry-run --json | node -e '
