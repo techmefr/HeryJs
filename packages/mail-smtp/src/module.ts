@@ -14,7 +14,6 @@ export default {
     context.copyRuntime();
 
     context.nextSteps([
-      'Import "SmtpMailModule" into src/app.module.ts',
       "Declare it in hery.config.ts, e.g. { mail: { default: process.env.MAIL_DRIVER ?? 'log', drivers: { log: { driver: 'log' }, smtp: { driver: 'smtp' } } } }",
       'Set MAIL_SMTP_HOST, MAIL_SMTP_FROM and, if the server wants them, MAIL_SMTP_USER and MAIL_SMTP_PASSWORD in .env (MAIL_SMTP_PORT defaults to 587, MAIL_SMTP_TLS to starttls), then MAIL_DRIVER=smtp to switch',
     ]);

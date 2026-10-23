@@ -365,7 +365,8 @@ jobs:
           sed -i 's/view: own/view: all/' blueprints/note.yaml
           pnpm hery generate Note
           sed -i "1i import { NoteModule } from '#functional/note/note.module';" src/app.module.ts
-          sed -i 's/^  imports: \[$/  imports: [\n    NoteModule,/' src/app.module.ts
+          sed -i 's/HeryModule.forRoot(heryConfig, heryModules)/&, NoteModule/' src/app.module.ts
+          grep -q 'heryModules), NoteModule\]' src/app.module.ts
           pnpm hery migrate --name note
           pnpm run typecheck
           NODE_OPTIONS=--experimental-vm-modules pnpm exec jest src/functional/note
@@ -375,6 +376,8 @@ jobs:
         working-directory: ${{ runner.temp }}/scaffold/my-app
         run: |
           pnpm hery install scim sso storage
+          grep -q "'@heryjs/sso'," hery.config.ts
+          grep -q "from '#modules/sso/sso.hery';" src/hery.modules.ts
           pnpm exec prisma generate
           pnpm run typecheck
           pnpm run build
@@ -446,6 +449,9 @@ jobs:
           test ! -e scripts/check-conventions.ts
           test "$(ls scripts | tr '\n' ' ')" = 'postgres '
           grep -q '"check": "pnpm hery check"' package.json
+          grep -q 'HeryModule.forRoot(heryConfig, heryModules)' src/app.module.ts
+          ! grep -q '#modules/' src/app.module.ts
+          grep -q "'@heryjs/impersonation'," hery.config.ts
           psql postgresql://heryjs:heryjs@localhost:5432/heryjs -v ON_ERROR_STOP=1 -c 'CREATE DATABASE heryjs_old'
           pnpm install --no-frozen-lockfile
           pnpm hery migrate --name init

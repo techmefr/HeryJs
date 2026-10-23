@@ -11,7 +11,6 @@ export default {
     context.copyRuntime();
 
     context.nextSteps([
-      `Import "MeilisearchSearchModule" into src/app.module.ts`,
       "Declare it in hery.config.ts, e.g. { search: { default: 'prisma', engines: { prisma: { driver: 'prisma' }, meilisearch: { driver: 'meilisearch' } } } }",
       'Run "pnpm hery up --start" to boot Meilisearch and resolve MEILISEARCH_URL',
     ]);

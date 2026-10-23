@@ -11,7 +11,6 @@ export default {
     context.copyRuntime();
 
     context.nextSteps([
-      'Import "XlsxExportModule" into src/app.module.ts',
       "Declare it in hery.config.ts under export.drivers, e.g. xlsx: { driver: 'xlsx' }",
       'Call ".as(\'xlsx\').generate(new TaskListExport(tasks))" on ExportService',
     ]);

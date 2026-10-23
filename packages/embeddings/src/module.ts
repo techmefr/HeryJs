@@ -10,7 +10,6 @@ export default {
     context.copyRuntime();
 
     context.nextSteps([
-      'Import "EmbeddingsModule" into src/app.module.ts -- a resource with a vector field cannot boot without it',
       "Declare it in hery.config.ts, e.g. { embeddings: { default: process.env.EMBEDDINGS_DRIVER ?? 'fake', drivers: { fake: { driver: 'fake' }, openai: { driver: 'openai-compatible' } } } }",
       'Set EMBEDDINGS_DIMENSIONS to the width of the vector fields in your blueprints (default 1536)',
       'For the openai-compatible driver set EMBEDDINGS_OPENAI_BASE_URL, EMBEDDINGS_OPENAI_API_KEY and EMBEDDINGS_OPENAI_MODEL',

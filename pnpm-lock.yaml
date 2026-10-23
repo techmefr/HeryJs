@@ -466,6 +466,9 @@ importers:
       ioredis:
         specifier: ^6.0.0
         version: 6.0.0
+      nestjs-pino:
+        specifier: ^5.1.0
+        version: 5.1.0(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(pino-http@11.0.0)(pino@10.3.1)(rxjs@7.8.2)
       pg:
         specifier: ^8.23.0
         version: 8.23.0
@@ -816,6 +819,10 @@ importers:
         version: 6.0.3
 
   packages/mcp:
+    dependencies:
+      zod:
+        specifier: ^4.0.0
+        version: 4.5.4
     devDependencies:
       '@heryjs/core':
         specifier: workspace:*

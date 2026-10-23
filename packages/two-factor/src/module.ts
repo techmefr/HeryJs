@@ -75,7 +75,6 @@ export default {
 
     context.nextSteps([
       'Run "pnpm hery migrate --name add_two_factor"',
-      'Import "TwoFactorModule" into src/app.module.ts',
       'Set TWO_FACTOR_ENCRYPTION_KEY to 64 hex characters (openssl rand -hex 32): it encrypts every TOTP secret at rest and is refused in production while it is still the development default',
       'Put TwoFactorGuard after SessionGuard on every route that must not be reachable before the second factor: @UseGuards(SessionGuard, TwoFactorGuard, CapabilitiesGuard)',
       'POST /two-factor/enrolment, then POST /two-factor/enrolment/confirm with a first code; the recovery codes come back once, on that confirmation',

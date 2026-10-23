@@ -80,6 +80,11 @@
       "types": "./dist/technical/public/load-env.d.ts",
       "default": "./dist/technical/public/load-env.js"
     },
+    "./modules": {
+      "heryjs-source": "./src/technical/public/modules.ts",
+      "types": "./dist/technical/public/modules.d.ts",
+      "default": "./dist/technical/public/modules.js"
+    },
     "./notifications": {
       "heryjs-source": "./src/technical/public/notifications.ts",
       "types": "./dist/technical/public/notifications.d.ts",
@@ -130,6 +135,11 @@
       "types": "./dist/devtools/conventions/index.d.ts",
       "default": "./dist/devtools/conventions/index.js"
     },
+    "./app": {
+      "heryjs-source": "./src/hery/public.ts",
+      "types": "./dist/hery/public.d.ts",
+      "default": "./dist/hery/public.js"
+    },
     "./technical/*": {
       "heryjs-source": "./src/technical/*.ts",
       "types": "./dist/technical/*.d.ts",
@@ -173,6 +183,7 @@
     "express": "^5.2.1",
     "helmet": "^8.3.0",
     "ioredis": "^6.0.0",
+    "nestjs-pino": "^5.1.0",
     "pg": "^8.23.0",
     "pino": "^10.3.1",
     "pino-pretty": "^13.1.3",

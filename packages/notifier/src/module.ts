@@ -71,7 +71,6 @@ export default {
     context.nextSteps([
       'Run "pnpm hery migrate --name add_notification_preferences"',
       'Install "mail", "sms" and "push" first if you have not already -- the notifier composes them rather than replacing them',
-      'Import "NotifierModule" into src/app.module.ts',
       'Write a notification class implementing "toMail", "toSms" and/or "toPush" from "#modules/notifier/notification", each returning the same rendered-message shape its channel already accepts',
       'Set "type" on each notification class (preferences are keyed on it) and "isMandatory = true" on the transactional ones -- a password reset or an invoice -- that no preference may suppress',
       "Users read and change their own rules and quiet hours through GET /notification-preferences, PUT /notification-preferences/rules and PUT /notification-preferences/settings; a scheduled job sends held mail digests hourly at each user's chosen local hour",

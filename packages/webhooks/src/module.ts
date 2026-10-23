@@ -106,7 +106,6 @@ export default {
 
     context.nextSteps([
       'Run "pnpm hery migrate --name add_webhooks"',
-      `Import "WebhooksModule" into src/app.module.ts`,
       "POST /webhooks/endpoints as an admin to mint an endpoint and its secret, then have the sender sign each request as HMAC-SHA256(secret, timestamp + '.' + rawBody) in the x-webhook-signature and x-webhook-timestamp headers, and its own event id in x-webhook-id so a redelivery is recorded once",
       'Tune the replay window with WEBHOOK_SIGNATURE_TOLERANCE_SECONDS (default 300)',
       'Outbound: a tenant admin POSTs /webhook-subscriptions with a public https url and the events it wants (webhook.* and model.* names), and keeps the returned secret, which is shown once',

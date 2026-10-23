@@ -16,7 +16,6 @@ export default {
     context.copyRuntime();
 
     context.nextSteps([
-      `Import "GraphqlModule" into src/app.module.ts`,
       'Run "hery generate <Name> --graphql" to add a resolver to a resource',
     ]);
   },

@@ -20,6 +20,7 @@ export const KERNEL_PUBLIC_ENTRIES = [
   'i18n',
   'jobs',
   'load-env',
+  'modules',
   'notifications',
   'observability',
   'platform',
@@ -34,10 +35,13 @@ export const KERNEL_PUBLIC_ENTRIES = [
  * The developer tools ship in the same package but live under src/devtools,
  * which the kernel itself never imports. Their test support stays with the
  * app: it boots the app's own AppModule, so it cannot be built without it.
+ * `app` is HeryModule, under src/hery: it composes the kernel with the
+ * devtools, which nothing under src/technical may import.
  */
 export const DEVTOOLS_PUBLIC_ENTRIES = {
   devtools: path.join('src', 'devtools', 'public.ts'),
   conventions: path.join('src', 'devtools', 'conventions', 'index.ts'),
+  app: path.join('src', 'hery', 'public.ts'),
 } as const;
 
 export function isTestSupport(file: string): boolean {

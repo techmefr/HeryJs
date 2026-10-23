@@ -154,7 +154,16 @@ export interface HeryConfigDatabase {
   rowLevelSecurity?: boolean;
 }
 
+/**
+ * A module as hery.config.ts declares it: its npm name alone, or its name and
+ * the options its contract validates.
+ */
+export type HeryConfigModuleEntry =
+  string | readonly [name: string, options?: Record<string, unknown>];
+
 export interface HeryConfig {
+  /** The modules `HeryModule.forRoot` wires, in this order. */
+  modules?: readonly HeryConfigModuleEntry[];
   database?: HeryConfigDatabase;
   search?: {
     default: string;

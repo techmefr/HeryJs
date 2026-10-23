@@ -5,6 +5,10 @@ import type { Command } from 'commander';
 import pc from 'picocolors';
 import { APP_MODULE, unwireModule } from '../lib/app-module-patch';
 import { findModule, loadModules } from '../lib/module-discovery';
+import {
+  modulePackageName,
+  unwireDeclaredModule,
+} from '../lib/hery-config-patch';
 
 // module.dependencies holds pnpm-add specs ("@elastic/elasticsearch@^8.17.0"),
 // but "pnpm remove" takes bare package names -- a version suffix there is a
@@ -31,7 +35,7 @@ export function registerUninstallCommand(program: Command): void {
   program
     .command('uninstall <module>')
     .description(
-      "Remove a module's own dependencies and its AppModule import, and print what to clean up by hand (see hery module:list)",
+      "Remove a module's own dependencies, its hery.config.ts entry and any AppModule import, and print what to clean up by hand (see hery module:list)",
     )
     .action((name: string) => {
       const module = findModule(loadModules(), name);
@@ -54,6 +58,14 @@ export function registerUninstallCommand(program: Command): void {
         console.log(pc.green(`✔ removed ${names.join(', ')}`));
       } else {
         console.log(pc.dim(`  ${module.name} has no dependencies of its own`));
+      }
+
+      for (const file of unwireDeclaredModule(process.cwd(), {
+        name: modulePackageName(module.packageDir, module.name),
+        moduleName: module.name,
+        dest: module.dest,
+      })) {
+        console.log(pc.green(`✔ removed ${module.name} from ${file}`));
       }
 
       const appModule = path.resolve(process.cwd(), APP_MODULE);
