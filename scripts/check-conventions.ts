@@ -4,9 +4,21 @@
  * check; called with names it runs only those, which is what the per-check
  * package scripts do. Every selected check runs even when an earlier one fails,
  * so one pass reports everything that is wrong.
+ *
+ * The checks a project also runs ship in @heryjs/core/conventions and run here
+ * on this repository; the rest are this repository's own.
  */
-import { checkAdminContract } from './check-admin-contract';
-import { checkCapabilityDecorator } from './check-capability-decorator';
+import * as path from 'node:path';
+import {
+  checkAdminContract,
+  checkCapabilityDecorator,
+  checkNoInlineDevGuard,
+  checkNoRawPiiLog,
+  checkRls,
+  checkScopeParity,
+  runConventionChecks,
+  type ConventionCheck,
+} from '@heryjs/core/conventions';
 import { checkExampleFreshness } from './check-example-freshness';
 import { checkKernelBoundary } from './check-kernel-boundary';
 import { checkKernelVersion } from './check-kernel-version';
@@ -16,23 +28,21 @@ import { checkModuleDrift } from './check-module-drift';
 import { checkModulePatches } from './check-module-patches';
 import { checkModuleValidity } from './check-module-validity';
 import { checkNoFixedSleeps } from './check-no-fixed-sleeps';
-import { checkNoInlineDevGuard } from './check-no-inline-dev-guard';
-import { checkNoRawPiiLog } from './check-no-raw-pii-log';
 import { checkPackageManifests } from './check-package-manifests';
 import { checkPagination } from './check-pagination';
 import { checkRateLimitDecorator } from './check-rate-limit-decorator';
-import { checkRls } from './check-rls';
 import { checkRuntimeDependencies } from './check-runtime-dependencies';
-import { checkScopeParity } from './check-scope-parity';
 import { checkSubjectConstruction } from './check-subject-construction';
 import { checkTemplateImports } from './check-template-imports';
 import { checkTenantIsolation } from './check-tenant-isolation';
 
-const CHECKS: Array<{ name: string; run: () => boolean | Promise<boolean> }> = [
-  { name: 'capabilities', run: checkCapabilityDecorator },
-  { name: 'admin-contract', run: checkAdminContract },
-  { name: 'scope-parity', run: checkScopeParity },
-  { name: 'rls', run: checkRls },
+const REPO_ROOT = path.resolve(__dirname, '..');
+
+const CHECKS: ConventionCheck[] = [
+  { name: 'capabilities', run: () => checkCapabilityDecorator(REPO_ROOT) },
+  { name: 'admin-contract', run: () => checkAdminContract(REPO_ROOT) },
+  { name: 'scope-parity', run: () => checkScopeParity(REPO_ROOT) },
+  { name: 'rls', run: () => checkRls(REPO_ROOT) },
   { name: 'pagination', run: checkPagination },
   { name: 'rate-limit', run: checkRateLimitDecorator },
   { name: 'module-drift', run: checkModuleDrift },
@@ -42,9 +52,9 @@ const CHECKS: Array<{ name: string; run: () => boolean | Promise<boolean> }> = [
   { name: 'kernel-boundary', run: checkKernelBoundary },
   { name: 'package-manifests', run: checkPackageManifests },
   { name: 'coverage', run: checkLintCoverage },
-  { name: 'dev-guard', run: checkNoInlineDevGuard },
+  { name: 'dev-guard', run: () => checkNoInlineDevGuard(REPO_ROOT) },
   { name: 'no-fixed-sleeps', run: checkNoFixedSleeps },
-  { name: 'no-raw-pii-log', run: checkNoRawPiiLog },
+  { name: 'no-raw-pii-log', run: () => checkNoRawPiiLog(REPO_ROOT) },
   { name: 'subject', run: checkSubjectConstruction },
   { name: 'template-imports', run: checkTemplateImports },
   { name: 'tenant-isolation', run: checkTenantIsolation },
@@ -53,41 +63,17 @@ const CHECKS: Array<{ name: string; run: () => boolean | Promise<boolean> }> = [
   { name: 'example-freshness', run: checkExampleFreshness },
 ];
 
-const requested = process.argv.slice(2);
-const unknown = requested.filter(
-  (name) => !CHECKS.some((check) => check.name === name),
-);
-
-if (unknown.length > 0) {
-  console.error(`Unknown check: ${unknown.join(', ')}`);
-  console.error(`Available: ${CHECKS.map((check) => check.name).join(', ')}`);
-  process.exit(2);
-}
-
-const selected =
-  requested.length > 0
-    ? CHECKS.filter((check) => requested.includes(check.name))
-    : CHECKS;
-
 async function main(): Promise<void> {
-  const failed: string[] = [];
+  let failed: string[];
 
-  for (const check of selected) {
-    try {
-      if (!(await check.run())) {
-        failed.push(check.name);
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error(`✖ ${check.name} could not run: ${message}`);
-      failed.push(check.name);
-    }
+  try {
+    failed = await runConventionChecks(CHECKS, process.argv.slice(2));
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(2);
   }
 
   if (failed.length > 0) {
-    console.error(
-      `\n${failed.length} of ${selected.length} convention checks failed: ${failed.join(', ')}`,
-    );
     process.exit(1);
   }
 }

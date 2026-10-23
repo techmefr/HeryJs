@@ -3,16 +3,12 @@ import * as path from 'node:path';
 import {
   annotatedModelsIn,
   registriesFrom,
-} from '#technical/prisma/model-annotations';
+} from '../../technical/prisma/model-annotations';
 import {
   declaredModelsIn,
   rlsEnabledTablesIn,
   tenantModelsIn,
-} from '../cli/lib/rls';
-
-const REPO_ROOT = path.resolve(__dirname, '..');
-const SCHEMA = path.join(REPO_ROOT, 'prisma', 'schema.prisma');
-const MIGRATIONS = path.join(REPO_ROOT, 'prisma', 'migrations');
+} from '../../technical/prisma/rls-schema';
 
 /**
  * The tenant boundary is enforced twice on purpose -- once by the Prisma
@@ -24,20 +20,23 @@ const MIGRATIONS = path.join(REPO_ROOT, 'prisma', 'migrations');
  * row-level policy, or annotated `/// @hery.appEnforcedTenant <reason>` with
  * the reason it cannot be. Silence is the one thing this check does not allow.
  */
-export function checkRls(): boolean {
-  if (!existsSync(SCHEMA)) {
-    console.error(`Found no ${path.relative(REPO_ROOT, SCHEMA)} to check.`);
+export function checkRls(repoRoot: string): boolean {
+  const schemaFile = path.join(repoRoot, 'prisma', 'schema.prisma');
+  const migrationsDir = path.join(repoRoot, 'prisma', 'migrations');
+
+  if (!existsSync(schemaFile)) {
+    console.error(`Found no ${path.relative(repoRoot, schemaFile)} to check.`);
     return false;
   }
 
-  const schemaSource = readFileSync(SCHEMA, 'utf8');
+  const schemaSource = readFileSync(schemaFile, 'utf8');
   const registries = registriesFrom(annotatedModelsIn(schemaSource));
   const governed = registries.tenantScoped;
   const appEnforced = registries.appEnforcedTenant;
   const tenantFree = registries.tenantFree;
   const tenantModels = tenantModelsIn(schemaSource);
   const declared = declaredModelsIn(schemaSource);
-  const covered = rlsEnabledTablesIn(MIGRATIONS);
+  const covered = rlsEnabledTablesIn(migrationsDir);
   const problems: string[] = [];
 
   // Multi-tenancy is the shape of the schema, not a feature added later: a new
@@ -121,8 +120,4 @@ export function checkRls(): boolean {
   );
 
   return true;
-}
-
-if (require.main === module) {
-  process.exit(checkRls() ? 0 : 1);
 }

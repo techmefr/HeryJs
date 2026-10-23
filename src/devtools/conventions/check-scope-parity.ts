@@ -25,9 +25,10 @@ const PRESETS_SUFFIX = '_PRESETS';
 // conventions it is supposed to demonstrate.
 const RESOURCE_ROOTS = ['src/functional', 'examples'];
 
-function resourceFilesIn(collect: (dir: string) => string[]): string[] {
-  const repoRoot = path.resolve(__dirname, '..');
-
+function resourceFilesIn(
+  repoRoot: string,
+  collect: (dir: string) => string[],
+): string[] {
   return RESOURCE_ROOTS.flatMap((relative) => {
     const dir = path.join(repoRoot, relative);
 
@@ -147,15 +148,15 @@ function checkFile(filePath: string): FileReport {
   return report;
 }
 
-export function checkScopeParity(): boolean {
-  const files = resourceFilesIn(findPresetConsumers);
+export function checkScopeParity(repoRoot: string): boolean {
+  const files = resourceFilesIn(repoRoot, findPresetConsumers);
 
   if (files.length === 0) {
     // This repository always ships examples/, so an empty scan here means
     // something got silently emptied. A project scaffolded by `hery new` never
     // has examples/ at all and starts with zero resources on purpose — that is
     // not the regression this check exists to catch.
-    if (existsSync(path.resolve(__dirname, '..', 'examples'))) {
+    if (existsSync(path.join(repoRoot, 'examples'))) {
       console.error(
         `Found no resource service or policy under ${RESOURCE_ROOTS.join(' or ')}. This check reports
 success on an empty scan, so an empty scan has to be the failure instead.`,

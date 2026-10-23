@@ -278,14 +278,28 @@ export function kernelPackageRewrites(
       'tsconfig.json',
       (source) => source.replace(/^[ \t]*"customConditions":.*\n/m, ''),
     ],
+    ...['jest-e2e.json', 'jest-modules.json', 'jest-module-specs.json'].map(
+      (file): Rewrite => [
+        path.join('test', file),
+        jsonRewrite(
+          (config: { moduleNameMapper?: Record<string, string> }) => ({
+            ...config,
+            ...(config.moduleNameMapper && {
+              moduleNameMapper: withPackageKernelMapper(
+                config.moduleNameMapper,
+              ),
+            }),
+          }),
+        ),
+      ],
+    ),
     [
-      path.join('test', 'jest-e2e.json'),
-      jsonRewrite((config: { moduleNameMapper?: Record<string, string> }) => ({
-        ...config,
-        ...(config.moduleNameMapper && {
-          moduleNameMapper: withPackageKernelMapper(config.moduleNameMapper),
-        }),
-      })),
+      path.join('test', 'tsconfig.modules.json'),
+      (source) =>
+        source.replace(
+          /^[ \t]*"[^"]+": \["\.\.\/src\/technical\/[^"]*"\],?\n/gm,
+          '',
+        ),
     ],
     ...[
       'hery.config.ts',

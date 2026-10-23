@@ -125,6 +125,11 @@
       "types": "./dist/devtools/public.d.ts",
       "default": "./dist/devtools/public.js"
     },
+    "./conventions": {
+      "heryjs-source": "./src/devtools/conventions/index.ts",
+      "types": "./dist/devtools/conventions/index.d.ts",
+      "default": "./dist/devtools/conventions/index.js"
+    },
     "./technical/*": {
       "heryjs-source": "./src/technical/*.ts",
       "types": "./dist/technical/*.d.ts",
@@ -175,6 +180,7 @@
     "sanitize-html": "2.18.1",
     "socket.io": "^4.8.3",
     "ts-node": "^10.9.2",
+    "typescript": "^6.0.3",
     "zod": "^4.5.4"
   },
   "devDependencies": {

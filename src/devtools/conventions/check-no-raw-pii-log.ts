@@ -1,7 +1,6 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import * as path from 'node:path';
 
-const REPO_ROOT = path.resolve(__dirname, '..');
 const SKIPPED_DIRECTORIES = new Set(['node_modules', 'dist', 'coverage']);
 const LOG_CALL =
   /\b(?:logger|this\.logger|Logger|console)\.(?:log|info|warn|error|debug|verbose|fatal|trace)\s*\(/g;
@@ -23,12 +22,15 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-function scannedRoots(): string[] {
-  const packages = path.join(REPO_ROOT, 'packages');
+function scannedRoots(repoRoot: string): string[] {
+  const packages = path.join(repoRoot, 'packages');
 
   return [
-    path.join(REPO_ROOT, 'src'),
-    ...readdirSync(packages, { withFileTypes: true })
+    path.join(repoRoot, 'src'),
+    ...(existsSync(packages)
+      ? readdirSync(packages, { withFileTypes: true })
+      : []
+    )
       .filter((entry) => entry.isDirectory())
       .map((entry) => path.join(packages, entry.name, 'src', 'runtime')),
   ].filter((dir) => {
@@ -133,12 +135,12 @@ export function rawLogArguments(source: string): string[] {
  * call site that means to log one of them passes it through redactForLog, so
  * the intent is visible where the line is written.
  */
-export function checkNoRawPiiLog(): boolean {
-  const files = scannedRoots().flatMap(sourceFiles);
+export function checkNoRawPiiLog(repoRoot: string): boolean {
+  const files = scannedRoots(repoRoot).flatMap(sourceFiles);
   const violations = files.flatMap((filePath) =>
     rawLogArguments(readFileSync(filePath, 'utf8')).map(
       (args) =>
-        `${path.relative(REPO_ROOT, filePath)}: ${args.replace(/\s+/g, ' ').slice(0, 120)}`,
+        `${path.relative(repoRoot, filePath)}: ${args.replace(/\s+/g, ' ').slice(0, 120)}`,
     ),
   );
 

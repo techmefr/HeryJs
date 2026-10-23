@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import {
+  COPY_ENTRIES,
   DOC_EXAMPLES_STEP,
   MODULES_THE_KERNEL_NEEDS,
   projectManifest,
@@ -95,6 +96,23 @@ describe('the manifest a generated project starts from', () => {
       ).toBeUndefined();
     },
   );
+
+  it('runs its conventions with hery check and no script reaches for scripts/', () => {
+    const scripts = generated().scripts as Record<string, string>;
+
+    expect(scripts.check).toBe('pnpm hery check');
+    expect(
+      Object.entries(scripts).filter(
+        ([, command]) =>
+          command.includes('scripts/') || command.includes('lint:conventions'),
+      ),
+    ).toEqual([]);
+  });
+
+  it('copies the database role script, not the framework check scripts', () => {
+    expect(COPY_ENTRIES).toContain('scripts/postgres');
+    expect(COPY_ENTRIES).not.toContain('scripts');
+  });
 
   // Both assume something a fresh project does not have: an examples/
   // directory, and this repository's own admin/ and docs/ workspaces.

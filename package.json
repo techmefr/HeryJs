@@ -274,6 +274,7 @@
     ],
     "moduleNameMapper": {
       "^@heryjs/core/devtools$": "<rootDir>/src/devtools/public",
+      "^@heryjs/core/conventions$": "<rootDir>/src/devtools/conventions/index",
       "^@heryjs/core/(.*)$": "<rootDir>/src/technical/public/$1",
       "^#kernel/(.*)$": "<rootDir>/src/technical/$1",
       "^#technical/(.*)$": "<rootDir>/src/technical/$1",

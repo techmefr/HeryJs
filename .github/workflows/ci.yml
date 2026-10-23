@@ -317,6 +317,16 @@ jobs:
           pnpm run typecheck
           pnpm run build
 
+      # The conventions ship in @heryjs/core and run against the project's own
+      # code; none of the framework's check scripts is copied in.
+      - name: Hold it to the conventions
+        working-directory: ${{ runner.temp }}/scaffold/my-app
+        run: |
+          test ! -e scripts/check-conventions.ts
+          test "$(ls scripts | tr '\n' ' ')" = 'postgres '
+          ! grep -q 'lint:conventions' package.json .github/workflows/ci.yml
+          pnpm hery check
+
       # What production runs is the build, with production's environment: a
       # dependency that resolves only while developing, or a variable the
       # production schema refuses, fails here rather than on a deploy.
@@ -369,6 +379,8 @@ jobs:
           pnpm run typecheck
           pnpm run build
           test ! -e src/technical
+          pnpm hery migrate --name modules
+          pnpm hery check
 
       # A project generated before the kernel became a dependency: the last
       # commit whose "hery new" still copied src/technical writes it, and
@@ -431,6 +443,9 @@ jobs:
           test "$(ls src/devtools | tr '\n' ' ')" = 'test-support.ts testing '
           test "$(cat src/functional/project-owned.ts)" = "export const projectOwned = 'kept';"
           grep -q '"@heryjs/core": "file:' package.json
+          test ! -e scripts/check-conventions.ts
+          test "$(ls scripts | tr '\n' ' ')" = 'postgres '
+          grep -q '"check": "pnpm hery check"' package.json
           psql postgresql://heryjs:heryjs@localhost:5432/heryjs -v ON_ERROR_STOP=1 -c 'CREATE DATABASE heryjs_old'
           pnpm install --no-frozen-lockfile
           pnpm hery migrate --name init

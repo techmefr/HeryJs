@@ -1,6 +1,10 @@
 import { realpathSync } from 'node:fs';
 import type { Command } from 'commander';
 import pc from 'picocolors';
+import {
+  copiedConventionScripts,
+  removeCopiedConventionScripts,
+} from '../lib/convention-scripts';
 import { frameworkRoot } from '../lib/framework-root';
 import { migrateKernelImports } from '../lib/kernel-codemod';
 import {
@@ -15,7 +19,7 @@ export function registerKernelMigrateCommand(program: Command): void {
   program
     .command('kernel:migrate [paths...]')
     .description(
-      `Rewrite #kernel/public/<entry> imports to ${KERNEL_PACKAGE}/<entry> and map ${KERNEL_PACKAGE}/* in each tsconfig, under packages/ unless paths are given, turn the kernel model lists into /// @hery.* annotations of prisma/schema.prisma, and replace a copied src/technical with the ${KERNEL_PACKAGE} dependency when it is unmodified. Safe to run again.`,
+      `Rewrite #kernel/public/<entry> imports to ${KERNEL_PACKAGE}/<entry> and map ${KERNEL_PACKAGE}/* in each tsconfig, under packages/ unless paths are given, turn the kernel model lists into /// @hery.* annotations of prisma/schema.prisma, replace a copied src/technical with the ${KERNEL_PACKAGE} dependency when it is unmodified, and remove the convention scripts an older "hery new" copied into scripts/ when they are unmodified, keeping the others with a warning. Safe to run again.`,
     )
     .option(
       '--peer <range>',
@@ -29,8 +33,8 @@ export function registerKernelMigrateCommand(program: Command): void {
       const root = process.cwd();
       const reference = frameworkRoot();
       const write = options.check !== true;
-      const copiedKernel =
-        realpathSync(root) !== realpathSync(reference) && hasCopiedKernel(root);
+      const isProject = realpathSync(root) !== realpathSync(reference);
+      const copiedKernel = isProject && hasCopiedKernel(root);
 
       if (copiedKernel) {
         const modified = modifiedKernelFiles(root, reference);
@@ -47,7 +51,20 @@ export function registerKernelMigrateCommand(program: Command): void {
         }
       }
 
-      const changed = [
+      const conventionScripts = isProject
+        ? copiedConventionScripts(root)
+        : { identical: [], modified: [] };
+
+      conventionScripts.modified.forEach((file) =>
+        console.warn(
+          pc.yellow(
+            `! ${file} differs from every version HeryJs shipped, so it stays: "hery check" runs the conventions from ${KERNEL_PACKAGE} now. Move what you changed into your own code, or delete it.`,
+          ),
+        ),
+      );
+
+      const changed = new Set([
+        ...removeCopiedConventionScripts(root, conventionScripts, { write }),
         ...migrateKernelImports(root, paths.length > 0 ? paths : ['packages'], {
           peerRange: options.peer,
           write,
@@ -56,9 +73,9 @@ export function registerKernelMigrateCommand(program: Command): void {
           (annotation) => `prisma/schema.prisma: ${annotation}`,
         ),
         ...(copiedKernel ? adoptKernelPackage(root, reference, { write }) : []),
-      ];
+      ]);
 
-      if (changed.length === 0) {
+      if (changed.size === 0) {
         console.log(
           pc.green(`✔ already on ${KERNEL_PACKAGE}, nothing to change`),
         );
