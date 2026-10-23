@@ -4,6 +4,7 @@ import { ApiKeyService } from './api-key.service';
 import { loginThrottle } from './login-throttle';
 import { AccountLockedException } from '#technical/errors/account-locked.exception';
 import { InvalidCredentialsException } from '#technical/errors/invalid-credentials.exception';
+import { inTenantTransaction } from '#technical/prisma/row-level-security';
 import { AuthenticatedUser, AuthProvider } from './auth.types';
 
 /**
@@ -22,11 +23,19 @@ async function authenticate(
       tenantId: true,
       currentTeamId: true,
       role: true,
-      memberships: { select: { teamId: true } },
     },
   });
+  const memberships = await inTenantTransaction(
+    authPrismaClient,
+    stored.tenantId,
+    (transaction) =>
+      transaction.teamMember.findMany({
+        where: { userId: user.id },
+        select: { teamId: true },
+      }),
+  );
 
-  const teamIds = stored.memberships.map((membership) => membership.teamId);
+  const teamIds = memberships.map((membership) => membership.teamId);
 
   return {
     id: user.id,

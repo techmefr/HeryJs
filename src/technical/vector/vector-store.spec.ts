@@ -25,7 +25,9 @@ describe('VectorStore (real database, pgvector)', () => {
   };
 
   const adminClient = new PrismaClient({
-    adapter: new PrismaPg({ connectionString: env.DATABASE_URL }),
+    adapter: new PrismaPg({
+      connectionString: env.DATABASE_MIGRATION_URL ?? env.DATABASE_URL,
+    }),
   });
   const scopedClient = createTenantScopedPrismaClient();
   const store = new VectorStore(scopedClient);

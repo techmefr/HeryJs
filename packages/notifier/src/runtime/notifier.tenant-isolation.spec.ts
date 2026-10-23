@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { authPrismaClient } from '#kernel/auth/better-auth.instance';
 import { createTenantScopedPrismaClient } from '#kernel/prisma/prisma.client';
+import { inTenantTransaction } from '#kernel/prisma/row-level-security';
 import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
 import { NotificationPreferenceService } from './notification-preference.service';
 
@@ -62,12 +63,19 @@ describe('tenant isolation', () => {
         .catch(() => undefined);
     });
 
-    const rows = await authPrismaClient.notificationPreference.findMany({
-      where: { userId: userB },
-    });
-    const settings = await authPrismaClient.notificationSetting.findMany({
-      where: { userId: userB },
-    });
+    const [rows, settings] = await inTenantTransaction(
+      authPrismaClient,
+      tenantB,
+      (transaction) =>
+        Promise.all([
+          transaction.notificationPreference.findMany({
+            where: { userId: userB },
+          }),
+          transaction.notificationSetting.findMany({
+            where: { userId: userB },
+          }),
+        ]),
+    );
 
     expect(rows).toEqual([
       expect.objectContaining({

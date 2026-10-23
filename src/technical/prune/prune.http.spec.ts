@@ -5,6 +5,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { databaseOwnerClient } from '#devtools/testing/database-owner-client';
 import {
   registerAndLogin,
   type TestUser,
@@ -84,7 +85,7 @@ describe('prune', () => {
     const overdue = new Date();
     overdue.setDate(overdue.getDate() - 31);
 
-    const foreignRecord = await authPrismaClient.blogPost.create({
+    const foreignRecord = await databaseOwnerClient.blogPost.create({
       data: {
         tenantId: 'prune-foreign-tenant',
         ownerId: foreignOwner.id,
@@ -100,12 +101,14 @@ describe('prune', () => {
       .expect(201);
 
     expect(
-      await authPrismaClient.blogPost.findUnique({
+      await databaseOwnerClient.blogPost.findUnique({
         where: { id: foreignRecord.id },
       }),
     ).not.toBeNull();
 
-    await authPrismaClient.blogPost.delete({ where: { id: foreignRecord.id } });
+    await databaseOwnerClient.blogPost.delete({
+      where: { id: foreignRecord.id },
+    });
     await authPrismaClient.user.delete({ where: { id: foreignOwner.id } });
   });
 
@@ -147,11 +150,11 @@ describe('prune', () => {
     const overdue = new Date();
     overdue.setDate(overdue.getDate() - 31);
 
-    await authPrismaClient.blogPost.update({
+    await databaseOwnerClient.blogPost.update({
       where: { id: overdueId },
       data: { deletedAt: overdue },
     });
-    await authPrismaClient.blogPost.update({
+    await databaseOwnerClient.blogPost.update({
       where: { id: recentId },
       data: { deletedAt: new Date() },
     });
@@ -166,10 +169,14 @@ describe('prune', () => {
     expect(result.deletedCount).toBeGreaterThanOrEqual(1);
 
     expect(
-      await authPrismaClient.blogPost.findUnique({ where: { id: overdueId } }),
+      await databaseOwnerClient.blogPost.findUnique({
+        where: { id: overdueId },
+      }),
     ).toBeNull();
     expect(
-      await authPrismaClient.blogPost.findUnique({ where: { id: recentId } }),
+      await databaseOwnerClient.blogPost.findUnique({
+        where: { id: recentId },
+      }),
     ).not.toBeNull();
 
     const entry = await authPrismaClient.auditLog.findFirst({

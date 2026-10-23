@@ -7,6 +7,8 @@ import {
   ExposeAction,
   ExposeField,
 } from '#technical/exposition/exposition.decorators';
+import { isRowLevelSecured } from '#technical/prisma/prisma.client';
+import { inTenantTransaction } from '#technical/prisma/row-level-security';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { HISTORY_MODEL, prunableModels } from './prunable-models';
 import { canManagePrune } from './prune.policy';
@@ -84,7 +86,36 @@ export class PruneService {
       return this.pruneHistory(cutoff, actor, tenantId);
     }
 
-    return authPrismaClient.$transaction(async (tx) => {
+    if (tenantId !== undefined || !isRowLevelSecured(model)) {
+      return this.pruneRows(model, cutoff, actor, tenantId);
+    }
+
+    // A row-level policy shows the app's role one tenant at a time, so the
+    // sweep walks them, the way the privacy retention task does.
+    const tenants = await authPrismaClient.user.findMany({
+      distinct: ['tenantId'],
+      select: { tenantId: true },
+    });
+    let deletedCount = 0;
+
+    for (const tenant of tenants) {
+      deletedCount += (
+        await this.pruneRows(model, cutoff, actor, tenant.tenantId)
+      ).deletedCount;
+    }
+
+    return { model, deletedCount };
+  }
+
+  private pruneRows(
+    model: string,
+    cutoff: Date,
+    actor: PruneActor,
+    tenantId?: string,
+  ): Promise<PruneRunResult> {
+    const work = async (
+      tx: Prisma.TransactionClient,
+    ): Promise<PruneRunResult> => {
       const delegate = delegateFor(tx, model);
 
       // Read the exact rows first, and delete by id rather than repeating
@@ -134,7 +165,11 @@ export class PruneService {
       }
 
       return { model, deletedCount: rows.length };
-    });
+    };
+
+    return tenantId === undefined
+      ? authPrismaClient.$transaction(work)
+      : inTenantTransaction(authPrismaClient, tenantId, work);
   }
 
   /**

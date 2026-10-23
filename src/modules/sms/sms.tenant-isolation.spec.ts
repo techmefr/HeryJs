@@ -16,7 +16,9 @@ describe('tenant isolation', () => {
   const tenantB = `tenant-b-${suffix}`;
   const phone = `+3361${String(Date.now()).slice(-7)}`;
   const raw = new PrismaClient({
-    adapter: new PrismaPg({ connectionString: env.DATABASE_URL }),
+    adapter: new PrismaPg({
+      connectionString: env.DATABASE_MIGRATION_URL ?? env.DATABASE_URL,
+    }),
   });
   const sent: SmsMessage[] = [];
   const driver: SmsDriver = {

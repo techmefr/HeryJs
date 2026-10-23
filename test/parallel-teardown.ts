@@ -5,6 +5,7 @@
 import { Client } from 'pg';
 import {
   BASE_URL_VARIABLE,
+  MIGRATION_BASE_URL_VARIABLE,
   WORKER_COUNT_VARIABLE,
   databaseNameOf,
   withDatabase,
@@ -12,7 +13,8 @@ import {
 } from './parallel-db';
 
 export default async function dropWorkerDatabases(): Promise<void> {
-  const baseUrl = process.env[BASE_URL_VARIABLE];
+  const baseUrl =
+    process.env[MIGRATION_BASE_URL_VARIABLE] ?? process.env[BASE_URL_VARIABLE];
   const workers = Number(process.env[WORKER_COUNT_VARIABLE]);
 
   if (!baseUrl || !Number.isInteger(workers)) {

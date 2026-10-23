@@ -8,6 +8,7 @@ import {
   writeAuditLogInTransaction,
 } from '../audit/audit-log';
 import { env } from '../config/env';
+import { heryConfig } from '../config/hery-config';
 import { recordHistoryOf } from '../history/history-recorder';
 import {
   modelChangeMessages,
@@ -20,6 +21,7 @@ import { encryptedFieldsExtension } from '../secrets/encrypted-fields.extension'
 import { TenantContextStorage } from '../tenancy/tenant-context';
 import { TelemetryBus } from '../tracing/telemetry-bus';
 import { TraceContextStorage } from '../tracing/trace-context';
+import { warnWhenRowLevelSecurityDisabled } from './row-level-security';
 import { AmbientTransactionStorage } from './transaction-context';
 import type { AfterCommitCallback } from './transaction-context';
 
@@ -299,7 +301,14 @@ const TENANT_HANDLING = new Map<string, TenantHandling>([
   ['deleteMany', 'filter'],
 ]);
 
+export function isRowLevelSecured(model: string): boolean {
+  return TENANT_SCOPED_MODELS.has(model);
+}
+
 export function createTenantScopedPrismaClient() {
+  const rlsEnabled = warnWhenRowLevelSecurityDisabled(heryConfig, (message) =>
+    new Logger('RowLevelSecurity').warn(message),
+  );
   const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
   const rawClient = new PrismaClient({
     adapter,
@@ -385,7 +394,25 @@ export function createTenantScopedPrismaClient() {
       $allModels: {
         $allOperations({ model, operation, args, query }) {
           if (!TENANT_SCOPED_MODELS.has(model)) {
-            return query(args);
+            // A model outside the boundary can still include one inside it
+            // (a User with its BlogPosts), and the policy hides those rows
+            // unless the tenant travels with the query.
+            const tenantId = TenantContextStorage.findTenantId();
+
+            if (
+              !rlsEnabled ||
+              tenantId === null ||
+              AmbientTransactionStorage.current() ||
+              !readsRelations(args)
+            ) {
+              return query(args);
+            }
+
+            return rawClient.$transaction(async (tx) => {
+              await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
+
+              return runOnDelegate(tx, model, operation, args);
+            });
           }
 
           const handling = TENANT_HANDLING.get(operation);
@@ -464,7 +491,7 @@ export function createTenantScopedPrismaClient() {
             return runAndStage(ambient.tx);
           }
 
-          if (!env.RLS_ENABLED && !emitsOutbox) {
+          if (!rlsEnabled && !emitsOutbox) {
             return query(args);
           }
 
@@ -476,7 +503,7 @@ export function createTenantScopedPrismaClient() {
           // runs on one pooled connection), so the same block carries it and
           // the setting and the query it protects always travel together.
           return rawClient.$transaction(async (tx) => {
-            if (env.RLS_ENABLED) {
+            if (rlsEnabled) {
               await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
             }
 
@@ -496,7 +523,7 @@ export function createTenantScopedPrismaClient() {
 
         const result = await rawClient.$transaction(
           async (tx) => {
-            if (env.RLS_ENABLED) {
+            if (rlsEnabled) {
               await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
             }
 
@@ -522,6 +549,18 @@ export function createTenantScopedPrismaClient() {
       },
     },
   });
+}
+
+function readsRelations(args: unknown): boolean {
+  const { include, select } = (args ?? {}) as {
+    include?: unknown;
+    select?: Record<string, unknown>;
+  };
+
+  return (
+    include !== undefined ||
+    Object.values(select ?? {}).some((value) => typeof value === 'object')
+  );
 }
 
 function runOnDelegate(

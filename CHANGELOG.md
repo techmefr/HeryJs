@@ -33,6 +33,20 @@ Restoring a dump taken before a privacy erasure resurrected the erased user and 
 ### Logs no longer carry personal data
 
 Only the authorization and cookie headers and two query parameters were masked, so an address in a query string, an error message, a stack trace or a logged object reached stdout and every log sink. `LogPipeline` now redacts every line before any driver sees it (`log-redaction.ts`): known secret and personal keys at any depth, the `name` of a person-shaped object, the fields declared `personal` by the `*.personal-data.ts` declarations, and, in every string, e-mail addresses (url-encoded too), phone numbers, JWTs, `Bearer` tokens and labelled secrets. Better Auth logs through the Nest logger instead of the console. A new `no-raw-pii-log` convention check refuses a log call that hands over a `user`, a request `body` or a DTO without `redactForLog(...)`, and `LOG_LEVEL` overrides the level picked from `NODE_ENV`. **Upgrade note:** an existing project copies `src/technical/logging/log-redaction.ts` and the changes to `log.pipeline.ts`, `log.personal-data.ts`, `src/technical/auth/better-auth.instance.ts` and `src/app.module.ts` by hand.
+### Row-level security on by default, with an application role
+
+Postgres row-level security was opt-in (`RLS_ENABLED=false`) and the compose stack connected the app as the `heryjs` superuser, which bypasses every policy anyway: the second tenant boundary existed in the migrations and nowhere at runtime. It is now on by default. The app connects through `DATABASE_URL` as `heryjs_app`, a role with neither `SUPERUSER` nor `BYPASSRLS`, and Prisma migrations, `hery db:*` commands and backups use the schema owner through the new `DATABASE_MIGRATION_URL` (falling back to `DATABASE_URL` when unset). The compose stack creates the role on the first boot of an empty volume from `scripts/postgres/app-role.sql`, and CI runs that file on its service containers. `RLS_ENABLED` is gone: the only switch is `database: { rowLevelSecurity: false }` in `hery.config.ts`, and the app then logs a warning each time it builds its Prisma client. A read through a model outside the boundary that includes one inside it (a `User` with its `BlogPost`s) now carries the tenant setting, session resolution reads team memberships inside the user's tenant, and the agency seeder, the prune sweep, the seed script and `purgeTenant` set it too. A new spec proves that the app's role sees no row of another tenant through a raw query with no tenant set. **Upgrade note:** in an existing project, create the application role once as the schema owner, then point the two URLs at their roles:
+
+```bash
+psql "postgresql://heryjs:heryjs@localhost:5432/heryjs" -v ON_ERROR_STOP=1 -f scripts/postgres/app-role.sql
+```
+
+```dotenv
+DATABASE_URL="postgresql://heryjs_app:heryjs_app@localhost:5432/heryjs"
+DATABASE_MIGRATION_URL="postgresql://heryjs:heryjs@localhost:5432/heryjs"
+```
+
+In production, change the role's password (`ALTER ROLE heryjs_app PASSWORD '...'`) or create a role of your own with the same grants. Copy `scripts/postgres/app-role.sql`, the volume line of `docker-compose.yml`, `prisma.config.ts`, `src/technical/prisma/row-level-security.ts`, `prisma.client.ts`, `session-auth.provider.ts`, `env-schema.ts`, `hery-config.types.ts` and the `test/parallel-*.ts` helpers by hand, and drop `RLS_ENABLED` from your environment. A raw query the app runs on a tenant table outside the Prisma extension now returns nothing unless it sets `app.tenant_id` in its transaction (`inTenantTransaction`).
 
 ### Promise lint rules block the build
 

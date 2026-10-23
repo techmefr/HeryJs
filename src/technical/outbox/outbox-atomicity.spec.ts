@@ -10,7 +10,10 @@ type BlogPostInput = Omit<Prisma.BlogPostUncheckedCreateInput, 'tenantId'>;
 
 describe('outbox written by the tenant-scoped client (real database)', () => {
   const rawClient = new PrismaClient({
-    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+    adapter: new PrismaPg({
+      connectionString:
+        process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL,
+    }),
   });
   const tenantId = `tenant-${randomUUID()}`;
   let scoped: TenantScopedPrismaClient;

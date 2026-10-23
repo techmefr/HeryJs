@@ -14,7 +14,10 @@ type BlogPostInputWithoutTenantId = Omit<
 >;
 
 describe('tenant-scoped Prisma client (real database)', () => {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+  const adapter = new PrismaPg({
+    connectionString:
+      process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL,
+  });
   const rawClient = new PrismaClient({ adapter });
   let scopedClient: TenantScopedPrismaClient;
 

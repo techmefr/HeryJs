@@ -64,7 +64,7 @@ degrading silently.
 | `STORAGE_S3_ACCESS_KEY`, `STORAGE_S3_SECRET_KEY` | Required even on the local storage driver while the storage module is installed: the boot check does not know which driver you use |
 
 Optional and defaulted: `PORT` (3000), `SECRETS_ACTIVE_KEY_ID`,
-`RLS_ENABLED`, `OUTBOX_RELAY_ENABLED`, `OTEL_*`, and the `AUTH_*` and `OAUTH_*`
+`DATABASE_MIGRATION_URL`, `OUTBOX_RELAY_ENABLED`, `OTEL_*`, and the `AUTH_*` and `OAUTH_*`
 families, all listed in `.env.example`. A module you install adds its own: the
 two-factor module wants `TWO_FACTOR_ENCRYPTION_KEY`, the stream module its
 LiveKit credentials, and the S3 storage driver its bucket and keys. Inject them
