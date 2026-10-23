@@ -2,7 +2,7 @@ import { DynamicModule, Module, Type } from '@nestjs/common';
 import { AuthModule } from '#technical/auth/auth.module';
 import { PrivacyModule } from '#technical/privacy/privacy.module';
 import { env } from '#technical/config/env';
-import { isDevEnvironmentNow } from '#technical/config/module-env';
+import { isLocalEnvironmentNow } from '#technical/config/module-env';
 import { PrismaModule } from '#technical/prisma/prisma.module';
 import { OAuthAccountService } from './oauth-account.service';
 import { OAUTH_FETCH } from './oauth-http';
@@ -59,7 +59,7 @@ export function configFromEnv(): OAuthConfig {
     }
   }
 
-  const isProduction = !isDevEnvironmentNow();
+  const isProduction = !isLocalEnvironmentNow();
 
   return {
     linkPolicy: env.OAUTH_LINK_POLICY,

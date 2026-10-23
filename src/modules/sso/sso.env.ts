@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import {
   devOnlyDefault,
-  isDevEnvironmentNow,
+  isLocalEnvironmentNow,
   parseModuleEnv,
 } from '#technical/config/module-env';
 
@@ -20,7 +20,7 @@ export const ssoEnv = parseModuleEnv('sso', {
   SSO_REDIRECT_BASE_URL: z
     .url()
     .optional()
-    .refine((value) => value || isDevEnvironmentNow(), {
+    .refine((value) => value || isLocalEnvironmentNow(), {
       message:
         'must be set in production: the public origin the sso callbacks are built on',
     }),
@@ -29,7 +29,7 @@ export const ssoEnv = parseModuleEnv('sso', {
     .string()
     .default('false')
     .transform((value) => value === 'true')
-    .refine((value) => !value || isDevEnvironmentNow(), {
+    .refine((value) => !value || isLocalEnvironmentNow(), {
       message: 'must not be enabled in production',
     }),
 });

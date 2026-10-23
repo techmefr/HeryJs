@@ -1,5 +1,6 @@
 import { ssoRedirectUri } from './sso-redirect';
 import { SsoStateService } from './sso-state.service';
+import { heryConfig } from '#kernel/config/hery-config';
 
 describe('sso outside devTools.environments', () => {
   const originalNodeEnv = process.env.NODE_ENV;
@@ -27,5 +28,18 @@ describe('sso outside devTools.environments', () => {
 
     expect(() => ssoRedirectUri()).toThrow(/SSO_REDIRECT_BASE_URL/);
     expect(new SsoStateService().cookieOptions().secure).toBe(true);
+  });
+
+  it('keeps production security under a listed demo', () => {
+    const originalDevTools = heryConfig.devTools;
+    heryConfig.devTools = { environments: ['development', 'test', 'demo'] };
+    process.env.NODE_ENV = 'demo';
+
+    try {
+      expect(() => ssoRedirectUri()).toThrow(/SSO_REDIRECT_BASE_URL/);
+      expect(new SsoStateService().cookieOptions().secure).toBe(true);
+    } finally {
+      heryConfig.devTools = originalDevTools;
+    }
   });
 });

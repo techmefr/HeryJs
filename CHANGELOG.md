@@ -13,6 +13,10 @@ category is called out here explicitly.
 
 First public release.
 
+### A listed demo keeps production security
+
+Listing an environment in `devTools.environments` also relaxed the modules' security: under a listed `demo`, the sso and oauth state cookies lost `secure`, `SSO_ALLOW_PRIVATE_ISSUERS` and `WEBHOOK_ALLOW_PRIVATE_URLS` were accepted and the callbacks fell back to `http://localhost`. The list now opens only the dev tools (routes, seeders, development secrets); those relaxations follow the new `isLocalEnvironmentNow()` from `#kernel/config/module-env`, true for NODE_ENV `development` or `test` only. **Upgrade note:** copy `src/technical/config/module-env.ts` by hand; a project that installed `sso` copies `sso.env.ts`, `sso-redirect.ts` and `sso-state.service.ts`, one that installed `oauth` copies `oauth.module.ts`, one that installed `webhooks` copies `outbound-webhook.env.ts`.
+
 ### Modules honour devTools.environments
 
 The `sso`, `oauth` and `webhooks` modules still compared NODE_ENV with `production` themselves, so an unset or unlisted NODE_ENV let `SSO_ALLOW_PRIVATE_ISSUERS` and `WEBHOOK_ALLOW_PRIVATE_URLS` through, fell back to a localhost callback and sent non-secure state cookies. They now ask `isDevEnvironmentNow()`, exported by `#kernel/config/module-env` next to `devOnlyDefault`, which answers from `devTools.environments`. **Upgrade note:** copy `src/technical/config/module-env.ts` by hand; a project that installed `sso` copies `sso.env.ts`, `sso-redirect.ts` and `sso-state.service.ts`, one that installed `oauth` copies `oauth.module.ts`, one that installed `webhooks` copies `outbound-webhook.env.ts`.
