@@ -246,7 +246,7 @@ export const createScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'INSERT INTO "public"."AuditLog" ("id","tenantId","model","operation","recordId","data","userId","impersonatedBy","hash","previousHash","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING "public"."AuditLog"."id", "public"."AuditLog"."sequence", "public"."AuditLog"."tenantId", "public"."AuditLog"."model", "public"."AuditLog"."operation", "public"."AuditLog"."recordId", "public"."AuditLog"."data", "public"."AuditLog"."userId", "public"."AuditLog"."impersonatedBy", "public"."AuditLog"."hash", "public"."AuditLog"."previousHash", "public"."AuditLog"."createdAt", "public"."AuditLog"."redactedAt"',
           params:
-            '["cxmpl00000000000000000007","default","BlogPost","create","cxmpl00000000000000000006","{\\"id\\":\\"cxmpl00000000000000000006\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Hello world\\",\\"slug\\":\\"hello-world-2\\",\\"summary\\":null,\\"body\\":null,\\"privateNote\\":null,\\"createdAt\\":\\"2026-01-15T09:00:04.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:04.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000001","0000000000000000000000000000000000000000000000000000000000000002","2026-01-15T09:00:06.000Z"]',
+            '["cxmpl00000000000000000007","default","BlogPost","create","cxmpl00000000000000000006","{\\"id\\":\\"cxmpl00000000000000000006\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Hello world\\",\\"slug\\":\\"hello-world-2\\",\\"summary\\":null,\\"body\\":null,\\"privateNote\\":null,\\"createdAt\\":\\"2026-01-15T09:00:04.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:04.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000001","0000000000000000000000000000000000000000000000000000000000000002","2026-01-15T09:00:04.000Z"]',
         },
       },
       {
@@ -266,7 +266,7 @@ export const createScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'INSERT INTO "public"."OutboxMessage" ("id","tenantId","name","payload","status","attempts","nextAttemptAt","createdAt","locale") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
           params:
-            '["cxmpl00000000000000000008","default","model.created","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"created\\",\\"recordId\\":\\"cxmpl00000000000000000006\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:05.000Z","2026-01-15T09:00:05.000Z","en"]',
+            '["cxmpl00000000000000000008","default","model.created","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"created\\",\\"recordId\\":\\"cxmpl00000000000000000006\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:04.000Z","2026-01-15T09:00:04.000Z","en"]',
         },
       },
       {
@@ -360,7 +360,7 @@ export const updateScenarios: PlaygroundScenario[] = [
     request:
       'POST /blog-posts/update\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  "data": [\n    {\n      "id": "cxmpl00000000000000000009",\n      "title": "Hello world (v2)"\n    }\n  ]\n}',
     response:
-      '{\n  "data": [\n    {\n      "index": 0,\n      "id": "cxmpl00000000000000000009",\n      "status": "ok",\n      "data": {\n        "id": "cxmpl00000000000000000009",\n        "tenantId": "default",\n        "ownerId": "cxmpl00000000000000000001",\n        "title": "Hello world (v2)",\n        "slug": "hello-world-v2",\n        "summary": null,\n        "summaryTranslations": {},\n        "body": null,\n        "createdAt": "2026-01-15T09:00:07.000Z",\n        "updatedAt": "2026-01-15T09:00:08.000Z",\n        "deletedAt": null\n      }\n    }\n  ],\n  "meta": {\n    "total": 1,\n    "succeeded": 1,\n    "failed": 0\n  },\n  "messages": []\n}',
+      '{\n  "data": [\n    {\n      "index": 0,\n      "id": "cxmpl00000000000000000009",\n      "status": "ok",\n      "data": {\n        "id": "cxmpl00000000000000000009",\n        "tenantId": "default",\n        "ownerId": "cxmpl00000000000000000001",\n        "title": "Hello world (v2)",\n        "slug": "hello-world-v2",\n        "summary": null,\n        "summaryTranslations": {},\n        "body": null,\n        "createdAt": "2026-01-15T09:00:05.000Z",\n        "updatedAt": "2026-01-15T09:00:05.000Z",\n        "deletedAt": null\n      }\n    }\n  ],\n  "meta": {\n    "total": 1,\n    "succeeded": 1,\n    "failed": 0\n  },\n  "messages": []\n}',
     flow: [
       {
         stage: 'middleware',
@@ -412,7 +412,7 @@ export const updateScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'INSERT INTO "public"."AuditLog" ("id","tenantId","model","operation","recordId","data","userId","impersonatedBy","hash","previousHash","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING "public"."AuditLog"."id", "public"."AuditLog"."sequence", "public"."AuditLog"."tenantId", "public"."AuditLog"."model", "public"."AuditLog"."operation", "public"."AuditLog"."recordId", "public"."AuditLog"."data", "public"."AuditLog"."userId", "public"."AuditLog"."impersonatedBy", "public"."AuditLog"."hash", "public"."AuditLog"."previousHash", "public"."AuditLog"."createdAt", "public"."AuditLog"."redactedAt"',
           params:
-            '["cxmpl00000000000000000010","default","BlogPost","update","cxmpl00000000000000000009","{\\"id\\":\\"cxmpl00000000000000000009\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Hello world (v2)\\",\\"slug\\":\\"hello-world-v2\\",\\"summary\\":null,\\"body\\":null,\\"privateNote\\":null,\\"createdAt\\":\\"2026-01-15T09:00:07.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:08.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000003","0000000000000000000000000000000000000000000000000000000000000004","2026-01-15T09:00:10.000Z"]',
+            '["cxmpl00000000000000000010","default","BlogPost","update","cxmpl00000000000000000009","{\\"id\\":\\"cxmpl00000000000000000009\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Hello world (v2)\\",\\"slug\\":\\"hello-world-v2\\",\\"summary\\":null,\\"body\\":null,\\"privateNote\\":null,\\"createdAt\\":\\"2026-01-15T09:00:05.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:05.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000003","0000000000000000000000000000000000000000000000000000000000000004","2026-01-15T09:00:05.000Z"]',
         },
       },
       {
@@ -422,7 +422,7 @@ export const updateScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'INSERT INTO "public"."OutboxMessage" ("id","tenantId","name","payload","status","attempts","nextAttemptAt","createdAt","locale") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
           params:
-            '["cxmpl00000000000000000011","default","model.updated","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"updated\\",\\"recordId\\":\\"cxmpl00000000000000000009\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[\\"title\\",\\"slug\\"],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:09.000Z","2026-01-15T09:00:09.000Z","en"]',
+            '["cxmpl00000000000000000011","default","model.updated","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"updated\\",\\"recordId\\":\\"cxmpl00000000000000000009\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[\\"title\\",\\"slug\\"],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:05.000Z","2026-01-15T09:00:05.000Z","en"]',
         },
       },
       {
@@ -468,7 +468,7 @@ export const updateScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'UPDATE "public"."BlogPost" SET "title" = $1, "slug" = $2, "updatedAt" = $3 WHERE ("public"."BlogPost"."id" = $4 AND "public"."BlogPost"."tenantId" = $5) RETURNING "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."slug", "public"."BlogPost"."summary", "public"."BlogPost"."body", "public"."BlogPost"."privateNote", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt"',
           params:
-            '["Hello world (v2)","hello-world-v2","2026-01-15T09:00:08.000Z","cxmpl00000000000000000009","default"]',
+            '["Hello world (v2)","hello-world-v2","2026-01-15T09:00:05.000Z","cxmpl00000000000000000009","default"]',
         },
       },
       {
@@ -486,7 +486,7 @@ export const updateScenarios: PlaygroundScenario[] = [
     request:
       'POST /blog-posts/update\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  "data": [\n    {\n      "id": "cxmpl00000000000000000012",\n      "relations": {\n        "tags": {\n          "attach": [\n            "cxmpl00000000000000000013"\n          ]\n        }\n      }\n    }\n  ]\n}',
     response:
-      '{\n  "data": [\n    {\n      "index": 0,\n      "id": "cxmpl00000000000000000012",\n      "status": "ok",\n      "data": {\n        "id": "cxmpl00000000000000000012",\n        "tenantId": "default",\n        "ownerId": "cxmpl00000000000000000001",\n        "title": "Tagged article",\n        "slug": "tagged-article",\n        "summary": null,\n        "summaryTranslations": {},\n        "body": null,\n        "createdAt": "2026-01-15T09:00:11.000Z",\n        "updatedAt": "2026-01-15T09:00:11.000Z",\n        "deletedAt": null,\n        "tags": [\n          "cxmpl00000000000000000013"\n        ]\n      }\n    }\n  ],\n  "meta": {\n    "total": 1,\n    "succeeded": 1,\n    "failed": 0\n  },\n  "messages": []\n}',
+      '{\n  "data": [\n    {\n      "index": 0,\n      "id": "cxmpl00000000000000000012",\n      "status": "ok",\n      "data": {\n        "id": "cxmpl00000000000000000012",\n        "tenantId": "default",\n        "ownerId": "cxmpl00000000000000000001",\n        "title": "Tagged article",\n        "slug": "tagged-article",\n        "summary": null,\n        "summaryTranslations": {},\n        "body": null,\n        "createdAt": "2026-01-15T09:00:06.000Z",\n        "updatedAt": "2026-01-15T09:00:06.000Z",\n        "deletedAt": null,\n        "tags": [\n          "cxmpl00000000000000000013"\n        ]\n      }\n    }\n  ],\n  "meta": {\n    "total": 1,\n    "succeeded": 1,\n    "failed": 0\n  },\n  "messages": []\n}',
     flow: [
       {
         stage: 'middleware',
@@ -538,7 +538,7 @@ export const updateScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'INSERT INTO "public"."AuditLog" ("id","tenantId","model","operation","recordId","data","userId","impersonatedBy","hash","previousHash","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING "public"."AuditLog"."id", "public"."AuditLog"."sequence", "public"."AuditLog"."tenantId", "public"."AuditLog"."model", "public"."AuditLog"."operation", "public"."AuditLog"."recordId", "public"."AuditLog"."data", "public"."AuditLog"."userId", "public"."AuditLog"."impersonatedBy", "public"."AuditLog"."hash", "public"."AuditLog"."previousHash", "public"."AuditLog"."createdAt", "public"."AuditLog"."redactedAt"',
           params:
-            '["cxmpl00000000000000000014","default","BlogPost","update","cxmpl00000000000000000012","{\\"id\\":\\"cxmpl00000000000000000012\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Tagged article\\",\\"slug\\":\\"tagged-article\\",\\"summary\\":null,\\"body\\":null,\\"privateNote\\":null,\\"createdAt\\":\\"2026-01-15T09:00:11.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:11.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000005","0000000000000000000000000000000000000000000000000000000000000006","2026-01-15T09:00:13.000Z"]',
+            '["cxmpl00000000000000000014","default","BlogPost","update","cxmpl00000000000000000012","{\\"id\\":\\"cxmpl00000000000000000012\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Tagged article\\",\\"slug\\":\\"tagged-article\\",\\"summary\\":null,\\"body\\":null,\\"privateNote\\":null,\\"createdAt\\":\\"2026-01-15T09:00:06.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:06.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000005","0000000000000000000000000000000000000000000000000000000000000006","2026-01-15T09:00:06.000Z"]',
         },
       },
       {
@@ -548,7 +548,7 @@ export const updateScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'INSERT INTO "public"."BlogPostTag" ("tenantId","blogPostId","tagId","createdAt") VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING',
           params:
-            '["default","cxmpl00000000000000000012","cxmpl00000000000000000013","2026-01-15T09:00:14.000Z"]',
+            '["default","cxmpl00000000000000000012","cxmpl00000000000000000013","2026-01-15T09:00:06.000Z"]',
         },
       },
       {
@@ -558,7 +558,7 @@ export const updateScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'INSERT INTO "public"."OutboxMessage" ("id","tenantId","name","payload","status","attempts","nextAttemptAt","createdAt","locale") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
           params:
-            '["cxmpl00000000000000000015","default","model.updated","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"updated\\",\\"recordId\\":\\"cxmpl00000000000000000012\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:12.000Z","2026-01-15T09:00:12.000Z","en"]',
+            '["cxmpl00000000000000000015","default","model.updated","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"updated\\",\\"recordId\\":\\"cxmpl00000000000000000012\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:06.000Z","2026-01-15T09:00:06.000Z","en"]',
         },
       },
       {
@@ -633,7 +633,7 @@ export const deleteScenarios: PlaygroundScenario[] = [
     request:
       'POST /blog-posts/delete\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  "ids": [\n    "cxmpl00000000000000000016"\n  ]\n}',
     response:
-      '{\n  "data": [\n    {\n      "index": 0,\n      "id": "cxmpl00000000000000000016",\n      "status": "ok",\n      "data": {\n        "id": "cxmpl00000000000000000016",\n        "tenantId": "default",\n        "ownerId": "cxmpl00000000000000000001",\n        "title": "Hello world",\n        "slug": "hello-world-3",\n        "summary": null,\n        "summaryTranslations": {},\n        "body": null,\n        "createdAt": "2026-01-15T09:00:15.000Z",\n        "updatedAt": "2026-01-15T09:00:17.000Z",\n        "deletedAt": "2026-01-15T09:00:16.000Z"\n      }\n    }\n  ],\n  "meta": {\n    "total": 1,\n    "succeeded": 1,\n    "failed": 0\n  },\n  "messages": []\n}',
+      '{\n  "data": [\n    {\n      "index": 0,\n      "id": "cxmpl00000000000000000016",\n      "status": "ok",\n      "data": {\n        "id": "cxmpl00000000000000000016",\n        "tenantId": "default",\n        "ownerId": "cxmpl00000000000000000001",\n        "title": "Hello world",\n        "slug": "hello-world-3",\n        "summary": null,\n        "summaryTranslations": {},\n        "body": null,\n        "createdAt": "2026-01-15T09:00:07.000Z",\n        "updatedAt": "2026-01-15T09:00:07.000Z",\n        "deletedAt": "2026-01-15T09:00:07.000Z"\n      }\n    }\n  ],\n  "meta": {\n    "total": 1,\n    "succeeded": 1,\n    "failed": 0\n  },\n  "messages": []\n}',
     flow: [
       {
         stage: 'middleware',
@@ -685,7 +685,7 @@ export const deleteScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'INSERT INTO "public"."AuditLog" ("id","tenantId","model","operation","recordId","data","userId","impersonatedBy","hash","previousHash","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING "public"."AuditLog"."id", "public"."AuditLog"."sequence", "public"."AuditLog"."tenantId", "public"."AuditLog"."model", "public"."AuditLog"."operation", "public"."AuditLog"."recordId", "public"."AuditLog"."data", "public"."AuditLog"."userId", "public"."AuditLog"."impersonatedBy", "public"."AuditLog"."hash", "public"."AuditLog"."previousHash", "public"."AuditLog"."createdAt", "public"."AuditLog"."redactedAt"',
           params:
-            '["cxmpl00000000000000000017","default","BlogPost","update","cxmpl00000000000000000016","{\\"id\\":\\"cxmpl00000000000000000016\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Hello world\\",\\"slug\\":\\"hello-world-3\\",\\"summary\\":null,\\"body\\":null,\\"privateNote\\":null,\\"createdAt\\":\\"2026-01-15T09:00:15.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:17.000Z\\",\\"deletedAt\\":\\"2026-01-15T09:00:16.000Z\\"}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000007","0000000000000000000000000000000000000000000000000000000000000008","2026-01-15T09:00:19.000Z"]',
+            '["cxmpl00000000000000000017","default","BlogPost","update","cxmpl00000000000000000016","{\\"id\\":\\"cxmpl00000000000000000016\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Hello world\\",\\"slug\\":\\"hello-world-3\\",\\"summary\\":null,\\"body\\":null,\\"privateNote\\":null,\\"createdAt\\":\\"2026-01-15T09:00:07.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:07.000Z\\",\\"deletedAt\\":\\"2026-01-15T09:00:07.000Z\\"}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000007","0000000000000000000000000000000000000000000000000000000000000008","2026-01-15T09:00:07.000Z"]',
         },
       },
       {
@@ -695,7 +695,7 @@ export const deleteScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'INSERT INTO "public"."OutboxMessage" ("id","tenantId","name","payload","status","attempts","nextAttemptAt","createdAt","locale") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
           params:
-            '["cxmpl00000000000000000018","default","model.deleted","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"deleted\\",\\"recordId\\":\\"cxmpl00000000000000000016\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[\\"deletedAt\\"],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:18.000Z","2026-01-15T09:00:18.000Z","en"]',
+            '["cxmpl00000000000000000018","default","model.deleted","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"deleted\\",\\"recordId\\":\\"cxmpl00000000000000000016\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[\\"deletedAt\\"],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:07.000Z","2026-01-15T09:00:07.000Z","en"]',
         },
       },
       {
@@ -732,7 +732,7 @@ export const deleteScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'UPDATE "public"."BlogPost" SET "deletedAt" = $1, "updatedAt" = $2 WHERE ("public"."BlogPost"."id" = $3 AND "public"."BlogPost"."tenantId" = $4) RETURNING "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."slug", "public"."BlogPost"."summary", "public"."BlogPost"."body", "public"."BlogPost"."privateNote", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt"',
           params:
-            '["2026-01-15T09:00:16.000Z","2026-01-15T09:00:17.000Z","cxmpl00000000000000000016","default"]',
+            '["2026-01-15T09:00:07.000Z","2026-01-15T09:00:07.000Z","cxmpl00000000000000000016","default"]',
         },
       },
       {
@@ -811,7 +811,7 @@ export const deleteScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'INSERT INTO "public"."AuditLog" ("id","tenantId","model","operation","recordId","data","userId","impersonatedBy","hash","previousHash","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING "public"."AuditLog"."id", "public"."AuditLog"."sequence", "public"."AuditLog"."tenantId", "public"."AuditLog"."model", "public"."AuditLog"."operation", "public"."AuditLog"."recordId", "public"."AuditLog"."data", "public"."AuditLog"."userId", "public"."AuditLog"."impersonatedBy", "public"."AuditLog"."hash", "public"."AuditLog"."previousHash", "public"."AuditLog"."createdAt", "public"."AuditLog"."redactedAt"',
           params:
-            '["cxmpl00000000000000000021","default","BlogPost","delete","cxmpl00000000000000000019","{\\"id\\":\\"cxmpl00000000000000000019\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000020\\",\\"title\\":\\"Gone for good\\",\\"slug\\":\\"gone-for-good\\",\\"summary\\":null,\\"body\\":null,\\"privateNote\\":null,\\"createdAt\\":\\"2026-01-15T09:00:20.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:20.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000020",null,"0000000000000000000000000000000000000000000000000000000000000009","0000000000000000000000000000000000000000000000000000000000000010","2026-01-15T09:00:22.000Z"]',
+            '["cxmpl00000000000000000021","default","BlogPost","delete","cxmpl00000000000000000019","{\\"id\\":\\"cxmpl00000000000000000019\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000020\\",\\"title\\":\\"Gone for good\\",\\"slug\\":\\"gone-for-good\\",\\"summary\\":null,\\"body\\":null,\\"privateNote\\":null,\\"createdAt\\":\\"2026-01-15T09:00:08.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:08.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000020",null,"0000000000000000000000000000000000000000000000000000000000000009","0000000000000000000000000000000000000000000000000000000000000010","2026-01-15T09:00:08.000Z"]',
         },
       },
       {
@@ -821,7 +821,7 @@ export const deleteScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'INSERT INTO "public"."OutboxMessage" ("id","tenantId","name","payload","status","attempts","nextAttemptAt","createdAt","locale") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
           params:
-            '["cxmpl00000000000000000022","default","model.deleted","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"deleted\\",\\"recordId\\":\\"cxmpl00000000000000000019\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[],\\"ownerId\\":\\"cxmpl00000000000000000020\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000020\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:21.000Z","2026-01-15T09:00:21.000Z","en"]',
+            '["cxmpl00000000000000000022","default","model.deleted","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"deleted\\",\\"recordId\\":\\"cxmpl00000000000000000019\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[],\\"ownerId\\":\\"cxmpl00000000000000000020\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000020\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:08.000Z","2026-01-15T09:00:08.000Z","en"]',
         },
       },
       {
@@ -869,7 +869,7 @@ export const restoreScenarios: PlaygroundScenario[] = [
     request:
       'POST /blog-posts/restore\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  "ids": [\n    "cxmpl00000000000000000023"\n  ]\n}',
     response:
-      '{\n  "data": [\n    {\n      "index": 0,\n      "id": "cxmpl00000000000000000023",\n      "status": "ok",\n      "data": {\n        "id": "cxmpl00000000000000000023",\n        "tenantId": "default",\n        "ownerId": "cxmpl00000000000000000001",\n        "title": "Hello world",\n        "slug": "hello-world-4",\n        "summary": null,\n        "summaryTranslations": {},\n        "body": null,\n        "createdAt": "2026-01-15T09:00:23.000Z",\n        "updatedAt": "2026-01-15T09:00:24.000Z",\n        "deletedAt": null\n      }\n    }\n  ],\n  "meta": {\n    "total": 1,\n    "succeeded": 1,\n    "failed": 0\n  },\n  "messages": []\n}',
+      '{\n  "data": [\n    {\n      "index": 0,\n      "id": "cxmpl00000000000000000023",\n      "status": "ok",\n      "data": {\n        "id": "cxmpl00000000000000000023",\n        "tenantId": "default",\n        "ownerId": "cxmpl00000000000000000001",\n        "title": "Hello world",\n        "slug": "hello-world-4",\n        "summary": null,\n        "summaryTranslations": {},\n        "body": null,\n        "createdAt": "2026-01-15T09:00:09.000Z",\n        "updatedAt": "2026-01-15T09:00:09.000Z",\n        "deletedAt": null\n      }\n    }\n  ],\n  "meta": {\n    "total": 1,\n    "succeeded": 1,\n    "failed": 0\n  },\n  "messages": []\n}',
     flow: [
       {
         stage: 'middleware',
@@ -921,7 +921,7 @@ export const restoreScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'INSERT INTO "public"."AuditLog" ("id","tenantId","model","operation","recordId","data","userId","impersonatedBy","hash","previousHash","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING "public"."AuditLog"."id", "public"."AuditLog"."sequence", "public"."AuditLog"."tenantId", "public"."AuditLog"."model", "public"."AuditLog"."operation", "public"."AuditLog"."recordId", "public"."AuditLog"."data", "public"."AuditLog"."userId", "public"."AuditLog"."impersonatedBy", "public"."AuditLog"."hash", "public"."AuditLog"."previousHash", "public"."AuditLog"."createdAt", "public"."AuditLog"."redactedAt"',
           params:
-            '["cxmpl00000000000000000024","default","BlogPost","update","cxmpl00000000000000000023","{\\"id\\":\\"cxmpl00000000000000000023\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Hello world\\",\\"slug\\":\\"hello-world-4\\",\\"summary\\":null,\\"body\\":null,\\"privateNote\\":null,\\"createdAt\\":\\"2026-01-15T09:00:23.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:24.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000011","0000000000000000000000000000000000000000000000000000000000000012","2026-01-15T09:00:26.000Z"]',
+            '["cxmpl00000000000000000024","default","BlogPost","update","cxmpl00000000000000000023","{\\"id\\":\\"cxmpl00000000000000000023\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Hello world\\",\\"slug\\":\\"hello-world-4\\",\\"summary\\":null,\\"body\\":null,\\"privateNote\\":null,\\"createdAt\\":\\"2026-01-15T09:00:09.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:09.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000011","0000000000000000000000000000000000000000000000000000000000000012","2026-01-15T09:00:09.000Z"]',
         },
       },
       {
@@ -931,7 +931,7 @@ export const restoreScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'INSERT INTO "public"."OutboxMessage" ("id","tenantId","name","payload","status","attempts","nextAttemptAt","createdAt","locale") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
           params:
-            '["cxmpl00000000000000000025","default","model.updated","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"updated\\",\\"recordId\\":\\"cxmpl00000000000000000023\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[\\"deletedAt\\"],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:25.000Z","2026-01-15T09:00:25.000Z","en"]',
+            '["cxmpl00000000000000000025","default","model.updated","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"updated\\",\\"recordId\\":\\"cxmpl00000000000000000023\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[\\"deletedAt\\"],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:09.000Z","2026-01-15T09:00:09.000Z","en"]',
         },
       },
       {
@@ -968,7 +968,7 @@ export const restoreScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'UPDATE "public"."BlogPost" SET "deletedAt" = $1, "updatedAt" = $2 WHERE ("public"."BlogPost"."id" = $3 AND "public"."BlogPost"."tenantId" = $4) RETURNING "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."slug", "public"."BlogPost"."summary", "public"."BlogPost"."body", "public"."BlogPost"."privateNote", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt"',
           params:
-            '[null,"2026-01-15T09:00:24.000Z","cxmpl00000000000000000023","default"]',
+            '[null,"2026-01-15T09:00:09.000Z","cxmpl00000000000000000023","default"]',
         },
       },
       {
@@ -986,7 +986,7 @@ export const restoreScenarios: PlaygroundScenario[] = [
     request:
       'POST /blog-posts/restore\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  "ids": [\n    "cxmpl00000000000000000026"\n  ],\n  "patch": {\n    "title": "Hello world (restored)"\n  }\n}',
     response:
-      '{\n  "data": [\n    {\n      "index": 0,\n      "id": "cxmpl00000000000000000026",\n      "status": "ok",\n      "data": {\n        "id": "cxmpl00000000000000000026",\n        "tenantId": "default",\n        "ownerId": "cxmpl00000000000000000001",\n        "title": "Hello world (restored)",\n        "slug": "hello-world-restored",\n        "summary": null,\n        "summaryTranslations": {},\n        "body": null,\n        "createdAt": "2026-01-15T09:00:27.000Z",\n        "updatedAt": "2026-01-15T09:00:28.000Z",\n        "deletedAt": null\n      }\n    }\n  ],\n  "meta": {\n    "total": 1,\n    "succeeded": 1,\n    "failed": 0\n  },\n  "messages": []\n}',
+      '{\n  "data": [\n    {\n      "index": 0,\n      "id": "cxmpl00000000000000000026",\n      "status": "ok",\n      "data": {\n        "id": "cxmpl00000000000000000026",\n        "tenantId": "default",\n        "ownerId": "cxmpl00000000000000000001",\n        "title": "Hello world (restored)",\n        "slug": "hello-world-restored",\n        "summary": null,\n        "summaryTranslations": {},\n        "body": null,\n        "createdAt": "2026-01-15T09:00:10.000Z",\n        "updatedAt": "2026-01-15T09:00:10.000Z",\n        "deletedAt": null\n      }\n    }\n  ],\n  "meta": {\n    "total": 1,\n    "succeeded": 1,\n    "failed": 0\n  },\n  "messages": []\n}',
     flow: [
       {
         stage: 'middleware',
@@ -1038,7 +1038,7 @@ export const restoreScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'INSERT INTO "public"."AuditLog" ("id","tenantId","model","operation","recordId","data","userId","impersonatedBy","hash","previousHash","createdAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING "public"."AuditLog"."id", "public"."AuditLog"."sequence", "public"."AuditLog"."tenantId", "public"."AuditLog"."model", "public"."AuditLog"."operation", "public"."AuditLog"."recordId", "public"."AuditLog"."data", "public"."AuditLog"."userId", "public"."AuditLog"."impersonatedBy", "public"."AuditLog"."hash", "public"."AuditLog"."previousHash", "public"."AuditLog"."createdAt", "public"."AuditLog"."redactedAt"',
           params:
-            '["cxmpl00000000000000000027","default","BlogPost","update","cxmpl00000000000000000026","{\\"id\\":\\"cxmpl00000000000000000026\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Hello world (restored)\\",\\"slug\\":\\"hello-world-restored\\",\\"summary\\":null,\\"body\\":null,\\"privateNote\\":null,\\"createdAt\\":\\"2026-01-15T09:00:27.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:28.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000013","0000000000000000000000000000000000000000000000000000000000000014","2026-01-15T09:00:30.000Z"]',
+            '["cxmpl00000000000000000027","default","BlogPost","update","cxmpl00000000000000000026","{\\"id\\":\\"cxmpl00000000000000000026\\",\\"tenantId\\":\\"default\\",\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"title\\":\\"Hello world (restored)\\",\\"slug\\":\\"hello-world-restored\\",\\"summary\\":null,\\"body\\":null,\\"privateNote\\":null,\\"createdAt\\":\\"2026-01-15T09:00:10.000Z\\",\\"updatedAt\\":\\"2026-01-15T09:00:10.000Z\\",\\"deletedAt\\":null}","cxmpl00000000000000000001",null,"0000000000000000000000000000000000000000000000000000000000000013","0000000000000000000000000000000000000000000000000000000000000014","2026-01-15T09:00:10.000Z"]',
         },
       },
       {
@@ -1048,7 +1048,7 @@ export const restoreScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'INSERT INTO "public"."OutboxMessage" ("id","tenantId","name","payload","status","attempts","nextAttemptAt","createdAt","locale") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
           params:
-            '["cxmpl00000000000000000028","default","model.updated","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"updated\\",\\"recordId\\":\\"cxmpl00000000000000000026\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[\\"title\\",\\"slug\\",\\"deletedAt\\"],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:29.000Z","2026-01-15T09:00:29.000Z","en"]',
+            '["cxmpl00000000000000000028","default","model.updated","{\\"model\\":\\"BlogPost\\",\\"kind\\":\\"updated\\",\\"recordId\\":\\"cxmpl00000000000000000026\\",\\"tenantId\\":\\"default\\",\\"changedFields\\":[\\"title\\",\\"slug\\",\\"deletedAt\\"],\\"ownerId\\":\\"cxmpl00000000000000000001\\",\\"teamId\\":null,\\"userId\\":\\"cxmpl00000000000000000001\\",\\"impersonatedBy\\":null}","pending","0","2026-01-15T09:00:10.000Z","2026-01-15T09:00:10.000Z","en"]',
         },
       },
       {
@@ -1094,7 +1094,7 @@ export const restoreScenarios: PlaygroundScenario[] = [
         detail: {
           sql: 'UPDATE "public"."BlogPost" SET "title" = $1, "slug" = $2, "deletedAt" = $3, "updatedAt" = $4 WHERE ("public"."BlogPost"."id" = $5 AND "public"."BlogPost"."tenantId" = $6) RETURNING "public"."BlogPost"."id", "public"."BlogPost"."tenantId", "public"."BlogPost"."ownerId", "public"."BlogPost"."title", "public"."BlogPost"."slug", "public"."BlogPost"."summary", "public"."BlogPost"."body", "public"."BlogPost"."privateNote", "public"."BlogPost"."createdAt", "public"."BlogPost"."updatedAt", "public"."BlogPost"."deletedAt"',
           params:
-            '["Hello world (restored)","hello-world-restored",null,"2026-01-15T09:00:28.000Z","cxmpl00000000000000000026","default"]',
+            '["Hello world (restored)","hello-world-restored",null,"2026-01-15T09:00:10.000Z","cxmpl00000000000000000026","default"]',
         },
       },
       {
@@ -1115,7 +1115,7 @@ export const detailsScenarios: PlaygroundScenario[] = [
     request:
       'POST /blog-posts/search\nAuthorization: Bearer <token>\nContent-Type: application/json\n\n{\n  "filters": [\n    {\n      "field": "id",\n      "value": "cxmpl00000000000000000029"\n    }\n  ]\n}',
     response:
-      '{\n  "data": [\n    {\n      "id": "cxmpl00000000000000000029",\n      "tenantId": "default",\n      "ownerId": "cxmpl00000000000000000001",\n      "title": "Hello world",\n      "slug": "hello-world-5",\n      "summary": null,\n      "summaryTranslations": {},\n      "body": null,\n      "createdAt": "2026-01-15T09:00:31.000Z",\n      "updatedAt": "2026-01-15T09:00:31.000Z",\n      "deletedAt": null\n    }\n  ],\n  "meta": {\n    "channels": [\n      "blogPost"\n    ],\n    "page": 1,\n    "limit": 15,\n    "last_page": 1,\n    "next_cursor": null,\n    "total": 1\n  },\n  "messages": []\n}',
+      '{\n  "data": [\n    {\n      "id": "cxmpl00000000000000000029",\n      "tenantId": "default",\n      "ownerId": "cxmpl00000000000000000001",\n      "title": "Hello world",\n      "slug": "hello-world-5",\n      "summary": null,\n      "summaryTranslations": {},\n      "body": null,\n      "createdAt": "2026-01-15T09:00:11.000Z",\n      "updatedAt": "2026-01-15T09:00:11.000Z",\n      "deletedAt": null\n    }\n  ],\n  "meta": {\n    "channels": [\n      "blogPost"\n    ],\n    "page": 1,\n    "limit": 15,\n    "last_page": 1,\n    "next_cursor": null,\n    "total": 1\n  },\n  "messages": []\n}',
     flow: [
       {
         stage: 'middleware',

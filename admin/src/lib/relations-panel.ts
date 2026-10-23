@@ -47,7 +47,7 @@ function childControl(
   load.type = 'button';
   load.textContent = 'Show ' + relation;
 
-  load.addEventListener('click', async () => {
+  const show = async (): Promise<void> => {
     try {
       const { rows, meta } = await searchResource(
         childSearchPath(options.base, options.row.id, relation),
@@ -73,7 +73,9 @@ function childControl(
     } catch (error) {
       holder.replaceChildren(status(failureMessages(error).join(' '), true));
     }
-  });
+  };
+
+  load.addEventListener('click', () => void show());
 
   group.append(load, holder);
 

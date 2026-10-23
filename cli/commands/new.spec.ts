@@ -105,6 +105,12 @@ describe('the manifest a generated project starts from', () => {
     expect(scripts.lint).not.toContain('pnpm --filter admin');
   });
 
+  it('fails lint on any warning, as this repository does', () => {
+    const scripts = generated().scripts as Record<string, string>;
+
+    expect(scripts.lint).toContain('--max-warnings 0');
+  });
+
   it('checks formatting in lint and fixes it only in lint:fix', () => {
     const scripts = generated().scripts as Record<string, string>;
 

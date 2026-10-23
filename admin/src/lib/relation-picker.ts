@@ -163,7 +163,7 @@ export function relationControl(
     draw();
   };
 
-  search.addEventListener('click', async () => {
+  const searchOptions = async (): Promise<void> => {
     try {
       found = await fetchRelated(
         options.base,
@@ -186,7 +186,9 @@ export function relationControl(
     }
 
     draw();
-  });
+  };
+
+  search.addEventListener('click', () => void searchOptions());
 
   group.append(legend, members, input, search, candidates, result);
   void refreshMembers();

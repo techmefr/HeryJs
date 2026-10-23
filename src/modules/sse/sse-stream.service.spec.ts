@@ -147,7 +147,6 @@ describe('SseStreamService', () => {
     );
 
     for (let n = 1; n <= 5; n += 1) {
-      // eslint-disable-next-line no-await-in-loop
       await service.publish(tenantId, bounded, 'tick', { n }, 2);
     }
 

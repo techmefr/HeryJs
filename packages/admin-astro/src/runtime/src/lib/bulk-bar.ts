@@ -27,7 +27,19 @@ function bulkButton(
     button.title = plan.skipped.length + ' selected rows are not permitted';
   }
 
-  button.addEventListener('click', async () => {
+  const run = async (): Promise<void> => {
+    button.disabled = true;
+    const outcome = await runBulk(view.options.base, plan);
+    const report = describeOutcome(verb, outcome);
+    announce(view, report.message, report.isError);
+    view.selected = new Set([
+      ...outcome.failed.map((item) => item.id),
+      ...outcome.skipped,
+    ]);
+    await reload();
+  };
+
+  button.addEventListener('click', () => {
     const message =
       label +
       ' ' +
@@ -42,15 +54,7 @@ function bulkButton(
       return;
     }
 
-    button.disabled = true;
-    const outcome = await runBulk(view.options.base, plan);
-    const report = describeOutcome(verb, outcome);
-    announce(view, report.message, report.isError);
-    view.selected = new Set([
-      ...outcome.failed.map((item) => item.id),
-      ...outcome.skipped,
-    ]);
-    await reload();
+    void run();
   });
 
   return button;
