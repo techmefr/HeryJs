@@ -118,6 +118,26 @@ describe('doc examples', () => {
   let admin: TestUser;
 
   beforeAll(async () => {
+    jest.useFakeTimers({
+      now: FIRST_TIMESTAMP,
+      doNotFake: [
+        'hrtime',
+        'nextTick',
+        'performance',
+        'queueMicrotask',
+        'requestAnimationFrame',
+        'cancelAnimationFrame',
+        'requestIdleCallback',
+        'cancelIdleCallback',
+        'setImmediate',
+        'clearImmediate',
+        'setInterval',
+        'clearInterval',
+        'setTimeout',
+        'clearTimeout',
+      ],
+    });
+
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule, BlogPostModule],
     }).compile();
@@ -138,6 +158,11 @@ describe('doc examples', () => {
     }
     await app.close();
     await prisma.$disconnect();
+    jest.useRealTimers();
+  });
+
+  beforeEach(() => {
+    jest.setSystemTime(Date.now() + 1000);
   });
 
   function latestFlow(): TraceStep[] {
@@ -146,6 +171,7 @@ describe('doc examples', () => {
   }
 
   async function createOne(token: string, title: string): Promise<string> {
+    jest.setSystemTime(Date.now() + 1000);
     const response = await request(app.getHttpServer())
       .post('/blog-posts/create')
       .set('Authorization', `Bearer ${token}`)

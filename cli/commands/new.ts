@@ -493,7 +493,7 @@ export function projectManifest(
   // admin-astro package's own eslint.config.mjs still ships in packages/ and
   // still shadows the root config for its neighbors the same way it does here.
   manifest.scripts.lint =
-    'eslint "{src,apps,libs,test,cli,scripts,prisma,packages}/**/*.ts" "prisma.config.ts" "hery.config.ts" "cors.config.ts" --ignore-pattern "packages/admin-astro/src/runtime/**"';
+    'eslint "{src,apps,libs,test,cli,scripts,prisma,packages}/**/*.ts" "prisma.config.ts" "hery.config.ts" "cors.config.ts" --ignore-pattern "packages/admin-astro/src/runtime/**" --max-warnings 0';
   manifest.scripts['lint:fix'] = `${manifest.scripts.lint} --fix`;
 
   // The endpoint examples are this repository's documentation, captured from

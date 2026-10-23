@@ -161,7 +161,7 @@ export async function openShares(
               const line = element('div');
               const revoke = element('button', 'Revoke');
               revoke.type = 'button';
-              revoke.addEventListener('click', async () => {
+              const revokeShare = async (): Promise<void> => {
                 message.textContent = '';
 
                 try {
@@ -172,7 +172,8 @@ export async function openShares(
                 } catch (error) {
                   message.textContent = messageOf(error);
                 }
-              });
+              };
+              revoke.addEventListener('click', () => void revokeShare());
               line.append(
                 element('span', describeShare(share, teams)),
                 document.createTextNode(' '),
@@ -188,8 +189,7 @@ export async function openShares(
     }
   }
 
-  form.addEventListener('submit', async (event) => {
-    event.preventDefault();
+  const grantShare = async (): Promise<void> => {
     message.textContent = '';
     const grantee = type.value === 'team' ? team.value : user.value;
 
@@ -208,6 +208,11 @@ export async function openShares(
     } catch (error) {
       message.textContent = messageOf(error);
     }
+  };
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    void grantShare();
   });
 
   dialog.append(list, message, form, done);
