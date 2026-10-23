@@ -12,6 +12,7 @@ import type { NotificationProvider } from '#kernel/notifications/notification.ty
 import { SignalService } from '#kernel/signal/signal.service';
 import { runInTenant } from '#kernel/tenancy/run-in-tenant';
 import { exposedActionOf } from './exposed-webhook-source';
+import { INBOUND_WEBHOOK_JOB } from './inbound-webhook.constants';
 import { webhookHandlersFor } from '#kernel/webhooks/webhook-handler';
 
 interface WebhookProcessJobData {
@@ -33,7 +34,7 @@ export class WebhooksProcessor extends WorkerHost {
   }
 
   async process(job: Job): Promise<void> {
-    if (job.name !== 'webhook.process') {
+    if (job.name !== INBOUND_WEBHOOK_JOB) {
       return;
     }
 
@@ -43,7 +44,7 @@ export class WebhooksProcessor extends WorkerHost {
       where: { id: eventId },
     });
 
-    if (!event) {
+    if (!event || event.processedAt !== null) {
       return;
     }
 

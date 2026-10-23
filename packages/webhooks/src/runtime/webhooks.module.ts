@@ -11,6 +11,7 @@ import {
   DELIVERY_POLICY,
   OUTBOUND_WEBHOOK_POLICY,
 } from './outbound-webhook.constants';
+import { InboundWebhookRelay } from './inbound-webhook.relay';
 import { OutboundWebhookFanout } from './outbound-webhook.fanout';
 import { OutboundWebhookProcessor } from './outbound-webhook.processor';
 import {
@@ -21,6 +22,7 @@ import { WebhookDeliveryController } from './webhook-delivery.controller';
 import { WebhookDeliveryPruneTask } from './webhook-delivery.prune.task';
 import { WebhookDeliveryQueue } from './webhook-delivery.queue';
 import { WebhookDeliveryService } from './webhook-delivery.service';
+import { WebhookEndpointSecretService } from './webhook-endpoint-secret.service';
 import { WebhookSecretService } from './webhook-secret.service';
 import { WebhookSignatureGuard } from './webhook-signature.guard';
 import { WebhookSubscriptionController } from './webhook-subscription.controller';
@@ -53,6 +55,8 @@ import './webhooks.catalogue';
     WebhooksPersonalData,
     WebhooksProcessor,
     WebhookSignatureGuard,
+    WebhookEndpointSecretService,
+    InboundWebhookRelay,
     { provide: OUTBOUND_WEBHOOK_POLICY, useValue: DELIVERY_POLICY },
     { provide: WEBHOOK_FETCH, useValue: fetch },
     { provide: WEBHOOK_HOST_RESOLVER, useValue: systemHostResolver },

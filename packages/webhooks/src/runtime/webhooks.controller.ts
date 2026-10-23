@@ -16,6 +16,10 @@ import { CapabilitiesGuard } from '#kernel/capabilities/capabilities.guard';
 import { PublicRoute } from '#kernel/capabilities/public-route.decorator';
 import { ZodValidationPipe } from '#kernel/validation/zod-validation.pipe';
 import { WebhookSignatureGuard } from './webhook-signature.guard';
+import {
+  WEBHOOK_ID_HEADER,
+  WEBHOOK_TIMESTAMP_HEADER,
+} from './inbound-webhook.constants';
 import type { RequestWithWebhookEndpoint } from './webhook-signature.guard';
 import { ok } from '#kernel/http/envelope';
 import { SessionGuard } from '#kernel/auth/session.guard';
@@ -58,6 +62,8 @@ export class WebhooksController {
     const result = await this.webhooks.receive({
       endpoint: req.webhookEndpoint,
       rawBody: req.rawBody ?? Buffer.alloc(0),
+      deliveryId: req.header(WEBHOOK_ID_HEADER) ?? null,
+      timestamp: req.header(WEBHOOK_TIMESTAMP_HEADER) ?? '',
     });
 
     return ok(result);
