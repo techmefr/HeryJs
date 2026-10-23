@@ -20,11 +20,20 @@ import pc from 'picocolors';
 // matched the copy this repository keeps under src/modules/ -- which is the copy
 // every convention check and every reader actually sees. One specifier means the
 // installed file is the authored file, and `pnpm lint:module-drift` can say so.
+//
+// `@heryjs/core/<entry>` lands as `#technical/public/<entry>` for the same
+// reason: a project still carries its own copy of the kernel, and that copy is
+// the one the app's DI container holds, so the installed file has to reach the
+// very same classes rather than a second instance from the package.
 const KERNEL_SPECIFIER = '#kernel/';
 const APP_KERNEL_SPECIFIER = '#technical/';
+const KERNEL_PACKAGE_LITERAL = /(['"])@heryjs\/core\//g;
 
 export function rewriteKernelSpecifiers(source: string): string {
-  return source.split(KERNEL_SPECIFIER).join(APP_KERNEL_SPECIFIER);
+  return source
+    .split(KERNEL_SPECIFIER)
+    .join(APP_KERNEL_SPECIFIER)
+    .replace(KERNEL_PACKAGE_LITERAL, `$1${APP_KERNEL_SPECIFIER}public/`);
 }
 
 /**

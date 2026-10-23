@@ -5,7 +5,7 @@ import {
   type OutboxHandler,
   OutboxRegistry,
   WEBHOOK_QUEUE,
-} from '#kernel/public/jobs';
+} from '@heryjs/core/jobs';
 import {
   INBOUND_WEBHOOK_HANDLER,
   INBOUND_WEBHOOK_JOB,

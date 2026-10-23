@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { MailDriver, MailMessage } from '#kernel/public/drivers';
+import type { MailDriver, MailMessage } from '@heryjs/core/drivers';
 import { resendMailEnv } from './resend-mail.env';
 
 const ENDPOINT = 'https://api.resend.com/emails';

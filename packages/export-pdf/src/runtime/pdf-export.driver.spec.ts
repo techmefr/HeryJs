@@ -1,4 +1,4 @@
-import type { Exportable } from '#kernel/public/drivers';
+import type { Exportable } from '@heryjs/core/drivers';
 import { PdfExportDriver } from './pdf-export.driver';
 
 const driver = new PdfExportDriver();

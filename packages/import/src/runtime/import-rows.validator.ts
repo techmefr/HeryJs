@@ -2,7 +2,7 @@ import type {
   ImportOutcome,
   ImportRow,
   ImportRowError,
-} from '#kernel/public/drivers';
+} from '@heryjs/core/drivers';
 
 export interface PartitionedRows {
   valid: ImportRow[];

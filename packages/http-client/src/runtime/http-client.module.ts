@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from '#kernel/public/auth';
-import { HeryConfigModule } from '#kernel/public/config';
-import { DriversModule } from '#kernel/public/drivers';
+import { AuthModule } from '@heryjs/core/auth';
+import { HeryConfigModule } from '@heryjs/core/config';
+import { DriversModule } from '@heryjs/core/drivers';
 import { FakeHttpClientDriver } from './fake-http-client.driver';
 import { HttpClientDriverRegistry } from './http-client-driver.registry';
 import { HttpClientService } from './http-client.service';

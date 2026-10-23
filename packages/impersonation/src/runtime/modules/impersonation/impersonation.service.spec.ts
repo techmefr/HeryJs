@@ -1,8 +1,8 @@
-import type { AuthenticatedUser } from '#kernel/public/auth';
+import type { AuthenticatedUser } from '@heryjs/core/auth';
 import { NotImpersonatingException } from '#kernel/errors/not-impersonating.exception';
-import { RecordNotFoundException } from '#kernel/public/errors';
+import { RecordNotFoundException } from '@heryjs/core/errors';
 import { SelfImpersonationException } from '#kernel/errors/self-impersonation.exception';
-import type { TenantScopedPrismaClient } from '#kernel/public/database';
+import type { TenantScopedPrismaClient } from '@heryjs/core/database';
 import { ImpersonationService } from './impersonation.service';
 
 const ADMIN: AuthenticatedUser = {

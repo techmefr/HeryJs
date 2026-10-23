@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { HeryConfigModule } from '#kernel/public/config';
-import { DriversModule } from '#kernel/public/drivers';
-import { NOTIFIER_SMS_CONSENT } from '#kernel/public/notifications';
-import { PrismaModule } from '#kernel/public/database';
-import { PrivacyModule } from '#kernel/public/privacy';
+import { HeryConfigModule } from '@heryjs/core/config';
+import { DriversModule } from '@heryjs/core/drivers';
+import { NOTIFIER_SMS_CONSENT } from '@heryjs/core/notifications';
+import { PrismaModule } from '@heryjs/core/database';
+import { PrivacyModule } from '@heryjs/core/privacy';
 import { AUTH_SMS_SENDER_PROVIDER } from './auth-sms.adapter';
 import { LogSmsDriver } from './log-sms.driver';
 import { SmsConsentService } from './sms.consent';

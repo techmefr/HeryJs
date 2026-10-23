@@ -2,8 +2,8 @@ import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import {
   PRISMA_CLIENT,
   type TenantScopedPrismaClient,
-} from '#kernel/public/database';
-import { PersonalDataRegistry } from '#kernel/public/privacy';
+} from '@heryjs/core/database';
+import { PersonalDataRegistry } from '@heryjs/core/privacy';
 
 /**
  * The directory's own copy of a user's name and external id, kept beside the

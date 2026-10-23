@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { authPrismaClient } from '#kernel/public/auth';
-import { createTenantScopedPrismaClient } from '#kernel/public/testing';
-import { PersonalDataRegistry } from '#kernel/public/privacy';
-import { runInTenant } from '#kernel/public/tenancy';
+import { authPrismaClient } from '@heryjs/core/auth';
+import { createTenantScopedPrismaClient } from '@heryjs/core/testing';
+import { PersonalDataRegistry } from '@heryjs/core/privacy';
+import { runInTenant } from '@heryjs/core/tenancy';
 import { OAuthAccountService } from './oauth-account.service';
 import { PrismaOAuthIdentityStore } from './oauth-identity.store';
 import { OAuthRefusedException } from './oauth-refused.exception';

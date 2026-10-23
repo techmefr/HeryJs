@@ -1,14 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { JobsService } from '#kernel/public/jobs';
-import type { PageQuery } from '#kernel/public/http';
+import { JobsService } from '@heryjs/core/jobs';
+import type { PageQuery } from '@heryjs/core/http';
 import {
   PRISMA_CLIENT,
   type TenantScopedPrismaClient,
-} from '#kernel/public/database';
-import { TenantContextStorage } from '#kernel/public/tenancy';
+} from '@heryjs/core/database';
+import { TenantContextStorage } from '@heryjs/core/tenancy';
 import { MAIL_SEND_JOB, MAIL_SEND_POLICY } from './mail.constants';
 import { renderTemplate } from './mail.templates';
-import type { Mailable, MailMessage } from '#kernel/public/drivers';
+import type { Mailable, MailMessage } from '@heryjs/core/drivers';
 
 @Injectable()
 export class MailService {

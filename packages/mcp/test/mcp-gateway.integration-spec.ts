@@ -10,11 +10,11 @@ import {
   type AuthenticatedUser,
   type AuthProvider,
   SessionGuard,
-} from '#kernel/public/auth';
+} from '@heryjs/core/auth';
 import {
   CapabilitiesGuard,
   type CapabilitySubject,
-} from '#kernel/public/capabilities';
+} from '@heryjs/core/capabilities';
 import { McpGatewayController } from '../src/runtime/mcp-gateway.controller';
 import { MCP_TOOL_REGISTRARS } from '../src/runtime/mcp-tool-registrar';
 import type { McpToolRegistrar } from '../src/runtime/mcp-tool-registrar';

@@ -1,5 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
-import { DomainException } from '#kernel/public/errors';
+import { DomainException } from '@heryjs/core/errors';
 
 /**
  * A module raises the kernel's own exception type rather than a NestJS

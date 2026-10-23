@@ -2,6 +2,12 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import * as path from 'node:path';
 import pc from 'picocolors';
 import { intersects, validRange } from 'semver';
+import * as ts from 'typescript';
+import {
+  KERNEL_PACKAGE,
+  KERNEL_PACKAGE_DIR,
+  KERNEL_PUBLIC_ENTRIES,
+} from '../cli/lib/kernel-public-api';
 import { loadOfficialModules } from '../cli/lib/module-discovery';
 import { runtimeImports } from '../cli/lib/runtime-imports';
 
@@ -105,6 +111,125 @@ function installedRange(
 }
 
 /**
+ * A file the kernel runs something in when it is loaded, rather than only
+ * declaring: a bundler told the package has no side effects would drop it.
+ */
+function hasTopLevelEffect(file: string): boolean {
+  const source = ts.createSourceFile(
+    file,
+    readFileSync(file, 'utf8'),
+    ts.ScriptTarget.Latest,
+  );
+
+  return source.statements.some(
+    (statement) =>
+      ts.isExpressionStatement(statement) ||
+      (ts.isImportDeclaration(statement) &&
+        statement.importClause === undefined),
+  );
+}
+
+/**
+ * @heryjs/core is built from src/technical, so its manifest answers to that
+ * folder: one subpath per public entry and no other, exactly the peers the
+ * kernel's shipped code imports, and the files that run on load listed as
+ * side effects. It stays private until it is published.
+ */
+function kernelPackageProblems(root: PackageManifest): string[] {
+  const name = KERNEL_PACKAGE_DIR;
+  const manifest = readManifest(
+    path.join(REPO_ROOT, KERNEL_PACKAGE_DIR, 'package.json'),
+  ) as PackageManifest & {
+    name?: string;
+    private?: boolean;
+    files?: string[];
+    sideEffects?: boolean | string[];
+  };
+  const kernelDir = path.join(REPO_ROOT, 'src', 'technical');
+  const problems: string[] = [];
+
+  if (manifest.name !== KERNEL_PACKAGE) {
+    problems.push(`${name} is named ${manifest.name}, not ${KERNEL_PACKAGE}`);
+  }
+
+  if (manifest.private !== true) {
+    problems.push(`${name} is not private, and nothing is published yet`);
+  }
+
+  if (!(manifest.files ?? []).includes('dist')) {
+    problems.push(`${name} does not publish dist`);
+  }
+
+  const expected: Record<string, unknown> = Object.fromEntries([
+    ...KERNEL_PUBLIC_ENTRIES.map((entry): [string, unknown] => [
+      `./${entry}`,
+      {
+        types: `./dist/public/${entry}.d.ts`,
+        default: `./dist/public/${entry}.js`,
+      },
+    ]),
+    ['./package.json', './package.json'],
+  ]);
+
+  if (JSON.stringify(manifest.exports) !== JSON.stringify(expected)) {
+    problems.push(
+      `${name} exports ${JSON.stringify(Object.keys(manifest.exports ?? {}))}, not one subpath per entry of KERNEL_PUBLIC_ENTRIES pointing at dist/public`,
+    );
+  }
+
+  const sources = shippedSources(kernelDir);
+  const effects = sources
+    .filter(hasTopLevelEffect)
+    .map(
+      (file) =>
+        `./dist/${path.relative(kernelDir, file).split(path.sep).join('/').replace(/\.ts$/, '.js')}`,
+    )
+    .sort();
+
+  if (
+    !Array.isArray(manifest.sideEffects) ||
+    JSON.stringify([...manifest.sideEffects].sort()) !== JSON.stringify(effects)
+  ) {
+    problems.push(
+      `${name} lists ${JSON.stringify(manifest.sideEffects)} as side effects, but the files that run code on load are ${JSON.stringify(effects)}`,
+    );
+  }
+
+  const required = [
+    ...new Set(
+      sources.flatMap((file) =>
+        runtimeImports(readFileSync(file, 'utf8'), true),
+      ),
+    ),
+  ].sort();
+  const declared = manifest.peerDependencies ?? {};
+
+  required
+    .filter((peer) => declared[peer] === undefined)
+    .forEach((peer) =>
+      problems.push(
+        `${name} imports ${peer} but declares no peerDependency on it`,
+      ),
+    );
+
+  Object.entries(declared).forEach(([peer, range]) => {
+    const installed = root.dependencies?.[peer];
+
+    if (!required.includes(peer)) {
+      problems.push(
+        `${name} declares a peerDependency on ${peer}, which the kernel does not import`,
+      );
+    } else if (installed === undefined || !intersects(range, installed)) {
+      problems.push(
+        `${name} declares ${peer}@${range}, which the root dependencies (${installed}) do not satisfy`,
+      );
+    }
+  });
+
+  return problems;
+}
+
+/**
  * Each module package declares an `exports` map matching its entry, and
  * exactly the peers its shipped code imports, at a range the repository
  * itself satisfies. A peer the code stopped using, or one it started using
@@ -167,6 +292,8 @@ export function checkPackageManifests(): boolean {
       });
   }
 
+  problems.push(...kernelPackageProblems(root));
+
   if (problems.length > 0) {
     problems.forEach((problem) => console.error(pc.red(`✖ ${problem}`)));
 
@@ -175,7 +302,7 @@ export function checkPackageManifests(): boolean {
 
   console.log(
     pc.green(
-      `✔ ${modules.length} module packages declare their exports and exactly the peers they import`,
+      `✔ ${modules.length} module packages and ${KERNEL_PACKAGE} declare their exports and exactly the peers they import`,
     ),
   );
 

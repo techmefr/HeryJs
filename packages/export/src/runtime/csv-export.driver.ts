@@ -5,7 +5,7 @@ import {
   type ExportDriver,
   exportHeaders,
   type ExportRow,
-} from '#kernel/public/drivers';
+} from '@heryjs/core/drivers';
 
 /**
  * Export's zero-config default, and the counterpart of mail's log driver: a

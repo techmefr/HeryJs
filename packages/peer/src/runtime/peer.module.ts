@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from '#kernel/public/auth';
+import { AuthModule } from '@heryjs/core/auth';
 import { PeerGateway } from './peer.gateway';
 import { PeerRoomPresenceService } from './peer-room-presence.service';
 import { PeerTurnCredentialsService } from './peer-turn-credentials.service';

@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { billingDriverToken } from '#kernel/public/drivers';
+import { billingDriverToken } from '@heryjs/core/drivers';
 import { StripeBillingDriver } from './stripe-billing.driver';
 
 const TOKEN = billingDriverToken('stripe');

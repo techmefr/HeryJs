@@ -7,7 +7,7 @@ jest.mock('ofetch', () => ({ ofetch: { raw: jest.fn() } }), { virtual: true });
 import {
   HttpRequestFailedException,
   HttpRequestTimeoutException,
-} from '#kernel/public/drivers';
+} from '@heryjs/core/drivers';
 import { OfetchHttpClientDriver } from './ofetch-http-client.driver';
 import type {
   HttpFetcher,

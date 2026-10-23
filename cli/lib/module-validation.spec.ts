@@ -301,6 +301,55 @@ describe('validating a module', () => {
     ]);
   });
 
+  it('accepts a runtime reaching the kernel through @heryjs/core', () => {
+    write(
+      'tsconfig.json',
+      JSON.stringify({
+        compilerOptions: {
+          paths: { '@heryjs/core/*': ['../../src/technical/public/*'] },
+        },
+      }),
+    );
+    write(
+      'src/runtime/probe.service.ts',
+      "import { subjectOf } from '@heryjs/core/capabilities';\nexport const probe = subjectOf;",
+    );
+
+    expect(problems()).toEqual([]);
+  });
+
+  it('refuses a @heryjs/core subpath that is not a public entry', () => {
+    write(
+      'tsconfig.json',
+      JSON.stringify({
+        compilerOptions: {
+          paths: { '@heryjs/core/*': ['../../src/technical/public/*'] },
+        },
+      }),
+    );
+    write(
+      'src/runtime/probe.service.ts',
+      "import { thing } from '@heryjs/core/unknown';\nexport const probe = thing;",
+    );
+
+    expect(problems()).toEqual([
+      expect.stringContaining(
+        'imports @heryjs/core/unknown, which is internal',
+      ),
+    ]);
+  });
+
+  it('refuses a @heryjs/core import with no @heryjs/core/* path mapped', () => {
+    write(
+      'src/runtime/probe.service.ts',
+      "import { subjectOf } from '@heryjs/core/capabilities';\nexport const probe = subjectOf;",
+    );
+
+    expect(problems()).toEqual([
+      expect.stringContaining('maps no @heryjs/core/* path'),
+    ]);
+  });
+
   it('asks for no tsconfig from a runtime that never reaches the kernel', () => {
     write('tsconfig.json', JSON.stringify({ compilerOptions: {} }));
 

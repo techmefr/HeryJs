@@ -1,4 +1,4 @@
-import { DEFAULT_JOB_POLICY, type JobPolicy } from '#kernel/public/jobs';
+import { DEFAULT_JOB_POLICY, type JobPolicy } from '@heryjs/core/jobs';
 
 export const BILLING_MIRROR_JOB = 'billing.mirror';
 

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { devOnlyDefault, parseModuleEnv } from '#kernel/public/config';
+import { devOnlyDefault, parseModuleEnv } from '@heryjs/core/config';
 import { DEV_ENCRYPTION_KEY } from './two-factor.constants';
 
 const DEFAULT_ISSUER = 'HeryJs';

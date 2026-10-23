@@ -6,7 +6,7 @@ import {
   type ExportDriver,
   exportHeaders,
   type ExportRow,
-} from '#kernel/public/drivers';
+} from '@heryjs/core/drivers';
 
 const SHEET_NAME = 'Export';
 

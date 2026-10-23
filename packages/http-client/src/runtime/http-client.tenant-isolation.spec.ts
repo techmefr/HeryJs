@@ -1,5 +1,5 @@
-import type { HealthRegistry } from '#kernel/public/observability';
-import { TenantContextStorage } from '#kernel/public/tenancy';
+import type { HealthRegistry } from '@heryjs/core/observability';
+import { TenantContextStorage } from '@heryjs/core/tenancy';
 import { FakeHttpClientDriver } from './fake-http-client.driver';
 import type { HttpClientDriverRegistry } from './http-client-driver.registry';
 import { HttpClientService } from './http-client.service';

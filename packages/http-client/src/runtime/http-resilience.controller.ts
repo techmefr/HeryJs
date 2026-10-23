@@ -1,13 +1,13 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
-import { SessionGuard } from '#kernel/public/auth';
-import { CapabilitiesGuard, Capability } from '#kernel/public/capabilities';
+import { SessionGuard } from '@heryjs/core/auth';
+import { CapabilitiesGuard, Capability } from '@heryjs/core/capabilities';
 import {
   ok,
   RateLimit,
   UnpaginatedRoute,
   ZodValidationPipe,
-} from '#kernel/public/http';
+} from '@heryjs/core/http';
 import { HttpResilienceService } from './http-resilience.service';
 import {
   canManageHttpCircuits,

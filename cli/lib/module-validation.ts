@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import * as path from 'node:path';
 import {
+  KERNEL_PACKAGE_SPECIFIER,
   KERNEL_SPECIFIER,
   internalKernelImportProblem,
   isOwnKernelFile,
@@ -78,6 +79,14 @@ function runtimeProblems(
     const relative = path.relative(packageDir, file);
 
     for (const specifier of specifiersIn(file)) {
+      if (
+        specifier.startsWith(KERNEL_PACKAGE_SPECIFIER) &&
+        !isPublicKernelSpecifier(specifier)
+      ) {
+        problems.push(internalKernelImportProblem(relative, specifier));
+        continue;
+      }
+
       if (isBareSpecifier(specifier)) {
         continue;
       }
@@ -217,11 +226,15 @@ export function validateModule(module: LoadedModule): string[] {
 
   problems.push(...runtimeProblems(runtimeDir, module.packageDir, module.dest));
 
-  const usesKernel = filesUnder(runtimeDir)
+  const runtimeSpecifiers = filesUnder(runtimeDir)
     .filter((file) => file.endsWith('.ts'))
-    .some((file) =>
-      specifiersIn(file).some((specifier) => specifier.startsWith('#kernel/')),
-    );
+    .flatMap(specifiersIn);
+  const usesKernel = runtimeSpecifiers.some((specifier) =>
+    specifier.startsWith('#kernel/'),
+  );
+  const usesKernelPackage = runtimeSpecifiers.some((specifier) =>
+    specifier.startsWith(KERNEL_PACKAGE_SPECIFIER),
+  );
   const tsconfig = path.join(module.packageDir, 'tsconfig.json');
 
   /**
@@ -237,6 +250,15 @@ export function validateModule(module: LoadedModule): string[] {
     if (usesKernel && !declared.includes('#kernel/*')) {
       problems.push(
         'its runtime imports #kernel/ but its tsconfig.json maps no #kernel/* path, so nothing here typechecks against the kernel',
+      );
+    }
+
+    if (
+      usesKernelPackage &&
+      !declared.includes(`"${KERNEL_PACKAGE_SPECIFIER}*"`)
+    ) {
+      problems.push(
+        `its runtime imports ${KERNEL_PACKAGE_SPECIFIER} but its tsconfig.json maps no ${KERNEL_PACKAGE_SPECIFIER}* path, so nothing here typechecks against the kernel`,
       );
     }
 

@@ -5,7 +5,7 @@ import {
   type HttpRequestOptions,
   type HttpResponse,
   UnstubbedHttpRequestException,
-} from '#kernel/public/drivers';
+} from '@heryjs/core/drivers';
 
 export interface HttpStub {
   status?: number;

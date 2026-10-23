@@ -1,11 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { writeAuditLog } from '#kernel/public/privacy';
-import { authPrismaClient } from '#kernel/public/auth';
-import type { PageQuery } from '#kernel/public/http';
+import { writeAuditLog } from '@heryjs/core/privacy';
+import { authPrismaClient } from '@heryjs/core/auth';
+import type { PageQuery } from '@heryjs/core/http';
 import {
   PRISMA_CLIENT,
   type TenantScopedPrismaClient,
-} from '#kernel/public/database';
+} from '@heryjs/core/database';
 import type { ScimResourceKind } from './scim.types';
 
 export const SCIM_ACTIVITY_MODELS = ['ScimUser', 'ScimGroup', 'ScimToken'];

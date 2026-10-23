@@ -1,5 +1,5 @@
 import { DynamicModule, Module, Type } from '@nestjs/common';
-import { AuthModule } from '#kernel/public/auth';
+import { AuthModule } from '@heryjs/core/auth';
 import { McpGatewayController } from './mcp-gateway.controller';
 import { MCP_TOOL_REGISTRARS } from './mcp-tool-registrar';
 import type { McpToolRegistrar } from './mcp-tool-registrar';

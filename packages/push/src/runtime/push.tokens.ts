@@ -3,8 +3,8 @@ import type { Prisma } from '@prisma/client';
 import {
   PRISMA_CLIENT,
   type TenantScopedPrismaClient,
-} from '#kernel/public/database';
-import type { PushPlatform } from '#kernel/public/drivers';
+} from '@heryjs/core/database';
+import type { PushPlatform } from '@heryjs/core/drivers';
 
 export interface DeviceToken {
   id: string;

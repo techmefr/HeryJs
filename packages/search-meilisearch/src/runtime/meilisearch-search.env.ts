@@ -1,4 +1,4 @@
-import { devOnlyDefault, parseModuleEnv } from '#kernel/public/config';
+import { devOnlyDefault, parseModuleEnv } from '@heryjs/core/config';
 
 export const meilisearchEnv = parseModuleEnv('search-meilisearch', {
   MEILISEARCH_URL: devOnlyDefault('MEILISEARCH_URL', 'http://localhost:7700'),

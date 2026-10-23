@@ -42,6 +42,7 @@
     "prepack": "pnpm --filter heryjs run build:scaffold && pnpm run build"
   },
   "peerDependencies": {
+    "@heryjs/core": "workspace:^",
     "@nestjs/common": "^12.0.0",
     "@nestjs/schedule": "^12.0.0",
     "@prisma/client": "^7.0.0",
@@ -49,6 +50,7 @@
     "zod": "^4.0.0"
   },
   "devDependencies": {
+    "@heryjs/core": "workspace:*",
     "@nestjs/common": "^12.0.1",
     "heryjs": "workspace:*",
     "picocolors": "^1.1.1",

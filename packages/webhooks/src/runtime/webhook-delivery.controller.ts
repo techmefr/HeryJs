@@ -7,15 +7,15 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { type RequestWithUser, SessionGuard } from '#kernel/public/auth';
-import { CapabilitiesGuard, Capability } from '#kernel/public/capabilities';
+import { type RequestWithUser, SessionGuard } from '@heryjs/core/auth';
+import { CapabilitiesGuard, Capability } from '@heryjs/core/capabilities';
 import {
   ok,
   okPage,
   parsePageQuery,
   RateLimit,
   ZodValidationPipe,
-} from '#kernel/public/http';
+} from '@heryjs/core/http';
 import { deliveryFilterSchema } from './outbound-webhook.dto';
 import type { DeliveryFilter } from './outbound-webhook.dto';
 import { WebhookDeliveryService } from './webhook-delivery.service';

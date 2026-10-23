@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import {
   NOTIFIER_SMS_CHANNEL,
   type NotifierSmsChannel,
-} from '#kernel/public/notifications';
-import type { SmsMessage } from '#kernel/public/drivers';
+} from '@heryjs/core/notifications';
+import type { SmsMessage } from '@heryjs/core/drivers';
 import { SmsService } from './sms.service';
 
 /**

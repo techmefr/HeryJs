@@ -366,6 +366,9 @@ importers:
         specifier: ^5.0.0
         version: 5.2.1
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -385,6 +388,9 @@ importers:
         specifier: ^4.0.0
         version: 4.5.4
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -398,12 +404,103 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
 
+  packages/core:
+    dependencies:
+      '@better-auth/passkey':
+        specifier: 1.7.3
+        version: 1.7.3(@better-auth/core@1.7.3(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.5.4))(jose@6.2.4)(kysely@0.29.4)(nanostores@1.4.1))(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-auth@1.7.3(@opentelemetry/api@1.9.1)(@prisma/client@7.10.0(prisma@7.10.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3))(mysql2@3.15.3)(pg@8.23.0)(prisma@7.10.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(better-call@1.4.0(zod@4.5.4))(nanostores@1.4.1)
+      '@bull-board/api':
+        specifier: ^9.8.0
+        version: 9.8.0(@bull-board/ui@9.8.0(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0)))(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0))
+      '@bull-board/express':
+        specifier: ^9.8.0
+        version: 9.8.0(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0))
+      '@nestjs/bullmq':
+        specifier: ^12.0.0
+        version: 12.0.0(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0))
+      '@nestjs/common':
+        specifier: ^12.0.1
+        version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/core':
+        specifier: ^12.0.1
+        version: 12.0.1(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@12.0.1)(@nestjs/websockets@12.0.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/schedule':
+        specifier: ^12.0.1
+        version: 12.0.1(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)
+      '@opentelemetry/api':
+        specifier: ^1.9.1
+        version: 1.9.1
+      '@opentelemetry/api-logs':
+        specifier: ^0.223.0
+        version: 0.223.0
+      '@opentelemetry/sdk-node':
+        specifier: ^0.223.0
+        version: 0.223.0(@opentelemetry/api@1.9.1)
+      '@prisma/adapter-pg':
+        specifier: ^7.10.0
+        version: 7.10.0
+      '@prisma/client':
+        specifier: ^7.10.0
+        version: 7.10.0(prisma@7.10.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3)
+      '@prometheus-io/client':
+        specifier: ^0.16.1
+        version: 0.16.1
+      better-auth:
+        specifier: ^1.7.3
+        version: 1.7.3(@opentelemetry/api@1.9.1)(@prisma/client@7.10.0(prisma@7.10.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3))(mysql2@3.15.3)(pg@8.23.0)(prisma@7.10.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      bullmq:
+        specifier: ^6.3.4
+        version: 6.3.4(ioredis@6.0.0)(pg@8.23.0)
+      cron:
+        specifier: ^4.4.0
+        version: 4.4.0
+      express:
+        specifier: ^5.2.1
+        version: 5.2.1
+      helmet:
+        specifier: ^8.3.0
+        version: 8.3.0
+      ioredis:
+        specifier: ^6.0.0
+        version: 6.0.0
+      pg:
+        specifier: ^8.23.0
+        version: 8.23.0
+      pino:
+        specifier: ^10.3.1
+        version: 10.3.1
+      pino-pretty:
+        specifier: ^13.1.3
+        version: 13.1.3
+      rxjs:
+        specifier: ^7.8.1
+        version: 7.8.2
+      sanitize-html:
+        specifier: 2.18.1
+        version: 2.18.1
+      socket.io:
+        specifier: ^4.8.3
+        version: 4.8.3
+      ts-node:
+        specifier: ^10.9.2
+        version: 10.9.2(@swc/core@1.16.2)(@types/node@24.13.3)(typescript@6.0.3)
+      zod:
+        specifier: ^4.5.4
+        version: 4.5.4
+    devDependencies:
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
+
   packages/embeddings:
     dependencies:
       zod:
         specifier: ^4.0.0
         version: 4.5.4
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -426,6 +523,9 @@ importers:
         specifier: ^6.0.0
         version: 6.3.4(ioredis@6.0.0)(pg@8.23.0)
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -441,6 +541,9 @@ importers:
 
   packages/export-pdf:
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -462,6 +565,9 @@ importers:
 
   packages/export-xlsx:
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -486,6 +592,9 @@ importers:
       '@as-integrations/express5':
         specifier: ^1.1.2
         version: 1.1.2(@apollo/server@5.5.1(graphql@16.14.2))(express@5.2.1)
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/apollo':
         specifier: ^14.0.0
         version: 14.0.0(@apollo/server@5.5.1(graphql@16.14.2))(@as-integrations/express5@1.1.2(@apollo/server@5.5.1(graphql@16.14.2))(express@5.2.1))(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(@nestjs/graphql@14.0.0(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(crossws@0.3.5)(graphql@16.14.2)(reflect-metadata@0.2.2))(graphql@16.14.2)
@@ -529,6 +638,9 @@ importers:
         specifier: ^4.0.0
         version: 4.5.4
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -554,6 +666,9 @@ importers:
         specifier: ^1.0.0
         version: 1.7.3(@opentelemetry/api@1.9.1)(@prisma/client@7.10.0(prisma@7.10.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3))(mysql2@3.15.3)(pg@8.23.0)(prisma@7.10.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -579,6 +694,9 @@ importers:
         specifier: ^6.0.0
         version: 6.3.4(ioredis@6.0.0)(pg@8.23.0)
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -594,6 +712,9 @@ importers:
 
   packages/live:
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -622,6 +743,9 @@ importers:
         specifier: ^4.0.0
         version: 4.5.4
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/bullmq':
         specifier: ^12.0.0
         version: 12.0.0(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0))
@@ -647,6 +771,9 @@ importers:
         specifier: ^4.0.0
         version: 4.5.4
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -666,6 +793,9 @@ importers:
         specifier: ^4.0.0
         version: 4.5.4
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -687,6 +817,9 @@ importers:
 
   packages/mcp:
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@modelcontextprotocol/sdk':
         specifier: ^1.30.0
         version: 1.30.0(zod@4.5.4)
@@ -727,6 +860,9 @@ importers:
         specifier: ^7.0.0
         version: 7.10.0(prisma@7.10.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3)
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -752,6 +888,9 @@ importers:
         specifier: ^5.0.0
         version: 5.2.1
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -770,6 +909,9 @@ importers:
 
   packages/peer:
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -798,6 +940,9 @@ importers:
         specifier: ^7.0.0
         version: 7.10.0(prisma@7.10.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3)
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -823,6 +968,9 @@ importers:
         specifier: ^4.0.0
         version: 4.5.4
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -841,6 +989,9 @@ importers:
       '@elastic/elasticsearch':
         specifier: ^9.5.1
         version: 9.5.1(apache-arrow@21.2.0)
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -856,6 +1007,9 @@ importers:
 
   packages/search-meilisearch:
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -878,6 +1032,9 @@ importers:
         specifier: ^7.0.0
         version: 7.10.0(prisma@7.10.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3)
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -897,6 +1054,9 @@ importers:
         specifier: ^5.0.0
         version: 5.2.1
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -925,6 +1085,9 @@ importers:
         specifier: ^4.0.0
         version: 4.5.4
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -965,6 +1128,9 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.1127.0
         version: 3.1127.0
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -986,6 +1152,9 @@ importers:
 
   packages/stream:
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -1011,6 +1180,9 @@ importers:
         specifier: ^4.0.0
         version: 4.5.4
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/common':
         specifier: ^12.0.1
         version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -1036,6 +1208,9 @@ importers:
         specifier: ^5.0.0
         version: 5.2.1
     devDependencies:
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:../core
       '@nestjs/bullmq':
         specifier: ^12.0.0
         version: 12.0.0(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0))

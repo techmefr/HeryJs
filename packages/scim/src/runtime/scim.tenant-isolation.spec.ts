@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { authPrismaClient } from '#kernel/public/auth';
-import { createTenantScopedPrismaClient } from '#kernel/public/testing';
+import { authPrismaClient } from '@heryjs/core/auth';
+import { createTenantScopedPrismaClient } from '@heryjs/core/testing';
 import { PrismaScimDirectoryStore } from './prisma-scim-directory.store';
 import { ScimException } from './scim.exception';
 import { SCIM_PATCH_SCHEMA } from './scim.types';

@@ -8,15 +8,15 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { CapabilitiesGuard, Capability } from '#kernel/public/capabilities';
+import { CapabilitiesGuard, Capability } from '@heryjs/core/capabilities';
 import {
   ok,
   okPage,
   parsePageQuery,
   RateLimit,
   ZodValidationPipe,
-} from '#kernel/public/http';
-import { type RequestWithUser, SessionGuard } from '#kernel/public/auth';
+} from '@heryjs/core/http';
+import { type RequestWithUser, SessionGuard } from '@heryjs/core/auth';
 import { canManageTwoFactorRequirements } from './two-factor.policy';
 import { roleParamSchema } from './two-factor.schemas';
 import { TwoFactorRequirementService } from './two-factor-requirement.service';

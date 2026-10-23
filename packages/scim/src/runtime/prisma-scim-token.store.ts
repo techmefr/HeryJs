@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { authPrismaClient } from '#kernel/public/auth';
+import { authPrismaClient } from '@heryjs/core/auth';
 import type { ScimTokenRecord, ScimTokenStore } from './scim-token.service';
 
 @Injectable()

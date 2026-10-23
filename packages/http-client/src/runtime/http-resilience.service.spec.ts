@@ -1,7 +1,7 @@
-import { HeryConfig } from '#kernel/public/config';
-import { env } from '#kernel/public/env';
-import { HealthRegistry, metricsRegistry } from '#kernel/public/observability';
-import { operatorAbility } from '#kernel/public/capabilities';
+import { HeryConfig } from '@heryjs/core/config';
+import { env } from '@heryjs/core/env';
+import { HealthRegistry, metricsRegistry } from '@heryjs/core/observability';
+import { operatorAbility } from '@heryjs/core/capabilities';
 import { FakeHttpClientDriver } from './fake-http-client.driver';
 import { HttpClientDriverRegistry } from './http-client-driver.registry';
 import { HttpClientService } from './http-client.service';

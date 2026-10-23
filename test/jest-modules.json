@@ -6,6 +6,7 @@
   "testRegex": ".integration-spec.ts$",
   "globalSetup": "<rootDir>/test/global-setup.ts",
   "moduleNameMapper": {
+    "^@heryjs/core/(.*)$": "<rootDir>/src/technical/public/$1",
     "^#kernel/(.*)$": "<rootDir>/src/technical/$1",
     "^#technical/(.*)$": "<rootDir>/src/technical/$1",
     "^#devtools/(.*)$": "<rootDir>/src/devtools/$1",

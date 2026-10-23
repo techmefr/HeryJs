@@ -1,11 +1,11 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { HERY_CONFIG, type HeryConfig } from '#kernel/public/config';
+import { HERY_CONFIG, type HeryConfig } from '@heryjs/core/config';
 import {
   DriverResolver,
   missingDriverMessage,
   SMS_MODULE,
   type SmsDriver,
-} from '#kernel/public/drivers';
+} from '@heryjs/core/drivers';
 import { LogSmsDriver } from './log-sms.driver';
 
 const BUILTIN_DRIVER = 'log';
