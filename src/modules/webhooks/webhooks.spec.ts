@@ -6,6 +6,7 @@ import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
+import { waitFor } from '#devtools/testing/wait-for';
 import type { PolicyCheck } from '#technical/capabilities/capability-check';
 import {
   ExposeAction,
@@ -67,22 +68,17 @@ async function waitForProcessed(
   eventId: string,
   timeoutMs = 5000,
 ): Promise<{ processedAt: Date | null } | null> {
-  const deadline = Date.now() + timeoutMs;
+  return waitFor(
+    async () => {
+      const event = await authPrismaClient.webhookEvent.findUnique({
+        where: { id: eventId },
+        select: { processedAt: true },
+      });
 
-  while (Date.now() < deadline) {
-    const event = await authPrismaClient.webhookEvent.findUnique({
-      where: { id: eventId },
-      select: { processedAt: true },
-    });
-
-    if (event?.processedAt) {
-      return event;
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-
-  return null;
+      return event?.processedAt ? event : null;
+    },
+    { timeoutMs, intervalMs: 100 },
+  ).catch(() => null);
 }
 
 describe('Webhooks', () => {

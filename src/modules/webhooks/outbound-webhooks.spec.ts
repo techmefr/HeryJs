@@ -9,6 +9,7 @@ import { AppModule } from '#app.module';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 import type { TestUser } from '#devtools/testing/register-and-login';
+import { waitFor } from '#devtools/testing/wait-for';
 import { OutboxRelay } from '#technical/outbox/outbox.relay';
 import { OutboxService } from '#technical/outbox/outbox.service';
 import { runInTenant } from '#technical/tenancy/run-in-tenant';
@@ -47,25 +48,6 @@ const server = createServer((req, res) => {
     res.end();
   });
 });
-
-async function waitFor<T>(
-  read: () => Promise<T | null | undefined>,
-  timeoutMs = 10_000,
-): Promise<T> {
-  const deadline = Date.now() + timeoutMs;
-
-  while (Date.now() < deadline) {
-    const value = await read();
-
-    if (value) {
-      return value;
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-
-  throw new Error('Timed out waiting for the condition.');
-}
 
 describe('Outbound webhooks', () => {
   let app: INestApplication<App>;

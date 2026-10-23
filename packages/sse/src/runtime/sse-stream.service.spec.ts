@@ -1,6 +1,23 @@
 import { SseStreamService } from './sse-stream.service';
 import type { SseEntry, SseSubscription } from './sse-stream.service';
 
+function collector() {
+  const entries: SseEntry[] = [];
+  let arrived = (): void => undefined;
+  const first = new Promise<void>((resolve) => {
+    arrived = resolve;
+  });
+
+  return {
+    entries,
+    first,
+    push: (entry: SseEntry) => {
+      entries.push(entry);
+      arrived();
+    },
+  };
+}
+
 function collect(entries: SseEntry[]) {
   return entries.map(({ event, payload }) => ({ event, payload }));
 }
@@ -86,12 +103,13 @@ describe('SseStreamService', () => {
     );
     const resumeFrom = missed[missed.length - 1]?.id ?? beforeDisconnect;
 
-    const received: SseEntry[] = [];
+    const live = collector();
+    const received = live.entries;
     const subscription = service.subscribeLive(
       tenantId,
       streamChannel,
       resumeFrom,
-      (entry) => received.push(entry),
+      live.push,
     );
     subscriptions.push(subscription);
 
@@ -102,7 +120,7 @@ describe('SseStreamService', () => {
       { n: 3 },
     );
 
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await live.first;
 
     expect(collect(missed)).toEqual([{ event: 'counter', payload: { n: 2 } }]);
     expect(missed[0]?.id).toBe(missedWhileDisconnected);

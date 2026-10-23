@@ -1,5 +1,22 @@
 import { SseStreamService } from './sse-stream.service';
 import type { SseEntry, SseSubscription } from './sse-stream.service';
+
+function collector() {
+  const entries: SseEntry[] = [];
+  let arrived = (): void => undefined;
+  const first = new Promise<void>((resolve) => {
+    arrived = resolve;
+  });
+
+  return {
+    entries,
+    first,
+    push: (entry: SseEntry) => {
+      entries.push(entry);
+      arrived();
+    },
+  };
+}
 import { SseTokenService } from './sse-token.service';
 
 describe('tenant isolation', () => {
@@ -22,23 +39,26 @@ describe('tenant isolation', () => {
   });
 
   it('never streams an entry of tenant B to a live subscriber of tenant A', async () => {
-    const receivedByA: SseEntry[] = [];
-    const receivedByB: SseEntry[] = [];
+    const liveA = collector();
+    const liveB = collector();
+    const receivedByA = liveA.entries;
+    const receivedByB = liveB.entries;
     subscriptions.push(
-      service.subscribeLive(tenantA, 'live', '$', (entry) =>
-        receivedByA.push(entry),
-      ),
-      service.subscribeLive(tenantB, 'live', '$', (entry) =>
-        receivedByB.push(entry),
-      ),
+      service.subscribeLive(tenantA, 'live', '0-0', liveA.push),
+      service.subscribeLive(tenantB, 'live', '0-0', liveB.push),
     );
-    await new Promise((resolve) => setTimeout(resolve, 100));
 
     await service.publish(tenantB, 'live', 'tick', { secret: 'b' });
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await liveB.first;
+    // Anything leaked from B into A's stream would sit ahead of A's own
+    // sentinel, so it has arrived by the time the sentinel does.
+    await service.publish(tenantA, 'live', 'sentinel', { secret: 'a' });
+    await liveA.first;
 
     expect(receivedByB).toHaveLength(1);
-    expect(receivedByA).toEqual([]);
+    expect(receivedByA.filter((entry) => entry.event !== 'sentinel')).toEqual(
+      [],
+    );
   });
 
   it('never shares a stream between a tenant and channel that join into the same text', async () => {

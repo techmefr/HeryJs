@@ -12,6 +12,7 @@ import {
   purgeTenant,
 } from '#devtools/testing/tenant-isolation';
 import { SnippetModule } from '../../../examples/snippet/snippet.module';
+import { waitFor } from '#devtools/testing/wait-for';
 import { PersonalDataRegistry } from './personal-data.registry';
 
 const COLLECTION = 'snippet';
@@ -94,19 +95,20 @@ describe('privacy erasure and external search indexes', () => {
       .expect(202);
     const id = (response.body as { data: { id: string } }).data.id;
 
-    for (let attempt = 0; attempt < 90; attempt += 1) {
-      const row = await authPrismaClient.privacyRequest.findUniqueOrThrow({
-        where: { id },
-      });
+    return waitFor(
+      async () => {
+        const row = await authPrismaClient.privacyRequest.findUniqueOrThrow({
+          where: { id },
+        });
 
-      if (row.status === 'done' || row.status === 'failed') {
-        return row;
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 150));
-    }
-
-    throw new Error(`privacy request ${id} did not settle`);
+        return row.status === 'done' || row.status === 'failed' ? row : null;
+      },
+      {
+        timeoutMs: 13_500,
+        intervalMs: 150,
+        description: `privacy request ${id} to settle`,
+      },
+    );
   }
 
   it('removes an erased user documents from every search index', async () => {

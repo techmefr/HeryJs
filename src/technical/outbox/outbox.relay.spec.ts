@@ -4,6 +4,7 @@ import type { TestingModule } from '@nestjs/testing';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { LockService } from '#technical/lock/lock.service';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
+import { waitFor } from '#devtools/testing/wait-for';
 import {
   OUTBOX_BACKOFF_BASE_MS,
   OUTBOX_DEAD_RETENTION_DAYS,
@@ -430,16 +431,12 @@ describe('OutboxRelay (real database)', () => {
 const POLL_INTERVAL_MS = 50;
 const DELIVERY_TIMEOUT_MS = 8_000;
 
-async function waitFor(isDone: () => Promise<boolean>): Promise<void> {
-  const deadline = Date.now() + DELIVERY_TIMEOUT_MS;
-
-  while (!(await isDone())) {
-    if (Date.now() > deadline) {
-      throw new Error('Timed out waiting for the outbox relay');
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-  }
+async function waitForRelay(isDone: () => Promise<boolean>): Promise<void> {
+  await waitFor(isDone, {
+    timeoutMs: DELIVERY_TIMEOUT_MS,
+    intervalMs: POLL_INTERVAL_MS,
+    description: 'the outbox relay',
+  });
 }
 
 describe('OutboxModule relay worker (real database and Redis)', () => {
@@ -487,7 +484,7 @@ describe('OutboxModule relay worker (real database and Redis)', () => {
     });
     created.push(message.id);
 
-    await waitFor(async () => {
+    await waitForRelay(async () => {
       const current = await authPrismaClient.outboxMessage.findUniqueOrThrow({
         where: { id: message.id },
       });

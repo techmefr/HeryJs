@@ -91,18 +91,21 @@ describe('infra checks', () => {
    * thing that cannot be true there, a port belonging to another service.
    */
   it('waits for a service that starts answering, rather than blaming the port', async () => {
-    let answering = false;
+    let pings = 0;
     const { server, port } = await listen((socket) =>
-      socket.on('data', () => {
-        if (answering) {
+      socket.on('data', (chunk: Buffer) => {
+        if (!chunk.toString('utf8').startsWith('PING')) {
+          return;
+        }
+
+        pings += 1;
+
+        if (pings > 1) {
           socket.write('+PONG\r\n');
         }
       }),
     );
     servers.push(server);
-    setTimeout(() => {
-      answering = true;
-    }, 1200);
 
     process.env.DATABASE_URL = `postgresql://heryjs:heryjs@127.0.0.1:${port}/heryjs`;
     process.env.REDIS_URL = `redis://127.0.0.1:${port}`;
