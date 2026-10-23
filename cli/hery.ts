@@ -42,6 +42,7 @@ import { registerSearchReindexCommand } from './commands/search-reindex';
 import { registerSecretsCommands } from './commands/secrets';
 import { registerUninstallCommand } from './commands/uninstall';
 import { registerUpCommand } from './commands/up';
+import { registerUpgradeCommand } from './commands/upgrade';
 
 const program = new Command();
 
@@ -87,6 +88,7 @@ registerSecretsCommands(program);
 registerEmbeddingsBackfillCommand(program);
 registerUninstallCommand(program);
 registerUpCommand(program);
+registerUpgradeCommand(program);
 
 program.parseAsync(process.argv).catch((error: unknown) => {
   if (!(error instanceof BlueprintError)) {
