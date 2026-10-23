@@ -794,6 +794,7 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
       'ac3bfd652ac294bafed25b1582aa20d39f7f998ed84c71ff40e75619193612fa',
     ],
     'src/technical/config/hery-config.types.ts': [
+      '0b02509abaeccb069383be4e564c6aa536d051201a0d447876917c605106ca20',
       '0ed6b6b8390a8cd315e0336f08c9bd491919e6750e5d86bd17be437ffd643bf7',
       '0f219b4386176632b6fb2e439de85bfa500a8ac4b776975fd10b964da85ff64c',
       '133a79a32ec2282e3b70b98f06561fca000290c99291424d2a5f9ba73f250eaf',
@@ -1834,6 +1835,15 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
     'src/technical/maintenance/maintenance.module.ts': [
       'bc7679b5c7279c8712cbc03db866a71f93f7a233e9dc0378b027a0e2e1a415ce',
     ],
+    'src/technical/module-contract/hery-module.contract.ts': [
+      '8071144a846f21407554b4375669fdca27f6c203b44439ac6378cf1ce260f382',
+    ],
+    'src/technical/module-contract/resolve-hery-modules.spec.ts': [
+      '94af48e946ec7701fbd4e04bcf1d536539747b83688f85c3920ba5a6a49b3af7',
+    ],
+    'src/technical/module-contract/resolve-hery-modules.ts': [
+      '5992eac73a39d6a4c0a060134a70f1e74a0af862a188ec3f1b7f49fbe1cf38d2',
+    ],
     'src/technical/monitoring/deployment.controller.ts': [
       '74738a03b1101ec469eb11822631b70152e21869104e576a55b17e95080fa2bc',
     ],
@@ -2254,6 +2264,7 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
       'e60c7afb881c50d1bcb538c430f4474a7b4a7655f6502e138e8b670c1094df40',
     ],
     'src/technical/public/config.ts': [
+      '264268d7702d5bc5ab8d80a30a6b59c58904248e1b80afcacd5257a442ad7fa7',
       '394f5de547e896febdf73a535f1006036e2095068a1ba85a04ef76da344aa2c2',
       'bd174ed4d760d4fc007c4a50467a41ab41ba4a78fc040e7b5cfae7fe66d169ed',
     ],
@@ -2287,6 +2298,9 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
     ],
     'src/technical/public/load-env.ts': [
       '9a0f60d14d476ec30294325fde5b84491590cd3d8cef9e78b4cf53444557ed39',
+    ],
+    'src/technical/public/modules.ts': [
+      'b503063e18bc2c587a878d26a86d16dd3edfb9f2ae7a0c26f562ad36818ae054',
     ],
     'src/technical/public/notifications.ts': [
       '25ceffc47cfd0535625834e47ba260fca8c656a8758ddaaab6729f5c4aa0bff5',
