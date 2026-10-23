@@ -10,6 +10,7 @@ import {
   restoreBackup,
 } from '#technical/backup/database-backup';
 import { requireDatabaseUrl } from '../lib/database-session';
+import { replayErasures } from './privacy-replay';
 
 interface BackupFlags {
   dir?: string;
@@ -130,6 +131,7 @@ export function registerDbBackupCommands(program: Command): void {
         });
 
         console.log(pc.green(`restored ${path}`));
+        await replayErasures();
       } catch (error) {
         fail(error);
       }
