@@ -5,9 +5,11 @@ import { intersects, validRange } from 'semver';
 import * as ts from 'typescript';
 import {
   DEVTOOLS_PUBLIC_ENTRIES,
+  KERNEL_INTERNAL_SUBPATH,
   KERNEL_PACKAGE,
   KERNEL_PACKAGE_DIR,
   KERNEL_PUBLIC_ENTRIES,
+  KERNEL_SOURCE_CONDITION,
   isTestSupport,
   kernelEntryFile,
 } from '../cli/lib/kernel-public-api';
@@ -161,35 +163,38 @@ function kernelPackageProblems(root: PackageManifest): string[] {
     problems.push(`${name} is not private, and nothing is published yet`);
   }
 
-  if (!(manifest.files ?? []).includes('dist')) {
-    problems.push(`${name} does not publish dist`);
+  if (JSON.stringify(manifest.files) !== JSON.stringify(['dist'])) {
+    problems.push(
+      `${name} publishes ${JSON.stringify(manifest.files)}, not dist alone: its sources are symlinks into this repository`,
+    );
   }
 
   const fromSourceRoot = (file: string): string =>
     path.relative(sourceRoot, file).split(path.sep).join('/');
+  const subpath = (source: string): Record<string, string> => ({
+    [KERNEL_SOURCE_CONDITION]: `./src/${source}.ts`,
+    types: `./dist/${source}.d.ts`,
+    default: `./dist/${source}.js`,
+  });
   const expected: Record<string, unknown> = Object.fromEntries([
     ...[...KERNEL_PUBLIC_ENTRIES, ...Object.keys(DEVTOOLS_PUBLIC_ENTRIES)].map(
-      (entry): [string, unknown] => {
-        const source = fromSourceRoot(
-          path.join(REPO_ROOT, kernelEntryFile(entry)),
-        ).replace(/\.ts$/, '');
-
-        return [
-          `./${entry}`,
-          {
-            development: `./src/${source}.ts`,
-            types: `./dist/${source}.d.ts`,
-            default: `./dist/${source}.js`,
-          },
-        ];
-      },
+      (entry): [string, unknown] => [
+        `./${entry}`,
+        subpath(
+          fromSourceRoot(path.join(REPO_ROOT, kernelEntryFile(entry))).replace(
+            /\.ts$/,
+            '',
+          ),
+        ),
+      ],
     ),
+    [`./${KERNEL_INTERNAL_SUBPATH}/*`, subpath(`${KERNEL_INTERNAL_SUBPATH}/*`)],
     ['./package.json', './package.json'],
   ]);
 
   if (JSON.stringify(manifest.exports) !== JSON.stringify(expected)) {
     problems.push(
-      `${name} exports ${JSON.stringify(Object.keys(manifest.exports ?? {}))}, not one subpath per public entry with its sources for development and dist otherwise`,
+      `${name} exports ${JSON.stringify(Object.keys(manifest.exports ?? {}))}, not one subpath per public entry and ./${KERNEL_INTERNAL_SUBPATH}/*, each with its sources under the ${KERNEL_SOURCE_CONDITION} condition and dist otherwise`,
     );
   }
 

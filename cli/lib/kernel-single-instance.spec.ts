@@ -55,6 +55,7 @@ describe('one instance of the kernel', () => {
       process.execPath,
       [
         '--conditions=development',
+        '--conditions=heryjs-source',
         '-r',
         'ts-node/register/transpile-only',
         '-e',
