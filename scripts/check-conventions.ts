@@ -11,6 +11,7 @@ import { checkExampleFreshness } from './check-example-freshness';
 import { checkKernelBoundary } from './check-kernel-boundary';
 import { checkKernelVersion } from './check-kernel-version';
 import { checkLintCoverage } from './check-lint-coverage';
+import { checkModuleDestinations } from './check-module-destinations';
 import { checkModuleDrift } from './check-module-drift';
 import { checkModulePatches } from './check-module-patches';
 import { checkModuleValidity } from './check-module-validity';
@@ -37,6 +38,7 @@ const CHECKS: Array<{ name: string; run: () => boolean | Promise<boolean> }> = [
   { name: 'module-drift', run: checkModuleDrift },
   { name: 'module-validity', run: checkModuleValidity },
   { name: 'module-patches', run: checkModulePatches },
+  { name: 'module-destinations', run: checkModuleDestinations },
   { name: 'kernel-boundary', run: checkKernelBoundary },
   { name: 'package-manifests', run: checkPackageManifests },
   { name: 'coverage', run: checkLintCoverage },

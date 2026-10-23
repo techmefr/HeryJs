@@ -237,7 +237,7 @@ function dropExampleModels(destRoot: string): string[] {
  */
 export const MODULES_THE_KERNEL_NEEDS: Record<string, string> = {
   impersonation:
-    'its install patches six kernel files (env schema, Better Auth instance, auth types, session provider, capabilities) and adds fields to User and Session',
+    'the kernel reads the role and impersonatedBy columns its install adds to User and Session',
   'two-factor': 'its install adds relations to User',
   push: 'src/technical/auth/guest-upgrade.ts moves the PushToken rows of a guest',
 };

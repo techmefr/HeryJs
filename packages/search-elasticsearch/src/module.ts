@@ -5,7 +5,6 @@ export default {
   description:
     'Swap free-text search from Prisma contains() to Elasticsearch (docker service, driver, DI wiring)',
   meta: { compatibility: '>=0.0.1' },
-  dest: 'src/technical/search',
   dependencies: ['@elastic/elasticsearch@^9.5.1'],
   install(context) {
     context.copyPackageFile('docker-compose.search-elasticsearch.yml');

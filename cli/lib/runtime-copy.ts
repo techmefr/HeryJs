@@ -14,8 +14,8 @@ import pc from 'picocolors';
 // template nothing checks until it lands in a generated project.
 //
 // It lands as #technical/, the app's own subpath import, rather than as a
-// relative path computed from the destination: modules land at three different
-// depths (src/modules/<name>/, src/technical/search/, src/ itself), so a
+// relative path computed from the destination: modules land at different
+// depths (src/modules/<name>/, admin/), so a
 // relative rewrite produced a different file for each of them, and none of them
 // matched the copy this repository keeps under src/modules/ -- which is the copy
 // every convention check and every reader actually sees. One specifier means the

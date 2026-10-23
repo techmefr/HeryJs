@@ -5,7 +5,6 @@ export default {
   description:
     'Add a GraphQL endpoint (Apollo driver) with a session guard mirroring the REST auth flow. Use "hery generate <Name> --graphql" to add a resolver to a resource.',
   meta: { compatibility: '>=0.0.1' },
-  dest: 'src/technical',
   dependencies: [
     '@nestjs/graphql',
     '@nestjs/apollo',

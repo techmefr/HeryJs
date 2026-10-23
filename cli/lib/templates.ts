@@ -2291,9 +2291,9 @@ export function resolverFile(ctx: ResourceContext): string {
 import {
 ${graphqlImports}
 } from '@nestjs/graphql';
-import { GqlSessionGuard } from '#technical/auth/gql-session.guard';
-import type { GqlRequestWithUser } from '#technical/auth/gql-session.guard';
-import { CurrentGqlRequest } from '#technical/auth/current-gql-request.decorator';
+import { GqlSessionGuard } from '#modules/graphql/auth/gql-session.guard';
+import type { GqlRequestWithUser } from '#modules/graphql/auth/gql-session.guard';
+import { CurrentGqlRequest } from '#modules/graphql/auth/current-gql-request.decorator';
 import { subjectOf } from '@heryjs/core/capabilities';
 import { CapabilityForbiddenException } from '@heryjs/core/errors';
 import { RecordNotFoundException } from '@heryjs/core/errors';
@@ -2452,7 +2452,7 @@ export function mcpToolsFile(ctx: ResourceContext): string {
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Inject, Injectable } from '@nestjs/common';
 import type { CapabilitySubject } from '@heryjs/core/capabilities';
-${ctx.versioned ? `import { VersionConflictException } from '@heryjs/core/errors';\n` : ''}import type { McpToolRegistrar } from '#technical/mcp/mcp-tool-registrar';
+${ctx.versioned ? `import { VersionConflictException } from '@heryjs/core/errors';\n` : ''}import type { McpToolRegistrar } from '#modules/mcp/mcp-tool-registrar';
 import { create${ctx.pascalName}Schema, update${ctx.pascalName}Schema } from './${ctx.kebabName}.dto';
 import {
   canCreate${ctx.pascalName},

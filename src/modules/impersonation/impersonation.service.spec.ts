@@ -1,7 +1,7 @@
 import type { AuthenticatedUser } from '@heryjs/core/auth';
-import { NotImpersonatingException } from '#technical/errors/not-impersonating.exception';
+import { NotImpersonatingException } from './errors/not-impersonating.exception';
 import { RecordNotFoundException } from '@heryjs/core/errors';
-import { SelfImpersonationException } from '#technical/errors/self-impersonation.exception';
+import { SelfImpersonationException } from './errors/self-impersonation.exception';
 import type { TenantScopedPrismaClient } from '@heryjs/core/database';
 import { ImpersonationService } from './impersonation.service';
 
