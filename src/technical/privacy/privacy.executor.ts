@@ -206,6 +206,7 @@ export class PrivacyExecutor {
         declaration.model,
         ids,
       );
+      await this.removeFromSearchIndexes(tenantId, declaration, ids);
       const keys = await this.fileKeys(tenantId, declaration, delegate, where);
 
       resources[declaration.model] = await this.erase(
@@ -253,6 +254,11 @@ export class PrivacyExecutor {
         tenantId,
         models: [declaration.model],
       });
+      await this.removeFromSearchIndexes(
+        tenantId,
+        declaration,
+        await this.indexedIds(declaration, delegate),
+      );
       const keys = await this.fileKeys(tenantId, declaration, delegate, {});
 
       resources[declaration.model] = await this.erase(
@@ -370,6 +376,47 @@ export class PrivacyExecutor {
             typeof key === 'string' && isTenantFileKey(key, tenantId),
         ),
     );
+  }
+
+  private async indexedIds(
+    declaration: PersonalDataDeclaration,
+    delegate: RowDelegate,
+  ): Promise<string[]> {
+    if (
+      declaration.searchCollection === undefined ||
+      this.registry.searchIndexRemovers().length === 0
+    ) {
+      return [];
+    }
+
+    return (await delegate.findMany({ where: {}, select: { id: true } })).map(
+      (row) => row.id as string,
+    );
+  }
+
+  /**
+   * An external engine keeps its own copy of the searchable fields, which the
+   * database erasure never reaches. The documents go before the rows, for the
+   * same retry reason as the audit entries: once the rows are gone, nothing
+   * names the documents left behind. A document is removed through the
+   * driver's own tenant check, so an id is never trusted alone.
+   */
+  private async removeFromSearchIndexes(
+    tenantId: string,
+    declaration: PersonalDataDeclaration,
+    ids: readonly string[],
+  ): Promise<void> {
+    const collection = declaration.searchCollection;
+
+    if (collection === undefined) {
+      return;
+    }
+
+    for (const remove of this.registry.searchIndexRemovers()) {
+      for (const id of ids) {
+        await remove(collection, id, tenantId);
+      }
+    }
   }
 
   private async removeFiles(keys: readonly string[]): Promise<number> {

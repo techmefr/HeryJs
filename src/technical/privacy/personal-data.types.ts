@@ -30,6 +30,7 @@ export interface PersonalDataDeclaration {
   model: string;
   erase: PersonalDataErasure;
   fields: readonly PersonalDataField[];
+  searchCollection?: string;
 }
 
 /**
@@ -65,3 +66,16 @@ export interface PersonalDataHook {
  * `file` field of an erased row loses its object and not only its key.
  */
 export type StoredFileRemover = (key: string) => Promise<void>;
+
+/**
+ * Removes one document from an external search index, inside the tenant it
+ * was indexed for. Each installed search engine registers one, so an erased
+ * row does not stay findable in a copy the database never sees. An anonymised
+ * row is removed too: the index held its personal values, and a reindex puts
+ * it back with the anonymised ones.
+ */
+export type SearchIndexRemover = (
+  collection: string,
+  id: string,
+  tenantId: string,
+) => Promise<void>;

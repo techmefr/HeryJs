@@ -2169,6 +2169,7 @@ export class ${ctx.pascalName}PersonalData implements OnModuleInit {
     this.registry.register({
       model: '${ctx.modelPascalName}',
       erase: '${ctx.personalData?.erase ?? 'delete'}',
+      searchCollection: '${ctx.kebabName}',
       fields: [
 ${fields}
       ],
