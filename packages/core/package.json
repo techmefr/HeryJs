@@ -158,7 +158,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "prisma"
   ],
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json"

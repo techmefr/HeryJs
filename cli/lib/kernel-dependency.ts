@@ -9,6 +9,8 @@ import {
 import * as path from 'node:path';
 import { KERNEL_FILE_VERSIONS } from './kernel-versions';
 import {
+  CLI_PACKAGE,
+  CLI_PACKAGE_DIR,
   KERNEL_INTERNAL_SUBPATH,
   KERNEL_PACKAGE,
   KERNEL_PACKAGE_DIR,
@@ -43,11 +45,28 @@ export function kernelDependency(frameworkRoot: string): string {
 }
 
 export function kernelIsBuilt(frameworkRoot: string): boolean {
-  return existsSync(path.join(frameworkRoot, KERNEL_PACKAGE_DIR, 'dist'));
+  return [KERNEL_PACKAGE_DIR, CLI_PACKAGE_DIR].every((dir) =>
+    existsSync(path.join(frameworkRoot, dir, 'dist')),
+  );
+}
+
+/**
+ * @heryjs/cli comes from wherever @heryjs/core does, at the same version: the
+ * package next to it in this checkout, or the same range once published.
+ */
+export function cliDependency(kernel: string): string {
+  if (!kernel.startsWith('file:')) {
+    return kernel;
+  }
+
+  const kernelDir = kernel.slice('file:'.length);
+
+  return `file:${path.join(path.dirname(kernelDir), path.basename(CLI_PACKAGE_DIR))}`;
 }
 
 interface ConsumerManifest {
   dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
   imports?: Record<string, unknown>;
   scripts?: Record<string, string>;
   jest?: { moduleNameMapper?: Record<string, string> };
@@ -63,7 +82,10 @@ export function withPackageKernelMapper(
 ): Record<string, string> {
   return Object.fromEntries(
     Object.entries(mapper).flatMap(([pattern, target]): [string, string][] => {
-      if (pattern.startsWith(`^${KERNEL_PACKAGE_SPECIFIER}`)) {
+      if (
+        pattern.startsWith(`^${KERNEL_PACKAGE_SPECIFIER}`) ||
+        pattern.startsWith(`^${CLI_PACKAGE}/`)
+      ) {
         return [];
       }
 
@@ -89,6 +111,10 @@ export function withKernelPackage<T extends ConsumerManifest>(
   const copy = structuredClone(manifest);
 
   copy.dependencies = { ...copy.dependencies, [KERNEL_PACKAGE]: dependency };
+  copy.devDependencies = {
+    ...copy.devDependencies,
+    [CLI_PACKAGE]: cliDependency(dependency),
+  };
   copy.imports = { ...copy.imports, '#technical/*': `${INTERNAL_TARGET}/*` };
 
   if (copy.jest?.moduleNameMapper) {
@@ -410,13 +436,13 @@ export function adoptKernelPackage(
     }),
   );
 
-  const workspaceCopy = path.join(root, KERNEL_PACKAGE_DIR);
+  for (const dir of [KERNEL_PACKAGE_DIR, CLI_PACKAGE_DIR]) {
+    if (existsSync(path.join(root, dir))) {
+      changed.push(dir);
 
-  if (existsSync(workspaceCopy)) {
-    changed.push(KERNEL_PACKAGE_DIR);
-
-    if (write) {
-      rmSync(workspaceCopy, { recursive: true, force: true });
+      if (write) {
+        rmSync(path.join(root, dir), { recursive: true, force: true });
+      }
     }
   }
 

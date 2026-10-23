@@ -27,7 +27,11 @@ import {
   kernelDependency,
   kernelIsBuilt,
 } from '../lib/kernel-dependency';
-import { KERNEL_PACKAGE, KERNEL_PACKAGE_DIR } from '../lib/kernel-public-api';
+import {
+  CLI_PACKAGE_DIR,
+  KERNEL_PACKAGE,
+  KERNEL_PACKAGE_DIR,
+} from '../lib/kernel-public-api';
 import { pascalCase } from '../lib/naming';
 import { bareName, runtimeImports } from '../lib/runtime-imports';
 import { stripModelsFromSchemaFolder } from '../lib/strip-example';
@@ -617,7 +621,7 @@ export function registerNewCommand(program: Command): void {
       if (!kernelIsBuilt(REPO_ROOT)) {
         console.error(
           pc.red(
-            `${KERNEL_PACKAGE} is not built in ${REPO_ROOT}: run "pnpm run build:core" there first, the project installs it from there.`,
+            `${KERNEL_PACKAGE} is not built in ${REPO_ROOT}: run "pnpm run build:core" there first, the project installs it and @heryjs/cli from there.`,
           ),
         );
         process.exitCode = 1;
@@ -627,6 +631,7 @@ export function registerNewCommand(program: Command): void {
       mkdirSync(destRoot, { recursive: true });
       copyInto(destRoot);
       rmSync(path.join(destRoot, KERNEL_PACKAGE_DIR), { recursive: true });
+      rmSync(path.join(destRoot, CLI_PACKAGE_DIR), { recursive: true });
       const removedModels = dropExampleModels(destRoot);
       const droppedSpecs = dropSpecsNamingRemovedModels(
         destRoot,

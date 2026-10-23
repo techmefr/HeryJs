@@ -4,6 +4,8 @@ import pc from 'picocolors';
 import { intersects, validRange } from 'semver';
 import * as ts from 'typescript';
 import {
+  CLI_PACKAGE,
+  CLI_PACKAGE_DIR,
   DEVTOOLS_PUBLIC_ENTRIES,
   KERNEL_INTERNAL_SUBPATH,
   KERNEL_PACKAGE,
@@ -163,9 +165,9 @@ function kernelPackageProblems(root: PackageManifest): string[] {
     problems.push(`${name} is not private, and nothing is published yet`);
   }
 
-  if (JSON.stringify(manifest.files) !== JSON.stringify(['dist'])) {
+  if (JSON.stringify(manifest.files) !== JSON.stringify(['dist', 'prisma'])) {
     problems.push(
-      `${name} publishes ${JSON.stringify(manifest.files)}, not dist alone: its sources are symlinks into this repository`,
+      `${name} publishes ${JSON.stringify(manifest.files)}, not dist and prisma alone: its sources are symlinks into this repository, and hery sync reads the kernel schema from prisma/`,
     );
   }
 
@@ -252,6 +254,51 @@ function kernelPackageProblems(root: PackageManifest): string[] {
 }
 
 /**
+ * @heryjs/cli holds the tooling a project runs against its own code, so the
+ * project installs it rather than carrying it: private until it is published,
+ * dist alone, and exactly the peers its sources import.
+ */
+function cliPackageProblems(): string[] {
+  const name = CLI_PACKAGE_DIR;
+  const packageDir = path.join(REPO_ROOT, CLI_PACKAGE_DIR);
+  const manifest = readManifest(
+    path.join(packageDir, 'package.json'),
+  ) as PackageManifest & { name?: string; private?: boolean; files?: string[] };
+  const problems: string[] = [];
+
+  if (manifest.name !== CLI_PACKAGE) {
+    problems.push(`${name} is named ${manifest.name}, not ${CLI_PACKAGE}`);
+  }
+
+  if (manifest.private !== true) {
+    problems.push(`${name} is not private, and nothing is published yet`);
+  }
+
+  if (JSON.stringify(manifest.files) !== JSON.stringify(['dist'])) {
+    problems.push(
+      `${name} publishes ${JSON.stringify(manifest.files)}, not dist alone`,
+    );
+  }
+
+  const required = requiredPeers(packageDir);
+  const declared = Object.keys(manifest.peerDependencies ?? {}).sort();
+
+  if (JSON.stringify(required) !== JSON.stringify(declared)) {
+    problems.push(
+      `${name} declares the peers ${JSON.stringify(declared)}, but its sources import ${JSON.stringify(required)}`,
+    );
+  }
+
+  if (existsSync(path.join(REPO_ROOT, 'cli', 'lib', 'lint'))) {
+    problems.push(
+      `cli/lib/lint is back: the hery lint rules live in ${CLI_PACKAGE}, which projects install instead of copying`,
+    );
+  }
+
+  return problems;
+}
+
+/**
  * Each module package declares an `exports` map matching its entry, and
  * exactly the peers its shipped code imports, at a range the repository
  * itself satisfies. A peer the code stopped using, or one it started using
@@ -315,6 +362,7 @@ export function checkPackageManifests(): boolean {
   }
 
   problems.push(...kernelPackageProblems(root));
+  problems.push(...cliPackageProblems());
 
   if (problems.length > 0) {
     problems.forEach((problem) => console.error(pc.red(`✖ ${problem}`)));
