@@ -1,8 +1,8 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import type { Job } from 'bullmq';
-import { BILLING_QUEUE } from '#kernel/jobs/jobs.constants';
-import { runInTenant } from '#kernel/tenancy/run-in-tenant';
-import type { BillingSubscriptionStatus } from '#kernel/billing/billing-driver';
+import { BILLING_QUEUE } from '#kernel/public/jobs';
+import { runInTenant } from '#kernel/public/tenancy';
+import type { BillingSubscriptionStatus } from '#kernel/public/drivers';
 import { BillingSubscriptionMirror } from './billing-subscription.mirror';
 import { BILLING_MIRROR_JOB } from './billing.constants';
 

@@ -1,8 +1,5 @@
-import { TenantContextStorage } from '#technical/tenancy/tenant-context';
-import type {
-  AuthenticatedUser,
-  AuthProvider,
-} from '#technical/auth/auth.types';
+import { TenantContextStorage } from '#technical/public/tenancy';
+import type { AuthenticatedUser, AuthProvider } from '#technical/public/auth';
 import { authenticateLiveSocket } from './live-auth.guard';
 import type { LiveSocket } from './live-auth.guard';
 import { withTenant } from './with-tenant';

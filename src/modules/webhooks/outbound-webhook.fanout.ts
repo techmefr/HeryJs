@@ -1,11 +1,11 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import { authPrismaClient } from '#technical/auth/better-auth.instance';
-import { OutboxRegistry } from '#technical/outbox/outbox.registry';
-import type {
-  OutboxDelivery,
-  OutboxHandler,
-} from '#technical/outbox/outbox.types';
+import { authPrismaClient } from '#technical/public/auth';
+import {
+  type OutboxDelivery,
+  type OutboxHandler,
+  OutboxRegistry,
+} from '#technical/public/jobs';
 import {
   DELIVERY_STATUS_PENDING,
   MODEL_EVENT_PREFIX,

@@ -43,7 +43,7 @@ describe('WEBHOOK_ALLOW_PRIVATE_URLS outside devTools.environments', () => {
       jest.isolateModules(() => {
         const { heryConfig } = jest.requireActual<{
           heryConfig: { devTools?: { environments?: string[] } };
-        }>('#technical/config/hery-config');
+        }>('#technical/public/config');
         heryConfig.devTools = { environments: ['development', 'test', 'demo'] };
         jest.requireActual('./outbound-webhook.env');
       }),

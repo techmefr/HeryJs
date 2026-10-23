@@ -1,8 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { PRISMA_CLIENT } from '#kernel/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#kernel/prisma/prisma.client';
-import { runInTenant } from '#kernel/tenancy/run-in-tenant';
+import {
+  PRISMA_CLIENT,
+  type TenantScopedPrismaClient,
+} from '#kernel/public/database';
+import { runInTenant } from '#kernel/public/tenancy';
 import { ScimException } from './scim.exception';
 import { SCIM_DEACTIVATION_REASON } from './scim.types';
 import type {

@@ -7,23 +7,24 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { z } from 'zod';
-import { Capability } from '#technical/capabilities/capability.decorator';
 import {
+  CapabilitiesGuard,
+  Capability,
+  PublicRoute,
+} from '#technical/public/capabilities';
+import {
+  ok,
   RateLimit,
   UnthrottledRoute,
-} from '#technical/rate-limit/rate-limit.decorator';
-import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
-import { PublicRoute } from '#technical/capabilities/public-route.decorator';
-import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
+  ZodValidationPipe,
+} from '#technical/public/http';
 import { WebhookSignatureGuard } from './webhook-signature.guard';
 import {
   WEBHOOK_ID_HEADER,
   WEBHOOK_TIMESTAMP_HEADER,
 } from './inbound-webhook.constants';
 import type { RequestWithWebhookEndpoint } from './webhook-signature.guard';
-import { ok } from '#technical/http/envelope';
-import { SessionGuard } from '#technical/auth/session.guard';
-import type { RequestWithUser } from '#technical/auth/session.guard';
+import { type RequestWithUser, SessionGuard } from '#technical/public/auth';
 import { canManageWebhooks } from './webhooks.policy';
 import { WebhooksService } from './webhooks.service';
 

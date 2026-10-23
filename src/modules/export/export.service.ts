@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { EXPORT_QUEUE } from '#technical/jobs/jobs.constants';
-import { JobsService } from '#technical/jobs/jobs.service';
-import type { Exportable, ExportResult } from '#technical/export/export-driver';
-import { TenantContextStorage } from '#technical/tenancy/tenant-context';
+import { EXPORT_QUEUE, JobsService } from '#technical/public/jobs';
+import type { Exportable, ExportResult } from '#technical/public/drivers';
+import { TenantContextStorage } from '#technical/public/tenancy';
 import {
   EXPORT_GENERATE_JOB,
   EXPORT_GENERATE_POLICY,

@@ -1,8 +1,8 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { json } from 'express';
-import { AuthModule } from '#kernel/auth/auth.module';
-import { PrismaModule } from '#kernel/prisma/prisma.module';
-import { PrivacyModule } from '#kernel/privacy/privacy.module';
+import { AuthModule } from '#kernel/public/auth';
+import { PrismaModule } from '#kernel/public/database';
+import { PrivacyModule } from '#kernel/public/privacy';
 import { PrismaScimDirectoryStore } from './prisma-scim-directory.store';
 import { PrismaScimTokenStore } from './prisma-scim-token.store';
 import { ScimActivityService } from './scim-activity.service';

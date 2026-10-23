@@ -1,4 +1,4 @@
-import { registerCatalogue } from '#technical/i18n/catalogue';
+import { registerCatalogue } from '#technical/public/i18n';
 
 export const MAIL_CATALOGUE = registerCatalogue({
   'mail.template.welcome.subject': {

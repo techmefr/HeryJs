@@ -1,7 +1,6 @@
 import type { ExecutionContext } from '@nestjs/common';
-import type { AuthenticatedUser } from '#kernel/auth/auth.types';
-import type { RequestWithUser } from '#kernel/auth/session.guard';
-import { MissingSessionException } from '#kernel/errors/invalid-session.exception';
+import type { AuthenticatedUser, RequestWithUser } from '#kernel/public/auth';
+import { MissingSessionException } from '#kernel/public/errors';
 import { TwoFactorGuard } from './two-factor.guard';
 import { TwoFactorRequiredException } from './two-factor-required.exception';
 import type { TwoFactorService } from './two-factor.service';

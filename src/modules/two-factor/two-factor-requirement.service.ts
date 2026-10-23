@@ -1,7 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
-import type { Page, PageQuery } from '#technical/http/page-query';
+import {
+  PRISMA_CLIENT,
+  type TenantScopedPrismaClient,
+} from '#technical/public/database';
+import type { Page, PageQuery } from '#technical/public/http';
 
 export interface TwoFactorRequirement {
   role: string;

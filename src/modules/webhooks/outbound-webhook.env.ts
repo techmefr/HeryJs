@@ -2,7 +2,7 @@ import { z } from 'zod';
 import {
   isLocalEnvironmentNow,
   parseModuleEnv,
-} from '#technical/config/module-env';
+} from '#technical/public/config';
 
 export const outboundWebhookEnv = parseModuleEnv('webhooks', {
   WEBHOOK_SECRET_ROTATION_GRACE_SECONDS: z.coerce

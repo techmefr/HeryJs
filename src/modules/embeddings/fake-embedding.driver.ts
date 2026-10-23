@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import type { EmbeddingDriver } from '#technical/embeddings/embedding-driver';
+import type { EmbeddingDriver } from '#technical/public/drivers';
 import { embeddingsEnv } from './embeddings.env';
 
 const WORD_PATTERN = /[\p{L}\p{N}]+/gu;

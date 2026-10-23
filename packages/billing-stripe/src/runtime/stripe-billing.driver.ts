@@ -1,14 +1,12 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import {
+  type BillingDriver,
+  type BillingEvent,
   BillingEventUnattributedException,
+  type BillingSubscriptionStatus,
   BillingWebhookSignatureException,
-} from '#kernel/billing/billing-driver';
-import type {
-  BillingDriver,
-  BillingEvent,
-  BillingSubscriptionStatus,
-} from '#kernel/billing/billing-driver';
+} from '#kernel/public/drivers';
 import { stripeBillingEnv } from './stripe-billing.env';
 
 /**

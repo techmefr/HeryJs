@@ -1,5 +1,7 @@
-import { EmbeddingDimensionMismatchException } from '#technical/embeddings/embedding-dimension-mismatch.exception';
-import type { EmbeddingDriver } from '#technical/embeddings/embedding-driver';
+import {
+  EmbeddingDimensionMismatchException,
+  type EmbeddingDriver,
+} from '#technical/public/drivers';
 import type { EmbeddingDriverRegistry } from './embedding-driver.registry';
 import { EmbeddingsService } from './embeddings.service';
 

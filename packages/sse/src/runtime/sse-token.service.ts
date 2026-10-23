@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import { env } from '#kernel/config/env';
+import { env } from '#kernel/public/env';
 
 export interface SseTokenPayload {
   tenantId: string;

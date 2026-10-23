@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { IMPORT_QUEUE } from '#kernel/jobs/jobs.constants';
-import { JobsService } from '#kernel/jobs/jobs.service';
-import type { Importable, ImportOutcome } from '#kernel/import/import-driver';
-import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
+import { IMPORT_QUEUE, JobsService } from '#kernel/public/jobs';
+import type { Importable, ImportOutcome } from '#kernel/public/drivers';
+import { TenantContextStorage } from '#kernel/public/tenancy';
 import { IMPORT_CONSUME_JOB, IMPORT_CONSUME_POLICY } from './import.constants';
 import { ImportDriverRegistry } from './import-driver.registry';
 import { mergeOutcome, partitionRows } from './import-rows.validator';

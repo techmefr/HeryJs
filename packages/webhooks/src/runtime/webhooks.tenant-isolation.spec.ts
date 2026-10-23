@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { authPrismaClient } from '#kernel/auth/better-auth.instance';
-import { SecretsService } from '#kernel/secrets/secrets.service';
+import { authPrismaClient } from '#kernel/public/auth';
+import { SecretsService } from '#kernel/public/env';
 import { WebhookNotFoundException } from './webhook-not-found.exception';
 import { WebhookSecretService } from './webhook-secret.service';
 import { WebhookSubscriptionService } from './webhook-subscription.service';

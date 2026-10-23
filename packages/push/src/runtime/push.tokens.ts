@@ -1,8 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import { PRISMA_CLIENT } from '#kernel/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#kernel/prisma/prisma.client';
-import type { PushPlatform } from '#kernel/push/push-driver';
+import {
+  PRISMA_CLIENT,
+  type TenantScopedPrismaClient,
+} from '#kernel/public/database';
+import type { PushPlatform } from '#kernel/public/drivers';
 
 export interface DeviceToken {
   id: string;

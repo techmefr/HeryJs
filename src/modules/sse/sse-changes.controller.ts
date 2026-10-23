@@ -8,20 +8,23 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { SessionGuard } from '#technical/auth/session.guard';
-import type { RequestWithUser } from '#technical/auth/session.guard';
-import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
-import { Capability } from '#technical/capabilities/capability.decorator';
-import { PublicRoute } from '#technical/capabilities/public-route.decorator';
-import { subscriberOf } from '#technical/change-feed/change-feed-subscriber';
-import { ChangeFeedTokenService } from '#technical/change-feed/change-feed-token.service';
-import { ChangeFeedHub } from '#technical/change-feed/change-feed.hub';
-import type { ChangeFeedMessage } from '#technical/change-feed/change-feed.types';
-import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
-import { InvalidSessionException } from '#technical/errors/invalid-session.exception';
-import { ok } from '#technical/http/envelope';
-import { UnpaginatedRoute } from '#technical/http/unpaginated-route.decorator';
-import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
+import { type RequestWithUser, SessionGuard } from '#technical/public/auth';
+import {
+  CapabilitiesGuard,
+  Capability,
+  PublicRoute,
+} from '#technical/public/capabilities';
+import {
+  ChangeFeedHub,
+  type ChangeFeedMessage,
+  ChangeFeedTokenService,
+  subscriberOf,
+} from '#technical/public/realtime';
+import {
+  CapabilityForbiddenException,
+  InvalidSessionException,
+} from '#technical/public/errors';
+import { ok, RateLimit, UnpaginatedRoute } from '#technical/public/http';
 import { canIssueSseToken } from './sse.policy';
 
 const KEEPALIVE_MS = 25000;

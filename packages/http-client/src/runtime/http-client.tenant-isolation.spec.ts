@@ -1,5 +1,5 @@
-import type { HealthRegistry } from '#kernel/health/health-registry';
-import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
+import type { HealthRegistry } from '#kernel/public/observability';
+import { TenantContextStorage } from '#kernel/public/tenancy';
 import { FakeHttpClientDriver } from './fake-http-client.driver';
 import type { HttpClientDriverRegistry } from './http-client-driver.registry';
 import { HttpClientService } from './http-client.service';

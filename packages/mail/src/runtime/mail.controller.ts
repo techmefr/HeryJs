@@ -6,14 +6,16 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { SessionGuard } from '#kernel/auth/session.guard';
-import { RateLimit } from '#kernel/rate-limit/rate-limit.decorator';
-import { CapabilitiesGuard } from '#kernel/capabilities/capabilities.guard';
-import { Capability } from '#kernel/capabilities/capability.decorator';
-import { DevOnlyGuard } from '#kernel/dev-only/dev-only.guard';
-import { okPage, parsePageQuery } from '#kernel/http/page-query';
-import { UnpaginatedRoute } from '#kernel/http/unpaginated-route.decorator';
-import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
+import { SessionGuard } from '#kernel/public/auth';
+import {
+  DevOnlyGuard,
+  okPage,
+  parsePageQuery,
+  RateLimit,
+  UnpaginatedRoute,
+} from '#kernel/public/http';
+import { CapabilitiesGuard, Capability } from '#kernel/public/capabilities';
+import { TenantContextStorage } from '#kernel/public/tenancy';
 import { canReadMailLog } from './mail.policy';
 import { MailService } from './mail.service';
 import { renderTemplate, templateNames } from './mail.templates';

@@ -10,14 +10,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
-import { Capability } from '#technical/capabilities/capability.decorator';
-import { PublicRoute } from '#technical/capabilities/public-route.decorator';
-import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
-import { UnpaginatedRoute } from '#technical/http/unpaginated-route.decorator';
-import { SessionGuard } from '#technical/auth/session.guard';
-import type { RequestWithUser } from '#technical/auth/session.guard';
-import { ok } from '#technical/http/envelope';
+import {
+  CapabilitiesGuard,
+  Capability,
+  PublicRoute,
+} from '#technical/public/capabilities';
+import { ok, RateLimit, UnpaginatedRoute } from '#technical/public/http';
+import { type RequestWithUser, SessionGuard } from '#technical/public/auth';
 import { OAuthAccountService } from './oauth-account.service';
 import { OAUTH_LOGIN_HANDLER } from './oauth-login.handler';
 import type { OAuthLoginHandler } from './oauth-login.handler';

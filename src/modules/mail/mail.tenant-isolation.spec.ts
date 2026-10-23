@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
-import { env } from '#technical/config/env';
-import type { JobsService } from '#technical/jobs/jobs.service';
-import { createTenantScopedPrismaClient } from '#technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
-import { runInTenant } from '#technical/tenancy/run-in-tenant';
+import { env } from '#technical/public/env';
+import type { JobsService } from '#technical/public/jobs';
+import { createTenantScopedPrismaClient } from '#technical/public/testing';
+import type { TenantScopedPrismaClient } from '#technical/public/database';
+import { runInTenant } from '#technical/public/tenancy';
 import { MailController } from './mail.controller';
 import { MailService } from './mail.service';
 

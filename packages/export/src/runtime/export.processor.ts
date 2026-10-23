@@ -1,15 +1,18 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
-import { runInJobLocale } from '#kernel/jobs/job-locale';
-import { DriverResolver } from '#kernel/drivers/driver-resolver';
-import { EXPORT_QUEUE } from '#kernel/jobs/jobs.constants';
-import { NOTIFICATION_PROVIDER } from '#kernel/notifications/notification.types';
-import type { NotificationProvider } from '#kernel/notifications/notification.types';
-import type { ExportRow } from '#kernel/export/export-driver';
-import { STORAGE_MODULE } from '#kernel/storage/storage-driver';
-import type { StorageDriver } from '#kernel/storage/storage-driver';
-import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
+import { EXPORT_QUEUE, runInJobLocale } from '#kernel/public/jobs';
+import {
+  DriverResolver,
+  type ExportRow,
+  STORAGE_MODULE,
+  type StorageDriver,
+} from '#kernel/public/drivers';
+import {
+  NOTIFICATION_PROVIDER,
+  type NotificationProvider,
+} from '#kernel/public/notifications';
+import { TenantContextStorage } from '#kernel/public/tenancy';
 import {
   EXPORT_GENERATE_JOB,
   EXPORT_READY_NOTIFICATION,

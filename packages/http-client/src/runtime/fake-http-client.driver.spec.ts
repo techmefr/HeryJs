@@ -1,4 +1,4 @@
-import { UnstubbedHttpRequestException } from '#kernel/http-client/http-client.exception';
+import { UnstubbedHttpRequestException } from '#kernel/public/drivers';
 import { FakeHttpClientDriver } from './fake-http-client.driver';
 
 describe('FakeHttpClientDriver', () => {

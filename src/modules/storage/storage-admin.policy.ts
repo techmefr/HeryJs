@@ -1,5 +1,4 @@
-import { adminAbility } from '#technical/capabilities/ability';
-import type { PolicyCheck } from '#technical/capabilities/capability-check';
+import { adminAbility, type PolicyCheck } from '#technical/public/capabilities';
 
 // Browsing and deleting the tenant's files is an operator's job, not a user's:
 // a user reaches their own files through whatever record holds the key. The

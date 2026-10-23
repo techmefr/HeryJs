@@ -3,7 +3,7 @@ import {
   devOnlyDefault,
   isLocalEnvironmentNow,
   parseModuleEnv,
-} from '#kernel/config/module-env';
+} from '#kernel/public/config';
 
 const DEV_SECRET_KEY = Buffer.alloc(32, 'dev-sso-key').toString('base64');
 const SECRET_KEY_BYTES = 32;

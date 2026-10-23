@@ -1,4 +1,4 @@
-import { PersonalDataRegistry } from '#kernel/privacy/personal-data.registry';
+import { PersonalDataRegistry } from '#kernel/public/privacy';
 import { MeilisearchSearchDriver } from './meilisearch-search.driver';
 import { MeilisearchSearchPersonalData } from './meilisearch-search.personal-data';
 

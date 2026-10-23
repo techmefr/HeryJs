@@ -1,8 +1,7 @@
 import type { ModuleRef } from '@nestjs/core';
-import type { HeryConfig } from '#kernel/config/hery-config.types';
-import { DriverResolver } from '#kernel/drivers/driver-resolver';
-import { driverToken } from '#kernel/drivers/driver-token';
-import type { ImportDriver } from '#kernel/import/import-driver';
+import type { HeryConfig } from '#kernel/public/config';
+import { DriverResolver, type ImportDriver } from '#kernel/public/drivers';
+import { driverToken } from '#kernel/public/testing';
 import { CsvImportDriver } from './csv-import.driver';
 import { ImportDriverRegistry } from './import-driver.registry';
 

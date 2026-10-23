@@ -1,8 +1,8 @@
-import type { AuthenticatedUser } from '#technical/auth/auth.types';
+import type { AuthenticatedUser } from '#technical/public/auth';
 import { NotImpersonatingException } from '#technical/errors/not-impersonating.exception';
-import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
+import { RecordNotFoundException } from '#technical/public/errors';
 import { SelfImpersonationException } from '#technical/errors/self-impersonation.exception';
-import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
+import type { TenantScopedPrismaClient } from '#technical/public/database';
 import { ImpersonationService } from './impersonation.service';
 
 const ADMIN: AuthenticatedUser = {

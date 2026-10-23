@@ -1,4 +1,4 @@
-import { heryConfig } from '#technical/config/hery-config';
+import { heryConfig } from '#technical/public/config';
 import { configFromEnv } from './oauth.module';
 
 describe('oauth outside devTools.environments', () => {

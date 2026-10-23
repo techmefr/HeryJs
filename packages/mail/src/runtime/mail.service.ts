@@ -1,12 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { JobsService } from '#kernel/jobs/jobs.service';
-import type { PageQuery } from '#kernel/http/page-query';
-import { PRISMA_CLIENT } from '#kernel/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#kernel/prisma/prisma.client';
-import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
+import { JobsService } from '#kernel/public/jobs';
+import type { PageQuery } from '#kernel/public/http';
+import {
+  PRISMA_CLIENT,
+  type TenantScopedPrismaClient,
+} from '#kernel/public/database';
+import { TenantContextStorage } from '#kernel/public/tenancy';
 import { MAIL_SEND_JOB, MAIL_SEND_POLICY } from './mail.constants';
 import { renderTemplate } from './mail.templates';
-import type { Mailable, MailMessage } from '#kernel/mail/mail-driver';
+import type { Mailable, MailMessage } from '#kernel/public/drivers';
 
 @Injectable()
 export class MailService {

@@ -1,8 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import { authPrismaClient } from '#technical/auth/better-auth.instance';
-import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
+import { authPrismaClient } from '#technical/public/auth';
+import {
+  PRISMA_CLIENT,
+  type TenantScopedPrismaClient,
+} from '#technical/public/database';
 import type { NotifierChannel } from './notification';
 import { DEFAULT_SETTINGS } from './notification-rules';
 import type {

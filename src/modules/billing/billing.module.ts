@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
-import { HeryConfigModule } from '#technical/config/hery-config.module';
-import { DriversModule } from '#technical/drivers/drivers.module';
-import { JobsModule } from '#technical/jobs/jobs.module';
-import { PrismaModule } from '#technical/prisma/prisma.module';
+import { HeryConfigModule } from '#technical/public/config';
+import { DriversModule } from '#technical/public/drivers';
+import { JobsModule } from '#technical/public/jobs';
+import { PrismaModule } from '#technical/public/database';
 import { BillingDriverRegistry } from './billing-driver.registry';
 import { BillingService } from './billing.service';
 import { BillingSubscriptionMirror } from './billing-subscription.mirror';

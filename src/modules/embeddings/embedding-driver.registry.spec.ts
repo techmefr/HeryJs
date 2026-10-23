@@ -1,8 +1,10 @@
 import type { ModuleRef } from '@nestjs/core';
-import type { HeryConfig } from '#technical/config/hery-config.types';
-import { DriverResolver } from '#technical/drivers/driver-resolver';
-import { driverToken } from '#technical/drivers/driver-token';
-import type { EmbeddingDriver } from '#technical/embeddings/embedding-driver';
+import type { HeryConfig } from '#technical/public/config';
+import {
+  DriverResolver,
+  type EmbeddingDriver,
+} from '#technical/public/drivers';
+import { driverToken } from '#technical/public/testing';
 import { EmbeddingDriverRegistry } from './embedding-driver.registry';
 import { FakeEmbeddingDriver } from './fake-embedding.driver';
 import { OpenAiCompatibleEmbeddingDriver } from './openai-compatible-embedding.driver';

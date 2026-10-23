@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { exportDriverToken } from '#kernel/export/export-driver';
+import { exportDriverToken } from '#kernel/public/drivers';
 import { PdfExportDriver } from './pdf-export.driver';
 
 const TOKEN = exportDriverToken('pdf');

@@ -1,5 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
-import { DomainException } from '#kernel/errors/domain.exception';
+import { DomainException } from '#kernel/public/errors';
 
 // Generic on purpose, the same reasoning as the inbound webhooks module: a
 // specific reason ("bad signature" vs "unattributed tenant") handed back to

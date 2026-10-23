@@ -1,8 +1,7 @@
 import type { ModuleRef } from '@nestjs/core';
-import type { HeryConfig } from '#kernel/config/hery-config.types';
-import { DriverResolver } from '#kernel/drivers/driver-resolver';
-import { driverToken } from '#kernel/drivers/driver-token';
-import type { HttpClientDriver } from '#kernel/http-client/http-client-driver';
+import type { HeryConfig } from '#kernel/public/config';
+import { DriverResolver, type HttpClientDriver } from '#kernel/public/drivers';
+import { driverToken } from '#kernel/public/testing';
 import { FakeHttpClientDriver } from './fake-http-client.driver';
 import { HttpClientDriverRegistry } from './http-client-driver.registry';
 

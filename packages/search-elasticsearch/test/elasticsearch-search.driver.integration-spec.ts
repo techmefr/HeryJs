@@ -1,6 +1,6 @@
 import { Client } from '@elastic/elasticsearch';
 import { ElasticsearchSearchDriver } from '../src/runtime/elasticsearch-search.driver';
-import type { SearchDriver } from '#kernel/search/search-driver';
+import type { SearchDriver } from '#kernel/public/drivers';
 
 /**
  * This one talks to a real Elasticsearch, because the bug it guards against

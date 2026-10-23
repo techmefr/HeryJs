@@ -1,19 +1,23 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
-import { authPrismaClient } from '#kernel/auth/better-auth.instance';
-import { writeAuditLog } from '#kernel/audit/audit-log';
-import { WEBHOOK_QUEUE } from '#kernel/jobs/jobs.constants';
-import { ExpositionRegistry } from '#kernel/exposition/exposition.registry';
-import { ExpositionRunner } from '#kernel/exposition/exposition-runner.service';
-import { InvalidQueryException } from '#kernel/errors/invalid-query.exception';
-import { NOTIFICATION_PROVIDER } from '#kernel/notifications/notification.types';
-import type { NotificationProvider } from '#kernel/notifications/notification.types';
-import { SignalService } from '#kernel/signal/signal.service';
-import { runInTenant } from '#kernel/tenancy/run-in-tenant';
+import { authPrismaClient } from '#kernel/public/auth';
+import { writeAuditLog } from '#kernel/public/privacy';
+import { WEBHOOK_QUEUE } from '#kernel/public/jobs';
+import {
+  ExpositionRegistry,
+  ExpositionRunner,
+  webhookHandlersFor,
+} from '#kernel/public/platform';
+import { InvalidQueryException } from '#kernel/public/errors';
+import {
+  NOTIFICATION_PROVIDER,
+  type NotificationProvider,
+} from '#kernel/public/notifications';
+import { SignalService } from '#kernel/public/realtime';
+import { runInTenant } from '#kernel/public/tenancy';
 import { exposedActionOf } from './exposed-webhook-source';
 import { INBOUND_WEBHOOK_JOB } from './inbound-webhook.constants';
-import { webhookHandlersFor } from '#kernel/webhooks/webhook-handler';
 
 interface WebhookProcessJobData {
   eventId: string;

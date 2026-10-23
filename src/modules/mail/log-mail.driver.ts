@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { MailDriver, MailMessage } from '#technical/mail/mail-driver';
+import type { MailDriver, MailMessage } from '#technical/public/drivers';
 
 /**
  * The zero-config default: a real driver that honestly implements the whole

@@ -1,8 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type {
-  BillingDriver,
-  BillingEvent,
-} from '#kernel/billing/billing-driver';
+import type { BillingDriver, BillingEvent } from '#kernel/public/drivers';
 
 /**
  * The zero-config default, and the one driver in this convention that cannot

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { TelemetryBus } from '#kernel/tracing/telemetry-bus';
-import type { Sendable, SmsMessage } from '#kernel/sms/sms-driver';
+import { TelemetryBus } from '#kernel/public/observability';
+import type { Sendable, SmsMessage } from '#kernel/public/drivers';
 import { SmsConsentService } from './sms.consent';
 import { SmsDriverRegistry } from './sms-driver.registry';
 import { assertSendable } from './sms.guard';

@@ -1,8 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
-import type { BillingEvent } from '#technical/billing/billing-driver';
+import {
+  PRISMA_CLIENT,
+  type TenantScopedPrismaClient,
+} from '#technical/public/database';
+import type { BillingEvent } from '#technical/public/drivers';
 
 /**
  * The local truth about what a tenant is subscribed to, refreshed from the

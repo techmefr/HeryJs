@@ -1,14 +1,13 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { HERY_CONFIG } from '#kernel/config/hery-config';
-import type { HeryConfig } from '#kernel/config/hery-config.types';
-import { RecordNotFoundException } from '#kernel/errors/record-not-found.exception';
-import { HealthRegistry } from '#kernel/health/health-registry';
-import type { HttpResponse } from '#kernel/http-client/http-client-driver';
-import { HttpResilience } from '#kernel/http-client/http-resilience';
-import type {
-  CircuitSnapshot,
-  HttpResilienceSettings,
-} from '#kernel/http-client/http-resilience';
+import { HERY_CONFIG, type HeryConfig } from '#kernel/public/config';
+import { RecordNotFoundException } from '#kernel/public/errors';
+import { HealthRegistry } from '#kernel/public/observability';
+import {
+  type CircuitSnapshot,
+  HttpResilience,
+  type HttpResilienceSettings,
+  type HttpResponse,
+} from '#kernel/public/drivers';
 import { bindCircuitMetrics } from './http-resilience.metrics';
 
 /**

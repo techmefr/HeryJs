@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { authPrismaClient } from '#kernel/auth/better-auth.instance';
+import { authPrismaClient } from '#kernel/public/auth';
 import type { ScimTokenRecord, ScimTokenStore } from './scim-token.service';
 
 @Injectable()

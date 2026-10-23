@@ -1,9 +1,11 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { authPrismaClient } from '#kernel/auth/better-auth.instance';
-import { mentionsSubject } from '#kernel/privacy/personal-data.match';
-import { PersonalDataRegistry } from '#kernel/privacy/personal-data.registry';
-import type { PersonalDataSubject } from '#kernel/privacy/personal-data.types';
+import { authPrismaClient } from '#kernel/public/auth';
+import {
+  mentionsSubject,
+  PersonalDataRegistry,
+  type PersonalDataSubject,
+} from '#kernel/public/privacy';
 
 /**
  * A webhook payload is whatever the event carried, so a user's rows are the

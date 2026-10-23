@@ -1,5 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
-import { DomainException } from '#kernel/errors/domain.exception';
+import { DomainException } from '#kernel/public/errors';
 
 /**
  * A module raises the kernel's own exception type rather than a NestJS

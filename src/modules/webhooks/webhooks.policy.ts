@@ -1,4 +1,3 @@
-import { adminAbility } from '#technical/capabilities/ability';
-import type { PolicyCheck } from '#technical/capabilities/capability-check';
+import { adminAbility, type PolicyCheck } from '#technical/public/capabilities';
 
 export const canManageWebhooks: PolicyCheck = adminAbility;

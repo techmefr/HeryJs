@@ -1,12 +1,11 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { HERY_CONFIG } from '#technical/config/hery-config';
-import type { HeryConfig } from '#technical/config/hery-config.types';
+import { HERY_CONFIG, type HeryConfig } from '#technical/public/config';
 import {
   DriverResolver,
   missingDriverMessage,
-} from '#technical/drivers/driver-resolver';
-import { PUSH_MODULE } from '#technical/push/push-driver';
-import type { PushDriver } from '#technical/push/push-driver';
+  PUSH_MODULE,
+  type PushDriver,
+} from '#technical/public/drivers';
 import { LogPushDriver } from './log-push.driver';
 
 const BUILTIN_DRIVER = 'log';

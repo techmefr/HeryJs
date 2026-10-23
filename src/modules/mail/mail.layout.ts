@@ -1,4 +1,4 @@
-import { LocaleContextStorage } from '#technical/i18n/locale-context';
+import { LocaleContextStorage } from '#technical/public/i18n';
 
 /**
  * The shell every mail shares, so a Mailable writes what it has to say and not

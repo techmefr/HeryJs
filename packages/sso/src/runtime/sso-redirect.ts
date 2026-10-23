@@ -1,5 +1,5 @@
-import { env } from '#kernel/config/env';
-import { isLocalEnvironmentNow } from '#kernel/config/module-env';
+import { isLocalEnvironmentNow } from '#kernel/public/config';
+import { env } from '#kernel/public/env';
 import { ssoEnv } from './sso.env';
 
 const CALLBACK_PATH = '/sso/callback';

@@ -337,10 +337,6 @@ importers:
         version: 8.0.0(@astrojs/markdown-satteri@0.4.0)(astro@7.3.1(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@24.13.3)(ioredis@5.11.1)(jiti@2.7.0)(terser@5.49.0)(yaml@2.9.1))
 
   packages/admin-astro:
-    dependencies:
-      '@nestjs/common':
-        specifier: ^12.0.0
-        version: 12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2)
     devDependencies:
       astro:
         specifier: ^7.3.1
@@ -356,6 +352,19 @@ importers:
         version: 6.0.3
 
   packages/billing:
+    dependencies:
+      '@nestjs/bullmq':
+        specifier: ^12.0.0
+        version: 12.0.0(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0))
+      '@prisma/client':
+        specifier: ^7.0.0
+        version: 7.10.0(prisma@7.10.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3)
+      bullmq:
+        specifier: ^6.0.0
+        version: 6.3.4(ioredis@6.0.0)(pg@8.23.0)
+      express:
+        specifier: ^5.0.0
+        version: 5.2.1
     devDependencies:
       '@nestjs/common':
         specifier: ^12.0.1
@@ -371,6 +380,10 @@ importers:
         version: 6.0.3
 
   packages/billing-stripe:
+    dependencies:
+      zod:
+        specifier: ^4.0.0
+        version: 4.5.4
     devDependencies:
       '@nestjs/common':
         specifier: ^12.0.1
@@ -386,6 +399,10 @@ importers:
         version: 6.0.3
 
   packages/embeddings:
+    dependencies:
+      zod:
+        specifier: ^4.0.0
+        version: 4.5.4
     devDependencies:
       '@nestjs/common':
         specifier: ^12.0.1
@@ -401,6 +418,13 @@ importers:
         version: 6.0.3
 
   packages/export:
+    dependencies:
+      '@nestjs/bullmq':
+        specifier: ^12.0.0
+        version: 12.0.0(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0))
+      bullmq:
+        specifier: ^6.0.0
+        version: 6.3.4(ioredis@6.0.0)(pg@8.23.0)
     devDependencies:
       '@nestjs/common':
         specifier: ^12.0.1
@@ -497,6 +521,13 @@ importers:
         version: 6.0.3
 
   packages/http-client:
+    dependencies:
+      '@prometheus-io/client':
+        specifier: ^0.16.0
+        version: 0.16.1
+      zod:
+        specifier: ^4.0.0
+        version: 4.5.4
     devDependencies:
       '@nestjs/common':
         specifier: ^12.0.1
@@ -515,6 +546,13 @@ importers:
         version: 6.0.3
 
   packages/impersonation:
+    dependencies:
+      '@nestjs/schedule':
+        specifier: ^12.0.0
+        version: 12.0.1(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)
+      better-auth:
+        specifier: ^1.0.0
+        version: 1.7.3(@opentelemetry/api@1.9.1)(@prisma/client@7.10.0(prisma@7.10.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3))(mysql2@3.15.3)(pg@8.23.0)(prisma@7.10.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
     devDependencies:
       '@nestjs/common':
         specifier: ^12.0.1
@@ -530,6 +568,16 @@ importers:
         version: 6.0.3
 
   packages/import:
+    dependencies:
+      '@nestjs/bullmq':
+        specifier: ^12.0.0
+        version: 12.0.0(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0))
+      '@nestjs/core':
+        specifier: ^12.0.0
+        version: 12.0.1(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/platform-express@12.0.1)(@nestjs/websockets@12.0.1)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      bullmq:
+        specifier: ^6.0.0
+        version: 6.3.4(ioredis@6.0.0)(pg@8.23.0)
     devDependencies:
       '@nestjs/common':
         specifier: ^12.0.1
@@ -569,6 +617,10 @@ importers:
         version: 6.0.3
 
   packages/mail:
+    dependencies:
+      zod:
+        specifier: ^4.0.0
+        version: 4.5.4
     devDependencies:
       '@nestjs/bullmq':
         specifier: ^12.0.0
@@ -590,6 +642,10 @@ importers:
         version: 6.0.3
 
   packages/mail-resend:
+    dependencies:
+      zod:
+        specifier: ^4.0.0
+        version: 4.5.4
     devDependencies:
       '@nestjs/common':
         specifier: ^12.0.1
@@ -605,6 +661,10 @@ importers:
         version: 6.0.3
 
   packages/mail-smtp:
+    dependencies:
+      zod:
+        specifier: ^4.0.0
+        version: 4.5.4
     devDependencies:
       '@nestjs/common':
         specifier: ^12.0.1
@@ -659,6 +719,13 @@ importers:
         version: 6.0.3
 
   packages/notifier:
+    dependencies:
+      '@nestjs/schedule':
+        specifier: ^12.0.0
+        version: 12.0.1(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)
+      '@prisma/client':
+        specifier: ^7.0.0
+        version: 7.10.0(prisma@7.10.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3)
     devDependencies:
       '@nestjs/common':
         specifier: ^12.0.1
@@ -677,6 +744,13 @@ importers:
         version: 4.5.4
 
   packages/oauth:
+    dependencies:
+      '@prisma/client':
+        specifier: ^7.0.0
+        version: 7.10.0(prisma@7.10.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3)
+      express:
+        specifier: ^5.0.0
+        version: 5.2.1
     devDependencies:
       '@nestjs/common':
         specifier: ^12.0.1
@@ -719,6 +793,10 @@ importers:
         version: 6.0.3
 
   packages/push:
+    dependencies:
+      '@prisma/client':
+        specifier: ^7.0.0
+        version: 7.10.0(prisma@7.10.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3)
     devDependencies:
       '@nestjs/common':
         specifier: ^12.0.1
@@ -734,6 +812,16 @@ importers:
         version: 6.0.3
 
   packages/scim:
+    dependencies:
+      '@prisma/client':
+        specifier: ^7.0.0
+        version: 7.10.0(prisma@7.10.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3)
+      express:
+        specifier: ^5.0.0
+        version: 5.2.1
+      zod:
+        specifier: ^4.0.0
+        version: 4.5.4
     devDependencies:
       '@nestjs/common':
         specifier: ^12.0.1
@@ -785,6 +873,10 @@ importers:
         version: 6.0.3
 
   packages/sms:
+    dependencies:
+      '@prisma/client':
+        specifier: ^7.0.0
+        version: 7.10.0(prisma@7.10.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3)
     devDependencies:
       '@nestjs/common':
         specifier: ^12.0.1
@@ -800,6 +892,10 @@ importers:
         version: 6.0.3
 
   packages/sse:
+    dependencies:
+      express:
+        specifier: ^5.0.0
+        version: 5.2.1
     devDependencies:
       '@nestjs/common':
         specifier: ^12.0.1
@@ -818,6 +914,16 @@ importers:
         version: 6.0.3
 
   packages/sso:
+    dependencies:
+      '@prisma/client':
+        specifier: ^7.0.0
+        version: 7.10.0(prisma@7.10.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3)
+      express:
+        specifier: ^5.0.0
+        version: 5.2.1
+      zod:
+        specifier: ^4.0.0
+        version: 4.5.4
     devDependencies:
       '@nestjs/common':
         specifier: ^12.0.1
@@ -845,6 +951,13 @@ importers:
         version: 0.0.34
 
   packages/storage:
+    dependencies:
+      express:
+        specifier: ^5.0.0
+        version: 5.2.1
+      zod:
+        specifier: ^4.0.0
+        version: 4.5.4
     devDependencies:
       '@aws-sdk/client-s3':
         specifier: ^3.1127.0
@@ -890,6 +1003,13 @@ importers:
         version: 6.0.3
 
   packages/two-factor:
+    dependencies:
+      express:
+        specifier: ^5.0.0
+        version: 5.2.1
+      zod:
+        specifier: ^4.0.0
+        version: 4.5.4
     devDependencies:
       '@nestjs/common':
         specifier: ^12.0.1
@@ -905,6 +1025,16 @@ importers:
         version: 6.0.3
 
   packages/webhooks:
+    dependencies:
+      '@nestjs/schedule':
+        specifier: ^12.0.0
+        version: 12.0.1(@nestjs/common@12.0.1(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@12.0.1)
+      '@prisma/client':
+        specifier: ^7.0.0
+        version: 7.10.0(prisma@7.10.0(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(magicast@0.5.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@6.0.3))(typescript@6.0.3)
+      express:
+        specifier: ^5.0.0
+        version: 5.2.1
     devDependencies:
       '@nestjs/bullmq':
         specifier: ^12.0.0

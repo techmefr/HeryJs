@@ -1,4 +1,4 @@
-import { registerCatalogue } from '#technical/i18n/catalogue';
+import { registerCatalogue } from '#technical/public/i18n';
 
 export const NOTIFIER_CATALOGUE = registerCatalogue({
   'notifications.digest.subject.one': {

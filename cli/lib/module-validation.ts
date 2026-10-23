@@ -1,5 +1,11 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import * as path from 'node:path';
+import {
+  KERNEL_SPECIFIER,
+  internalKernelImportProblem,
+  isOwnKernelFile,
+  isPublicKernelSpecifier,
+} from './kernel-public-api';
 import type { LoadedModule } from './module-definition';
 
 const IMPORT_SPECIFIER = /(?:from|import|require\()\s*['"]([^'"]+)['"]/g;
@@ -43,7 +49,11 @@ function includes(directory: string, tsconfigSource: string): boolean {
   return new RegExp(`["'](?:\\./)?${directory}(?:/|["'])`).test(list[1] ?? '');
 }
 
-function runtimeProblems(runtimeDir: string, packageDir: string): string[] {
+function runtimeProblems(
+  runtimeDir: string,
+  packageDir: string,
+  dest: string,
+): string[] {
   const problems: string[] = [];
   const files = filesUnder(runtimeDir);
   const specs = files.filter((file) => file.endsWith('.spec.ts'));
@@ -73,10 +83,15 @@ function runtimeProblems(runtimeDir: string, packageDir: string): string[] {
       }
 
       if (specifier.startsWith('#')) {
-        if (!specifier.startsWith('#kernel/')) {
+        if (!specifier.startsWith(KERNEL_SPECIFIER)) {
           problems.push(
             `${relative} imports ${specifier} — a module reaches the kernel through #kernel/, which is rewritten to the app's own #technical/ on the way in`,
           );
+        } else if (
+          !isPublicKernelSpecifier(specifier) &&
+          !isOwnKernelFile(specifier, runtimeDir, dest)
+        ) {
+          problems.push(internalKernelImportProblem(relative, specifier));
         }
 
         continue;
@@ -200,7 +215,7 @@ export function validateModule(module: LoadedModule): string[] {
     return problems;
   }
 
-  problems.push(...runtimeProblems(runtimeDir, module.packageDir));
+  problems.push(...runtimeProblems(runtimeDir, module.packageDir, module.dest));
 
   const usesKernel = filesUnder(runtimeDir)
     .filter((file) => file.endsWith('.ts'))

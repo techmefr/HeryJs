@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from '#kernel/auth/auth.module';
-import { ChangeFeedModule } from '#kernel/change-feed/change-feed.module';
+import { AuthModule } from '#kernel/public/auth';
+import { ChangeFeedModule } from '#kernel/public/realtime';
 import { SseChangesController } from './sse-changes.controller';
 import { SseController } from './sse.controller';
 import { SseStreamService } from './sse-stream.service';

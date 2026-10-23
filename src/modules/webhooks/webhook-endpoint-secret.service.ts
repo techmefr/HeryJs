@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
-import { authPrismaClient } from '#technical/auth/better-auth.instance';
-import { SecretsService } from '#technical/secrets/secrets.service';
+import { authPrismaClient } from '#technical/public/auth';
+import { SecretsService } from '#technical/public/env';
 
 const SECRET_BYTES = 32;
 const SECRET_CONTEXT = 'WebhookEndpoint.secret';

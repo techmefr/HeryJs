@@ -6,11 +6,9 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { SessionGuard } from '#kernel/auth/session.guard';
-import { Capability } from '#kernel/capabilities/capability.decorator';
-import { CapabilitiesGuard } from '#kernel/capabilities/capabilities.guard';
-import { RateLimit } from '#kernel/rate-limit/rate-limit.decorator';
-import { ok } from '#kernel/http/envelope';
+import { SessionGuard } from '#kernel/public/auth';
+import { CapabilitiesGuard, Capability } from '#kernel/public/capabilities';
+import { ok, RateLimit } from '#kernel/public/http';
 import { storageEnv } from './storage.env';
 import { canUploadFiles } from './storage-upload.policy';
 import { StorageUploadRejectedException } from './storage-upload-rejected.exception';

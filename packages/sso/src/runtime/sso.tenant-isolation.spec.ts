@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { authPrismaClient } from '#kernel/auth/better-auth.instance';
+import { authPrismaClient } from '#kernel/public/auth';
 import { PrismaSsoConnectionStore } from './prisma-sso-connection.store';
 import { SsoConnectionNotFoundException } from './sso-connection-not-found.exception';
 import { SsoConnectionService } from './sso-connection.service';

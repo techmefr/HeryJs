@@ -1,9 +1,7 @@
 import { Controller, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
-import { UnthrottledRoute } from '#kernel/rate-limit/rate-limit.decorator';
-import { PublicRoute } from '#kernel/capabilities/public-route.decorator';
-import { ok } from '#kernel/http/envelope';
-import { JobsService } from '#kernel/jobs/jobs.service';
-import { BILLING_QUEUE } from '#kernel/jobs/jobs.constants';
+import { ok, UnthrottledRoute } from '#kernel/public/http';
+import { PublicRoute } from '#kernel/public/capabilities';
+import { BILLING_QUEUE, JobsService } from '#kernel/public/jobs';
 import { BillingWebhookGuard } from './billing-webhook.guard';
 import type { RequestWithBillingEvents } from './billing-webhook.guard';
 import { BILLING_MIRROR_JOB, BILLING_MIRROR_POLICY } from './billing.constants';

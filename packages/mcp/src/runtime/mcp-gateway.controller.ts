@@ -3,12 +3,13 @@ import { Controller } from '@nestjs/common';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { Request, Response } from 'express';
-import { SessionGuard } from '#kernel/auth/session.guard';
-import { RateLimit } from '#kernel/rate-limit/rate-limit.decorator';
-import type { RequestWithUser } from '#kernel/auth/session.guard';
-import { CapabilitiesGuard } from '#kernel/capabilities/capabilities.guard';
-import { Capability } from '#kernel/capabilities/capability.decorator';
-import { subjectOf } from '#kernel/capabilities/subject';
+import { type RequestWithUser, SessionGuard } from '#kernel/public/auth';
+import { RateLimit } from '#kernel/public/http';
+import {
+  CapabilitiesGuard,
+  Capability,
+  subjectOf,
+} from '#kernel/public/capabilities';
 import { canReachMcpGateway } from './mcp.policy';
 import { MCP_TOOL_REGISTRARS } from './mcp-tool-registrar';
 import type { McpToolRegistrar } from './mcp-tool-registrar';

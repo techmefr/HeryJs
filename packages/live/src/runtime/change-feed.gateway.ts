@@ -7,11 +7,12 @@ import {
   SubscribeMessage,
   WebSocketGateway,
 } from '@nestjs/websockets';
-import { AUTH_PROVIDER } from '#kernel/auth/auth.types';
-import type { AuthProvider } from '#kernel/auth/auth.types';
-import { subscriberOf } from '#kernel/change-feed/change-feed-subscriber';
-import { ChangeFeedHub } from '#kernel/change-feed/change-feed.hub';
-import type { ChangeFeedSession } from '#kernel/change-feed/change-feed.hub';
+import { AUTH_PROVIDER, type AuthProvider } from '#kernel/public/auth';
+import {
+  ChangeFeedHub,
+  type ChangeFeedSession,
+  subscriberOf,
+} from '#kernel/public/realtime';
 import { authenticateLiveSocket, LiveAuthGuard } from './live-auth.guard';
 import type { LiveSocket } from './live-auth.guard';
 

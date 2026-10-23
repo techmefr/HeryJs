@@ -1,5 +1,5 @@
-import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
-import type { AuthenticatedUser, AuthProvider } from '#kernel/auth/auth.types';
+import { TenantContextStorage } from '#kernel/public/tenancy';
+import type { AuthenticatedUser, AuthProvider } from '#kernel/public/auth';
 import { authenticateLiveSocket } from './live-auth.guard';
 import type { LiveSocket } from './live-auth.guard';
 import { withTenant } from './with-tenant';

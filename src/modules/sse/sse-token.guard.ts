@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import type { Request } from 'express';
-import { InvalidSessionException } from '#technical/errors/invalid-session.exception';
+import { InvalidSessionException } from '#technical/public/errors';
 import { SseTokenService } from './sse-token.service';
 import type { SseTokenPayload } from './sse-token.service';
 

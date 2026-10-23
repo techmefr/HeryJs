@@ -1,8 +1,7 @@
-import { HeryConfig } from '#kernel/config/hery-config.types';
-import { HealthRegistry } from '#kernel/health/health-registry';
-import { metricsRegistry } from '#kernel/monitoring/metrics.registry';
-import { operatorAbility } from '#kernel/capabilities/ability';
-import { env } from '#kernel/config/env';
+import { HeryConfig } from '#kernel/public/config';
+import { env } from '#kernel/public/env';
+import { HealthRegistry, metricsRegistry } from '#kernel/public/observability';
+import { operatorAbility } from '#kernel/public/capabilities';
 import { FakeHttpClientDriver } from './fake-http-client.driver';
 import { HttpClientDriverRegistry } from './http-client-driver.registry';
 import { HttpClientService } from './http-client.service';

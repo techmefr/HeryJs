@@ -4,7 +4,7 @@ import type {
   PushMessage,
   PushOutcome,
   PushPlatform,
-} from '#technical/push/push-driver';
+} from '#technical/public/drivers';
 
 /**
  * The zero-config default: it implements the contract and writes to the

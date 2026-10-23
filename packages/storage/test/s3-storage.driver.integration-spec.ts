@@ -3,8 +3,8 @@ import { CreateBucketCommand, S3Client } from '@aws-sdk/client-s3';
 import { S3StorageDriver } from '../src/runtime/s3-storage.driver';
 import { StorageUploadIntentService } from '../src/runtime/storage-upload-intent.service';
 import { StorageUploadIntentMismatchException } from '../src/runtime/storage-upload-intent-mismatch.exception';
-import type { CacheService } from '#kernel/cache/cache.service';
-import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
+import type { CacheService } from '#kernel/public/platform';
+import { TenantContextStorage } from '#kernel/public/tenancy';
 import type { StorageDriverRegistry } from '../src/runtime/storage-driver.registry';
 
 /**

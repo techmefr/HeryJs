@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { authPrismaClient } from '#technical/auth/better-auth.instance';
-import { createTenantScopedPrismaClient } from '#technical/prisma/prisma.client';
+import { authPrismaClient } from '#technical/public/auth';
+import { createTenantScopedPrismaClient } from '#technical/public/testing';
 import { PrismaScimDirectoryStore } from './prisma-scim-directory.store';
 import { ScimException } from './scim.exception';
 import { SCIM_PATCH_SCHEMA } from './scim.types';

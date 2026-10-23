@@ -1,9 +1,8 @@
 import type { Job } from 'bullmq';
-import type { DriverResolver } from '#kernel/drivers/driver-resolver';
-import type { JobsService } from '#kernel/jobs/jobs.service';
-import type { NotificationProvider } from '#kernel/notifications/notification.types';
-import type { StorageDriver } from '#kernel/storage/storage-driver';
-import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
+import type { DriverResolver, StorageDriver } from '#kernel/public/drivers';
+import type { JobsService } from '#kernel/public/jobs';
+import type { NotificationProvider } from '#kernel/public/notifications';
+import { TenantContextStorage } from '#kernel/public/tenancy';
 import { CsvExportDriver } from './csv-export.driver';
 import { EXPORT_GENERATE_JOB } from './export.constants';
 import type { ExportDriverRegistry } from './export-driver.registry';

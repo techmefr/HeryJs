@@ -1,7 +1,10 @@
 import { HttpStatus } from '@nestjs/common';
-import { DomainException } from '#kernel/errors/domain.exception';
-import { isE164, rulesOrDefault } from '#kernel/sms/country-rules';
-import type { SmsMessage } from '#kernel/sms/sms-driver';
+import { DomainException } from '#kernel/public/errors';
+import {
+  isE164,
+  rulesOrDefault,
+  type SmsMessage,
+} from '#kernel/public/drivers';
 
 /**
  * Transactional messages answer something the recipient did -- a code, a

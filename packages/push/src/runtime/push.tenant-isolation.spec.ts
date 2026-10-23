@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
-import { env } from '#kernel/config/env';
-import { createTenantScopedPrismaClient } from '#kernel/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#kernel/prisma/prisma.client';
-import type { PushDriver } from '#kernel/push/push-driver';
-import { runInTenant } from '#kernel/tenancy/run-in-tenant';
+import { env } from '#kernel/public/env';
+import { createTenantScopedPrismaClient } from '#kernel/public/testing';
+import type { TenantScopedPrismaClient } from '#kernel/public/database';
+import type { PushDriver } from '#kernel/public/drivers';
+import { runInTenant } from '#kernel/public/tenancy';
 import { PushDriverRegistry } from './push-driver.registry';
 import { PushService } from './push.service';
 import { PushTokenService } from './push.tokens';

@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { EmbeddingDimensionMismatchException } from '#kernel/embeddings/embedding-dimension-mismatch.exception';
-import type { Embedder } from '#kernel/embeddings/embedding-driver';
+import {
+  type Embedder,
+  EmbeddingDimensionMismatchException,
+} from '#kernel/public/drivers';
 import { EmbeddingDriverRegistry } from './embedding-driver.registry';
 
 @Injectable()

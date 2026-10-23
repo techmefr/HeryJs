@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import { SecretsService } from '#kernel/secrets/secrets.service';
+import { SecretsService } from '#kernel/public/env';
 
 const SECRET_BYTES = 32;
 const SECRET_PREFIX = 'whsec_';

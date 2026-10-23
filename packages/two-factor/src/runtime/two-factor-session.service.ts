@@ -1,8 +1,10 @@
 import { createHash } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
-import { PRISMA_CLIENT } from '#kernel/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#kernel/prisma/prisma.client';
-import type { AuthenticatedUser } from '#kernel/auth/auth.types';
+import {
+  PRISMA_CLIENT,
+  type TenantScopedPrismaClient,
+} from '#kernel/public/database';
+import type { AuthenticatedUser } from '#kernel/public/auth';
 import { MS_PER_SECOND } from './two-factor.constants';
 import { twoFactorEnv } from './two-factor.env';
 

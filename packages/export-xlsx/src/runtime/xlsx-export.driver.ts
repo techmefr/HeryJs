@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import ExcelJS from 'exceljs';
-import { exportCellText, exportHeaders } from '#kernel/export/export-driver';
-import type {
-  ExportDriver,
-  Exportable,
-  ExportRow,
-} from '#kernel/export/export-driver';
+import {
+  type Exportable,
+  exportCellText,
+  type ExportDriver,
+  exportHeaders,
+  type ExportRow,
+} from '#kernel/public/drivers';
 
 const SHEET_NAME = 'Export';
 

@@ -95,6 +95,10 @@ function manifest(name: string, repoRoot: string): string {
       heryjs: { module: true },
       main: 'dist/module.js',
       types: 'dist/module.d.ts',
+      exports: {
+        '.': { types: './dist/module.d.ts', default: './dist/module.js' },
+        './package.json': './package.json',
+      },
       files: ['dist', 'src/runtime'],
       scripts: {
         build: 'rm -rf dist && tsc -p tsconfig.build.json',
@@ -201,8 +205,8 @@ function service(name: string): string {
 /**
  * The placeholder this module was scaffolded with. Replace it: the shape is
  * what matters here -- a real file under src/runtime, copied into the project
- * once and owned by it from then on, importing the kernel as #kernel/... so
- * the copy that lands can be rewritten to the app's own #technical/.
+ * once and owned by it from then on, importing the kernel as #kernel/public/...
+ * so the copy that lands can be rewritten to the app's own #technical/.
  */
 @Injectable()
 export class ${pascal}Service {

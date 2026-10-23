@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
-import { MissingSessionException } from '#kernel/errors/invalid-session.exception';
-import type { RequestWithUser } from '#kernel/auth/session.guard';
+import { MissingSessionException } from '#kernel/public/errors';
+import type { RequestWithUser } from '#kernel/public/auth';
 import { bearerToken } from './bearer-token';
 import { TwoFactorService } from './two-factor.service';
 

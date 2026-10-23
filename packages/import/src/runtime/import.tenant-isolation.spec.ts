@@ -1,11 +1,13 @@
 import type { ModuleRef } from '@nestjs/core';
 import type { Job } from 'bullmq';
-import type { DriverResolver } from '#kernel/drivers/driver-resolver';
-import type { Importable } from '#kernel/import/import-driver';
-import type { JobsService } from '#kernel/jobs/jobs.service';
-import type { NotificationProvider } from '#kernel/notifications/notification.types';
-import type { StorageDriver } from '#kernel/storage/storage-driver';
-import { TenantContextStorage } from '#kernel/tenancy/tenant-context';
+import type {
+  DriverResolver,
+  Importable,
+  StorageDriver,
+} from '#kernel/public/drivers';
+import type { JobsService } from '#kernel/public/jobs';
+import type { NotificationProvider } from '#kernel/public/notifications';
+import { TenantContextStorage } from '#kernel/public/tenancy';
 import { CsvImportDriver } from './csv-import.driver';
 import { IMPORT_CONSUME_JOB } from './import.constants';
 import type { ImportDriverRegistry } from './import-driver.registry';

@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import type { Exportable } from '#kernel/export/export-driver';
+import type { Exportable } from '#kernel/public/drivers';
 import { XlsxExportDriver } from './xlsx-export.driver';
 
 const driver = new XlsxExportDriver();

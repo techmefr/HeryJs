@@ -1,12 +1,14 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { AuthenticatedUser } from '#technical/auth/auth.types';
-import { subjectOf } from '#technical/capabilities/subject';
-import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
-import { ExpositionRegistry } from '#technical/exposition/exposition.registry';
-import { authPrismaClient } from '#technical/auth/better-auth.instance';
-import { stageOutboxMessages } from '#technical/outbox/outbox-stage';
+import {
+  type AuthenticatedUser,
+  authPrismaClient,
+} from '#technical/public/auth';
+import { subjectOf } from '#technical/public/capabilities';
+import { CapabilityForbiddenException } from '#technical/public/errors';
+import { ExpositionRegistry } from '#technical/public/platform';
+import { stageOutboxMessages } from '#technical/public/jobs';
 import { exposedActionOf } from './exposed-webhook-source';
 import {
   INBOUND_WEBHOOK_MESSAGE,
