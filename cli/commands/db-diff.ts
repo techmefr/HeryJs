@@ -21,7 +21,7 @@ export function registerDbDiffCommand(program: Command): void {
   program
     .command('db:diff')
     .description(
-      'Print the SQL that would bring the live database to schema.prisma',
+      'Print the SQL that would bring the live database to prisma/schema/',
     )
     .option('--check', 'Exit with 1 when the database differs from the schema')
     .action((options: { check?: boolean }) => {
@@ -37,7 +37,7 @@ export function registerDbDiffCommand(program: Command): void {
       }
 
       if (result.status === EMPTY_DIFF_EXIT) {
-        console.log(pc.green('The database matches schema.prisma.'));
+        console.log(pc.green('The database matches prisma/schema/.'));
         return;
       }
 

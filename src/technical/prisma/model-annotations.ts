@@ -135,7 +135,7 @@ export function tenantBoundaryProblems(
 
     if (carriesTenant && !scoped && !appEnforced) {
       problems.push(
-        `${model.name} carries a tenantId but is neither /// ${ANNOTATION_PREFIX}tenantScoped nor /// ${ANNOTATION_PREFIX}appEnforcedTenant <reason> — annotate it in prisma/schema.prisma`,
+        `${model.name} carries a tenantId but is neither /// ${ANNOTATION_PREFIX}tenantScoped nor /// ${ANNOTATION_PREFIX}appEnforcedTenant <reason> — annotate it in prisma/schema/`,
       );
     }
 
@@ -227,7 +227,7 @@ export function readGeneratedModels(
 ): AnnotatedModel[] {
   if (!existsSync(file)) {
     throw new Error(
-      `Found no ${ANNOTATIONS_FILE} next to the Prisma client. The schema declares the tenant boundary, audit, history and encryption as /// ${ANNOTATION_PREFIX}* annotations, and the kernel refuses to start without them: add the "hery" generator to prisma/schema.prisma and run "prisma generate".`,
+      `Found no ${ANNOTATIONS_FILE} next to the Prisma client. The schema declares the tenant boundary, audit, history and encryption as /// ${ANNOTATION_PREFIX}* annotations, and the kernel refuses to start without them: add the "hery" generator to prisma/schema/_hery/core.prisma and run "prisma generate".`,
     );
   }
 

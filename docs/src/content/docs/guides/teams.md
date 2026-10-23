@@ -9,7 +9,7 @@ Teams are real infrastructure, not a convention you implement per project. There
 
 ## The data model
 
-Three pieces in `prisma/schema.prisma`:
+Three pieces in `prisma/schema/_hery/core.prisma`:
 
 ```prisma
 model Team {

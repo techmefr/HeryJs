@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync } from 'node:fs';
 import * as path from 'node:path';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
@@ -11,11 +11,12 @@ import { prismaModelBlock } from '../../../cli/lib/templates';
 import { annotatedModelsIn, registriesFrom } from './model-annotations';
 import type { ModelRegistries } from './model-annotations';
 import { createTenantScopedPrismaClient } from './prisma.client';
+import { readPrismaSchema } from './schema-files';
 import type { TenantScopedPrismaClient } from './prisma.client';
 
 const ROOT = path.join(__dirname, '..', '..', '..');
 const EXAMPLES = path.join(ROOT, 'examples');
-const SCHEMA = readFileSync(path.join(ROOT, 'prisma', 'schema.prisma'), 'utf8');
+const SCHEMA = readPrismaSchema(ROOT) ?? '';
 
 function registriesOf(source: string, model: string) {
   const registries = registriesFrom(

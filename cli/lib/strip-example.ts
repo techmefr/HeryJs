@@ -1,3 +1,5 @@
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { prismaSchemaFiles } from '#technical/prisma/schema-files';
 import { modelSetMarker } from './legacy-registries';
 
 // The comment lines directly above a model belong to it: leaving them behind
@@ -37,6 +39,13 @@ export function stripModelsFromSchema(
     ),
   );
 
+  return {
+    schema: withoutModels(schemaSource, removed),
+    removed: [...removed],
+  };
+}
+
+function withoutModels(schemaSource: string, removed: Set<string>): string {
   const withoutBlocks = schemaSource.replace(MODEL_BLOCK, (block, name) =>
     removed.has(String(name)) ? '' : block,
   );
@@ -46,12 +55,36 @@ export function stripModelsFromSchema(
     .filter((line) => !referencesRemoved(line, removed))
     .join('\n');
 
-  return {
-    // Blocks leave a run of blank lines behind them; collapsing it keeps the
-    // scaffolded schema looking written rather than edited.
-    schema: withoutDanglingFields.replace(/\n{3,}/g, '\n\n'),
-    removed: [...removed],
-  };
+  // Blocks leave a run of blank lines behind them; collapsing it keeps the
+  // scaffolded schema looking written rather than edited.
+  return withoutDanglingFields.replace(/\n{3,}/g, '\n\n');
+}
+
+/**
+ * stripModelsFromSchema over every file of the schema folder: a model goes
+ * from the file declaring it, its back-relations from whichever file holds the
+ * other end, and a file left with no block at all goes with them.
+ */
+export function stripModelsFromSchemaFolder(
+  root: string,
+  blueprintNames: Set<string>,
+): string[] {
+  const files = prismaSchemaFiles(root);
+  const { removed } = stripModelsFromSchema(
+    files.map((file) => readFileSync(file, 'utf8')).join('\n'),
+    blueprintNames,
+  );
+  for (const file of files) {
+    const schema = withoutModels(readFileSync(file, 'utf8'), new Set(removed));
+
+    if (/^(model|enum|type|view|generator|datasource)\s/m.test(schema)) {
+      writeFileSync(file, schema);
+    } else {
+      rmSync(file);
+    }
+  }
+
+  return removed;
 }
 
 export function withoutSetEntries(

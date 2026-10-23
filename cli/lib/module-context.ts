@@ -1,12 +1,17 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import pc from 'picocolors';
+import {
+  readPrismaSchema,
+  schemaFileDeclaring,
+} from '#technical/prisma/schema-files';
 import type { InstallContext, LoadedModule } from './module-definition';
 import {
-  PRISMA_SCHEMA,
+  PRISMA_SCHEMA_FOLDER,
   addModelFields,
   addPrismaModels,
   modelNamesIn,
+  moduleSchemaFile,
   patchExactStrings,
 } from './schema-patch';
 import {
@@ -65,31 +70,43 @@ export function createInstallContext(module: LoadedModule): InstallContext {
     },
 
     addPrismaModels(models): void {
-      if (!existsSync(PRISMA_SCHEMA)) {
-        skipped(PRISMA_SCHEMA, 'does not exist here');
+      if (!existsSync(PRISMA_SCHEMA_FOLDER)) {
+        skipped(PRISMA_SCHEMA_FOLDER, 'does not exist here');
         return;
       }
 
-      if (addPrismaModels(PRISMA_SCHEMA, models)) {
-        patched(PRISMA_SCHEMA);
+      const file = moduleSchemaFile(module.name);
+
+      if (addPrismaModels(file, models, readPrismaSchema('.'))) {
+        wrote(file);
         return;
       }
 
-      skipped(PRISMA_SCHEMA, `already declares ${modelNamesIn(models)[0]}`);
+      skipped(file, `already declares ${modelNamesIn(models)[0]}`);
     },
 
     addModelFields(model, fields): void {
-      if (!existsSync(PRISMA_SCHEMA)) {
-        skipped(PRISMA_SCHEMA, 'does not exist here');
+      if (!existsSync(PRISMA_SCHEMA_FOLDER)) {
+        skipped(PRISMA_SCHEMA_FOLDER, 'does not exist here');
         return;
       }
 
-      if (addModelFields(PRISMA_SCHEMA, model, fields)) {
-        patched(PRISMA_SCHEMA);
+      const file = schemaFileDeclaring('.', model);
+
+      if (file === undefined) {
+        throw new Error(
+          `Could not find "model ${model}" in ${PRISMA_SCHEMA_FOLDER}`,
+        );
+      }
+
+      const relative = path.relative('.', file).split(path.sep).join('/');
+
+      if (addModelFields(file, model, fields)) {
+        patched(relative);
         return;
       }
 
-      skipped(PRISMA_SCHEMA, `already has ${model} patched`);
+      skipped(relative, `already has ${model} patched`);
     },
 
     chainScript(script, command): void {

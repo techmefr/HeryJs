@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import * as ts from 'typescript';
+import { readPrismaSchema } from '#technical/prisma/schema-files';
 import { kebabCase, kebabToPascalCase } from './naming';
 
 export interface ResourceRoute {
@@ -122,13 +123,12 @@ function parseControllerRoutes(filePath: string): ResourceRoute[] {
 }
 
 function parsePrismaFields(modelName: string): ResourceField[] {
-  const schemaPath = path.resolve(process.cwd(), 'prisma', 'schema.prisma');
+  const schema = readPrismaSchema(process.cwd());
 
-  if (!existsSync(schemaPath)) {
+  if (schema === undefined) {
     return [];
   }
 
-  const schema = readFileSync(schemaPath, 'utf8');
   const modelMatch = new RegExp(
     `model ${modelName} \\{([\\s\\S]*?)\\n\\}`,
   ).exec(schema);

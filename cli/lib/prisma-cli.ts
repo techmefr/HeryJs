@@ -3,7 +3,7 @@ import * as path from 'node:path';
 
 const IS_WINDOWS = process.platform === 'win32';
 
-export const SCHEMA_PATH = path.join('prisma', 'schema.prisma');
+export const SCHEMA_PATH = path.join('prisma', 'schema');
 
 export function runPrisma(args: string[]): number {
   const result = spawnSync('npx', ['prisma', ...args], {

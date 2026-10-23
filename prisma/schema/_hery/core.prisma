@@ -1,0 +1,480 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Writes the /// @hery.* annotations below next to the client, where the
+// kernel reads its tenant boundary, audit, history and encryption at startup.
+generator hery {
+  provider = "node cli/prisma-registry-generator.ts"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// @hery.appEnforcedTenant Written by better-auth's own adapter, which runs its own transactions.
+model User {
+  id                  String    @id @default(cuid())
+  email               String    @unique
+  emailVerified       Boolean   @default(false)
+  name                String?
+  image               String?
+  tenantId            String    @default("default")
+  currentTeamId       String?
+  role                String?
+  banned              Boolean   @default(false)
+  banReason           String?
+  banExpires          DateTime?
+  twoFactorEnabled    Boolean   @default(false)
+  phoneNumber         String?   @unique
+  phoneNumberVerified Boolean   @default(false)
+  isAnonymous         Boolean   @default(false)
+  locale              String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  sessions                  Session[]
+  accounts                  Account[]
+  blogPosts                 BlogPost[]
+  snippets                  Snippet[]
+  notifications             AppNotification[]
+  memberships               TeamMember[]
+  apiKeys                   ApiKey[]
+  twoFactors                TwoFactor[]
+  passkeys                  Passkey[]
+  pushTokens                PushToken[]
+  notificationPreferences   NotificationPreference[]
+  notificationSetting       NotificationSetting?
+  notificationDigestEntries NotificationDigestEntry[]
+  twoFactorEnrolment        TwoFactorEnrolment?
+  twoFactorRecoveryCodes    TwoFactorRecoveryCode[]
+  twoFactorVerifiedSessions TwoFactorVerifiedSession[]
+  currentTeam               Team?                      @relation("CurrentTeam", fields: [currentTeamId], references: [id], onDelete: SetNull)
+}
+
+/// @hery.tenantFree better-auth's own tables. Each row hangs off a User, which does carry a tenantId, and better-auth reads them through its own adapter with its own queries -- a column here would be stamped by nobody.
+model ApiKey {
+  id        String    @id @default(cuid())
+  userId    String
+  name      String
+  prefix    String    @unique
+  hashedKey String
+  createdAt DateTime  @default(now())
+  revokedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// @hery.tenantScoped
+model Team {
+  id        String   @id @default(cuid())
+  tenantId  String   @default("default")
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members      TeamMember[]
+  currentUsers User[]       @relation("CurrentTeam")
+}
+
+/// @hery.tenantScoped
+model TeamMember {
+  teamId    String
+  userId    String
+  tenantId  String   @default("default")
+  createdAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, userId])
+}
+
+/// @hery.tenantFree better-auth's own tables. Each row hangs off a User, which does carry a tenantId, and better-auth reads them through its own adapter with its own queries -- a column here would be stamped by nobody.
+model Session {
+  id             String   @id @default(cuid())
+  token          String   @unique
+  userId         String
+  expiresAt      DateTime
+  ipAddress      String?
+  userAgent      String?
+  impersonatedBy String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// @hery.tenantFree better-auth's own tables. Each row hangs off a User, which does carry a tenantId, and better-auth reads them through its own adapter with its own queries -- a column here would be stamped by nobody.
+model Account {
+  id                    String    @id @default(cuid())
+  userId                String
+  accountId             String
+  providerId            String
+  password              String?
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// @hery.tenantFree Email-verification and password-reset tokens, looked up by their own value before any session exists, so there is no tenant to scope the lookup by.
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+/// @hery.appEnforcedTenant Global rows are the point of a feature flag: tenantId is nullable, and the extension would stamp the current tenant onto a flag meant for everyone.
+model FeatureFlag {
+  id                String   @id @default(cuid())
+  key               String
+  tenantId          String?
+  enabled           Boolean  @default(false)
+  // 0-100, bucketed per user or per tenant (rolloutBy); 100 means everyone.
+  rolloutPercentage Int      @default(100)
+  rolloutBy         String   @default("user")
+  // Ordered targeting rules, first match wins; see feature-flag-evaluation.ts.
+  rules             Json     @default("[]")
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([key, tenantId])
+}
+
+/// @hery.tenantScoped
+model AppNotification {
+  id        String    @id @default(cuid())
+  tenantId  String
+  userId    String
+  type      String
+  payload   Json
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tenantId])
+}
+
+/// @hery.appEnforcedTenant Written by writeAuditLog against the raw client, deliberately outside the extension chain so an audit entry cannot be scoped away by the boundary it is recording a crossing of.
+model AuditLog {
+  id             String    @id @default(cuid())
+  // createdAt is a millisecond timestamp, so two entries written in the same
+  // millisecond -- routine under load -- have no order at all. Reading the
+  // chain by it can hand the verifier a legitimate chain in the wrong order,
+  // and reading the tail by it can return the wrong predecessor. The sequence
+  // is what actually orders the chain.
+  sequence       Int       @unique @default(autoincrement())
+  tenantId       String
+  model          String
+  operation      String
+  recordId       String?
+  data           Json
+  userId         String?
+  impersonatedBy String?
+  hash           String
+  // Empty for the genesis entry rather than null: Postgres treats each NULL as
+  // distinct, so a nullable column would have let a tenant hold any number of
+  // genesis entries -- as many parallel chains -- while the constraint below
+  // looked like it forbade them.
+  previousHash   String
+  createdAt      DateTime  @default(now())
+  // Set when an erasure request replaced `data` with a digest of it. The entry
+  // stays in the chain so its neighbours still link to it, but its content can
+  // no longer be recomputed, so the verifier checks its links, not its hash.
+  redactedAt     DateTime?
+
+  // Two entries in the same tenant's chain can never claim the same
+  // predecessor -- that is a fork, and the linear verifier can never accept
+  // one. With previousHash non-null this also caps a tenant at exactly one
+  // genesis entry.
+  @@unique([tenantId, previousHash])
+  @@index([tenantId, sequence])
+  @@index([tenantId, createdAt])
+}
+
+// Where a tenant's audit entries are streamed to, for a SIEM. `cursor` is the
+// last AuditLog.sequence already handed to the outbox for this sink, so a
+// sink never skips or repeats an entry: the cursor moves in the same
+// transaction that stages the delivery. `authToken` holds a sealed envelope,
+// never the token.
+/// @hery.appEnforcedTenant Read by a streamer that walks every tenant's sinks with no request behind it, and written by the sink routes with the caller's tenantId passed explicitly, the way AuditLog itself is.
+model AuditSink {
+  id                    String    @id @default(cuid())
+  tenantId              String
+  name                  String
+  kind                  String
+  url                   String?
+  authToken             String?
+  storageDriver         String?
+  keyPrefix             String?
+  active                Boolean   @default(true)
+  cursor                Int       @default(0)
+  lastError             String?
+  lastDeliveredAt       DateTime?
+  lastDeliveredSequence Int?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([tenantId])
+  @@index([active])
+}
+
+// One row per write to a resource that declared history: true. The snapshot is
+// the record as it stood after the write, restricted to the columns the
+// generator annotated /// @hery.history -- a hidden or encrypted field is
+// never annotated, so it is never stored here, not merely never shown.
+// Written like AuditLog, from the client's own extension with the tenant passed
+// explicitly, and read through HistoryService, which filters on it.
+/// @hery.appEnforcedTenant Written by the same extension and for the same reason as AuditLog: the snapshot of a write must not be scoped away by the boundary it describes. HistoryService states the tenant in every read.
+model RecordSnapshot {
+  id             String   @id @default(cuid())
+  // Orders a record's history; createdAt alone cannot when two writes land in
+  // the same millisecond.
+  sequence       Int      @unique @default(autoincrement())
+  tenantId       String
+  model          String
+  recordId       String
+  operation      String
+  snapshot       Json
+  userId         String?
+  impersonatedBy String?
+  createdAt      DateTime @default(now())
+
+  @@index([tenantId, model, recordId, sequence])
+  @@index([createdAt])
+}
+
+// Written in the same transaction as the change it describes, then relayed to
+// handlers by a worker. tenantId is nullable because a message can be staged
+// outside any request, and the relay reads across tenants, so the table sits
+// outside the row-level policies the way MailLog does.
+/// @hery.appEnforcedTenant Staged inside the transaction of the write it describes, and drained by a relay with no request behind it, so it can be neither stamped nor filtered by the ambient tenant.
+model OutboxMessage {
+  id            String    @id @default(cuid())
+  tenantId      String?
+  name          String
+  payload       Json
+  status        String    @default("pending")
+  attempts      Int       @default(0)
+  nextAttemptAt DateTime  @default(now())
+  lastError     String?
+  createdAt     DateTime  @default(now())
+  deliveredAt   DateTime?
+  deadAt        DateTime?
+  locale        String?
+
+  receipts OutboxReceipt[]
+
+  @@index([status, nextAttemptAt])
+  @@index([status, deliveredAt])
+  @@index([status, deadAt])
+}
+
+// One row per handler that finished a message, so a retry after a partial
+// failure reruns only the handlers that did not.
+/// @hery.tenantFree Bookkeeping keyed by an OutboxMessage id, which carries the tenant.
+model OutboxReceipt {
+  id          String   @id @default(cuid())
+  messageId   String
+  handler     String
+  completedAt DateTime @default(now())
+
+  message OutboxMessage @relation(fields: [messageId], references: [id])
+
+  @@unique([messageId, handler])
+}
+
+// Shape taken from better-auth's own two-factor plugin schema, not invented
+// here: the adapter checks every field at boot and refuses the whole instance
+// on a mismatch, which turns a missing column into "every registration returns
+// 500" rather than into a 2FA-only failure.
+/// @hery.tenantFree Second-factor secrets and backup codes, hanging off a User like Session and Account and written only by better-auth's own adapter.
+model TwoFactor {
+  id                      String    @id @default(cuid())
+  secret                  String
+  backupCodes             String
+  userId                  String
+  verified                Boolean   @default(true)
+  failedVerificationCount Int       @default(0)
+  lockedUntil             DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([secret])
+  @@index([userId])
+}
+
+/// @hery.tenantFree WebAuthn credentials, hanging off a User and written only by better-auth's passkey plugin. A sign-in finds the row by its credential id before any session exists, so there is no tenant to scope the lookup by -- the user it resolves to carries the tenant.
+model Passkey {
+  id           String    @id @default(cuid())
+  name         String?
+  publicKey    String
+  userId       String
+  credentialID String
+  counter      Int
+  deviceType   String
+  backedUp     Boolean
+  transports   String?
+  createdAt    DateTime? @default(now())
+  aaguid       String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([credentialID])
+}
+
+// A limit set for one tenant, replacing the default declared under `quotas` in
+// hery.config.ts. A row is an exception, so most tenants have none; the
+// rate-limit guard reads `rate-limit:<bucket>` rows the same way.
+/// @hery.tenantScoped
+model QuotaOverride {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  limit     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, name])
+}
+
+// What a tenant has consumed of a named quota within one period. `period` is a
+// key ("2026-10", "2026-10-21" or "total"), not a date, so a new period is a
+// new row rather than a reset of the old one, and last month's figure stays
+// readable for usage-based billing.
+/// @hery.tenantScoped
+model QuotaUsage {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  period    String
+  used      Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, name, period])
+}
+
+/// @hery.appEnforcedTenant Read and written by the idempotency interceptor around the handler, keyed by the tenant it passes explicitly with every query.
+model IdempotencyKey {
+  id              String    @id @default(cuid())
+  tenantId        String
+  key             String
+  route           String
+  bodyHash        String
+  status          String    @default("pending")
+  statusCode      Int?
+  responseBody    Json?
+  responseHeaders Json?
+  createdAt       DateTime  @default(now())
+  deletedAt       DateTime?
+
+  @@unique([tenantId, key])
+  @@index([tenantId])
+}
+
+/// @hery.appEnforcedTenant Written in batches from a buffer that flushes on a timer, long after the request that produced an entry has ended, so there is no ambient tenant to stamp: each entry carries the tenant it was recorded under.
+model DevtoolsEntry {
+  id         String   @id @default(cuid())
+  tenantId   String
+  kind       String
+  label      String
+  status     String?
+  durationMs Float?
+  requestId  String?
+  detail     Json?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, kind, createdAt])
+  @@index([createdAt])
+}
+
+/// @hery.appEnforcedTenant Written from a buffer that flushes on a timer, long after the request that produced a line has ended, so there is no ambient tenant to stamp: each entry carries the tenant it was logged under, or `system` when it had none.
+model LogEntry {
+  id       String   @id @default(cuid())
+  tenantId String
+  level    String
+  message  String
+  fields   Json?
+  loggedAt DateTime @default(now())
+
+  @@index([tenantId, loggedAt])
+  @@index([loggedAt])
+}
+
+/// @hery.appEnforcedTenant Started from a request or from a worker, so a tenant cannot be stamped from the ambient context; every call names the tenant it acts for.
+model JobFlow {
+  id          String    @id @default(cuid())
+  tenantId    String
+  kind        String
+  name        String
+  queue       String
+  rootJobId   String
+  steps       Json
+  createdById String?
+  createdAt   DateTime  @default(now())
+  cancelledAt DateTime?
+
+  @@index([tenantId, createdAt])
+  @@index([createdAt])
+}
+
+// One row grants one user or one team read or write access to one record of a
+// sharing-enabled resource. resource is the Prisma model name, so the table is
+// shared by every such resource and carries no foreign key to any of them.
+/// @hery.tenantScoped
+/// @hery.audited
+model RecordShare {
+  id          String   @id @default(cuid())
+  tenantId    String
+  resource    String
+  recordId    String
+  granteeType String
+  granteeId   String
+  access      String
+  grantedById String
+  createdAt   DateTime @default(now())
+
+  @@unique([tenantId, resource, recordId, granteeType, granteeId], map: "RecordShare_grant_key")
+  // The lookup that folds shares into a collection scope: everything shared
+  // with one subject, for one resource.
+  @@index([tenantId, resource, granteeType, granteeId])
+  @@index([tenantId, resource, recordId])
+}
+
+// One export, user erasure or tenant erasure, run by a worker. `result` holds an
+// export's bundle until the requester reads it once; it is the only place the
+// bundle is kept, and reading it clears it.
+/// @hery.tenantScoped
+model PrivacyRequest {
+  id          String    @id @default(cuid())
+  tenantId    String
+  kind        String
+  status      String    @default("pending")
+  subjectId   String
+  requestedBy String?
+  summary     Json?
+  result      Json?
+  error       String?
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+  deliveredAt DateTime?
+
+  @@index([tenantId])
+}

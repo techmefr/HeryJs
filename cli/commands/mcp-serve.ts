@@ -34,7 +34,7 @@ export function registerMcpServeCommand(program: Command): void {
         'describe_resource',
         {
           description:
-            'Describe a generated resource: its routes, the capability guarding each route, and its fields as declared in prisma/schema.prisma',
+            'Describe a generated resource: its routes, the capability guarding each route, and its fields as declared in prisma/schema/',
           inputSchema: { name: z.string() },
         },
         ({ name }) => {

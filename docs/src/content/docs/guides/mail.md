@@ -10,7 +10,7 @@ pnpm hery install mail
 pnpm hery migrate --name add_mail_log
 ```
 
-The install appends a `MailLog` model to `prisma/schema.prisma`, so it leaves you one migration behind. `hery install` never runs Prisma itself.
+The install appends a `MailLog` model to `prisma/schema/`, so it leaves you one migration behind. `hery install` never runs Prisma itself.
 
 ## One mail type, one file
 

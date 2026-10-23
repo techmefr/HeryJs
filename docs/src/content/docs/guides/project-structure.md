@@ -24,7 +24,11 @@ admin/                   the Astro admin panel (its own workspace)
 blueprints/              one-time generator input, created by hery create:blueprint
 packages/                the authoring half of every module, copied into src/modules/
 prisma/
-  schema.prisma
+  schema/                the schema, one folder Prisma reads as one file
+    _hery/core.prisma    the kernel's models, generators and datasource
+    <module>.prisma      one per installed module that owns models
+    app.prisma           the project's own models, written by hery generate
+  migrations/
 ```
 
 Four layers under `src/`, split by **lifecycle rather than by theme**: whether a piece of code is always present, optional, business-specific, or dev-only. Each has one rule about who may import it, and the rules are not documentation — they are dependency-cruiser rules that fail CI.

@@ -23,6 +23,7 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
       'bd252c07124ee9d8f9ecca276fb75905e476d4c627161a65b426c4015a9dbf49',
     ],
     'src/devtools/conventions/check-rls.ts': [
+      '098c03bdfdb54bae9e4cbf0d9153d83db71b5cac33578269632876d7b02ad6a4',
       '5843c95facf0868108c8b73ee2e3e20d75713a2ddf53ccc6d93d89f87f9f8c5f',
     ],
     'src/devtools/conventions/check-scope-parity.ts': [
@@ -2027,12 +2028,15 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
     ],
     'src/technical/prisma/generated-resource-tenancy.spec.ts': [
       '845a0880b3d8c87ca518c1bbe47565e9759fc351a98cc995a30066f9742544f5',
+      '9897a0adb77e2abb67b49a0e88ed64167d638e069c85b48bf52814862d5927ba',
     ],
     'src/technical/prisma/model-annotations.spec.ts': [
+      '34c4af54fa933ceecf73c25752d6f40b639ffbcf7af29ccf343388ea1aac124e',
       '9220adedc232d10974dbaabc14ccbb0077851edc762bec557f28274bf3990102',
     ],
     'src/technical/prisma/model-annotations.ts': [
       '24f9471dfaeabf6ca3af53bc3bff1216f7f911b452eecb533b04407e1917ffb5',
+      '3cf590df48593fa274700174ff1c353bf4a3ee839e6437be25eaefc342115c68',
     ],
     'src/technical/prisma/prisma-audit-rls.spec.ts': [
       '18d72e326d22abaf759d54b1e6c33b0c68ca4d77a073edc2add0858b413f94e5',
@@ -2107,6 +2111,9 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
     'src/technical/prisma/row-level-security.ts': [
       'ea371317ce457ea71b1d237cfdd91db43e1623a82c57e136de817c8c99a16ce9',
     ],
+    'src/technical/prisma/schema-files.ts': [
+      '002d3f4d692e4c66af5e0999e8216dccf93a855c8551b3c85bf77b1f8928f655',
+    ],
     'src/technical/prisma/tenant-operation-coverage.spec.ts': [
       '2078a41edfed9ec33a6b499a3905be960c47dbead5751b7430db1ef370ea3649',
       '25fa0607c9a0a49f10a5f0dd17f4a990dfd13363abf866f184b8c92525dac0a8',
@@ -2117,6 +2124,7 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
     'src/technical/prisma/tenant-rls-policies.spec.ts': [
       '437fcf75181f7d693cf9b8ab2ac4856ec79ee26c6b0d537e90e4bf7b4ae3873c',
       'ccd1ed1bbf83b4587c5a9f76f1918fad2b0624e3519f7ca6f478f95bfd44ba0b',
+      'e3da83325d941c8cd4dfba1631dcfdc08f314164875ba448f2cd1f89f0788482',
       'ff537fb08c7518fba44386064836e9f59ef9fc3e89bb7a0994445320da1b09f8',
     ],
     'src/technical/prisma/tenant-rls.spec.ts': [

@@ -76,7 +76,7 @@
     "templates",
     "SECURITY.md",
     "CHANGELOG.md",
-    "prisma/schema.prisma",
+    "prisma/schema",
     "prisma.config.ts",
     "hery.config.ts",
     "cors.config.ts",

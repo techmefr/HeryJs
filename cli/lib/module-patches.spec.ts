@@ -66,7 +66,7 @@ describe('recording what a module patches', () => {
     expect(records).toEqual([
       {
         module: 'probe',
-        file: 'prisma/schema.prisma',
+        file: 'prisma/schema/probe.prisma',
         marks: ['model ProbeLog {', 'model ProbeEvent {'],
       },
     ]);
@@ -120,7 +120,7 @@ describe('recording what a module patches', () => {
     expect(records).toEqual([
       {
         module: 'probe',
-        file: 'prisma/schema.prisma',
+        file: 'prisma/schema',
         model: 'User',
         marks: ['role'],
       },
