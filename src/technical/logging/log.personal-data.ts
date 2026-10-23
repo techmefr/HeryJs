@@ -1,16 +1,21 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  OnApplicationBootstrap,
+  OnModuleInit,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { mentionsSubject } from '#technical/privacy/personal-data.match';
 import { PersonalDataRegistry } from '#technical/privacy/personal-data.registry';
 import type { PersonalDataSubject } from '#technical/privacy/personal-data.types';
+import { addPersonalLogFields } from './log-redaction';
 
 /**
  * A log line is free text, so a user's lines are the ones whose message or
  * fields name the user's id or address.
  */
 @Injectable()
-export class LogPersonalData implements OnModuleInit {
+export class LogPersonalData implements OnModuleInit, OnApplicationBootstrap {
   constructor(private readonly registry: PersonalDataRegistry) {}
 
   onModuleInit(): void {
@@ -26,6 +31,16 @@ export class LogPersonalData implements OnModuleInit {
       eraseTenant: (tenantId) =>
         authPrismaClient.$executeRaw`DELETE FROM "LogEntry" WHERE "tenantId" = ${tenantId}`,
     });
+  }
+
+  onApplicationBootstrap(): void {
+    addPersonalLogFields(
+      this.registry
+        .all()
+        .flatMap((declaration) => declaration.fields)
+        .filter((field) => field.personal)
+        .map((field) => field.name),
+    );
   }
 
   private logEntryMentions(subject: PersonalDataSubject): Prisma.Sql {

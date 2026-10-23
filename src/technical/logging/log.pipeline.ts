@@ -1,5 +1,6 @@
 import { reportLogDriverFailure } from './log-driver-failure';
 import { parseLogLine } from './log-line';
+import { redactLogLine } from './log-redaction';
 import { shouldPrettyPrint, StdoutLogDriver } from './stdout-log.driver';
 import type { LogDriver } from './log-driver';
 
@@ -25,7 +26,7 @@ export class LogPipeline {
   }
 
   write(line: string): void {
-    const entry = parseLogLine(line);
+    const entry = parseLogLine(redactLogLine(line));
 
     for (const driver of this.drivers) {
       try {

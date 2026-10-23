@@ -143,6 +143,9 @@ export function buildServerSchema(
       .transform((value) => value === 'true'),
     BACKUP_CRON: z.string().min(1).default('0 3 * * *'),
     BACKUP_DIR: z.string().min(1).default('backups'),
+    LOG_LEVEL: z
+      .enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent'])
+      .optional(),
     BACKUP_KEEP: z.coerce.number().int().min(1).default(7),
     BACKUP_STORAGE_DRIVER: z.string().min(1).optional(),
     PRIVACY_ERASURE_JOURNAL: z

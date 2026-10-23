@@ -132,6 +132,7 @@
     "lint:pagination": "pnpm run lint:conventions pagination",
     "lint:rate-limit": "pnpm run lint:conventions rate-limit",
     "lint:module-drift": "pnpm run lint:conventions module-drift",
+    "lint:no-raw-pii-log": "pnpm run lint:conventions no-raw-pii-log",
     "lint:module-validity": "pnpm run lint:conventions module-validity",
     "lint:module-patches": "pnpm run lint:conventions module-patches",
     "lint:coverage": "pnpm run lint:conventions coverage",
