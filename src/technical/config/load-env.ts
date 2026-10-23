@@ -13,8 +13,8 @@ import * as path from 'node:path';
  * present in the environment win, which keeps a deliberate override -- CI, a
  * one-off DATABASE_URL in front of a command -- ahead of the file on disk.
  */
-const envPath = path.resolve(process.cwd(), '.env');
+export const ENV_FILE = path.resolve(process.cwd(), '.env');
 
-if (existsSync(envPath)) {
-  process.loadEnvFile(envPath);
+if (existsSync(ENV_FILE)) {
+  process.loadEnvFile(ENV_FILE);
 }

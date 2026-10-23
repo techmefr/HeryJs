@@ -6,15 +6,15 @@ import type { Job, Queue } from 'bullmq';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
-import type { AuthenticatedUser } from '#technical/auth/auth.types';
-import { authPrismaClient } from '#technical/auth/better-auth.instance';
-import { WEBHOOK_QUEUE } from '#technical/jobs/jobs.constants';
-import { OutboxRelay } from '#technical/outbox/outbox.relay';
+import type { AuthenticatedUser } from '@heryjs/core/auth';
+import { authPrismaClient } from '@heryjs/core/auth';
+import { WEBHOOK_QUEUE } from '@heryjs/core/jobs';
+import { OutboxRelay } from '@heryjs/core/jobs';
 import { waitFor } from '#devtools/testing/wait-for';
 import {
   clearWebhookHandlers,
   registerWebhookHandler,
-} from '#technical/webhooks/webhook-handler';
+} from '@heryjs/core/platform';
 import { WebhooksProcessor } from './webhooks.processor';
 import { WebhooksService } from './webhooks.service';
 

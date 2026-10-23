@@ -1,9 +1,11 @@
 import { INestApplication } from '@nestjs/common';
 import { Queue } from 'bullmq';
-import { LockService } from '#technical/lock/lock.service';
-import { OutboxRunner } from '#technical/outbox/outbox.runner';
-import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
+import { LockService } from '@heryjs/core/platform';
+import { OutboxRunner } from '@heryjs/core/jobs';
+import {
+  PRISMA_CLIENT,
+  type TenantScopedPrismaClient,
+} from '@heryjs/core/database';
 import { AppModule } from './../src/app.module';
 import { createApp } from './../src/create-app';
 

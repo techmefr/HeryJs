@@ -1,4 +1,4 @@
-import { registerCatalogue } from '#technical/public/i18n';
+import { registerCatalogue } from '@heryjs/core/i18n';
 import type { OAuthRefusalReason } from './oauth-refused.exception';
 
 const REFUSED_FR: Record<OAuthRefusalReason, string> = {

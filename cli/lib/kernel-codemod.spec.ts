@@ -69,12 +69,12 @@ describe('the kernel import codemod', () => {
     expect(withKernelPeer(once, 'workspace:^')).toBe(once);
   });
 
-  // The installer still lands a module in a project carrying its own copy of
-  // the kernel, so the copy has to reach that copy and not a second one.
-  it('installs @heryjs/core imports as the project kernel', () => {
+  // The app imports the kernel through the package too, so the installed copy
+  // keeps the specifier and reaches the very same classes.
+  it('installs @heryjs/core imports unchanged', () => {
     expect(
       rewriteKernelSpecifiers("import { X } from '@heryjs/core/errors';"),
-    ).toBe("import { X } from '#technical/public/errors';");
+    ).toBe("import { X } from '@heryjs/core/errors';");
   });
 
   // What `pnpm run codemod:kernel` ran: run again over the same tree, it has

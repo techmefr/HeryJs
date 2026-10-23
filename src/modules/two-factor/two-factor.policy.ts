@@ -2,7 +2,7 @@ import {
   adminAbility,
   everyone,
   type PolicyCheck,
-} from '#technical/public/capabilities';
+} from '@heryjs/core/capabilities';
 
 export const canManageOwnTwoFactor: PolicyCheck = everyone('own');
 

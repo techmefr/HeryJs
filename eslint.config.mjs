@@ -9,7 +9,7 @@ export default tseslint.config(
     // A module's dist/ is its published entry, compiled -- output, not source,
     // and outside every tsconfig here, so the typed rules can only report it
     // as a file they cannot place.
-    ignores: ['eslint.config.mjs', 'packages/*/dist/**'],
+    ignores: ['eslint.config.mjs', 'packages/*/dist/**', 'packages/core/src/**'],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,

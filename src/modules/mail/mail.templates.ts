@@ -1,4 +1,4 @@
-import { translateMessage } from '#technical/public/i18n';
+import { translateMessage } from '@heryjs/core/i18n';
 import './mail.catalogue';
 
 interface MailTemplate {

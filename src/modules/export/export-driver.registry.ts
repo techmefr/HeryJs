@@ -1,12 +1,12 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { HERY_CONFIG, type HeryConfig } from '#technical/public/config';
+import { HERY_CONFIG, type HeryConfig } from '@heryjs/core/config';
 import {
   DriverResolver,
   EXPORT_MODULE,
   type ExportDriver,
   missingDriverMessage,
-} from '#technical/public/drivers';
-import { InvalidQueryException } from '#technical/public/errors';
+} from '@heryjs/core/drivers';
+import { InvalidQueryException } from '@heryjs/core/errors';
 import { CsvExportDriver } from './csv-export.driver';
 
 const BUILTIN_DRIVER = 'csv';

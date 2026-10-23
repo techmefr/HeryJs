@@ -1,10 +1,6 @@
 import { HttpStatus } from '@nestjs/common';
-import { DomainException } from '#technical/public/errors';
-import {
-  isE164,
-  rulesOrDefault,
-  type SmsMessage,
-} from '#technical/public/drivers';
+import { DomainException } from '@heryjs/core/errors';
+import { isE164, rulesOrDefault, type SmsMessage } from '@heryjs/core/drivers';
 
 /**
  * Transactional messages answer something the recipient did -- a code, a

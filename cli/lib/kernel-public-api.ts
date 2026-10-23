@@ -19,14 +19,43 @@ export const KERNEL_PUBLIC_ENTRIES = [
   'http',
   'i18n',
   'jobs',
+  'load-env',
   'notifications',
   'observability',
   'platform',
   'privacy',
   'realtime',
+  'resources',
   'tenancy',
   'testing',
 ] as const;
+
+/**
+ * The developer tools ship in the same package but live under src/devtools,
+ * which the kernel itself never imports. Their test support stays with the
+ * app: it boots the app's own AppModule, so it cannot be built without it.
+ */
+export const DEVTOOLS_PUBLIC_ENTRIES = {
+  devtools: path.join('src', 'devtools', 'public.ts'),
+} as const;
+
+export function isTestSupport(file: string): boolean {
+  const segments = file.split(path.sep);
+  const devtools = segments.lastIndexOf('devtools');
+
+  return (
+    devtools !== -1 &&
+    (segments[devtools + 1] === 'testing' ||
+      segments[devtools + 1] === 'test-support.ts')
+  );
+}
+
+export function kernelEntryFile(entry: string): string {
+  return (
+    (DEVTOOLS_PUBLIC_ENTRIES as Record<string, string>)[entry] ??
+    path.join('src', 'technical', 'public', `${entry}.ts`)
+  );
+}
 
 export const KERNEL_SPECIFIER = '#kernel/';
 export const KERNEL_PUBLIC_SPECIFIER = `${KERNEL_SPECIFIER}public/`;
@@ -41,7 +70,10 @@ export const KERNEL_PACKAGE_DIR = path.join('packages', 'core');
  * rewrites it to `@heryjs/core/<entry>`.
  */
 export function isPublicKernelSpecifier(specifier: string): boolean {
-  return KERNEL_PUBLIC_ENTRIES.some(
+  return [
+    ...KERNEL_PUBLIC_ENTRIES,
+    ...Object.keys(DEVTOOLS_PUBLIC_ENTRIES),
+  ].some(
     (entry) =>
       specifier === `${KERNEL_PACKAGE_SPECIFIER}${entry}` ||
       specifier === `${KERNEL_PUBLIC_SPECIFIER}${entry}`,

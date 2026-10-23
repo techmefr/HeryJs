@@ -1,5 +1,5 @@
 import type { Request } from 'express';
-import { MissingSessionException } from '#technical/public/errors';
+import { MissingSessionException } from '@heryjs/core/errors';
 
 const BEARER_PREFIX = 'Bearer ';
 

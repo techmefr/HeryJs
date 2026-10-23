@@ -9,14 +9,14 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { type RequestWithUser, SessionGuard } from '#technical/public/auth';
-import { CapabilitiesGuard, Capability } from '#technical/public/capabilities';
+import { type RequestWithUser, SessionGuard } from '@heryjs/core/auth';
+import { CapabilitiesGuard, Capability } from '@heryjs/core/capabilities';
 import {
   ok,
   RateLimit,
   UnpaginatedRoute,
   ZodValidationPipe,
-} from '#technical/public/http';
+} from '@heryjs/core/http';
 import { SsoConnectionTestService } from './sso-connection-test.service';
 import { SsoConnectionService } from './sso-connection.service';
 import {

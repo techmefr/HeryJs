@@ -1,12 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
+import { PRISMA_CLIENT } from '@heryjs/core/database';
+import type { TenantScopedPrismaClient } from '@heryjs/core/database';
 import type {
   Seeder,
   SeederContext,
   SeederOptions,
-} from '#technical/seeders/seeder.types';
+} from '@heryjs/core/database';
 import { blogPostFactory } from './blog-post.factory';
 
 @Injectable()

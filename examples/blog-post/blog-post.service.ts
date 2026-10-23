@@ -1,46 +1,40 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Prisma, BlogPost } from '@prisma/client';
-import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
-import { AmbientTransactionStorage } from '#technical/prisma/transaction-context';
-import { CapabilitySubject } from '#technical/capabilities/capabilities.types';
-import { scopeWhereFor } from '#technical/capabilities/scope-where';
-import { env } from '#technical/config/env';
-import { SignalService } from '#technical/signal/signal.service';
-import { SearchEngineRegistry } from '#technical/search/search-engine.registry';
-import { TenantContextStorage } from '#technical/tenancy/tenant-context';
-import { writeAuditLog } from '#technical/audit/audit-log';
-import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { PRISMA_CLIENT } from '@heryjs/core/database';
+import type { TenantScopedPrismaClient } from '@heryjs/core/database';
+import { AmbientTransactionStorage } from '@heryjs/core/database';
+import { CapabilitySubject } from '@heryjs/core/capabilities';
+import { scopeWhereFor } from '@heryjs/core/capabilities';
+import { env } from '@heryjs/core/env';
+import { SignalService } from '@heryjs/core/realtime';
+import { SearchEngineRegistry } from '@heryjs/core/drivers';
+import { TenantContextStorage } from '@heryjs/core/tenancy';
+import { writeAuditLog } from '@heryjs/core/privacy';
+import { authPrismaClient } from '@heryjs/core/auth';
 import {
   normalizeTranslatableWrite,
   searchDocumentFor,
-} from '#technical/i18n/translatable';
-import type { TranslatableFieldSpec } from '#technical/i18n/translatable';
+} from '@heryjs/core/i18n';
+import type { TranslatableFieldSpec } from '@heryjs/core/i18n';
 import {
   hasTranslatableSort,
   resolveTranslatableFilters,
   sortByResolvedTranslations,
-} from '#technical/i18n/translatable-query';
-import type { TranslatableRow } from '#technical/i18n/translatable-query';
-import { sanitizeRichtextWrite } from '#technical/richtext/richtext';
+} from '@heryjs/core/i18n';
+import type { TranslatableRow } from '@heryjs/core/i18n';
+import { sanitizeRichtextWrite } from '@heryjs/core/resources';
 import {
   SLUG_LOOKUP_LIMIT,
   resolveSlugs,
   withSlugRetry,
-} from '#technical/slug/slug';
-import type { SlugDelegate, SlugFieldSpec } from '#technical/slug/slug';
-import { resolveRelationInstructions } from '#technical/http/relation-resolver';
-import type { PrismaRelationClient } from '#technical/http/relation-resolver';
-import type {
-  RelationInstruction,
-  ParsedListQuery,
-} from '#technical/http/list-query';
-import { applyRelationMutation } from '#technical/http/relation-mutations';
-import type {
-  PivotDelegate,
-  RelatedDelegate,
-} from '#technical/http/relation-mutations';
-import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
+} from '@heryjs/core/resources';
+import type { SlugDelegate, SlugFieldSpec } from '@heryjs/core/resources';
+import { resolveRelationInstructions } from '@heryjs/core/http';
+import type { PrismaRelationClient } from '@heryjs/core/http';
+import type { RelationInstruction, ParsedListQuery } from '@heryjs/core/http';
+import { applyRelationMutation } from '@heryjs/core/http';
+import type { PivotDelegate, RelatedDelegate } from '@heryjs/core/http';
+import { MAX_BATCH_ENTRIES } from '@heryjs/core/http';
 import {
   CreateBlogPostInput,
   RelationMutationInput,

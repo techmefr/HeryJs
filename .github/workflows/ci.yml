@@ -340,6 +340,7 @@ jobs:
           pnpm hery install scim sso storage
           pnpm exec prisma generate
           pnpm run typecheck
+          pnpm run build
 
   # The specs that boot a module for real: the two search drivers against
   # live engines, and the GraphQL module against a live HTTP server. They

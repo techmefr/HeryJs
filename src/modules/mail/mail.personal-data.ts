@@ -2,11 +2,11 @@ import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import {
   PRISMA_CLIENT,
   type TenantScopedPrismaClient,
-} from '#technical/public/database';
+} from '@heryjs/core/database';
 import {
   PersonalDataRegistry,
   type PersonalDataSubject,
-} from '#technical/public/privacy';
+} from '@heryjs/core/privacy';
 
 /**
  * A mail log names its recipient by address, not by account, so the rows of a

@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   PRISMA_CLIENT,
   type TenantScopedPrismaClient,
-} from '#technical/public/database';
+} from '@heryjs/core/database';
 import { matchesRecoveryCode } from './recovery-code';
 import { decryptSecret } from './secret-cipher';
 import { base32Decode, matchStep } from './totp';

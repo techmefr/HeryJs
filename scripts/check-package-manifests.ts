@@ -4,9 +4,12 @@ import pc from 'picocolors';
 import { intersects, validRange } from 'semver';
 import * as ts from 'typescript';
 import {
+  DEVTOOLS_PUBLIC_ENTRIES,
   KERNEL_PACKAGE,
   KERNEL_PACKAGE_DIR,
   KERNEL_PUBLIC_ENTRIES,
+  isTestSupport,
+  kernelEntryFile,
 } from '../cli/lib/kernel-public-api';
 import { loadOfficialModules } from '../cli/lib/module-discovery';
 import { runtimeImports } from '../cli/lib/runtime-imports';
@@ -145,7 +148,9 @@ function kernelPackageProblems(root: PackageManifest): string[] {
     files?: string[];
     sideEffects?: boolean | string[];
   };
-  const kernelDir = path.join(REPO_ROOT, 'src', 'technical');
+  const sourceRoot = path.join(REPO_ROOT, 'src');
+  const kernelDir = path.join(sourceRoot, 'technical');
+  const devtoolsDir = path.join(sourceRoot, 'devtools');
   const problems: string[] = [];
 
   if (manifest.name !== KERNEL_PACKAGE) {
@@ -160,30 +165,41 @@ function kernelPackageProblems(root: PackageManifest): string[] {
     problems.push(`${name} does not publish dist`);
   }
 
+  const fromSourceRoot = (file: string): string =>
+    path.relative(sourceRoot, file).split(path.sep).join('/');
   const expected: Record<string, unknown> = Object.fromEntries([
-    ...KERNEL_PUBLIC_ENTRIES.map((entry): [string, unknown] => [
-      `./${entry}`,
-      {
-        types: `./dist/public/${entry}.d.ts`,
-        default: `./dist/public/${entry}.js`,
+    ...[...KERNEL_PUBLIC_ENTRIES, ...Object.keys(DEVTOOLS_PUBLIC_ENTRIES)].map(
+      (entry): [string, unknown] => {
+        const source = fromSourceRoot(
+          path.join(REPO_ROOT, kernelEntryFile(entry)),
+        ).replace(/\.ts$/, '');
+
+        return [
+          `./${entry}`,
+          {
+            development: `./src/${source}.ts`,
+            types: `./dist/${source}.d.ts`,
+            default: `./dist/${source}.js`,
+          },
+        ];
       },
-    ]),
+    ),
     ['./package.json', './package.json'],
   ]);
 
   if (JSON.stringify(manifest.exports) !== JSON.stringify(expected)) {
     problems.push(
-      `${name} exports ${JSON.stringify(Object.keys(manifest.exports ?? {}))}, not one subpath per entry of KERNEL_PUBLIC_ENTRIES pointing at dist/public`,
+      `${name} exports ${JSON.stringify(Object.keys(manifest.exports ?? {}))}, not one subpath per public entry with its sources for development and dist otherwise`,
     );
   }
 
-  const sources = shippedSources(kernelDir);
+  const sources = [
+    ...shippedSources(kernelDir),
+    ...shippedSources(devtoolsDir).filter((file) => !isTestSupport(file)),
+  ];
   const effects = sources
     .filter(hasTopLevelEffect)
-    .map(
-      (file) =>
-        `./dist/${path.relative(kernelDir, file).split(path.sep).join('/').replace(/\.ts$/, '.js')}`,
-    )
+    .map((file) => `./dist/${fromSourceRoot(file).replace(/\.ts$/, '.js')}`)
     .sort();
 
   if (
@@ -197,9 +213,9 @@ function kernelPackageProblems(root: PackageManifest): string[] {
 
   const required = [
     ...new Set(
-      sources.flatMap((file) =>
-        runtimeImports(readFileSync(file, 'utf8'), true),
-      ),
+      sources
+        .flatMap((file) => runtimeImports(readFileSync(file, 'utf8'), true))
+        .filter((peer) => peer !== KERNEL_PACKAGE),
     ),
   ].sort();
   const declared = manifest.peerDependencies ?? {};

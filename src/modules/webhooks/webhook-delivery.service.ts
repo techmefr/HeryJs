@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma, WebhookDelivery } from '@prisma/client';
-import { authPrismaClient } from '#technical/public/auth';
-import type { Page, PageQuery } from '#technical/public/http';
+import { authPrismaClient } from '@heryjs/core/auth';
+import type { Page, PageQuery } from '@heryjs/core/http';
 import {
   DELIVERY_STATUS_DEAD,
   DELIVERY_STATUS_PENDING,

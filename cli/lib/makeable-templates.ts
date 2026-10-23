@@ -8,7 +8,7 @@ export interface MakeableContext {
 }
 
 export function mailableFile(ctx: MakeableContext): string {
-  return `import type { Mailable, MailMessage } from '#technical/mail/mail-driver';
+  return `import type { Mailable, MailMessage } from '@heryjs/core/drivers';
 import { mailLayout } from '#modules/mail/mail.layout';
 
 /**
@@ -36,7 +36,7 @@ export class ${ctx.pascalName} implements Mailable {
 }
 
 export function exportableFile(ctx: MakeableContext): string {
-  return `import type { Exportable, ExportRow } from '#technical/export/export-driver';
+  return `import type { Exportable, ExportRow } from '@heryjs/core/drivers';
 
 export class ${ctx.pascalName} implements Exportable {
   readonly filename = '${ctx.kebabName}';
@@ -59,9 +59,9 @@ export class ${ctx.pascalName} implements Exportable {
 export function jobFile(ctx: MakeableContext): string {
   return `import { Processor, WorkerHost } from '@nestjs/bullmq';
 import type { Job } from 'bullmq';
-import { DEFAULT_QUEUE } from '#technical/jobs/jobs.constants';
-import { DEFAULT_JOB_POLICY } from '#technical/jobs/job-policy';
-import type { JobPolicy } from '#technical/jobs/job-policy';
+import { DEFAULT_QUEUE } from '@heryjs/core/jobs';
+import { DEFAULT_JOB_POLICY } from '@heryjs/core/jobs';
+import type { JobPolicy } from '@heryjs/core/jobs';
 
 export const ${ctx.screamingSnakeName}_JOB = '${ctx.kebabName}';
 
@@ -103,7 +103,7 @@ export class ${ctx.pascalName}Processor extends WorkerHost {
  */
 export function listenerFile(ctx: MakeableContext): string {
   return `import { Injectable } from '@nestjs/common';
-import type { EventListener } from '#technical/events/event.types';
+import type { EventListener } from '@heryjs/core/platform';
 
 // Replace with the event this reacts to. The class itself is the subscription
 // key, so renaming or deleting it is a compile error here rather than a
@@ -142,7 +142,7 @@ export { ${ctx.pascalName}Event };
 export function scheduledTaskFile(ctx: MakeableContext): string {
   return `import { Injectable } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { ScheduledTaskStore } from '#technical/scheduler/scheduled-task.store';
+import { ScheduledTaskStore } from '@heryjs/core/jobs';
 
 @Injectable()
 export class ${ctx.pascalName}Task {
@@ -159,8 +159,8 @@ export class ${ctx.pascalName}Task {
 }
 
 export function policyFile(ctx: MakeableContext): string {
-  return `import { adminAbility } from '#technical/capabilities/ability';
-import type { PolicyCheck } from '#technical/capabilities/capability-check';
+  return `import { adminAbility } from '@heryjs/core/capabilities';
+import type { PolicyCheck } from '@heryjs/core/capabilities';
 
 export const can${ctx.pascalName}: PolicyCheck = adminAbility;
 `;
@@ -170,12 +170,12 @@ export function seederFile(ctx: MakeableContext): string {
   const actionName = `${ctx.camelName}.seed`;
 
   return `import { Injectable } from '@nestjs/common';
-import { adminAbility } from '#technical/capabilities/ability';
-import type { PolicyCheck } from '#technical/capabilities/capability-check';
+import { adminAbility } from '@heryjs/core/capabilities';
+import type { PolicyCheck } from '@heryjs/core/capabilities';
 import {
   ExposeAction,
   ExposeField,
-} from '#technical/exposition/exposition.decorators';
+} from '@heryjs/core/platform';
 
 export const canSeed${ctx.pascalName}: PolicyCheck = adminAbility;
 
@@ -209,9 +209,9 @@ export function notificationFile(ctx: MakeableContext): string {
   Notification,
   NotificationRecipient,
 } from '#modules/notifier/notification';
-import type { MailMessage } from '#technical/mail/mail-driver';
-import type { PushMessage } from '#technical/push/push-driver';
-import type { SmsMessage } from '#technical/sms/sms-driver';
+import type { MailMessage } from '@heryjs/core/drivers';
+import type { PushMessage } from '@heryjs/core/drivers';
+import type { SmsMessage } from '@heryjs/core/drivers';
 
 export class ${ctx.pascalName}Notification implements Notification {
   toMail(recipient: NotificationRecipient): MailMessage {
@@ -242,11 +242,11 @@ export class ${ctx.pascalName}Notification implements Notification {
 export function webhookHandlerFile(ctx: MakeableContext): string {
   return `import { Injectable } from '@nestjs/common';
 import type { OnModuleInit } from '@nestjs/common';
-import { registerWebhookHandler } from '#technical/webhooks/webhook-handler';
+import { registerWebhookHandler } from '@heryjs/core/platform';
 import type {
   WebhookEventRecord,
   WebhookHandler,
-} from '#technical/webhooks/webhook-handler';
+} from '@heryjs/core/platform';
 
 export const ${ctx.screamingSnakeName}_WEBHOOK_SOURCE = '${ctx.kebabName}';
 

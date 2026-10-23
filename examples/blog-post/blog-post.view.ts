@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { BlogPost } from '@prisma/client';
-import { withResolvedTranslations } from '#technical/i18n/translatable';
-import { sanitizeRichtextRead } from '#technical/richtext/richtext';
+import { withResolvedTranslations } from '@heryjs/core/i18n';
+import { sanitizeRichtextRead } from '@heryjs/core/resources';
 import { RICHTEXT_FIELDS } from './blog-post.dto';
 
 export const blogPostViewSchema = z.object({

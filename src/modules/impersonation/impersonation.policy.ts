@@ -1,4 +1,4 @@
-import { adminAbility, type PolicyCheck } from '#technical/public/capabilities';
+import { adminAbility, type PolicyCheck } from '@heryjs/core/capabilities';
 
 // Better Auth's own admin() plugin also refuses this server-side (it is the
 // only thing granting the "impersonate" permission to a role) -- this gate

@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
-import { env } from '#technical/public/env';
-import { createTenantScopedPrismaClient } from '#technical/public/testing';
-import type { TenantScopedPrismaClient } from '#technical/public/database';
-import type { SmsDriver, SmsMessage } from '#technical/public/drivers';
-import { runInTenant } from '#technical/public/tenancy';
+import { env } from '@heryjs/core/env';
+import { createTenantScopedPrismaClient } from '@heryjs/core/testing';
+import type { TenantScopedPrismaClient } from '@heryjs/core/database';
+import type { SmsDriver, SmsMessage } from '@heryjs/core/drivers';
+import { runInTenant } from '@heryjs/core/tenancy';
 import { SmsConsentService } from './sms.consent';
 import { SmsDriverRegistry } from './sms-driver.registry';
 import { SmsService } from './sms.service';

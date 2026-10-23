@@ -9,3 +9,8 @@ export {
   isLocalEnvironmentNow,
   parseModuleEnv,
 } from '../config/module-env';
+export {
+  devEnvironmentsOf,
+  isDevEnvironment,
+  sharedDevEnvironmentWarning,
+} from '../config/dev-environments';

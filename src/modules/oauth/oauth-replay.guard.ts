@@ -1,6 +1,6 @@
 import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import IORedis from 'ioredis';
-import { env } from '#technical/public/env';
+import { env } from '@heryjs/core/env';
 
 export const OAUTH_REPLAY_GUARD = Symbol('OAUTH_REPLAY_GUARD');
 

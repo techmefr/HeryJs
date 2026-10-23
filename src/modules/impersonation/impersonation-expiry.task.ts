@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { authPrismaClient } from '#technical/public/auth';
-import { writeAuditLog } from '#technical/public/privacy';
-import { ScheduledTaskStore } from '#technical/public/jobs';
+import { authPrismaClient } from '@heryjs/core/auth';
+import { writeAuditLog } from '@heryjs/core/privacy';
+import { ScheduledTaskStore } from '@heryjs/core/jobs';
 
 @Injectable()
 export class ImpersonationExpiryTask {

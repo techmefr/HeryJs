@@ -1,41 +1,35 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Prisma, Snippet } from '@prisma/client';
-import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
-import { AmbientTransactionStorage } from '#technical/prisma/transaction-context';
-import { CapabilitySubject } from '#technical/capabilities/capabilities.types';
-import { scopeWhereFor } from '#technical/capabilities/scope-where';
-import { env } from '#technical/config/env';
-import { SignalService } from '#technical/signal/signal.service';
-import { SearchEngineRegistry } from '#technical/search/search-engine.registry';
-import { SharingService } from '#technical/sharing/sharing.service';
-import type { GrantShareInput } from '#technical/sharing/sharing.dto';
-import { TenantContextStorage } from '#technical/tenancy/tenant-context';
-import { writeAuditLog } from '#technical/audit/audit-log';
-import { authPrismaClient } from '#technical/auth/better-auth.instance';
-import { HistoryService } from '#technical/history/history.service';
-import { HistoryOperationStorage } from '#technical/history/history-operation';
-import { revertPatchOf } from '#technical/history/snapshot';
-import type {
-  HistoryDiffBody,
-  HistoryListBody,
-} from '#technical/history/history.schemas';
-import type { HistoryEntry } from '#technical/history/history.types';
-import { resolveRelationInstructions } from '#technical/http/relation-resolver';
-import type { PrismaRelationClient } from '#technical/http/relation-resolver';
-import { VersionConflictException } from '#technical/errors/version-conflict.exception';
-import {
-  assertVersionIsCurrent,
-  isLostRaceError,
-} from '#technical/http/record-version';
-import type { ExpectedVersion } from '#technical/http/record-version';
-import { IllegalTransitionException } from '#technical/errors/illegal-transition.exception';
+import { PRISMA_CLIENT } from '@heryjs/core/database';
+import type { TenantScopedPrismaClient } from '@heryjs/core/database';
+import { AmbientTransactionStorage } from '@heryjs/core/database';
+import { CapabilitySubject } from '@heryjs/core/capabilities';
+import { scopeWhereFor } from '@heryjs/core/capabilities';
+import { env } from '@heryjs/core/env';
+import { SignalService } from '@heryjs/core/realtime';
+import { SearchEngineRegistry } from '@heryjs/core/drivers';
+import { SharingService } from '@heryjs/core/resources';
+import type { GrantShareInput } from '@heryjs/core/resources';
+import { TenantContextStorage } from '@heryjs/core/tenancy';
+import { writeAuditLog } from '@heryjs/core/privacy';
+import { authPrismaClient } from '@heryjs/core/auth';
+import { HistoryService } from '@heryjs/core/resources';
+import { HistoryOperationStorage } from '@heryjs/core/resources';
+import { revertPatchOf } from '@heryjs/core/resources';
+import type { HistoryDiffBody, HistoryListBody } from '@heryjs/core/resources';
+import type { HistoryEntry } from '@heryjs/core/resources';
+import { resolveRelationInstructions } from '@heryjs/core/http';
+import type { PrismaRelationClient } from '@heryjs/core/http';
+import { VersionConflictException } from '@heryjs/core/errors';
+import { assertVersionIsCurrent, isLostRaceError } from '@heryjs/core/http';
+import type { ExpectedVersion } from '@heryjs/core/http';
+import { IllegalTransitionException } from '@heryjs/core/errors';
 import {
   assertTransitionAllowed,
   recordTransition,
-} from '#technical/workflow/workflow';
-import type { TransitionRule } from '#technical/workflow/workflow';
-import type { RelationInstruction } from '#technical/http/list-query';
+} from '@heryjs/core/resources';
+import type { TransitionRule } from '@heryjs/core/resources';
+import type { RelationInstruction } from '@heryjs/core/http';
 import { CreateSnippetInput, UpdateSnippetInput } from './snippet.dto';
 import { SNIPPET_PRESETS } from './snippet.presets';
 

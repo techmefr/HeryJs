@@ -1,5 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
-import { DomainException } from '#technical/public/errors';
+import { DomainException } from '@heryjs/core/errors';
 
 export class StoragePresignUnsupportedException extends DomainException {
   constructor(driverName: string) {

@@ -3,8 +3,8 @@ import { Prisma } from '@prisma/client';
 import {
   PRISMA_CLIENT,
   type TenantScopedPrismaClient,
-} from '#technical/public/database';
-import { runInTenant } from '#technical/public/tenancy';
+} from '@heryjs/core/database';
+import { runInTenant } from '@heryjs/core/tenancy';
 import { ScimException } from './scim.exception';
 import { SCIM_DEACTIVATION_REASON } from './scim.types';
 import type {

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { AUTH_MAILER, type AuthMailer } from '#technical/public/auth';
-import type { Mailable } from '#technical/public/drivers';
+import { AUTH_MAILER, type AuthMailer } from '@heryjs/core/auth';
+import type { Mailable } from '@heryjs/core/drivers';
 import { MailService } from './mail.service';
 
 /**

@@ -28,6 +28,9 @@ ENV PORT=3000
 # cors.config.ts are TypeScript read at boot through ts-node, and pruning
 # either one away stops the process before it listens.
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
+# node_modules/@heryjs/core links to the workspace package, and the build
+# imports the kernel from its dist.
+COPY --from=build --chown=node:node /app/packages/core ./packages/core
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --from=build --chown=node:node /app/package.json /app/tsconfig.json /app/hery.config.ts /app/cors.config.ts ./
 USER node

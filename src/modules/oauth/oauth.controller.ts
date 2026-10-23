@@ -14,9 +14,9 @@ import {
   CapabilitiesGuard,
   Capability,
   PublicRoute,
-} from '#technical/public/capabilities';
-import { ok, RateLimit, UnpaginatedRoute } from '#technical/public/http';
-import { type RequestWithUser, SessionGuard } from '#technical/public/auth';
+} from '@heryjs/core/capabilities';
+import { ok, RateLimit, UnpaginatedRoute } from '@heryjs/core/http';
+import { type RequestWithUser, SessionGuard } from '@heryjs/core/auth';
 import { OAuthAccountService } from './oauth-account.service';
 import { OAUTH_LOGIN_HANDLER } from './oauth-login.handler';
 import type { OAuthLoginHandler } from './oauth-login.handler';

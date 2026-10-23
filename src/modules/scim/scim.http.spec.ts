@@ -3,7 +3,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
-import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { authPrismaClient } from '@heryjs/core/auth';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 import type { TestUser } from '#devtools/testing/register-and-login';
 import {

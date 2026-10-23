@@ -1,9 +1,9 @@
-import { ChangeFeedHub } from '#technical/public/realtime';
+import { ChangeFeedHub } from '@heryjs/core/realtime';
 import {
   ChangeFeedRegistry,
   InMemoryChangeFeedBackend,
-} from '#technical/public/testing';
-import type { AuthenticatedUser, AuthProvider } from '#technical/public/auth';
+} from '@heryjs/core/testing';
+import type { AuthenticatedUser, AuthProvider } from '@heryjs/core/auth';
 import { ChangeFeedGateway } from './change-feed.gateway';
 import type { LiveSocket } from './live-auth.guard';
 

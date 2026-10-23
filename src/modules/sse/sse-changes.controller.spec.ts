@@ -1,18 +1,15 @@
 import { EventEmitter } from 'node:events';
 import type { Request, Response } from 'express';
-import {
-  ChangeFeedHub,
-  ChangeFeedTokenService,
-} from '#technical/public/realtime';
+import { ChangeFeedHub, ChangeFeedTokenService } from '@heryjs/core/realtime';
 import {
   ChangeFeedRegistry,
   type ChangeFeedSubscriber,
   InMemoryChangeFeedBackend,
-} from '#technical/public/testing';
+} from '@heryjs/core/testing';
 import {
   CapabilityForbiddenException,
   InvalidSessionException,
-} from '#technical/public/errors';
+} from '@heryjs/core/errors';
 import { SseChangesController } from './sse-changes.controller';
 
 function fakeResponse() {

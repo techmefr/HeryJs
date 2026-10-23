@@ -1,4 +1,4 @@
-import { registerCatalogue } from '#technical/public/i18n';
+import { registerCatalogue } from '@heryjs/core/i18n';
 
 export const NOTIFIER_CATALOGUE = registerCatalogue({
   'notifications.digest.subject.one': {

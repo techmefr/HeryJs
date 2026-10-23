@@ -8,23 +8,23 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { type RequestWithUser, SessionGuard } from '#technical/public/auth';
+import { type RequestWithUser, SessionGuard } from '@heryjs/core/auth';
 import {
   CapabilitiesGuard,
   Capability,
   PublicRoute,
-} from '#technical/public/capabilities';
+} from '@heryjs/core/capabilities';
 import {
   ChangeFeedHub,
   type ChangeFeedMessage,
   ChangeFeedTokenService,
   subscriberOf,
-} from '#technical/public/realtime';
+} from '@heryjs/core/realtime';
 import {
   CapabilityForbiddenException,
   InvalidSessionException,
-} from '#technical/public/errors';
-import { ok, RateLimit, UnpaginatedRoute } from '#technical/public/http';
+} from '@heryjs/core/errors';
+import { ok, RateLimit, UnpaginatedRoute } from '@heryjs/core/http';
 import { canIssueSseToken } from './sse.policy';
 
 const KEEPALIVE_MS = 25000;

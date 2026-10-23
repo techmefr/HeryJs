@@ -9,7 +9,7 @@ import {
 } from 'node:fs/promises';
 import * as path from 'node:path';
 import { Injectable } from '@nestjs/common';
-import { env } from '#technical/public/env';
+import { env } from '@heryjs/core/env';
 import { InvalidStorageKeyException } from './invalid-storage-key.exception';
 import { StorageBodyTooLargeException } from './storage-body-too-large.exception';
 import { StoragePresignUnsupportedException } from './storage-presign-unsupported.exception';
@@ -19,7 +19,7 @@ import type {
   StoredObject,
   StoredObjectStat,
   StoredObjectSummary,
-} from '#technical/public/drivers';
+} from '@heryjs/core/drivers';
 
 const ROOT = path.resolve(process.cwd(), 'storage');
 const DEFAULT_TTL_SECONDS = 900;

@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
-import { env } from '#technical/public/env';
-import { createTenantScopedPrismaClient } from '#technical/public/testing';
-import type { TenantScopedPrismaClient } from '#technical/public/database';
-import { runInTenant } from '#technical/public/tenancy';
-import type { BillingEvent } from '#technical/public/drivers';
+import { env } from '@heryjs/core/env';
+import { createTenantScopedPrismaClient } from '@heryjs/core/testing';
+import type { TenantScopedPrismaClient } from '@heryjs/core/database';
+import { runInTenant } from '@heryjs/core/tenancy';
+import type { BillingEvent } from '@heryjs/core/drivers';
 import { BillingSubscriptionMirror } from './billing-subscription.mirror';
 import { BillingService } from './billing.service';
 import { QuotaExceededException } from './quota-exceeded.exception';
