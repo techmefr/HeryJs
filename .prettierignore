@@ -1,3 +1,4 @@
 node_modules
 dist
 packages/admin-astro/src/runtime
+packages/core/src

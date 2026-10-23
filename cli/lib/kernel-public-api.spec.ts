@@ -1,17 +1,27 @@
 import { readdirSync } from 'node:fs';
 import * as path from 'node:path';
 import * as ts from 'typescript';
-import { KERNEL_PUBLIC_DIR, KERNEL_PUBLIC_ENTRIES } from './kernel-public-api';
+import {
+  DEVTOOLS_PUBLIC_ENTRIES,
+  KERNEL_PUBLIC_DIR,
+  KERNEL_PUBLIC_ENTRIES,
+  kernelEntryFile,
+} from './kernel-public-api';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const PUBLIC_DIR = path.join(REPO_ROOT, KERNEL_PUBLIC_DIR);
 
+const ENTRIES = [
+  ...KERNEL_PUBLIC_ENTRIES,
+  ...Object.keys(DEVTOOLS_PUBLIC_ENTRIES),
+];
+
 function entryFile(entry: string): string {
-  return path.join(PUBLIC_DIR, `${entry}.ts`);
+  return path.join(REPO_ROOT, kernelEntryFile(entry));
 }
 
 function exportedNames(): Record<string, string[]> {
-  const program = ts.createProgram(KERNEL_PUBLIC_ENTRIES.map(entryFile), {
+  const program = ts.createProgram(ENTRIES.map(entryFile), {
     module: ts.ModuleKind.NodeNext,
     moduleResolution: ts.ModuleResolutionKind.NodeNext,
     experimentalDecorators: true,
@@ -21,7 +31,7 @@ function exportedNames(): Record<string, string[]> {
   const checker = program.getTypeChecker();
 
   return Object.fromEntries(
-    KERNEL_PUBLIC_ENTRIES.map((entry) => {
+    ENTRIES.map((entry) => {
       const source = program.getSourceFile(entryFile(entry));
       const moduleSymbol =
         source === undefined ? undefined : checker.getSymbolAtLocation(source);

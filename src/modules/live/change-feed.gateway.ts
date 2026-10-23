@@ -7,12 +7,12 @@ import {
   SubscribeMessage,
   WebSocketGateway,
 } from '@nestjs/websockets';
-import { AUTH_PROVIDER, type AuthProvider } from '#technical/public/auth';
+import { AUTH_PROVIDER, type AuthProvider } from '@heryjs/core/auth';
 import {
   ChangeFeedHub,
   type ChangeFeedSession,
   subscriberOf,
-} from '#technical/public/realtime';
+} from '@heryjs/core/realtime';
 import { authenticateLiveSocket, LiveAuthGuard } from './live-auth.guard';
 import type { LiveSocket } from './live-auth.guard';
 

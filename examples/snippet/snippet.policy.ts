@@ -1,16 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { CapabilitiesService } from '#technical/capabilities/capabilities.service';
+import { CapabilitiesService } from '@heryjs/core/capabilities';
 import {
   resolveCapability,
   resolveCollectionCapability,
-} from '#technical/capabilities/resolve-capability';
-import type { PolicyCheck } from '#technical/capabilities/capability-check';
+} from '@heryjs/core/capabilities';
+import type { PolicyCheck } from '@heryjs/core/capabilities';
 import {
   CapabilityDecision,
   CapabilitySubject,
-} from '#technical/capabilities/capabilities.types';
+} from '@heryjs/core/capabilities';
 import { SNIPPET_PRESETS, SNIPPET_TRANSITION_PRESETS } from './snippet.presets';
-import type { RecordShare } from '#technical/capabilities/capabilities.types';
+import type { RecordShare } from '@heryjs/core/capabilities';
 
 export interface SnippetRecordLike {
   ownerId: string;

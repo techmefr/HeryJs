@@ -22,83 +22,119 @@
     "node": ">=24.20"
   },
   "sideEffects": [
-    "./dist/monitoring/metrics.registry.js"
+    "./dist/technical/monitoring/metrics.registry.js"
   ],
   "exports": {
     "./auth": {
-      "types": "./dist/public/auth.d.ts",
-      "default": "./dist/public/auth.js"
+      "development": "./src/technical/public/auth.ts",
+      "types": "./dist/technical/public/auth.d.ts",
+      "default": "./dist/technical/public/auth.js"
     },
     "./capabilities": {
-      "types": "./dist/public/capabilities.d.ts",
-      "default": "./dist/public/capabilities.js"
+      "development": "./src/technical/public/capabilities.ts",
+      "types": "./dist/technical/public/capabilities.d.ts",
+      "default": "./dist/technical/public/capabilities.js"
     },
     "./config": {
-      "types": "./dist/public/config.d.ts",
-      "default": "./dist/public/config.js"
+      "development": "./src/technical/public/config.ts",
+      "types": "./dist/technical/public/config.d.ts",
+      "default": "./dist/technical/public/config.js"
     },
     "./database": {
-      "types": "./dist/public/database.d.ts",
-      "default": "./dist/public/database.js"
+      "development": "./src/technical/public/database.ts",
+      "types": "./dist/technical/public/database.d.ts",
+      "default": "./dist/technical/public/database.js"
     },
     "./drivers": {
-      "types": "./dist/public/drivers.d.ts",
-      "default": "./dist/public/drivers.js"
+      "development": "./src/technical/public/drivers.ts",
+      "types": "./dist/technical/public/drivers.d.ts",
+      "default": "./dist/technical/public/drivers.js"
     },
     "./env": {
-      "types": "./dist/public/env.d.ts",
-      "default": "./dist/public/env.js"
+      "development": "./src/technical/public/env.ts",
+      "types": "./dist/technical/public/env.d.ts",
+      "default": "./dist/technical/public/env.js"
     },
     "./errors": {
-      "types": "./dist/public/errors.d.ts",
-      "default": "./dist/public/errors.js"
+      "development": "./src/technical/public/errors.ts",
+      "types": "./dist/technical/public/errors.d.ts",
+      "default": "./dist/technical/public/errors.js"
     },
     "./http": {
-      "types": "./dist/public/http.d.ts",
-      "default": "./dist/public/http.js"
+      "development": "./src/technical/public/http.ts",
+      "types": "./dist/technical/public/http.d.ts",
+      "default": "./dist/technical/public/http.js"
     },
     "./i18n": {
-      "types": "./dist/public/i18n.d.ts",
-      "default": "./dist/public/i18n.js"
+      "development": "./src/technical/public/i18n.ts",
+      "types": "./dist/technical/public/i18n.d.ts",
+      "default": "./dist/technical/public/i18n.js"
     },
     "./jobs": {
-      "types": "./dist/public/jobs.d.ts",
-      "default": "./dist/public/jobs.js"
+      "development": "./src/technical/public/jobs.ts",
+      "types": "./dist/technical/public/jobs.d.ts",
+      "default": "./dist/technical/public/jobs.js"
+    },
+    "./load-env": {
+      "development": "./src/technical/public/load-env.ts",
+      "types": "./dist/technical/public/load-env.d.ts",
+      "default": "./dist/technical/public/load-env.js"
     },
     "./notifications": {
-      "types": "./dist/public/notifications.d.ts",
-      "default": "./dist/public/notifications.js"
+      "development": "./src/technical/public/notifications.ts",
+      "types": "./dist/technical/public/notifications.d.ts",
+      "default": "./dist/technical/public/notifications.js"
     },
     "./observability": {
-      "types": "./dist/public/observability.d.ts",
-      "default": "./dist/public/observability.js"
+      "development": "./src/technical/public/observability.ts",
+      "types": "./dist/technical/public/observability.d.ts",
+      "default": "./dist/technical/public/observability.js"
     },
     "./platform": {
-      "types": "./dist/public/platform.d.ts",
-      "default": "./dist/public/platform.js"
+      "development": "./src/technical/public/platform.ts",
+      "types": "./dist/technical/public/platform.d.ts",
+      "default": "./dist/technical/public/platform.js"
     },
     "./privacy": {
-      "types": "./dist/public/privacy.d.ts",
-      "default": "./dist/public/privacy.js"
+      "development": "./src/technical/public/privacy.ts",
+      "types": "./dist/technical/public/privacy.d.ts",
+      "default": "./dist/technical/public/privacy.js"
     },
     "./realtime": {
-      "types": "./dist/public/realtime.d.ts",
-      "default": "./dist/public/realtime.js"
+      "development": "./src/technical/public/realtime.ts",
+      "types": "./dist/technical/public/realtime.d.ts",
+      "default": "./dist/technical/public/realtime.js"
+    },
+    "./resources": {
+      "development": "./src/technical/public/resources.ts",
+      "types": "./dist/technical/public/resources.d.ts",
+      "default": "./dist/technical/public/resources.js"
     },
     "./tenancy": {
-      "types": "./dist/public/tenancy.d.ts",
-      "default": "./dist/public/tenancy.js"
+      "development": "./src/technical/public/tenancy.ts",
+      "types": "./dist/technical/public/tenancy.d.ts",
+      "default": "./dist/technical/public/tenancy.js"
     },
     "./testing": {
-      "types": "./dist/public/testing.d.ts",
-      "default": "./dist/public/testing.js"
+      "development": "./src/technical/public/testing.ts",
+      "types": "./dist/technical/public/testing.d.ts",
+      "default": "./dist/technical/public/testing.js"
+    },
+    "./devtools": {
+      "development": "./src/devtools/public.ts",
+      "types": "./dist/devtools/public.d.ts",
+      "default": "./dist/devtools/public.js"
     },
     "./package.json": "./package.json"
   },
   "imports": {
     "#technical/*": {
-      "types": "./dist/*.d.ts",
-      "default": "./dist/*.js"
+      "types": "./dist/technical/*.d.ts",
+      "default": "./dist/technical/*.js"
+    },
+    "#devtools/*": {
+      "types": "./dist/devtools/*.d.ts",
+      "default": "./dist/devtools/*.js"
     }
   },
   "files": [

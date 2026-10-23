@@ -9,9 +9,9 @@ import {
   RateLimit,
   UnpaginatedRoute,
   ZodValidationPipe,
-} from '#technical/public/http';
-import { Capability } from '#technical/public/capabilities';
-import { TenantContextStorage } from '#technical/public/tenancy';
+} from '@heryjs/core/http';
+import { Capability } from '@heryjs/core/capabilities';
+import { TenantContextStorage } from '@heryjs/core/tenancy';
 import { MailDriverRegistry } from './mail-driver.registry';
 import { canReadMailLog, canSendTestMail } from './mail.policy';
 import { MailService } from './mail.service';

@@ -1,13 +1,13 @@
 import { Test } from '@nestjs/testing';
-import { CacheService } from '#technical/public/platform';
-import { TenantContextStorage } from '#technical/public/tenancy';
+import { CacheService } from '@heryjs/core/platform';
+import { TenantContextStorage } from '@heryjs/core/tenancy';
 import type {
   PresignedUpload,
   StorageDriver,
   StoredObject,
   StoredObjectStat,
   StoredObjectSummary,
-} from '#technical/public/drivers';
+} from '@heryjs/core/drivers';
 import { StorageDriverRegistry } from './storage-driver.registry';
 import { StorageUploadIntentMismatchException } from './storage-upload-intent-mismatch.exception';
 import { StorageUploadIntentNotFoundException } from './storage-upload-intent-not-found.exception';

@@ -4,16 +4,13 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
-import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { authPrismaClient } from '@heryjs/core/auth';
 import { databaseOwnerClient } from '#devtools/testing/database-owner-client';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 import { waitFor } from '#devtools/testing/wait-for';
-import type { PolicyCheck } from '#technical/capabilities/capability-check';
-import {
-  ExposeAction,
-  ExposeField,
-} from '#technical/exposition/exposition.decorators';
-import { TenantContextStorage } from '#technical/tenancy/tenant-context';
+import type { PolicyCheck } from '@heryjs/core/capabilities';
+import { ExposeAction, ExposeField } from '@heryjs/core/platform';
+import { TenantContextStorage } from '@heryjs/core/tenancy';
 
 const allowEveryone: PolicyCheck = () => ({ allowed: true, scope: 'all' });
 const allowNoOne: PolicyCheck = () => ({ allowed: false });
@@ -54,8 +51,8 @@ class WebhookActionFixture {
 import {
   clearWebhookHandlers,
   registerWebhookHandler,
-} from '#technical/webhooks/webhook-handler';
-import type { WebhookEventRecord } from '#technical/webhooks/webhook-handler';
+} from '@heryjs/core/platform';
+import type { WebhookEventRecord } from '@heryjs/core/platform';
 
 function sign(secret: string, timestamp: string, body: string): string {
   return createHmac('sha256', secret)

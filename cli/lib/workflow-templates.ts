@@ -145,9 +145,9 @@ export function workflowServiceImports(ctx: ResourceContext): string {
     return '';
   }
 
-  return `import { IllegalTransitionException } from '#technical/errors/illegal-transition.exception';
-${ctx.versioned ? '' : `import { isLostRaceError } from '#technical/http/record-version';\n`}import { assertTransitionAllowed, recordTransition } from '#technical/workflow/workflow';
-import type { TransitionRule } from '#technical/workflow/workflow';
+  return `import { IllegalTransitionException } from '@heryjs/core/errors';
+${ctx.versioned ? '' : `import { isLostRaceError } from '@heryjs/core/http';\n`}import { assertTransitionAllowed, recordTransition } from '@heryjs/core/resources';
+import type { TransitionRule } from '@heryjs/core/resources';
 `;
 }
 

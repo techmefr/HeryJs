@@ -1,9 +1,6 @@
 import type { ExecutionContext } from '@nestjs/common';
-import type {
-  AuthenticatedUser,
-  RequestWithUser,
-} from '#technical/public/auth';
-import { MissingSessionException } from '#technical/public/errors';
+import type { AuthenticatedUser, RequestWithUser } from '@heryjs/core/auth';
+import { MissingSessionException } from '@heryjs/core/errors';
 import { TwoFactorGuard } from './two-factor.guard';
 import { TwoFactorRequiredException } from './two-factor-required.exception';
 import type { TwoFactorService } from './two-factor.service';

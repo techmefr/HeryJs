@@ -1,4 +1,4 @@
-import type { Mailable, MailMessage } from '#technical/public/drivers';
+import type { Mailable, MailMessage } from '@heryjs/core/drivers';
 import { mailLayout } from './mail.layout';
 
 /**

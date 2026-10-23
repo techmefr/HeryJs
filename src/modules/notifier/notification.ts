@@ -2,7 +2,7 @@ import type {
   MailMessage,
   PushMessage,
   SmsMessage,
-} from '#technical/public/drivers';
+} from '@heryjs/core/drivers';
 
 /**
  * Whatever the notifier needs to reach someone. No field is required because

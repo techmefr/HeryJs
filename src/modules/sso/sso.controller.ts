@@ -9,12 +9,12 @@ import {
   Res,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { PublicRoute } from '#technical/public/capabilities';
+import { PublicRoute } from '@heryjs/core/capabilities';
 import {
   RateLimit,
   UnpaginatedRoute,
   ZodValidationPipe,
-} from '#technical/public/http';
+} from '@heryjs/core/http';
 import { SSO_LOGIN_HANDLER } from './sso-login.handler';
 import type { SsoLoginHandler } from './sso-login.handler';
 import { SsoLoginService } from './sso-login.service';

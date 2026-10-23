@@ -1,4 +1,4 @@
-import type { PermissionPreset } from '#technical/capabilities/capabilities.types';
+import type { PermissionPreset } from '@heryjs/core/capabilities';
 
 /**
  * What the blueprint's permissions became. The blueprint itself is never read

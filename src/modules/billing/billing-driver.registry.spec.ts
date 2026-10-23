@@ -1,7 +1,7 @@
 import type { ModuleRef } from '@nestjs/core';
-import type { HeryConfig } from '#technical/public/config';
-import { type BillingDriver, DriverResolver } from '#technical/public/drivers';
-import { driverToken } from '#technical/public/testing';
+import type { HeryConfig } from '@heryjs/core/config';
+import { type BillingDriver, DriverResolver } from '@heryjs/core/drivers';
+import { driverToken } from '@heryjs/core/testing';
 import { LogBillingDriver } from './log-billing.driver';
 import { BillingDriverRegistry } from './billing-driver.registry';
 

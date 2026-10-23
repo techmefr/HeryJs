@@ -26,6 +26,9 @@ importers:
       '@bull-board/express':
         specifier: ^9.8.0
         version: 9.8.0(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0))
+      '@heryjs/core':
+        specifier: workspace:*
+        version: link:packages/core
       '@modelcontextprotocol/sdk':
         specifier: ^1.30.0
         version: 1.30.0(zod@4.5.4)

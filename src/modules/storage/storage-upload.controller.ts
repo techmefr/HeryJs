@@ -6,9 +6,9 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { SessionGuard } from '#technical/public/auth';
-import { CapabilitiesGuard, Capability } from '#technical/public/capabilities';
-import { ok, RateLimit } from '#technical/public/http';
+import { SessionGuard } from '@heryjs/core/auth';
+import { CapabilitiesGuard, Capability } from '@heryjs/core/capabilities';
+import { ok, RateLimit } from '@heryjs/core/http';
 import { storageEnv } from './storage.env';
 import { canUploadFiles } from './storage-upload.policy';
 import { StorageUploadRejectedException } from './storage-upload-rejected.exception';

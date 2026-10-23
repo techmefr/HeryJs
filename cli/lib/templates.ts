@@ -67,7 +67,7 @@ function ownedByTeam(ctx: ResourceContext): boolean {
 }
 
 export function presetsFile(ctx: ResourceContext): string {
-  return `import type { PermissionPreset } from '#technical/capabilities/capabilities.types';
+  return `import type { PermissionPreset } from '@heryjs/core/capabilities';
 
 /**
  * What the blueprint's permissions became. The blueprint itself is never read
@@ -133,8 +133,8 @@ function richtextFieldsLiteral(ctx: ResourceContext): string {
 
 function slugServiceImports(ctx: ResourceContext): string {
   return slugFields(ctx).length > 0
-    ? `import { SLUG_LOOKUP_LIMIT, resolveSlugs, withSlugRetry } from '#technical/slug/slug';
-import type { SlugDelegate, SlugFieldSpec } from '#technical/slug/slug';
+    ? `import { SLUG_LOOKUP_LIMIT, resolveSlugs, withSlugRetry } from '@heryjs/core/resources';
+import type { SlugDelegate, SlugFieldSpec } from '@heryjs/core/resources';
 `
     : '';
 }
@@ -230,7 +230,7 @@ export function dtoFile(ctx: ResourceContext): string {
   const hasRelations = ctx.relations.length > 0;
 
   return `import { z } from 'zod';
-import { MAX_BATCH_ENTRIES } from '#technical/http/batch';${translatableFields(ctx).length > 0 ? `\nimport { translatableInputSchema } from '#technical/i18n/translatable';` : ''}${richtextFields(ctx).length > 0 ? `\nimport type { RichtextFieldSpec } from '#technical/richtext/richtext';` : ''}${ctx.fields.some((field) => field.type === 'file') ? `\nimport { isCurrentTenantFileKey } from '#technical/tenancy/tenant-file-key';` : ''}
+import { MAX_BATCH_ENTRIES } from '@heryjs/core/http';${translatableFields(ctx).length > 0 ? `\nimport { translatableInputSchema } from '@heryjs/core/i18n';` : ''}${richtextFields(ctx).length > 0 ? `\nimport type { RichtextFieldSpec } from '@heryjs/core/resources';` : ''}${ctx.fields.some((field) => field.type === 'file') ? `\nimport { isCurrentTenantFileKey } from '@heryjs/core/tenancy';` : ''}
 ${
   richtextFields(ctx).length > 0
     ? `
@@ -449,20 +449,20 @@ function resolvedCapabilityKeysLiteral(
 
 export function policyFile(ctx: ResourceContext): string {
   return `import { Injectable } from '@nestjs/common';
-import { CapabilitiesService } from '#technical/capabilities/capabilities.service';
+import { CapabilitiesService } from '@heryjs/core/capabilities';
 import {
   resolveCapability,
   resolveCollectionCapability,
-} from '#technical/capabilities/resolve-capability';
-import type { PolicyCheck } from '#technical/capabilities/capability-check';
+} from '@heryjs/core/capabilities';
+import type { PolicyCheck } from '@heryjs/core/capabilities';
 import {
   CapabilityDecision,
   CapabilitySubject,
-} from '#technical/capabilities/capabilities.types';
+} from '@heryjs/core/capabilities';
 import { ${ctx.screamingSnakeName}_PRESETS${ctx.workflow ? `, ${ctx.screamingSnakeName}_TRANSITION_PRESETS` : ''} } from './${ctx.kebabName}.presets';${
     ctx.sharing
       ? `
-import type { RecordShare } from '#technical/capabilities/capabilities.types';`
+import type { RecordShare } from '@heryjs/core/capabilities';`
       : ''
   }
 
@@ -588,10 +588,10 @@ export class ${ctx.pascalName}Policy {
 
 export function recordLoaderFile(ctx: ResourceContext): string {
   return `import { Inject, Injectable } from '@nestjs/common';
-import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
-import type { RecordLoader } from '#technical/capabilities/capability-check';
-${ctx.sharing ? `import { SharingService } from '#technical/sharing/sharing.service';\n` : ''}import type { ${ctx.pascalName}RecordLike } from './${ctx.kebabName}.policy';
+import { PRISMA_CLIENT } from '@heryjs/core/database';
+import type { TenantScopedPrismaClient } from '@heryjs/core/database';
+import type { RecordLoader } from '@heryjs/core/capabilities';
+${ctx.sharing ? `import { SharingService } from '@heryjs/core/resources';\n` : ''}import type { ${ctx.pascalName}RecordLike } from './${ctx.kebabName}.policy';
 
 export const ${ctx.screamingSnakeName}_RECORD_LOADER = Symbol(
   '${ctx.screamingSnakeName}_RECORD_LOADER',
@@ -667,35 +667,35 @@ export function serviceFile(ctx: ResourceContext): string {
 
   return `import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Prisma, ${ctx.modelPascalName} } from '@prisma/client';
-import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
-import { AmbientTransactionStorage } from '#technical/prisma/transaction-context';
-import { CapabilitySubject } from '#technical/capabilities/capabilities.types';
-import { scopeWhereFor } from '#technical/capabilities/scope-where';
-import { env } from '#technical/config/env';${ownedByTeam(ctx) ? `\nimport { NoCurrentTeamException } from '#technical/errors/no-current-team.exception';` : ''}
-import { SignalService } from '#technical/signal/signal.service';
-import { SearchEngineRegistry } from '#technical/search/search-engine.registry';${ctx.sharing ? `\nimport { SharingService } from '#technical/sharing/sharing.service';\nimport type { GrantShareInput } from '#technical/sharing/sharing.dto';` : ''}${vectorServiceImports(ctx)}
-import { TenantContextStorage } from '#technical/tenancy/tenant-context';
-import { writeAuditLog } from '#technical/audit/audit-log';
-import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { PRISMA_CLIENT } from '@heryjs/core/database';
+import type { TenantScopedPrismaClient } from '@heryjs/core/database';
+import { AmbientTransactionStorage } from '@heryjs/core/database';
+import { CapabilitySubject } from '@heryjs/core/capabilities';
+import { scopeWhereFor } from '@heryjs/core/capabilities';
+import { env } from '@heryjs/core/env';${ownedByTeam(ctx) ? `\nimport { NoCurrentTeamException } from '@heryjs/core/errors';` : ''}
+import { SignalService } from '@heryjs/core/realtime';
+import { SearchEngineRegistry } from '@heryjs/core/drivers';${ctx.sharing ? `\nimport { SharingService } from '@heryjs/core/resources';\nimport type { GrantShareInput } from '@heryjs/core/resources';` : ''}${vectorServiceImports(ctx)}
+import { TenantContextStorage } from '@heryjs/core/tenancy';
+import { writeAuditLog } from '@heryjs/core/privacy';
+import { authPrismaClient } from '@heryjs/core/auth';
 ${historyServiceImports(ctx)}${
     hasTranslatable
       ? `import {
   normalizeTranslatableWrite,
   searchDocumentFor,
-} from '#technical/i18n/translatable';
-import type { TranslatableFieldSpec } from '#technical/i18n/translatable';
+} from '@heryjs/core/i18n';
+import type { TranslatableFieldSpec } from '@heryjs/core/i18n';
 import {
   hasTranslatableSort,
   resolveTranslatableFilters,
   sortByResolvedTranslations,
-} from '#technical/i18n/translatable-query';
-import type { TranslatableRow } from '#technical/i18n/translatable-query';
+} from '@heryjs/core/i18n';
+import type { TranslatableRow } from '@heryjs/core/i18n';
 `
       : ''
-  }${richtextFields(ctx).length > 0 ? `import { sanitizeRichtextWrite } from '#technical/richtext/richtext';\n` : ''}${slugServiceImports(ctx)}import { resolveRelationInstructions } from '#technical/http/relation-resolver';
-import type { PrismaRelationClient } from '#technical/http/relation-resolver';
-${ctx.versioned ? `import { VersionConflictException } from '#technical/errors/version-conflict.exception';\nimport { assertVersionIsCurrent, isLostRaceError } from '#technical/http/record-version';\nimport type { ExpectedVersion } from '#technical/http/record-version';\n` : ''}${workflowServiceImports(ctx)}import type { RelationInstruction${childIncludes.length > 0 ? ', ParsedListQuery' : ''} } from '#technical/http/list-query';${ctx.relations.length > 0 ? `\nimport { applyRelationMutation } from '#technical/http/relation-mutations';\nimport type { PivotDelegate, RelatedDelegate } from '#technical/http/relation-mutations';\nimport { MAX_BATCH_ENTRIES } from '#technical/http/batch';` : ''}
+  }${richtextFields(ctx).length > 0 ? `import { sanitizeRichtextWrite } from '@heryjs/core/resources';\n` : ''}${slugServiceImports(ctx)}import { resolveRelationInstructions } from '@heryjs/core/http';
+import type { PrismaRelationClient } from '@heryjs/core/http';
+${ctx.versioned ? `import { VersionConflictException } from '@heryjs/core/errors';\nimport { assertVersionIsCurrent, isLostRaceError } from '@heryjs/core/http';\nimport type { ExpectedVersion } from '@heryjs/core/http';\n` : ''}${workflowServiceImports(ctx)}import type { RelationInstruction${childIncludes.length > 0 ? ', ParsedListQuery' : ''} } from '@heryjs/core/http';${ctx.relations.length > 0 ? `\nimport { applyRelationMutation } from '@heryjs/core/http';\nimport type { PivotDelegate, RelatedDelegate } from '@heryjs/core/http';\nimport { MAX_BATCH_ENTRIES } from '@heryjs/core/http';` : ''}
 import {
   Create${ctx.pascalName}Input,${ctx.relations.length > 0 ? `\n  RelationMutationInput,` : ''}
   Update${ctx.pascalName}Input,
@@ -1505,31 +1505,31 @@ export function controllerFile(ctx: ResourceContext): string {
   return `import { Body, Controller, ${ctx.sharing ? 'Delete, ' : ''}Get, ${ctx.versioned ? 'Headers, ' : ''}HttpCode, Inject, ${ctx.sharing ? 'Param, ' : ''}Post, Req, UseGuards } from '@nestjs/common';
 import type { ${ctx.modelPascalName} } from '@prisma/client';
 import { z } from 'zod';
-import { SessionGuard } from '#technical/auth/session.guard';
-import type { RequestWithUser } from '#technical/auth/session.guard';
-import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
-import { subjectOf } from '#technical/capabilities/subject';
+import { SessionGuard } from '@heryjs/core/auth';
+import type { RequestWithUser } from '@heryjs/core/auth';
+import { CapabilitiesGuard } from '@heryjs/core/capabilities';
+import { subjectOf } from '@heryjs/core/capabilities';
 import {
   Capability,${loadsRecords ? '\n  LoadRecordWith,' : ''}
-} from '#technical/capabilities/capability.decorator';
-import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
-import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
-${ctx.sharing ? `import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';\nimport { grantShareSchema } from '#technical/sharing/sharing.dto';\nimport type { GrantShareInput } from '#technical/sharing/sharing.dto';\n` : ''}${ctx.softDeletes ? `import { AlreadyRestoredException } from '#technical/errors/already-restored.exception';\n` : `import { SoftDeletesNotOfferedException } from '#technical/errors/invalid-query.exception';\n`}import { resolveDomainError } from '#technical/errors/domain-exception.filter';
-import type { ResolvedError } from '#technical/errors/domain-exception.filter';
-import { executeBatch } from '#technical/http/batch-execution';
-import type { BatchEntry } from '#technical/http/batch-execution';
-import { ok } from '#technical/http/envelope';
-import { CacheableRead } from '#technical/http/etag.decorator';${ctx.versioned ? `\nimport { ifMatchVersionOf, resolveExpectedVersion } from '#technical/http/record-version';` : ''}
+} from '@heryjs/core/capabilities';
+import { CapabilityForbiddenException } from '@heryjs/core/errors';
+import { RecordNotFoundException } from '@heryjs/core/errors';
+${ctx.sharing ? `import { RateLimit } from '@heryjs/core/http';\nimport { grantShareSchema } from '@heryjs/core/resources';\nimport type { GrantShareInput } from '@heryjs/core/resources';\n` : ''}${ctx.softDeletes ? `import { AlreadyRestoredException } from '@heryjs/core/errors';\n` : `import { SoftDeletesNotOfferedException } from '@heryjs/core/errors';\n`}import { resolveDomainError } from '@heryjs/core/errors';
+import type { ResolvedError } from '@heryjs/core/errors';
+import { executeBatch } from '@heryjs/core/http';
+import type { BatchEntry } from '@heryjs/core/http';
+import { ok } from '@heryjs/core/http';
+import { CacheableRead } from '@heryjs/core/http';${ctx.versioned ? `\nimport { ifMatchVersionOf, resolveExpectedVersion } from '@heryjs/core/http';` : ''}
 import {${ctx.pagination || childIncludes.some((include) => include.pagination) ? '\n  nextCursorFor,' : ''}
   parseSearchRequest,
   searchRequestSchema,
   withIncludesAndAggregates,${childIncludes.length > 0 ? '\n  declaredSelect,' : ''}
-} from '#technical/http/list-query';
+} from '@heryjs/core/http';
 import type {
   ListQueryContract,
   SearchRequestBody,
-} from '#technical/http/list-query';
-${hasTranslatable ? `import { describeLocales } from '#technical/i18n/translatable';\n` : ''}${richtextFields(ctx).length > 0 ? `import { describeRichtext } from '#technical/richtext/richtext';\nimport { RICHTEXT_FIELDS } from './${ctx.kebabName}.dto';\n` : ''}${historyControllerImports(ctx)}import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
+} from '@heryjs/core/http';
+${hasTranslatable ? `import { describeLocales } from '@heryjs/core/i18n';\n` : ''}${richtextFields(ctx).length > 0 ? `import { describeRichtext } from '@heryjs/core/resources';\nimport { RICHTEXT_FIELDS } from './${ctx.kebabName}.dto';\n` : ''}${historyControllerImports(ctx)}import { ZodValidationPipe } from '@heryjs/core/http';
 import {
   create${ctx.pascalName}RequestSchema,
   create${ctx.pascalName}Schema,
@@ -2111,7 +2111,7 @@ ${
 
 export function changeFeedFile(ctx: ResourceContext): string {
   return `import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { ChangeFeedRegistry } from '#technical/change-feed/change-feed.registry';
+import { ChangeFeedRegistry } from '@heryjs/core/realtime';
 import {
   canUpdateAny${ctx.pascalName},
   canView${ctx.pascalName},
@@ -2159,7 +2159,7 @@ export function personalDataFile(ctx: ResourceContext): string {
     .join('\n');
 
   return `import { Injectable, OnModuleInit } from '@nestjs/common';
-import { PersonalDataRegistry } from '#technical/privacy/personal-data.registry';
+import { PersonalDataRegistry } from '@heryjs/core/privacy';
 
 @Injectable()
 export class ${ctx.pascalName}PersonalData implements OnModuleInit {
@@ -2189,12 +2189,12 @@ export function personalDataFiles(
 
 export function moduleFile(ctx: ResourceContext): string {
   return `import { Module } from '@nestjs/common';
-import { AuthModule } from '#technical/auth/auth.module';
-import { CapabilitiesService } from '#technical/capabilities/capabilities.service';
-import { ChangeFeedModule } from '#technical/change-feed/change-feed.module';${ctx.history ? "\nimport { HistoryModule } from '#technical/history/history.module';" : ''}
-import { PrismaModule } from '#technical/prisma/prisma.module';${ctx.personalData ? "\nimport { PrivacyModule } from '#technical/privacy/privacy.module';" : ''}
-import { SearchModule } from '#technical/search/search.module';
-import { SignalModule } from '#technical/signal/signal.module';${ctx.sharing ? "\nimport { SharingModule } from '#technical/sharing/sharing.module';" : ''}${ctx.vector ? "\nimport { VectorModule } from '#technical/vector/vector.module';" : ''}
+import { AuthModule } from '@heryjs/core/auth';
+import { CapabilitiesService } from '@heryjs/core/capabilities';
+import { ChangeFeedModule } from '@heryjs/core/realtime';${ctx.history ? "\nimport { HistoryModule } from '@heryjs/core/resources';" : ''}
+import { PrismaModule } from '@heryjs/core/database';${ctx.personalData ? "\nimport { PrivacyModule } from '@heryjs/core/privacy';" : ''}
+import { SearchModule } from '@heryjs/core/drivers';
+import { SignalModule } from '@heryjs/core/realtime';${ctx.sharing ? "\nimport { SharingModule } from '@heryjs/core/resources';" : ''}${ctx.vector ? "\nimport { VectorModule } from '@heryjs/core/resources';" : ''}
 import { ${ctx.pascalName}ChangeFeed } from './${ctx.kebabName}.change-feed';
 import { ${ctx.pascalName}Controller } from './${ctx.kebabName}.controller';${ctx.personalData ? `\nimport { ${ctx.pascalName}PersonalData } from './${ctx.kebabName}.personal-data';` : ''}
 import { ${ctx.pascalName}Policy } from './${ctx.kebabName}.policy';
@@ -2293,9 +2293,9 @@ ${graphqlImports}
 import { GqlSessionGuard } from '#technical/auth/gql-session.guard';
 import type { GqlRequestWithUser } from '#technical/auth/gql-session.guard';
 import { CurrentGqlRequest } from '#technical/auth/current-gql-request.decorator';
-import { subjectOf } from '#technical/capabilities/subject';
-import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
-import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
+import { subjectOf } from '@heryjs/core/capabilities';
+import { CapabilityForbiddenException } from '@heryjs/core/errors';
+import { RecordNotFoundException } from '@heryjs/core/errors';
 import {
   canCreate${ctx.pascalName},
   canDelete${ctx.pascalName},
@@ -2303,7 +2303,7 @@ import {
   canView${ctx.pascalName},
   canViewAny${ctx.pascalName},
 } from './${ctx.kebabName}.policy';
-import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
+import { RateLimit } from '@heryjs/core/http';
 import { ${ctx.pascalName}Service } from './${ctx.kebabName}.service';
 import {
   ${ctx.screamingSnakeName}_RECORD_LOADER,
@@ -2450,8 +2450,8 @@ export function mcpToolsFile(ctx: ResourceContext): string {
   return `import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { Inject, Injectable } from '@nestjs/common';
-import type { CapabilitySubject } from '#technical/capabilities/capabilities.types';
-${ctx.versioned ? `import { VersionConflictException } from '#technical/errors/version-conflict.exception';\n` : ''}import type { McpToolRegistrar } from '#technical/mcp/mcp-tool-registrar';
+import type { CapabilitySubject } from '@heryjs/core/capabilities';
+${ctx.versioned ? `import { VersionConflictException } from '@heryjs/core/errors';\n` : ''}import type { McpToolRegistrar } from '#technical/mcp/mcp-tool-registrar';
 import { create${ctx.pascalName}Schema, update${ctx.pascalName}Schema } from './${ctx.kebabName}.dto';
 import {
   canCreate${ctx.pascalName},
@@ -2648,14 +2648,14 @@ ${
 export function streamControllerFile(ctx: ResourceContext): string {
   return `import { Controller, Post, Req, UseGuards } from '@nestjs/common';
 import type { ${ctx.modelPascalName} } from '@prisma/client';
-import type { RequestWithUser } from '#technical/auth/session.guard';
-import { SessionGuard } from '#technical/auth/session.guard';
-import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
+import type { RequestWithUser } from '@heryjs/core/auth';
+import { SessionGuard } from '@heryjs/core/auth';
+import { CapabilitiesGuard } from '@heryjs/core/capabilities';
 import {
   Capability,
   LoadRecordWith,
-} from '#technical/capabilities/capability.decorator';
-import { ok } from '#technical/http/envelope';
+} from '@heryjs/core/capabilities';
+import { ok } from '@heryjs/core/http';
 import { StreamService } from '#modules/stream/stream.service';
 import { canUpdate${ctx.pascalName}, canView${ctx.pascalName} } from './${ctx.kebabName}.policy';
 import {
@@ -2705,9 +2705,9 @@ import {
   SubscribeMessage,
   WebSocketGateway,
 } from '@nestjs/websockets';
-import { AUTH_PROVIDER } from '#technical/auth/auth.types';
-import type { AuthProvider } from '#technical/auth/auth.types';
-import { subjectOf } from '#technical/capabilities/subject';
+import { AUTH_PROVIDER } from '@heryjs/core/auth';
+import type { AuthProvider } from '@heryjs/core/auth';
+import { subjectOf } from '@heryjs/core/capabilities';
 import {
   authenticateLiveSocket,
   LiveAuthGuard,
@@ -4601,13 +4601,13 @@ import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';${usesPrismaClient ? `\nimport { PrismaPg } from '@prisma/adapter-pg';\nimport { PrismaClient } from '@prisma/client';` : ''}
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { AppModule } from '#app.module';${primarySearchField || usesPrismaClient ? `\nimport { env } from '#technical/config/env';` : ''}
-import { MAX_BATCH_ENTRIES } from '#technical/http/batch';${
+import { AppModule } from '#app.module';${primarySearchField || usesPrismaClient ? `\nimport { env } from '@heryjs/core/env';` : ''}
+import { MAX_BATCH_ENTRIES } from '@heryjs/core/http';${
     translatableFields(ctx).length > 0
       ? `\nimport {
   resolveDefaultLocale,
   resolveSupportedLocales,
-} from '#technical/i18n/locale.config';`
+} from '@heryjs/core/i18n';`
       : ''
   }
 ${ctx.personalData ? `import { actingAs, createTestTenantId, purgeTenant, registerAndLogin, waitFor } from '#devtools/test-support';\nimport type { Actor } from '#devtools/test-support';` : `import { actingAs, registerAndLogin } from '#devtools/test-support';`}${vectorSpecImports(ctx)}
@@ -4985,12 +4985,12 @@ export function viewFile(ctx: ResourceContext): string {
   );
   const translatableImport =
     visibleTranslatable.length > 0
-      ? `import { withResolvedTranslations } from '#technical/i18n/translatable';\n`
+      ? `import { withResolvedTranslations } from '@heryjs/core/i18n';\n`
       : '';
   const translatableNames = `[${visibleTranslatable.map((field) => `'${field.name}'`).join(', ')}]`;
   const hasRichtext = richtextFields(ctx).some((field) => !field.hidden);
   const richtextImport = hasRichtext
-    ? `import { sanitizeRichtextRead } from '#technical/richtext/richtext';\nimport { RICHTEXT_FIELDS } from './${ctx.kebabName}.dto';\n`
+    ? `import { sanitizeRichtextRead } from '@heryjs/core/resources';\nimport { RICHTEXT_FIELDS } from './${ctx.kebabName}.dto';\n`
     : '';
   const parseInput = (source: string): string => {
     const resolved =
@@ -5058,7 +5058,7 @@ export function factoryFile(ctx: ResourceContext): string {
     )
     .join('\n');
 
-  return `import { faker } from '@faker-js/faker';${translatableFields(ctx).length > 0 ? `\nimport { resolveDefaultLocale } from '#technical/i18n/locale.config';` : ''}
+  return `import { faker } from '@faker-js/faker';${translatableFields(ctx).length > 0 ? `\nimport { resolveDefaultLocale } from '@heryjs/core/i18n';` : ''}
 
 export interface ${ctx.pascalName}FactoryOverrides {
   ownerId: string;${ownedByTeam(ctx) ? '\n  teamId: string;' : ''}

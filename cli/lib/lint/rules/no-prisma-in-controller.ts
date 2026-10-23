@@ -29,6 +29,7 @@ const BANNED_VALUE_IMPORTS = new Set([
 const BANNED_MODULE_SPECIFIERS = new Set([
   '@prisma/client',
   '#technical/prisma/prisma.client',
+  '@heryjs/core/database',
 ]);
 
 function checkFile(filePath: string, repoRoot: string): Violation[] {

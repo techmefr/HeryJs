@@ -1,20 +1,20 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { writeAuditLog } from '#technical/public/privacy';
+import { writeAuditLog } from '@heryjs/core/privacy';
 import {
   type AuthenticatedUser,
   authPrismaClient,
   getAuthContext,
-} from '#technical/public/auth';
+} from '@heryjs/core/auth';
 import {
   CapabilityForbiddenException,
   RecordNotFoundException,
-} from '#technical/public/errors';
+} from '@heryjs/core/errors';
 import { NotImpersonatingException } from '#technical/errors/not-impersonating.exception';
 import { SelfImpersonationException } from '#technical/errors/self-impersonation.exception';
 import {
   PRISMA_CLIENT,
   type TenantScopedPrismaClient,
-} from '#technical/public/database';
+} from '@heryjs/core/database';
 
 export interface ImpersonationSession {
   token: string;

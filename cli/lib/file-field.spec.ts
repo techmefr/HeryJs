@@ -28,7 +28,7 @@ describe('file blueprint fields', () => {
     const dto = dtoFile(buildResourceContext(load(AVATAR)));
 
     expect(dto).toContain(
-      "import { isCurrentTenantFileKey } from '#technical/tenancy/tenant-file-key';",
+      "import { isCurrentTenantFileKey } from '@heryjs/core/tenancy';",
     );
     expect(dto).toContain(
       'picture: z.string().min(1).max(255).refine(isCurrentTenantFileKey),',

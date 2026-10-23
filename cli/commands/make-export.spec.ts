@@ -21,7 +21,7 @@ describe('the exportable make:export writes', () => {
 
   it('imports the contract from the kernel', () => {
     expect(buildExportable('TaskListExport').source).toContain(
-      "from '#technical/export/export-driver'",
+      "from '@heryjs/core/drivers'",
     );
   });
 

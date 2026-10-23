@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
-import { HeryConfigModule } from '#technical/public/config';
-import { DriversModule } from '#technical/public/drivers';
-import { JobsModule } from '#technical/public/jobs';
-import { NotificationsModule } from '#technical/public/notifications';
+import { HeryConfigModule } from '@heryjs/core/config';
+import { DriversModule } from '@heryjs/core/drivers';
+import { JobsModule } from '@heryjs/core/jobs';
+import { NotificationsModule } from '@heryjs/core/notifications';
 import { CsvExportDriver } from './csv-export.driver';
 import { ExportDriverRegistry } from './export-driver.registry';
 import { ExportProcessor } from './export.processor';

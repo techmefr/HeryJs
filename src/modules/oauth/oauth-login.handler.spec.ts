@@ -1,9 +1,9 @@
 import type { Response } from 'express';
-import { getAuthContext } from '#technical/public/auth';
+import { getAuthContext } from '@heryjs/core/auth';
 import { SessionOAuthLoginHandler } from './oauth-login.handler';
 import type { OAuthLoginResult } from './oauth.types';
 
-jest.mock('#technical/public/auth', () => ({
+jest.mock('@heryjs/core/auth', () => ({
   getAuthContext: jest.fn(),
 }));
 

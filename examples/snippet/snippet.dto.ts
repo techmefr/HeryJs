@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MAX_BATCH_ENTRIES } from '#technical/http/batch';
+import { MAX_BATCH_ENTRIES } from '@heryjs/core/http';
 
 const snippetFields = z.object({
   title: z.string().min(1).max(255),

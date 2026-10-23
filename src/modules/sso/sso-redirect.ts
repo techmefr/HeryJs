@@ -1,5 +1,5 @@
-import { isLocalEnvironmentNow } from '#technical/public/config';
-import { env } from '#technical/public/env';
+import { isLocalEnvironmentNow } from '@heryjs/core/config';
+import { env } from '@heryjs/core/env';
 import { ssoEnv } from './sso.env';
 
 const CALLBACK_PATH = '/sso/callback';

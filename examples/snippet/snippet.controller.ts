@@ -13,51 +13,42 @@ import {
 } from '@nestjs/common';
 import type { Snippet } from '@prisma/client';
 import { z } from 'zod';
-import { SessionGuard } from '#technical/auth/session.guard';
-import type { RequestWithUser } from '#technical/auth/session.guard';
-import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
-import { subjectOf } from '#technical/capabilities/subject';
-import {
-  Capability,
-  LoadRecordWith,
-} from '#technical/capabilities/capability.decorator';
-import { CapabilityForbiddenException } from '#technical/errors/capability-forbidden.exception';
-import { RecordNotFoundException } from '#technical/errors/record-not-found.exception';
-import { RateLimit } from '#technical/rate-limit/rate-limit.decorator';
-import { grantShareSchema } from '#technical/sharing/sharing.dto';
-import type { GrantShareInput } from '#technical/sharing/sharing.dto';
-import { AlreadyRestoredException } from '#technical/errors/already-restored.exception';
-import { resolveDomainError } from '#technical/errors/domain-exception.filter';
-import type { ResolvedError } from '#technical/errors/domain-exception.filter';
-import { executeBatch } from '#technical/http/batch-execution';
-import type { BatchEntry } from '#technical/http/batch-execution';
-import { ok } from '#technical/http/envelope';
-import { CacheableRead } from '#technical/http/etag.decorator';
-import {
-  ifMatchVersionOf,
-  resolveExpectedVersion,
-} from '#technical/http/record-version';
+import { SessionGuard } from '@heryjs/core/auth';
+import type { RequestWithUser } from '@heryjs/core/auth';
+import { CapabilitiesGuard } from '@heryjs/core/capabilities';
+import { subjectOf } from '@heryjs/core/capabilities';
+import { Capability, LoadRecordWith } from '@heryjs/core/capabilities';
+import { CapabilityForbiddenException } from '@heryjs/core/errors';
+import { RecordNotFoundException } from '@heryjs/core/errors';
+import { RateLimit } from '@heryjs/core/http';
+import { grantShareSchema } from '@heryjs/core/resources';
+import type { GrantShareInput } from '@heryjs/core/resources';
+import { AlreadyRestoredException } from '@heryjs/core/errors';
+import { resolveDomainError } from '@heryjs/core/errors';
+import type { ResolvedError } from '@heryjs/core/errors';
+import { executeBatch } from '@heryjs/core/http';
+import type { BatchEntry } from '@heryjs/core/http';
+import { ok } from '@heryjs/core/http';
+import { CacheableRead } from '@heryjs/core/http';
+import { ifMatchVersionOf, resolveExpectedVersion } from '@heryjs/core/http';
 import {
   nextCursorFor,
   parseSearchRequest,
   searchRequestSchema,
   withIncludesAndAggregates,
-} from '#technical/http/list-query';
-import type {
-  ListQueryContract,
-  SearchRequestBody,
-} from '#technical/http/list-query';
+} from '@heryjs/core/http';
+import type { ListQueryContract, SearchRequestBody } from '@heryjs/core/http';
 import {
   historyDiffSchema,
   historyListSchema,
   historyRestoreSchema,
-} from '#technical/history/history.schemas';
+} from '@heryjs/core/resources';
 import type {
   HistoryDiffBody,
   HistoryListBody,
   HistoryRestoreBody,
-} from '#technical/history/history.schemas';
-import { ZodValidationPipe } from '#technical/validation/zod-validation.pipe';
+} from '@heryjs/core/resources';
+import { ZodValidationPipe } from '@heryjs/core/http';
 import {
   createSnippetRequestSchema,
   createSnippetSchema,

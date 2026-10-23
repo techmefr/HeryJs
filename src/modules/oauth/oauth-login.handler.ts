@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Response } from 'express';
-import { getAuthContext } from '#technical/public/auth';
-import { ok } from '#technical/public/http';
+import { getAuthContext } from '@heryjs/core/auth';
+import { ok } from '@heryjs/core/http';
 import type { OAuthLoginResult } from './oauth.types';
 
 export const OAUTH_LOGIN_HANDLER = Symbol('OAUTH_LOGIN_HANDLER');

@@ -3,6 +3,8 @@
   "compilerOptions": {
     "baseUrl": "./",
     "paths": {
+      "@heryjs/core/devtools": ["src/devtools/public"],
+      "@heryjs/core/*": ["src/technical/public/*"],
       "#technical/*": ["src/technical/*"],
       "#devtools/*": ["src/devtools/*"],
       "#modules/*": ["src/modules/*"],

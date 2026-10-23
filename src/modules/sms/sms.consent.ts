@@ -3,7 +3,7 @@ import type { Prisma } from '@prisma/client';
 import {
   PRISMA_CLIENT,
   type TenantScopedPrismaClient,
-} from '#technical/public/database';
+} from '@heryjs/core/database';
 
 /**
  * Consent is recorded per number, not per user, because the number is what a

@@ -1,4 +1,4 @@
-import type { PolicyCheck } from '#technical/public/capabilities';
+import type { PolicyCheck } from '@heryjs/core/capabilities';
 
 /**
  * A token grants a stream of whatever the caller's own tenant publishes,

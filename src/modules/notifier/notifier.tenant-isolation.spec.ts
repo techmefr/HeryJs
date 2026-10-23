@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { authPrismaClient } from '#technical/public/auth';
+import { authPrismaClient } from '@heryjs/core/auth';
 import {
   createTenantScopedPrismaClient,
   inTenantTransaction,
-} from '#technical/public/testing';
-import { TenantContextStorage } from '#technical/public/tenancy';
+} from '@heryjs/core/testing';
+import { TenantContextStorage } from '@heryjs/core/tenancy';
 import { NotificationPreferenceService } from './notification-preference.service';
 
 function inTenant<T>(tenantId: string, run: () => Promise<T>): Promise<T> {

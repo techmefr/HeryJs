@@ -1,14 +1,10 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from '#technical/public/auth';
-import { ExpositionModule } from '#technical/public/platform';
-import {
-  JobsModule,
-  OutboxModule,
-  SchedulerModule,
-} from '#technical/public/jobs';
-import { NotificationsModule } from '#technical/public/notifications';
-import { PrivacyModule } from '#technical/public/privacy';
-import { SignalModule } from '#technical/public/realtime';
+import { AuthModule } from '@heryjs/core/auth';
+import { ExpositionModule } from '@heryjs/core/platform';
+import { JobsModule, OutboxModule, SchedulerModule } from '@heryjs/core/jobs';
+import { NotificationsModule } from '@heryjs/core/notifications';
+import { PrivacyModule } from '@heryjs/core/privacy';
+import { SignalModule } from '@heryjs/core/realtime';
 import {
   DELIVERY_POLICY,
   OUTBOUND_WEBHOOK_POLICY,

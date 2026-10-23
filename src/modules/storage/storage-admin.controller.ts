@@ -1,12 +1,12 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
-import { SessionGuard } from '#technical/public/auth';
-import { CapabilitiesGuard, Capability } from '#technical/public/capabilities';
+import { SessionGuard } from '@heryjs/core/auth';
+import { CapabilitiesGuard, Capability } from '@heryjs/core/capabilities';
 import {
   ok,
   RateLimit,
   UnpaginatedRoute,
   ZodValidationPipe,
-} from '#technical/public/http';
+} from '@heryjs/core/http';
 import { allowedContentTypes, StorageService } from './storage.service';
 import { StorageDriverRegistry } from './storage-driver.registry';
 import { storageEnv } from './storage.env';

@@ -5,6 +5,8 @@
   "testRegex": ".e2e-spec.ts$",
   "globalSetup": "<rootDir>/global-setup.ts",
   "moduleNameMapper": {
+    "^@heryjs/core/devtools$": "<rootDir>/../src/devtools/public",
+    "^@heryjs/core/(.*)$": "<rootDir>/../src/technical/public/$1",
     "^#technical/(.*)$": "<rootDir>/../src/technical/$1",
     "^#devtools/(.*)$": "<rootDir>/../src/devtools/$1",
     "^#modules/(.*)$": "<rootDir>/../src/modules/$1",

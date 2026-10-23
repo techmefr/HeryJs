@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { authPrismaClient } from '#technical/public/auth';
-import { PersonalDataRegistry } from '#technical/public/privacy';
+import { authPrismaClient } from '@heryjs/core/auth';
+import { PersonalDataRegistry } from '@heryjs/core/privacy';
 
 /**
  * The link between an account and its provider identity, with the address the

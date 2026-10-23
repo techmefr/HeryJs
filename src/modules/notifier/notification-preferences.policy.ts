@@ -1,3 +1,3 @@
-import { everyone } from '#technical/public/capabilities';
+import { everyone } from '@heryjs/core/capabilities';
 
 export const canManageOwnNotificationPreferences = everyone('own');

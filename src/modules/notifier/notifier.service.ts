@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { recipientLocale, runInLocale } from '#technical/public/i18n';
+import { recipientLocale, runInLocale } from '@heryjs/core/i18n';
 import {
   NOTIFICATION_PROVIDER,
   type NotificationProvider,
@@ -7,8 +7,8 @@ import {
   notifierPushChannel,
   notifierSmsChannel,
   notifierSmsConsent,
-} from '#technical/public/notifications';
-import { runInTenant, TenantContextStorage } from '#technical/public/tenancy';
+} from '@heryjs/core/notifications';
+import { runInTenant, TenantContextStorage } from '@heryjs/core/tenancy';
 import { decideDelivery } from './delivery-policy';
 import type { DeliveryDecision } from './delivery-policy';
 import type {

@@ -1,4 +1,4 @@
-import { DEFAULT_JOB_POLICY, type JobPolicy } from '#technical/public/jobs';
+import { DEFAULT_JOB_POLICY, type JobPolicy } from '@heryjs/core/jobs';
 
 export const MAIL_SEND_JOB = 'mail.send';
 

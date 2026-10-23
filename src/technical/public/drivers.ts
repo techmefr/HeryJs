@@ -80,3 +80,6 @@ export type {
   StoredObjectStat,
   StoredObjectSummary,
 } from '../storage/storage-driver';
+export { driverToken } from '../drivers/driver-token';
+export { SearchEngineRegistry } from '../search/search-engine.registry';
+export { SearchModule } from '../search/search.module';

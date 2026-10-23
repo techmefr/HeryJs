@@ -6,7 +6,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
 import { BlogPostModule } from './blog-post.module';
-import { env } from '#technical/config/env';
+import { env } from '@heryjs/core/env';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 
 const adapter = new PrismaPg({

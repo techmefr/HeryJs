@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
-import { CapabilitiesService } from '#technical/capabilities/capabilities.service';
+import { CapabilitiesService } from '@heryjs/core/capabilities';
 import {
   resolveCapability,
   resolveCollectionCapability,
-} from '#technical/capabilities/resolve-capability';
-import type { PolicyCheck } from '#technical/capabilities/capability-check';
+} from '@heryjs/core/capabilities';
+import type { PolicyCheck } from '@heryjs/core/capabilities';
 import {
   CapabilityDecision,
   CapabilitySubject,
-} from '#technical/capabilities/capabilities.types';
+} from '@heryjs/core/capabilities';
 import { BLOG_POST_PRESETS } from './blog-post.presets';
 
 export interface BlogPostRecordLike {

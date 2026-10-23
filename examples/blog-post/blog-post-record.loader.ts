@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
-import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
-import type { RecordLoader } from '#technical/capabilities/capability-check';
+import { PRISMA_CLIENT } from '@heryjs/core/database';
+import type { TenantScopedPrismaClient } from '@heryjs/core/database';
+import type { RecordLoader } from '@heryjs/core/capabilities';
 import type { BlogPostRecordLike } from './blog-post.policy';
 
 export const BLOG_POST_RECORD_LOADER = Symbol('BLOG_POST_RECORD_LOADER');

@@ -2,8 +2,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   PRISMA_CLIENT,
   type TenantScopedPrismaClient,
-} from '#technical/public/database';
-import type { Page, PageQuery } from '#technical/public/http';
+} from '@heryjs/core/database';
+import type { Page, PageQuery } from '@heryjs/core/http';
 
 export interface TwoFactorRequirement {
   role: string;
