@@ -13,6 +13,7 @@
  */
 import {
   BASE_URL_VARIABLE,
+  MIGRATION_BASE_URL_VARIABLE,
   databaseNameOf,
   isSharedDatabase,
   withDatabase,
@@ -22,12 +23,19 @@ import {
 
 const workerId = Number(process.env.JEST_WORKER_ID);
 const baseUrl = process.env[BASE_URL_VARIABLE];
+const migrationBaseUrl = process.env[MIGRATION_BASE_URL_VARIABLE];
 
 if (!isSharedDatabase() && baseUrl && Number.isInteger(workerId)) {
-  process.env.DATABASE_URL = withDatabase(
-    baseUrl,
-    workerDatabaseName(databaseNameOf(baseUrl), workerId),
-  );
+  const workerDatabase = workerDatabaseName(databaseNameOf(baseUrl), workerId);
+
+  process.env.DATABASE_URL = withDatabase(baseUrl, workerDatabase);
+
+  if (migrationBaseUrl) {
+    process.env.DATABASE_MIGRATION_URL = withDatabase(
+      migrationBaseUrl,
+      workerDatabase,
+    );
+  }
 
   if (process.env.REDIS_URL) {
     process.env.REDIS_URL = withRedisDatabase(process.env.REDIS_URL, workerId);

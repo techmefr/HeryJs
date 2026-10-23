@@ -12,6 +12,7 @@ import { AppModule } from '#app.module';
 import { AuthModule } from '#technical/auth/auth.module';
 import { SessionGuard } from '#technical/auth/session.guard';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { databaseOwnerClient } from '#devtools/testing/database-owner-client';
 import { PublicRoute } from '#technical/capabilities/public-route.decorator';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 import type { TestUser } from '#devtools/testing/register-and-login';
@@ -82,7 +83,7 @@ describe('Two-factor authentication', () => {
     atMs: number = Date.now(),
   ): Promise<string> => {
     const enrolment =
-      await authPrismaClient.twoFactorEnrolment.findUniqueOrThrow({
+      await databaseOwnerClient.twoFactorEnrolment.findUniqueOrThrow({
         where: { userId: user.id },
       });
 
@@ -170,11 +171,11 @@ describe('Two-factor authentication', () => {
   it('never stores a recovery code or a secret readable', async () => {
     const user = await registerAndLogin(app);
     const recoveryCodes = await enrol(user);
-    const stored = await authPrismaClient.twoFactorRecoveryCode.findMany({
+    const stored = await databaseOwnerClient.twoFactorRecoveryCode.findMany({
       where: { userId: user.id },
     });
     const enrolment =
-      await authPrismaClient.twoFactorEnrolment.findUniqueOrThrow({
+      await databaseOwnerClient.twoFactorEnrolment.findUniqueOrThrow({
         where: { userId: user.id },
       });
 

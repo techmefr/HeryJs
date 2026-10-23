@@ -49,6 +49,7 @@ export function buildServerSchema(
 
   return z.object({
     DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+    DATABASE_MIGRATION_URL: z.string().min(1).optional(),
     PORT: z.coerce.number().int().positive().default(3000),
     REDIS_URL: z.string().min(1).default('redis://localhost:6479'),
     SIGNAL_TOKEN_SECRET: devOnlySecret(
@@ -94,10 +95,6 @@ export function buildServerSchema(
           message: 'must not allow any origin ("*") under NODE_ENV=production',
         },
       ),
-    RLS_ENABLED: z
-      .string()
-      .default('false')
-      .transform((value) => value === 'true'),
     IMPERSONATION_SESSION_SECONDS: z.coerce
       .number()
       .int()

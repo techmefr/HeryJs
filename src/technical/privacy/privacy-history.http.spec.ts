@@ -5,6 +5,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { databaseOwnerClient } from '#devtools/testing/database-owner-client';
 import { HistoryEntryNotFoundException } from '#technical/errors/history-entry-not-found.exception';
 import { HistoryService } from '#technical/history/history.service';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
@@ -88,7 +89,7 @@ describe('privacy erasure and row history', () => {
     const id = (response.body as { data: { id: string } }).data.id;
 
     for (let attempt = 0; attempt < 90; attempt += 1) {
-      const row = await authPrismaClient.privacyRequest.findUniqueOrThrow({
+      const row = await databaseOwnerClient.privacyRequest.findUniqueOrThrow({
         where: { id },
       });
 
@@ -134,7 +135,7 @@ describe('privacy erasure and row history', () => {
       }),
     ).toBe(0);
 
-    const row = await authPrismaClient.snippet.findUniqueOrThrow({
+    const row = await databaseOwnerClient.snippet.findUniqueOrThrow({
       where: { id },
     });
 

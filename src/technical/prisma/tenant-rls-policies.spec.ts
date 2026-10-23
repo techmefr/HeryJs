@@ -10,7 +10,10 @@ import { modelSetIn } from '../../../cli/lib/rls';
  * never applied would pass the first check and fail this one.
  */
 describe('tenant isolation policies (real database)', () => {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+  const adapter = new PrismaPg({
+    connectionString:
+      process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL,
+  });
   const prisma = new PrismaClient({ adapter });
 
   const governed = modelSetIn(

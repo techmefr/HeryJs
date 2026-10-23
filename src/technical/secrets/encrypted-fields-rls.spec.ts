@@ -6,7 +6,10 @@ import type { createTenantScopedPrismaClient as CreateTenantScopedPrismaClient }
 import type { TenantContextStorage as TenantContextStorageType } from '#technical/tenancy/tenant-context';
 
 describe('encrypted columns under RLS_ENABLED=true (real database)', () => {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+  const adapter = new PrismaPg({
+    connectionString:
+      process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL,
+  });
   const rawClient = new PrismaClient({ adapter });
   const previousRlsEnabled = process.env.RLS_ENABLED;
   let ownerId: string;

@@ -24,7 +24,10 @@ import { rotateSecrets } from './secrets-rotation';
 type BlogPostInput = Omit<Prisma.BlogPostUncheckedCreateInput, 'tenantId'>;
 
 describe('encrypted columns (real database)', () => {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+  const adapter = new PrismaPg({
+    connectionString:
+      process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL,
+  });
   const rawClient = new PrismaClient({ adapter });
   let scopedClient: TenantScopedPrismaClient;
   const tenantId = `tenant-secrets-${randomUUID()}`;

@@ -3,7 +3,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
-import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { databaseOwnerClient } from '#devtools/testing/database-owner-client';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 import type { TestUser } from '#devtools/testing/register-and-login';
 
@@ -135,7 +135,7 @@ describe('Teams', () => {
       .send({ teamId: dropped })
       .expect(200);
 
-    await authPrismaClient.teamMember.delete({
+    await databaseOwnerClient.teamMember.delete({
       where: { teamId_userId: { teamId: dropped, userId: user.id } },
     });
 

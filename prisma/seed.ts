@@ -38,11 +38,14 @@ async function main() {
     data: { tenantId: DEMO_TENANT_ID },
   });
 
-  await prisma.blogPost.createMany({
-    data: blogPostFactory(
-      { ownerId: owner.id, tenantId: DEMO_TENANT_ID },
-      { count: 3 },
-    ) as unknown as Prisma.BlogPostCreateManyInput[],
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT set_config('app.tenant_id', ${DEMO_TENANT_ID}, true)`;
+    await tx.blogPost.createMany({
+      data: blogPostFactory(
+        { ownerId: owner.id, tenantId: DEMO_TENANT_ID },
+        { count: 3 },
+      ) as unknown as Prisma.BlogPostCreateManyInput[],
+    });
   });
 
   console.log(

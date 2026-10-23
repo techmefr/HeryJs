@@ -17,7 +17,9 @@ describe('tenant isolation', () => {
   const subscriptionA = `sub-a-${suffix}`;
   const subscriptionB = `sub-b-${suffix}`;
   const raw = new PrismaClient({
-    adapter: new PrismaPg({ connectionString: env.DATABASE_URL }),
+    adapter: new PrismaPg({
+      connectionString: env.DATABASE_MIGRATION_URL ?? env.DATABASE_URL,
+    }),
   });
   let scoped: TenantScopedPrismaClient;
   let mirror: BillingSubscriptionMirror;

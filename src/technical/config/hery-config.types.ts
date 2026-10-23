@@ -145,7 +145,17 @@ export interface HeryConfigDevDashboard {
  * (Prisma search needs no config at all) -- once a field is worth declaring,
  * its shape inside is closed, not a bag of strings.
  */
+/**
+ * Postgres row-level security is on unless this says `false`. Off, the
+ * tenant boundary rests on the Prisma extension alone, and the app says so
+ * at every boot.
+ */
+export interface HeryConfigDatabase {
+  rowLevelSecurity?: boolean;
+}
+
 export interface HeryConfig {
+  database?: HeryConfigDatabase;
   search?: {
     default: string;
     engines: Record<string, HeryConfigSearchEngine>;

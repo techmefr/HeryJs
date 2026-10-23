@@ -29,7 +29,9 @@ describe('tenant isolation', () => {
   };
 
   const admin = new PrismaClient({
-    adapter: new PrismaPg({ connectionString: env.DATABASE_URL }),
+    adapter: new PrismaPg({
+      connectionString: env.DATABASE_MIGRATION_URL ?? env.DATABASE_URL,
+    }),
   });
   let moduleRef: TestingModule;
   let vectors: VectorSearchService;

@@ -9,7 +9,10 @@ import { recordTransition, WORKFLOW_TRANSITIONED } from './workflow';
 
 describe('recordTransition (real database)', () => {
   const rawClient = new PrismaClient({
-    adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+    adapter: new PrismaPg({
+      connectionString:
+        process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL,
+    }),
   });
   const tenantId = `tenant-${randomUUID()}`;
   let scoped: TenantScopedPrismaClient;

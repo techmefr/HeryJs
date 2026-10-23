@@ -22,7 +22,9 @@ import {
 } from '#devtools/test-support';
 import type { Actor } from '#devtools/test-support';
 
-const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
+const adapter = new PrismaPg({
+  connectionString: env.DATABASE_MIGRATION_URL ?? env.DATABASE_URL,
+});
 const prisma = new PrismaClient({ adapter });
 
 describe('BlogPost resource', () => {

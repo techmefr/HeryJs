@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import type { PrismaClient } from '@prisma/client';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { inTenantTransaction } from '#technical/prisma/row-level-security';
 
 const TENANT_COLUMN = 'tenantId';
 const TEST_TENANT_PREFIX = 'test-';
@@ -74,9 +75,11 @@ export async function purgeTenant(tenantId: string): Promise<void> {
 
     for (const table of pending) {
       try {
-        await authPrismaClient.$executeRawUnsafe(
-          `DELETE FROM "${table}" WHERE "${TENANT_COLUMN}" = $1`,
-          tenantId,
+        await inTenantTransaction(authPrismaClient, tenantId, (transaction) =>
+          transaction.$executeRawUnsafe(
+            `DELETE FROM "${table}" WHERE "${TENANT_COLUMN}" = $1`,
+            tenantId,
+          ),
         );
       } catch (error) {
         stuck.push(table);

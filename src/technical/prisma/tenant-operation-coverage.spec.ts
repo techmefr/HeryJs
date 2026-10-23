@@ -5,7 +5,9 @@ import { env } from '#technical/config/env';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { createTenantScopedPrismaClient } from './prisma.client';
 
-const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
+const adapter = new PrismaPg({
+  connectionString: env.DATABASE_MIGRATION_URL ?? env.DATABASE_URL,
+});
 const rawClient = new PrismaClient({ adapter });
 
 describe('tenant scoping across every Prisma operation', () => {

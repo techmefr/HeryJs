@@ -115,15 +115,16 @@ export function registerUpCommand(program: Command): void {
         const postgresPort = resolveComposePort('postgres', 5432);
         const valkeyPort = resolveComposePort('valkey', 6379);
 
-        if (postgresPort && process.env.DATABASE_URL) {
-          process.env.DATABASE_URL = replaceUrlPort(
-            process.env.DATABASE_URL,
-            postgresPort,
-          );
-          upsertEnvVar(envPath, 'DATABASE_URL', process.env.DATABASE_URL);
-          console.log(
-            pc.green(`✔ DATABASE_URL resolved to port ${postgresPort}`),
-          );
+        for (const variable of ['DATABASE_URL', 'DATABASE_MIGRATION_URL']) {
+          const url = process.env[variable];
+
+          if (postgresPort && url) {
+            process.env[variable] = replaceUrlPort(url, postgresPort);
+            upsertEnvVar(envPath, variable, process.env[variable]);
+            console.log(
+              pc.green(`✔ ${variable} resolved to port ${postgresPort}`),
+            );
+          }
         }
 
         if (valkeyPort && process.env.REDIS_URL) {

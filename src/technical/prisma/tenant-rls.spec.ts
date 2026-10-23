@@ -4,7 +4,9 @@ import { PrismaClient } from '@prisma/client';
 import { env } from '#technical/config/env';
 
 describe('row-level security on BlogPost (opt-in, real database)', () => {
-  const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
+  const adapter = new PrismaPg({
+    connectionString: env.DATABASE_MIGRATION_URL ?? env.DATABASE_URL,
+  });
   const superuserClient = new PrismaClient({ adapter });
 
   const roleName = `heryjs_rls_test_${randomUUID().replace(/-/g, '')}`;
