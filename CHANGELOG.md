@@ -13,6 +13,10 @@ category is called out here explicitly.
 
 First public release.
 
+### Modules honour devTools.environments
+
+The `sso`, `oauth` and `webhooks` modules still compared NODE_ENV with `production` themselves, so an unset or unlisted NODE_ENV let `SSO_ALLOW_PRIVATE_ISSUERS` and `WEBHOOK_ALLOW_PRIVATE_URLS` through, fell back to a localhost callback and sent non-secure state cookies. They now ask `isDevEnvironmentNow()`, exported by `#kernel/config/module-env` next to `devOnlyDefault`, which answers from `devTools.environments`. **Upgrade note:** copy `src/technical/config/module-env.ts` by hand; a project that installed `sso` copies `sso.env.ts`, `sso-redirect.ts` and `sso-state.service.ts`, one that installed `oauth` copies `oauth.module.ts`, one that installed `webhooks` copies `outbound-webhook.env.ts`.
+
 ### Dev routes open only in declared environments
 
 Any NODE_ENV other than `production` used to open the devtools routes (seeders included), the Bull Board and accept the development secrets, so an unset or misspelled NODE_ENV on a server behaved as development. `devTools.environments` in `hery.config.ts` now lists the NODE_ENV values that do, `['development', 'test']` by default; any other value, an unset NODE_ENV included, runs as production: the routes answer 404 and the development secrets, `SECRETS_KEYS` and the modules' `devOnlyDefault` values stop the boot. A shared environment such as `demo` may be listed: its routes open, but the seeders narrow to an admin or the platform operator (`canRunSeeders`) and the boot logs a warning. A value that is not a lowercase name, or `production`, stops the boot with the key named. **Upgrade note:** add `NODE_ENV=development` to your local `.env` (now in `.env.example`), or nothing in development boots with the default secrets; copy by hand `src/technical/config/dev-environments.ts`, `env.ts`, `env-schema.ts`, `module-env.ts`, `hery-config.ts`, `hery-config.types.ts`, `src/technical/dev-only/dev-only.guard.ts`, `dev-only.policy.ts`, `src/technical/seeders/seeders.controller.ts`, `src/technical/secrets/default-keyring.ts` and `src/main.ts`; `devTools` is optional in an existing `hery.config.ts`.

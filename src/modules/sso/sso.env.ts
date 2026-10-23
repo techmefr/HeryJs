@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { devOnlyDefault, parseModuleEnv } from '#technical/config/module-env';
+import {
+  devOnlyDefault,
+  isDevEnvironmentNow,
+  parseModuleEnv,
+} from '#technical/config/module-env';
 
 const DEV_SECRET_KEY = Buffer.alloc(32, 'dev-sso-key').toString('base64');
 const SECRET_KEY_BYTES = 32;
@@ -16,7 +20,7 @@ export const ssoEnv = parseModuleEnv('sso', {
   SSO_REDIRECT_BASE_URL: z
     .url()
     .optional()
-    .refine((value) => value || process.env.NODE_ENV !== 'production', {
+    .refine((value) => value || isDevEnvironmentNow(), {
       message:
         'must be set in production: the public origin the sso callbacks are built on',
     }),
@@ -25,7 +29,7 @@ export const ssoEnv = parseModuleEnv('sso', {
     .string()
     .default('false')
     .transform((value) => value === 'true')
-    .refine((value) => !value || process.env.NODE_ENV !== 'production', {
+    .refine((value) => !value || isDevEnvironmentNow(), {
       message: 'must not be enabled in production',
     }),
 });
