@@ -14,7 +14,9 @@ describe('tenant isolation', () => {
   const tenantA = `tenant-a-${suffix}`;
   const tenantB = `tenant-b-${suffix}`;
   const raw = new PrismaClient({
-    adapter: new PrismaPg({ connectionString: env.DATABASE_URL }),
+    adapter: new PrismaPg({
+      connectionString: env.DATABASE_MIGRATION_URL ?? env.DATABASE_URL,
+    }),
   });
   const dispatched: Array<{ tenantId?: string; to: string }> = [];
   const jobs = {

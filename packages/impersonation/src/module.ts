@@ -26,25 +26,20 @@ export default {
     ]);
     context.addModelFields('Session', ['  impersonatedBy String?']);
 
-    const rlsBlock = [
-      '    RLS_ENABLED: z',
-      '      .string()',
-      "      .default('false')",
-      "      .transform((value) => value === 'true'),",
-    ].join('\n');
+    const anchor = '    WEBHOOK_SIGNATURE_TOLERANCE_SECONDS: z.coerce';
 
     context.patchExactStrings(
       ENV_SCHEMA_FILE,
       [
         [
-          rlsBlock,
+          anchor,
           [
-            rlsBlock,
             '    IMPERSONATION_SESSION_SECONDS: z.coerce',
             '      .number()',
             '      .int()',
             '      .positive()',
             '      .default(30 * 60),',
+            anchor,
           ].join('\n'),
         ],
       ],
@@ -131,8 +126,8 @@ export default {
           ].join('\n'),
         ],
         [
-          '      currentTeamId: true,\n      memberships:',
-          '      currentTeamId: true,\n      role: true,\n      memberships:',
+          '      currentTeamId: true,\n    },',
+          '      currentTeamId: true,\n      role: true,\n    },',
         ],
         [
           '        : (teamIds[0] ?? null),\n  };',

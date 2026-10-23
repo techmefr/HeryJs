@@ -5,6 +5,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { databaseOwnerClient } from '#devtools/testing/database-owner-client';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 import { waitFor } from '#devtools/testing/wait-for';
 import type { PolicyCheck } from '#technical/capabilities/capability-check';
@@ -217,7 +218,7 @@ describe('Webhooks', () => {
     const processed = await waitForProcessed(eventId);
     expect(processed?.processedAt).toBeInstanceOf(Date);
 
-    const notification = await authPrismaClient.appNotification.findFirst({
+    const notification = await databaseOwnerClient.appNotification.findFirst({
       where: { userId: admin.id, type: 'webhook.received' },
     });
     expect(notification?.payload).toMatchObject({ eventId });
@@ -277,7 +278,7 @@ describe('Webhooks', () => {
     expect((await waitForProcessed(eventId))?.processedAt).toBeInstanceOf(Date);
     expect(webhookRuns).toEqual([{ amount: 7, tenantId: 'default' }]);
 
-    const notification = await authPrismaClient.appNotification.findFirst({
+    const notification = await databaseOwnerClient.appNotification.findFirst({
       where: { userId: admin.id, type: 'webhook.received' },
     });
     expect(notification).toBeNull();

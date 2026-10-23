@@ -4611,7 +4611,7 @@ import { MAX_BATCH_ENTRIES } from '#technical/http/batch';${
       : ''
   }
 ${ctx.personalData ? `import { actingAs, createTestTenantId, purgeTenant, registerAndLogin, waitFor } from '#devtools/test-support';\nimport type { Actor } from '#devtools/test-support';` : `import { actingAs, registerAndLogin } from '#devtools/test-support';`}${vectorSpecImports(ctx)}
-${usesPrismaClient ? `\nconst adapter = new PrismaPg({ connectionString: env.DATABASE_URL });\nconst prisma = new PrismaClient({ adapter });\n` : ''}${vectorSpecFixtures(ctx)}
+${usesPrismaClient ? `\nconst adapter = new PrismaPg({ connectionString: env.DATABASE_MIGRATION_URL ?? env.DATABASE_URL });\nconst prisma = new PrismaClient({ adapter });\n` : ''}${vectorSpecFixtures(ctx)}
 describe('${ctx.pascalName} resource', () => {
   let app: INestApplication<App>;
   let ownerToken: string;

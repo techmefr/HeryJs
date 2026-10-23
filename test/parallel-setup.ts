@@ -21,6 +21,7 @@ import * as path from 'node:path';
 import { Client } from 'pg';
 import {
   BASE_URL_VARIABLE,
+  MIGRATION_BASE_URL_VARIABLE,
   WORKER_COUNT_VARIABLE,
   databaseNameOf,
   isSharedDatabase,
@@ -71,7 +72,7 @@ function migrate(url: string): void {
   );
   const result = spawnSync(process.execPath, [prisma, 'migrate', 'deploy'], {
     cwd: REPO_ROOT,
-    env: { ...process.env, DATABASE_URL: url },
+    env: { ...process.env, DATABASE_URL: url, DATABASE_MIGRATION_URL: url },
     encoding: 'utf8',
   });
 
@@ -120,9 +121,10 @@ export default async function provisionWorkerDatabases(globalConfig: {
 }): Promise<void> {
   loadEnvBeforeTests();
 
-  const baseUrl = process.env.DATABASE_URL;
+  const appUrl = process.env.DATABASE_URL;
+  const baseUrl = process.env.DATABASE_MIGRATION_URL ?? appUrl;
 
-  if (isSharedDatabase() || !baseUrl) {
+  if (isSharedDatabase() || !appUrl || !baseUrl) {
     return;
   }
 
@@ -156,6 +158,7 @@ export default async function provisionWorkerDatabases(globalConfig: {
     await client.end();
   }
 
-  process.env[BASE_URL_VARIABLE] = baseUrl;
+  process.env[BASE_URL_VARIABLE] = appUrl;
+  process.env[MIGRATION_BASE_URL_VARIABLE] = baseUrl;
   process.env[WORKER_COUNT_VARIABLE] = String(workers);
 }

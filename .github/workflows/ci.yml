@@ -29,7 +29,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DATABASE_URL: postgresql://heryjs:heryjs@localhost:5432/heryjs
+      DATABASE_URL: postgresql://heryjs_app:heryjs_app@localhost:5432/heryjs
+      DATABASE_MIGRATION_URL: postgresql://heryjs:heryjs@localhost:5432/heryjs
       REDIS_URL: redis://localhost:6479
       BETTER_AUTH_URL: http://localhost:3000
 
@@ -87,6 +88,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm run db:generate
+
+      # The app connects as heryjs_app, which the compose stack creates on
+      # first boot and a service container cannot: no superuser, no BYPASSRLS.
+      - name: Create the application database role
+        run: psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f scripts/postgres/app-role.sql
 
       - run: pnpm exec prisma migrate deploy
 
@@ -150,7 +156,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DATABASE_URL: postgresql://heryjs:heryjs@localhost:5432/heryjs
+      DATABASE_URL: postgresql://heryjs_app:heryjs_app@localhost:5432/heryjs
+      DATABASE_MIGRATION_URL: postgresql://heryjs:heryjs@localhost:5432/heryjs
       REDIS_URL: redis://localhost:6479
       BETTER_AUTH_URL: http://localhost:3000
 
@@ -201,6 +208,11 @@ jobs:
 
       - run: pnpm run db:generate
 
+      # The app connects as heryjs_app, which the compose stack creates on
+      # first boot and a service container cannot: no superuser, no BYPASSRLS.
+      - name: Create the application database role
+        run: psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f scripts/postgres/app-role.sql
+
       - run: pnpm exec prisma migrate deploy
 
       - run: pnpm run test:random
@@ -213,7 +225,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DATABASE_URL: postgresql://heryjs:heryjs@localhost:5432/heryjs
+      DATABASE_URL: postgresql://heryjs_app:heryjs_app@localhost:5432/heryjs
+      DATABASE_MIGRATION_URL: postgresql://heryjs:heryjs@localhost:5432/heryjs
       REDIS_URL: redis://localhost:6479
       BETTER_AUTH_URL: http://localhost:3000
 
@@ -254,6 +267,9 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      - name: Create the application database role
+        run: psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f scripts/postgres/app-role.sql
 
       - name: Scaffold a project
         run: |

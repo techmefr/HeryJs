@@ -10,6 +10,7 @@ import {
 } from './database';
 
 const DATABASE_URL =
+  process.env.DATABASE_MIGRATION_URL ??
   process.env.DATABASE_URL ??
   'postgresql://heryjs:heryjs@localhost:5432/heryjs';
 

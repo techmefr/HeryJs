@@ -13,7 +13,9 @@ import { SharingService } from './sharing.service';
 
 describe('SharingService (real database)', () => {
   const rawClient = new PrismaClient({
-    adapter: new PrismaPg({ connectionString: env.DATABASE_URL }),
+    adapter: new PrismaPg({
+      connectionString: env.DATABASE_MIGRATION_URL ?? env.DATABASE_URL,
+    }),
   });
   const tenantA = `tenant-share-a-${randomUUID()}`;
   const tenantB = `tenant-share-b-${randomUUID()}`;

@@ -10,7 +10,10 @@ import { GENESIS_PREVIOUS_HASH, writeAuditLog } from './audit-log';
  * their predecessor -- a fork the linear verifier can never accept.
  */
 describe('writeAuditLog concurrency (real database)', () => {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+  const adapter = new PrismaPg({
+    connectionString:
+      process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL,
+  });
   const client = new PrismaClient({ adapter });
 
   beforeAll(async () => {

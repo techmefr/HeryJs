@@ -5,6 +5,7 @@
  */
 export const SHARED_DB_FLAG = 'JEST_SHARED_DB';
 export const BASE_URL_VARIABLE = 'JEST_DB_BASE_URL';
+export const MIGRATION_BASE_URL_VARIABLE = 'JEST_DB_MIGRATION_BASE_URL';
 export const WORKER_COUNT_VARIABLE = 'JEST_DB_WORKERS';
 
 // Valkey and Redis ship 16 logical databases, which is the most workers that

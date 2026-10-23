@@ -48,7 +48,7 @@ export class BackupService {
     const driver = this.storageDriver();
     const { keep } = await this.settings.get();
     const result = await createBackup({
-      databaseUrl: env.DATABASE_URL,
+      databaseUrl: env.DATABASE_MIGRATION_URL ?? env.DATABASE_URL,
       directory: env.BACKUP_DIR,
       keep,
     });
@@ -81,7 +81,7 @@ export class BackupService {
 
   async restore(name: string): Promise<void> {
     await restoreBackup({
-      databaseUrl: env.DATABASE_URL,
+      databaseUrl: env.DATABASE_MIGRATION_URL ?? env.DATABASE_URL,
       file: await this.pathOf(name),
       isForced: true,
     });

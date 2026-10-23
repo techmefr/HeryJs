@@ -21,6 +21,7 @@ import { AuthModule } from './auth.module';
 import { setAuthMailer } from './auth-mailer';
 import { setAuthSmsSender } from './auth-sms';
 import { authPrismaClient as prisma } from './better-auth.instance';
+import { databaseOwnerClient } from '#devtools/testing/database-owner-client';
 import { SessionGuard } from './session.guard';
 import type { RequestWithUser } from './session.guard';
 
@@ -311,7 +312,7 @@ describe('passwordless sign-in over a real HTTP round trip', () => {
 
     expect((await whoAmI(guest.token)).tenantId).toBe('default');
 
-    const post = await prisma.blogPost.create({
+    const post = await databaseOwnerClient.blogPost.create({
       data: { tenantId: 'default', ownerId: guest.user.id, title: 'guest' },
     });
 
@@ -329,7 +330,7 @@ describe('passwordless sign-in over a real HTTP round trip', () => {
       .expect(200);
     const account = upgraded.body as SessionBody;
 
-    const moved = await prisma.blogPost.findUniqueOrThrow({
+    const moved = await databaseOwnerClient.blogPost.findUniqueOrThrow({
       where: { id: post.id },
     });
 
@@ -365,7 +366,7 @@ describe('passwordless sign-in over a real HTTP round trip', () => {
       .send({ email, type: 'sign-in' })
       .expect(200);
 
-    const post = await prisma.blogPost.create({
+    const post = await databaseOwnerClient.blogPost.create({
       data: { tenantId: 'default', ownerId: guest.user.id, title: 'guest' },
     });
 
@@ -378,7 +379,7 @@ describe('passwordless sign-in over a real HTTP round trip', () => {
 
     expect((await whoAmI(account.token)).tenantId).toBe('other-tenant');
     expect(
-      await prisma.blogPost.findUnique({ where: { id: post.id } }),
+      await databaseOwnerClient.blogPost.findUnique({ where: { id: post.id } }),
     ).toBeNull();
     expect(
       await prisma.user.findUnique({ where: { id: guest.user.id } }),

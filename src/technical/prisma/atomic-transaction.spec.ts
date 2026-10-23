@@ -10,7 +10,10 @@ import {
 import { AmbientTransactionStorage } from './transaction-context';
 
 describe('$atomic on the tenant-scoped client (real database)', () => {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+  const adapter = new PrismaPg({
+    connectionString:
+      process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL,
+  });
   const rawClient = new PrismaClient({ adapter });
   let scopedClient: TenantScopedPrismaClient;
   let ownerId: string;

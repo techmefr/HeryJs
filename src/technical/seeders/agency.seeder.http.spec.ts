@@ -5,6 +5,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { databaseOwnerClient } from '#devtools/testing/database-owner-client';
 import {
   registerAndLogin,
   type TestUser,
@@ -74,12 +75,12 @@ describe('agency seeder', () => {
     expect(result.team).toBe(agency);
     expect(result.createdUserIds).toHaveLength(3);
 
-    const team = await authPrismaClient.team.findFirst({
+    const team = await databaseOwnerClient.team.findFirst({
       where: { tenantId: 'default', name: agency },
     });
     expect(team).not.toBeNull();
 
-    const members = await authPrismaClient.teamMember.findMany({
+    const members = await databaseOwnerClient.teamMember.findMany({
       where: { teamId: team!.id },
     });
     expect(members).toHaveLength(3);
@@ -103,12 +104,12 @@ describe('agency seeder', () => {
       .send({ 'agency.seed.agency': agency, 'agency.seed.count': 2 })
       .expect(201);
 
-    const teams = await authPrismaClient.team.findMany({
+    const teams = await databaseOwnerClient.team.findMany({
       where: { tenantId: 'default', name: agency },
     });
     expect(teams).toHaveLength(1);
 
-    const members = await authPrismaClient.teamMember.findMany({
+    const members = await databaseOwnerClient.teamMember.findMany({
       where: { teamId: teams[0]!.id },
     });
     expect(members).toHaveLength(3);

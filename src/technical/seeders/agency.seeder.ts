@@ -5,8 +5,11 @@ import {
   ExposeAction,
   ExposeField,
 } from '#technical/exposition/exposition.decorators';
+import { inTenantTransaction } from '#technical/prisma/row-level-security';
 import { TenantContextStorage } from '#technical/tenancy/tenant-context';
 import { canSeedAgency } from './agency.policy';
+
+const SEED_TIMEOUT_MS = 60_000;
 
 export interface AgencySeedResult {
   team: string;
@@ -42,26 +45,33 @@ export class AgencySeeder {
   ): Promise<AgencySeedResult> {
     const tenantId = TenantContextStorage.getTenantId();
 
-    const team =
-      (await authPrismaClient.team.findFirst({
-        where: { tenantId, name: agency },
-      })) ??
-      (await authPrismaClient.team.create({
-        data: { tenantId, name: agency },
-      }));
+    return inTenantTransaction(
+      authPrismaClient,
+      tenantId,
+      async (transaction) => {
+        const team =
+          (await transaction.team.findFirst({
+            where: { tenantId, name: agency },
+          })) ??
+          (await transaction.team.create({
+            data: { tenantId, name: agency },
+          }));
 
-    const createdUserIds: string[] = [];
+        const createdUserIds: string[] = [];
 
-    for (let index = 0; index < count; index += 1) {
-      const user = await authPrismaClient.user.create({
-        data: { tenantId, email: `${randomUUID()}@agency-seed.test` },
-      });
-      await authPrismaClient.teamMember.create({
-        data: { tenantId, teamId: team.id, userId: user.id },
-      });
-      createdUserIds.push(user.id);
-    }
+        for (let index = 0; index < count; index += 1) {
+          const user = await transaction.user.create({
+            data: { tenantId, email: `${randomUUID()}@agency-seed.test` },
+          });
+          await transaction.teamMember.create({
+            data: { tenantId, teamId: team.id, userId: user.id },
+          });
+          createdUserIds.push(user.id);
+        }
 
-    return { team: team.name, createdUserIds };
+        return { team: team.name, createdUserIds };
+      },
+      { timeout: SEED_TIMEOUT_MS },
+    );
   }
 }
