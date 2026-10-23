@@ -226,8 +226,11 @@ describe('Impersonation', () => {
       data: { expiresAt: new Date(Date.now() - 1000) },
     });
 
-    const expiryTask = app.get(ImpersonationExpiryTask);
-    await expiryTask.run();
+    // The sweep itself, not run(): run() takes the cluster-wide lock and
+    // skips when it is held, and this app's own every-minute cron, or the
+    // lock a previous spec file's shutdown left to expire on this worker's
+    // Redis, holds it often enough to make a skipped run look like a bug.
+    await app.get(ImpersonationExpiryTask).sweep(new Date());
 
     const session = await authPrismaClient.session.findUnique({
       where: { token: data.token },
@@ -252,5 +255,51 @@ describe('Impersonation', () => {
       null,
       admin.id,
     ]);
+  });
+
+  it('keeps sweeping when a session it read has already ended elsewhere', async () => {
+    const admin = await registerAndLogin(app);
+    await promoteToAdmin(admin.id);
+    const target = await registerAndLogin(app);
+
+    const started = await startImpersonating(admin, target.id).expect(201);
+    const { data } = started.body as { data: { token: string } };
+    await authPrismaClient.session.update({
+      where: { token: data.token },
+      data: { expiresAt: new Date(Date.now() - 1000) },
+    });
+
+    const expired = await authPrismaClient.session.findMany({
+      where: { impersonatedBy: { not: null }, expiresAt: { lt: new Date() } },
+      select: { token: true, userId: true, impersonatedBy: true },
+    });
+    const read = jest
+      .spyOn(authPrismaClient.session, 'findMany')
+      .mockResolvedValueOnce([
+        {
+          token: `ended-elsewhere-${randomUUID()}`,
+          userId: target.id,
+          impersonatedBy: admin.id,
+        },
+        ...expired,
+      ] as never);
+
+    try {
+      await app.get(ImpersonationExpiryTask).sweep(new Date());
+    } finally {
+      read.mockRestore();
+    }
+
+    expect(
+      await authPrismaClient.session.findUnique({
+        where: { token: data.token },
+      }),
+    ).toBeNull();
+
+    const trail = await authPrismaClient.auditLog.findMany({
+      where: { model: 'Impersonation', recordId: target.id },
+      orderBy: { createdAt: 'asc' },
+    });
+    expect(trail.map((entry) => entry.operation)).toEqual(['start', 'expire']);
   });
 });

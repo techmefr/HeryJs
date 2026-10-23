@@ -149,6 +149,7 @@ export function buildServerSchema(
       .string()
       .min(1)
       .default('privacy/erasures.jsonl'),
+    PRIVACY_ERASURE_STORAGE_DRIVER: z.string().min(1).optional(),
     SEARCH_MATCH_LIMIT: z.coerce.number().int().positive().default(1000),
     // The most rows a similarity search ranks and returns. Nearest-neighbour
     // search never runs out of matches -- every embedded row has a distance --

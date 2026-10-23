@@ -22,7 +22,13 @@ export default tseslint.config(
       },
       sourceType: 'commonjs',
       parserOptions: {
-        projectService: true,
+        // One program for the whole repository. The project service opened one
+        // per package tsconfig, and each of those loaded the kernel and the
+        // Prisma client types again: some thirty copies, 14 GB to lint.
+        project: [
+          './tsconfig.eslint.json',
+          './examples/hery-module-maintenance/tsconfig.json',
+        ],
         tsconfigRootDir: import.meta.dirname,
       },
     },

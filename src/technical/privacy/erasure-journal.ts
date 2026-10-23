@@ -1,5 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import * as path from 'node:path';
+import type { StorageDriver } from '#technical/storage/storage-driver';
 
 export type JournalErasureKind = 'erase-user' | 'erase-tenant';
 
@@ -18,35 +20,80 @@ export interface ErasureJournalEntry {
 }
 
 /**
- * The journal lives in a file beside the database, never in it: a restore
- * replaces every table with the dump's copy, so a journal kept in a table
- * would be rolled back together with the erasures it records.
+ * The journal lives beside the database, never in it: a restore replaces
+ * every table with the dump's copy, so a journal kept in a table would be
+ * rolled back together with the erasures it records.
  */
-export async function appendErasure(
-  file: string,
-  entry: ErasureJournalEntry,
-): Promise<void> {
-  await mkdir(path.dirname(file), { recursive: true });
-  await appendFile(file, `${JSON.stringify(entry)}\n`, { mode: 0o600 });
+export interface ErasureJournal {
+  append(entry: ErasureJournalEntry): Promise<void>;
+  read(): Promise<ErasureJournalEntry[]>;
 }
 
-export async function readErasures(
-  file: string,
-): Promise<ErasureJournalEntry[]> {
-  let content: string;
+/**
+ * The development fallback: a file on the instance's own disk, lost with the
+ * container unless it sits on a volume, and seen by that instance alone.
+ */
+export class FileErasureJournal implements ErasureJournal {
+  constructor(private readonly file: string) {}
 
-  try {
-    content = await readFile(file, 'utf8');
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return [];
-    }
-
-    throw error;
+  async append(entry: ErasureJournalEntry): Promise<void> {
+    await mkdir(path.dirname(this.file), { recursive: true });
+    await appendFile(this.file, `${JSON.stringify(entry)}\n`, { mode: 0o600 });
   }
 
-  return content
-    .split('\n')
-    .filter((line) => line.trim() !== '')
-    .map((line) => JSON.parse(line) as ErasureJournalEntry);
+  async read(): Promise<ErasureJournalEntry[]> {
+    let content: string;
+
+    try {
+      content = await readFile(this.file, 'utf8');
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return [];
+      }
+
+      throw error;
+    }
+
+    return content
+      .split('\n')
+      .filter((line) => line.trim() !== '')
+      .map((line) => JSON.parse(line) as ErasureJournalEntry);
+  }
+}
+
+const STORAGE_PREFIX = 'privacy/erasures/';
+const CONTENT_TYPE = 'application/json';
+
+/**
+ * One object per erasure rather than one appended file: an object store has
+ * no append, and two instances rewriting a shared file would each drop the
+ * entry the other had just added.
+ */
+export class StorageErasureJournal implements ErasureJournal {
+  constructor(private readonly driver: StorageDriver) {}
+
+  async append(entry: ErasureJournalEntry): Promise<void> {
+    await this.driver.put(
+      `${STORAGE_PREFIX}${entry.erasedAt}-${randomUUID()}.json`,
+      Buffer.from(JSON.stringify(entry)),
+      CONTENT_TYPE,
+    );
+  }
+
+  async read(): Promise<ErasureJournalEntry[]> {
+    const objects = await this.driver.list(
+      STORAGE_PREFIX,
+      Number.MAX_SAFE_INTEGER,
+    );
+    const entries = await Promise.all(
+      objects.map(
+        async ({ key }) =>
+          JSON.parse(
+            (await this.driver.get(key)).toString('utf8'),
+          ) as ErasureJournalEntry,
+      ),
+    );
+
+    return entries.sort((a, b) => a.erasedAt.localeCompare(b.erasedAt));
+  }
 }

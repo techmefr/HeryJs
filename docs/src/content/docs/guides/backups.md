@@ -69,7 +69,12 @@ anything real, create a copy with `hery db:branch create rehearsal`, point
 
 A dump taken before a privacy erasure still holds the erased person. Every
 completed erasure is therefore appended to a journal kept **outside the
-database**, in `PRIVACY_ERASURE_JOURNAL` (default `privacy/erasures.jsonl`). It
+database**. In production, set `PRIVACY_ERASURE_STORAGE_DRIVER` to an installed
+storage driver (`s3` for S3 or MinIO): each erasure is written as one object
+under `privacy/erasures/`, shared by every instance and kept across redeploys.
+Without it the journal falls back to the local file `PRIVACY_ERASURE_JOURNAL`
+(default `privacy/erasures.jsonl`), fine for development but lost with the
+container unless it sits on a volume, and seen by one instance only. It
 holds ids only: the tenant, the erased user, and for a tenant erasure the
 account that was kept. `hery db:restore` and the admin panel's restore run the
 whole journal again once the dump is back; an erasure that finds nothing left

@@ -1,3 +1,4 @@
+import type IORedis from 'ioredis';
 import { waitFor } from '#devtools/testing/wait-for';
 import { RateLimitStore } from './rate-limit-store';
 
@@ -46,6 +47,22 @@ describe('RateLimitStore', () => {
     const hitOnB = await store.hit(keyB, 1, 60);
 
     expect(hitOnB.allowed).toBe(true);
+  });
+
+  it('never leaves a counter without its window when a command fails midway', async () => {
+    const key = uniqueKey();
+    const { client } = store as unknown as { client: IORedis };
+    const expire = jest
+      .spyOn(client, 'expire')
+      .mockRejectedValueOnce(new Error('connection lost'));
+
+    try {
+      await store.hit(key, 1, 60).catch(() => undefined);
+
+      expect(await client.ttl(`rate-limit:${key}`)).toBeGreaterThan(0);
+    } finally {
+      expire.mockRestore();
+    }
   });
 
   it('resets the counter once the window has elapsed', async () => {
