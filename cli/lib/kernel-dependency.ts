@@ -7,6 +7,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import * as path from 'node:path';
+import { KERNEL_FILE_VERSIONS } from './kernel-versions';
 import {
   KERNEL_INTERNAL_SUBPATH,
   KERNEL_PACKAGE,
@@ -169,7 +170,7 @@ function filesUnder(dir: string): string[] {
   });
 }
 
-function isAppSide(relative: string): boolean {
+export function isAppSideKernelFile(relative: string): boolean {
   return APP_SIDE_DEVTOOLS.some(
     (kept) => relative === kept || relative.startsWith(kept + path.sep),
   );
@@ -179,7 +180,7 @@ function isAppSide(relative: string): boolean {
 export function copiedKernelFiles(root: string): string[] {
   return KERNEL_COPY_DIRS.flatMap((dir) => filesUnder(path.join(root, dir)))
     .map((file) => path.relative(root, file))
-    .filter((file) => !isAppSide(file))
+    .filter((file) => !isAppSideKernelFile(file))
     .sort();
 }
 
@@ -188,41 +189,32 @@ export function hasCopiedKernel(root: string): boolean {
 }
 
 /**
- * The copied files that differ from the kernel this CLI ships, or that it has
- * no file for. A file the project deleted is not one: `hery new` itself drops
- * the kernel specs written against the demo.
+ * The copied files that are neither the kernel this CLI ships nor any version
+ * of it main ever had (KERNEL_FILE_VERSIONS): a project generated from an
+ * older release carries that release's kernel, untouched, and is accepted. A
+ * file the project deleted is not one: `hery new` itself drops the kernel
+ * specs written against the demo.
  */
 export function modifiedKernelFiles(
   root: string,
   frameworkRoot: string,
+  knownVersions: Readonly<
+    Record<string, readonly string[]>
+  > = KERNEL_FILE_VERSIONS,
 ): string[] {
   return copiedKernelFiles(root).filter((file) => {
+    const content = readFileSync(path.join(root, file));
     const reference = path.join(frameworkRoot, file);
-    const copied = readFileSync(path.join(root, file));
 
-    return (
-      !existsSync(reference) ||
-      (!readFileSync(reference).equals(copied) &&
-        !(
-          EARLIER_KERNEL_VERSIONS[file.split(path.sep).join('/')] ?? []
-        ).includes(createHash('sha256').update(copied).digest('hex')))
+    if (existsSync(reference) && readFileSync(reference).equals(content)) {
+      return false;
+    }
+
+    return !knownVersions[file.split(path.sep).join('/')]?.includes(
+      createHash('sha256').update(content).digest('hex'),
     );
   });
 }
-
-/**
- * The sha256 of kernel files as a project that copied the kernel holds them,
- * for the files the kernel changed since: such a copy is unmodified, not a
- * local change to keep.
- */
-export const EARLIER_KERNEL_VERSIONS: Record<string, string[]> = {
-  'src/technical/config/hery-config.types.ts': [
-    'f090a2996278693cee3844303de133f0e8e6f3751572c51742d25fdba8df19a0',
-  ],
-  'src/technical/public/config.ts': [
-    'bd174ed4d760d4fc007c4a50467a41ab41ba4a78fc040e7b5cfae7fe66d169ed',
-  ],
-};
 
 /** Deletes the copied kernel, keeping the test support the project owns. */
 export function removeCopiedKernel(root: string): void {
@@ -232,7 +224,7 @@ export function removeCopiedKernel(root: string): void {
 
   if (existsSync(devtools)) {
     for (const entry of readdirSync(devtools)) {
-      if (!isAppSide(path.join('src', 'devtools', entry))) {
+      if (!isAppSideKernelFile(path.join('src', 'devtools', entry))) {
         rmSync(path.join(devtools, entry), { recursive: true, force: true });
       }
     }

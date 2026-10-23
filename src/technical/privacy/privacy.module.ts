@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '#technical/auth/auth.module';
+import { DriversModule } from '#technical/drivers/drivers.module';
 import { JobsModule } from '#technical/jobs/jobs.module';
 import { PrismaModule } from '#technical/prisma/prisma.module';
 import { SchedulerModule } from '#technical/scheduler/scheduler.module';
@@ -12,7 +13,13 @@ import { PrivacyRetentionTask } from './privacy-retention.task';
 import { PrivacyService } from './privacy.service';
 
 @Module({
-  imports: [PrismaModule, AuthModule, JobsModule, SchedulerModule],
+  imports: [
+    PrismaModule,
+    AuthModule,
+    DriversModule,
+    JobsModule,
+    SchedulerModule,
+  ],
   controllers: [PrivacyController],
   providers: [
     PersonalDataRegistry,

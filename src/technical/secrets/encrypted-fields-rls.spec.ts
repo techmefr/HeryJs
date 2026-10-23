@@ -5,18 +5,16 @@ import type { Prisma } from '@prisma/client';
 import type { createTenantScopedPrismaClient as CreateTenantScopedPrismaClient } from '../prisma/prisma.client';
 import type { TenantContextStorage as TenantContextStorageType } from '#technical/tenancy/tenant-context';
 
-describe('encrypted columns under RLS_ENABLED=true (real database)', () => {
+describe('encrypted columns under row-level security (real database)', () => {
   const adapter = new PrismaPg({
     connectionString:
       process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL,
   });
   const rawClient = new PrismaClient({ adapter });
-  const previousRlsEnabled = process.env.RLS_ENABLED;
   let ownerId: string;
 
   beforeAll(async () => {
     await rawClient.$connect();
-    process.env.RLS_ENABLED = 'true';
     jest.resetModules();
 
     ownerId = (
@@ -30,12 +28,6 @@ describe('encrypted columns under RLS_ENABLED=true (real database)', () => {
     await rawClient.blogPost.deleteMany({ where: { ownerId } });
     await rawClient.user.delete({ where: { id: ownerId } });
     await rawClient.$disconnect();
-
-    if (previousRlsEnabled === undefined) {
-      delete process.env.RLS_ENABLED;
-    } else {
-      process.env.RLS_ENABLED = previousRlsEnabled;
-    }
     jest.resetModules();
   });
 

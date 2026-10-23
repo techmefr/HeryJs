@@ -7,6 +7,8 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { Command } from 'commander';
@@ -23,6 +25,8 @@ import {
 } from './kernel-dependency';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
+// The last commit whose "hery new" copied src/technical (as in ci.yml).
+const LAST_COPYING_COMMIT = '1c55ed42d81c91bb84feb9e619254f3a6cc0628a';
 
 function readJson<T>(...segments: string[]): T {
   return JSON.parse(readFileSync(path.join(...segments), 'utf8')) as T;
@@ -262,6 +266,59 @@ describe('a project that still carries a copy of the kernel', () => {
     );
 
     expect(modifiedKernelFiles(root, REPO_ROOT)).toEqual([]);
+  });
+
+  it('accepts a file that is a version an older release shipped', () => {
+    const file = path.join('src', 'technical', 'config', 'env.ts');
+    const older = '// the kernel as an older release shipped it\n';
+    writeFileSync(path.join(root, file), older);
+
+    expect(
+      modifiedKernelFiles(root, REPO_ROOT, {
+        'src/technical/config/env.ts': [
+          createHash('sha256').update(older).digest('hex'),
+        ],
+      }),
+    ).toEqual([]);
+  });
+
+  it('still refuses a file that matches no version ever shipped', () => {
+    const file = path.join('src', 'technical', 'config', 'env.ts');
+    writeFileSync(path.join(root, file), '// a local change\n');
+
+    expect(
+      modifiedKernelFiles(root, REPO_ROOT, {
+        'src/technical/config/env.ts': [
+          createHash('sha256').update('// another version\n').digest('hex'),
+        ],
+      }),
+    ).toEqual([file]);
+  });
+
+  it('accepts the kernel the last copying release shipped, though the current one changed', () => {
+    const generated = mkdtempSync(path.join(tmpdir(), 'hery-kernel-old-'));
+
+    try {
+      const archive = execFileSync(
+        'git',
+        ['archive', LAST_COPYING_COMMIT, 'src/technical', 'src/devtools'],
+        { cwd: REPO_ROOT, maxBuffer: 256 * 1024 * 1024 },
+      );
+      execFileSync('tar', ['-x', '-C', generated], { input: archive });
+
+      expect(modifiedKernelFiles(generated, REPO_ROOT)).toEqual([]);
+
+      appendFileSync(
+        path.join(generated, 'src', 'technical', 'config', 'env.ts'),
+        '// a local change\n',
+      );
+
+      expect(modifiedKernelFiles(generated, REPO_ROOT)).toEqual([
+        path.join('src', 'technical', 'config', 'env.ts'),
+      ]);
+    } finally {
+      rmSync(generated, { recursive: true, force: true });
+    }
   });
 
   it('ignores the test support it keeps', () => {

@@ -64,7 +64,11 @@ jobs:
           --health-retries 5
 
     steps:
+      # The whole history: lint:conventions lists every version the kernel
+      # files have had on main (kernel-versions).
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v6
 
@@ -187,7 +191,10 @@ jobs:
           --health-retries 5
 
     steps:
+      # The whole history: a kernel spec migrates the kernel of an older commit.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v6
 
