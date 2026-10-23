@@ -9,8 +9,8 @@ import {
   CapabilityForbiddenException,
   RecordNotFoundException,
 } from '@heryjs/core/errors';
-import { NotImpersonatingException } from '#technical/errors/not-impersonating.exception';
-import { SelfImpersonationException } from '#technical/errors/self-impersonation.exception';
+import { NotImpersonatingException } from './errors/not-impersonating.exception';
+import { SelfImpersonationException } from './errors/self-impersonation.exception';
 import {
   PRISMA_CLIENT,
   type TenantScopedPrismaClient,

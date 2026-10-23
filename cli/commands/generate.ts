@@ -4,8 +4,7 @@ import type { Command } from 'commander';
 import pc from 'picocolors';
 import { loadBlueprint, resolveBlueprintPath } from '../lib/blueprint';
 import { buildResourceContext } from '../lib/resource-context';
-import { historyColumnEntries } from '../lib/history-templates';
-import { patchModelSet, patchPrismaSchema } from '../lib/schema-patch';
+import { patchPrismaSchema } from '../lib/schema-patch';
 import {
   changeFeedFile,
   controllerFile,
@@ -133,65 +132,12 @@ export function registerGenerateCommand(program: Command): void {
         }
 
         const schemaPath = path.join(root, 'prisma', 'schema.prisma');
-        const prismaClientPath = path.join(
-          root,
-          'src',
-          'technical',
-          'prisma',
-          'prisma.client.ts',
-        );
-
-        const auditLogPath = path.join(
-          root,
-          'src',
-          'technical',
-          'audit',
-          'audit-log.ts',
-        );
-
-        const historyColumnsPath = path.join(
-          root,
-          'src',
-          'technical',
-          'history',
-          'history-columns.ts',
-        );
-
-        const encryptedColumnsPath = path.join(
-          root,
-          'src',
-          'technical',
-          'secrets',
-          'encrypted-columns.ts',
-        );
-
         // A resource declaring another resource's model -- a second version of
         // a contract over the same table -- owns none of the schema. Emitting
-        // the model again would duplicate a table that already exists, and
-        // re-listing it in the two model sets would say twice what is already
-        // true once.
+        // the model again would duplicate a table that already exists, along
+        // with the annotations that make it tenant-scoped and audited.
         if (ctx.ownsModel) {
           const schemaPatched = patchPrismaSchema(schemaPath, ctx);
-          patchModelSet(
-            prismaClientPath,
-            'TENANT_SCOPED_MODELS',
-            ctx.pascalName,
-          );
-          patchModelSet(auditLogPath, 'AUDITED_MODELS', ctx.pascalName);
-          if (ctx.history) {
-            for (const entry of historyColumnEntries(ctx)) {
-              patchModelSet(historyColumnsPath, 'HISTORY_COLUMNS', entry);
-            }
-          }
-          for (const field of ctx.fields.filter(
-            (candidate) => candidate.type === 'encrypted',
-          )) {
-            patchModelSet(
-              encryptedColumnsPath,
-              'ENCRYPTED_COLUMNS',
-              `${ctx.modelPascalName}.${field.name}`,
-            );
-          }
           console.log(
             schemaPatched
               ? pc.green(`✔ patched ${schemaPath}`)
@@ -199,8 +145,6 @@ export function registerGenerateCommand(program: Command): void {
                   `model ${ctx.pascalName} already in ${schemaPath}, schema left untouched`,
                 ),
           );
-          console.log(pc.green(`✔ patched ${prismaClientPath}`));
-          console.log(pc.green(`✔ patched ${auditLogPath}`));
         } else {
           console.log(
             pc.dim(

@@ -1,13 +1,14 @@
 import type { Command } from 'commander';
 import pc from 'picocolors';
 import { migrateKernelImports } from '../lib/kernel-codemod';
+import { migrateLegacyRegistries } from '../lib/legacy-registries';
 import { KERNEL_PACKAGE } from '../lib/kernel-public-api';
 
 export function registerKernelMigrateCommand(program: Command): void {
   program
     .command('kernel:migrate [paths...]')
     .description(
-      `Rewrite #kernel/public/<entry> imports to ${KERNEL_PACKAGE}/<entry> and map ${KERNEL_PACKAGE}/* in each tsconfig, under packages/ unless paths are given. Safe to run again.`,
+      `Rewrite #kernel/public/<entry> imports to ${KERNEL_PACKAGE}/<entry> and map ${KERNEL_PACKAGE}/* in each tsconfig, under packages/ unless paths are given, and turn the kernel model lists into /// @hery.* annotations of prisma/schema.prisma. Safe to run again.`,
     )
     .option(
       '--peer <range>',
@@ -18,11 +19,16 @@ export function registerKernelMigrateCommand(program: Command): void {
       'list what would change, write nothing, exit 1 if anything would',
     )
     .action((paths: string[], options: { peer?: string; check?: boolean }) => {
-      const changed = migrateKernelImports(
-        process.cwd(),
-        paths.length > 0 ? paths : ['packages'],
-        { peerRange: options.peer, write: options.check !== true },
-      );
+      const changed = [
+        ...migrateKernelImports(
+          process.cwd(),
+          paths.length > 0 ? paths : ['packages'],
+          { peerRange: options.peer, write: options.check !== true },
+        ),
+        ...migrateLegacyRegistries(process.cwd(), {
+          write: options.check !== true,
+        }).map((annotation) => `prisma/schema.prisma: ${annotation}`),
+      ];
 
       if (changed.length === 0) {
         console.log(

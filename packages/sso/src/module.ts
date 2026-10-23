@@ -1,6 +1,7 @@
 import type { ModuleDefinition } from 'heryjs';
 
 const SSO_MODELS = `
+/// @hery.appEnforcedTenant Started from a request or from a worker, so a tenant cannot be stamped from the ambient context; every call names the tenant it acts for.
 model SsoConnection {
   id              String   @id @default(cuid())
   tenantId        String
@@ -23,6 +24,7 @@ model SsoConnection {
   @@index([tenantId])
 }
 
+/// @hery.appEnforcedTenant Started from a request or from a worker, so a tenant cannot be stamped from the ambient context; every call names the tenant it acts for.
 model SsoDomain {
   id                String    @id @default(cuid())
   tenantId          String
@@ -39,6 +41,7 @@ model SsoDomain {
   @@index([domain])
 }
 
+/// @hery.appEnforcedTenant Started from a request or from a worker, so a tenant cannot be stamped from the ambient context; every call names the tenant it acts for.
 model SsoIdentity {
   id           String   @id @default(cuid())
   tenantId     String

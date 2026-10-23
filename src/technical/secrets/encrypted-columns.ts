@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
+import { modelRegistries } from '../prisma/model-annotations';
 
-const ENCRYPTED_COLUMNS = new Set<string>(['BlogPost.privateNote']);
 const COLUMN_SEPARATOR = '.';
 export const REDACTED_VALUE = '[encrypted]';
 
@@ -22,7 +22,9 @@ function buildRegistry(): Map<string, ModelEncryption> {
               (field) =>
                 field.kind === 'scalar' &&
                 field.type === 'String' &&
-                ENCRYPTED_COLUMNS.has(secretContext(model.name, field.name)),
+                modelRegistries().encrypted.has(
+                  secretContext(model.name, field.name),
+                ),
             )
             .map((field) => field.name),
         ),
@@ -64,7 +66,7 @@ export function secretContext(model: string, column: string): string {
 }
 
 export function declaredEncryptedColumns(): string[] {
-  return [...ENCRYPTED_COLUMNS];
+  return [...modelRegistries().encrypted];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

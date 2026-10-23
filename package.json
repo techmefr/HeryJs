@@ -137,6 +137,7 @@
     "lint:no-raw-pii-log": "pnpm run lint:conventions no-raw-pii-log",
     "lint:module-validity": "pnpm run lint:conventions module-validity",
     "lint:module-patches": "pnpm run lint:conventions module-patches",
+    "lint:module-destinations": "pnpm run lint:conventions module-destinations",
     "lint:coverage": "pnpm run lint:conventions coverage",
     "lint:dev-guard": "pnpm run lint:conventions dev-guard",
     "lint:no-fixed-sleeps": "pnpm run lint:conventions no-fixed-sleeps",

@@ -65,9 +65,9 @@ describe('resource versioning', () => {
     expect(ctx.routePath).toBe('v2/blog-post-v2s');
   });
 
-  // ownsModel is what generate.ts reads before touching prisma/schema.prisma,
-  // TENANT_SCOPED_MODELS and AUDITED_MODELS. Getting it wrong duplicates a
-  // table rather than failing loudly.
+  // ownsModel is what generate.ts reads before touching prisma/schema.prisma
+  // and the annotations on the model. Getting it wrong duplicates a table
+  // rather than failing loudly.
   it('reports that it owns no schema when it borrows a model', () => {
     const ctx = buildResourceContext(
       blueprint({

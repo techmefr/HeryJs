@@ -5,10 +5,17 @@ generator client {
   provider = "prisma-client-js"
 }
 
+// Writes the /// @hery.* annotations below next to the client, where the
+// kernel reads its tenant boundary, audit, history and encryption at startup.
+generator hery {
+  provider = "node cli/prisma-registry-generator.ts"
+}
+
 datasource db {
   provider = "postgresql"
 }
 
+/// @hery.appEnforcedTenant Written by better-auth's own adapter, which runs its own transactions.
 model User {
   id                  String    @id @default(cuid())
   email               String    @unique
@@ -48,6 +55,7 @@ model User {
   currentTeam               Team?                      @relation("CurrentTeam", fields: [currentTeamId], references: [id], onDelete: SetNull)
 }
 
+/// @hery.tenantFree better-auth's own tables. Each row hangs off a User, which does carry a tenantId, and better-auth reads them through its own adapter with its own queries -- a column here would be stamped by nobody.
 model ApiKey {
   id        String    @id @default(cuid())
   userId    String
@@ -60,6 +68,7 @@ model ApiKey {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+/// @hery.tenantScoped
 model Team {
   id        String   @id @default(cuid())
   tenantId  String   @default("default")
@@ -71,6 +80,7 @@ model Team {
   currentUsers User[]       @relation("CurrentTeam")
 }
 
+/// @hery.tenantScoped
 model TeamMember {
   teamId    String
   userId    String
@@ -83,6 +93,7 @@ model TeamMember {
   @@id([teamId, userId])
 }
 
+/// @hery.tenantFree better-auth's own tables. Each row hangs off a User, which does carry a tenantId, and better-auth reads them through its own adapter with its own queries -- a column here would be stamped by nobody.
 model Session {
   id             String   @id @default(cuid())
   token          String   @unique
@@ -97,6 +108,7 @@ model Session {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+/// @hery.tenantFree better-auth's own tables. Each row hangs off a User, which does carry a tenantId, and better-auth reads them through its own adapter with its own queries -- a column here would be stamped by nobody.
 model Account {
   id                    String    @id @default(cuid())
   userId                String
@@ -115,6 +127,7 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+/// @hery.tenantFree Email-verification and password-reset tokens, looked up by their own value before any session exists, so there is no tenant to scope the lookup by.
 model Verification {
   id         String   @id @default(cuid())
   identifier String
@@ -124,6 +137,7 @@ model Verification {
   updatedAt  DateTime @updatedAt
 }
 
+/// @hery.appEnforcedTenant Global rows are the point of a feature flag: tenantId is nullable, and the extension would stamp the current tenant onto a flag meant for everyone.
 model FeatureFlag {
   id                String   @id @default(cuid())
   key               String
@@ -140,6 +154,7 @@ model FeatureFlag {
   @@unique([key, tenantId])
 }
 
+/// @hery.tenantScoped
 model AppNotification {
   id        String    @id @default(cuid())
   tenantId  String
@@ -155,6 +170,7 @@ model AppNotification {
   @@index([tenantId])
 }
 
+/// @hery.appEnforcedTenant Written by writeAuditLog against the raw client, deliberately outside the extension chain so an audit entry cannot be scoped away by the boundary it is recording a crossing of.
 model AuditLog {
   id             String    @id @default(cuid())
   // createdAt is a millisecond timestamp, so two entries written in the same
@@ -196,6 +212,7 @@ model AuditLog {
 // sink never skips or repeats an entry: the cursor moves in the same
 // transaction that stages the delivery. `authToken` holds a sealed envelope,
 // never the token.
+/// @hery.appEnforcedTenant Read by a streamer that walks every tenant's sinks with no request behind it, and written by the sink routes with the caller's tenantId passed explicitly, the way AuditLog itself is.
 model AuditSink {
   id                    String    @id @default(cuid())
   tenantId              String
@@ -219,10 +236,11 @@ model AuditSink {
 
 // One row per write to a resource that declared history: true. The snapshot is
 // the record as it stood after the write, restricted to the columns the
-// generator registered in HISTORY_COLUMNS -- a hidden or encrypted field is
-// never registered, so it is never stored here, not merely never shown.
+// generator annotated /// @hery.history -- a hidden or encrypted field is
+// never annotated, so it is never stored here, not merely never shown.
 // Written like AuditLog, from the client's own extension with the tenant passed
 // explicitly, and read through HistoryService, which filters on it.
+/// @hery.appEnforcedTenant Written by the same extension and for the same reason as AuditLog: the snapshot of a write must not be scoped away by the boundary it describes. HistoryService states the tenant in every read.
 model RecordSnapshot {
   id             String   @id @default(cuid())
   // Orders a record's history; createdAt alone cannot when two writes land in
@@ -241,6 +259,8 @@ model RecordSnapshot {
   @@index([createdAt])
 }
 
+/// @hery.tenantScoped
+/// @hery.audited
 model BlogPost {
   id          String    @id @default(cuid())
   tenantId    String
@@ -249,6 +269,7 @@ model BlogPost {
   slug        String    @default(cuid())
   summary     Json?
   body        String?
+  /// @hery.encrypted
   privateNote String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -269,6 +290,7 @@ model BlogPost {
 // deletes a Tag row, only a row in this pivot table -- see
 // relation-mutations.ts, the shared resolver every generated attach/detach/
 // sync route goes through.
+/// @hery.tenantScoped
 model BlogPostTag {
   tenantId   String
   blogPostId String
@@ -282,6 +304,7 @@ model BlogPostTag {
   @@index([tenantId])
 }
 
+/// @hery.tenantScoped
 model Tag {
   id        String   @id @default(cuid())
   tenantId  String
@@ -293,6 +316,7 @@ model Tag {
   @@index([tenantId])
 }
 
+/// @hery.tenantScoped
 model BlogPostNote {
   id         String   @id @default(cuid())
   tenantId   String
@@ -312,6 +336,7 @@ model BlogPostNote {
 // commentableId refers to. Prisma does not model this: there is no
 // referential integrity here at the database level, only at the application
 // level, in list-query.ts's morphMany handling.
+/// @hery.tenantScoped
 model Comment {
   id              String   @id @default(cuid())
   tenantId        String
@@ -324,6 +349,7 @@ model Comment {
   @@index([tenantId])
 }
 
+/// @hery.appEnforcedTenant Written by a queue worker as well as by a request. A worker runs outside any request, so there is no ambient tenant to stamp or filter by, and the call site passes the tenantId the job carries instead.
 model MailLog {
   id        String    @id @default(cuid())
   tenantId  String
@@ -341,6 +367,7 @@ model MailLog {
 // signature recomputes the sender's HMAC, so it cannot be a one-way hash, but
 // it does not have to sit readable in the table. deliveryId is the sender's own
 // event id, or a hash of the signed bytes, so a redelivery is recorded once.
+/// @hery.appEnforcedTenant Written by a queue worker as well as by a request. A worker runs outside any request, so there is no ambient tenant to stamp or filter by, and the call site passes the tenantId the job carries instead.
 model WebhookEndpoint {
   id        String   @id @default(cuid())
   tenantId  String
@@ -354,6 +381,7 @@ model WebhookEndpoint {
   @@index([tenantId])
 }
 
+/// @hery.appEnforcedTenant Written by a queue worker as well as by a request. A worker runs outside any request, so there is no ambient tenant to stamp or filter by, and the call site passes the tenantId the job carries instead.
 model WebhookEvent {
   id          String    @id @default(cuid())
   endpointId  String
@@ -376,6 +404,7 @@ model WebhookEvent {
 // one-way hash, but it does not have to sit readable in the table. During a
 // rotation the previous secret stays valid until previousSecretExpiresAt, and
 // every delivery in that window carries a signature for both.
+/// @hery.appEnforcedTenant Subscriptions are managed through the admin routes, but deliveries are written and updated by the outbox relay and a queue worker with no request behind them, and both read across tenants to fan a message out. Every query passes the tenantId explicitly.
 model WebhookSubscription {
   id                      String    @id @default(cuid())
   tenantId                String
@@ -398,6 +427,7 @@ model WebhookSubscription {
 // letter in the same table. The unique pair is what makes the fan-out
 // idempotent when the relay hands the same message over twice. round counts
 // manual redeliveries, so each run gets a queue job id of its own.
+/// @hery.appEnforcedTenant Subscriptions are managed through the admin routes, but deliveries are written and updated by the outbox relay and a queue worker with no request behind them, and both read across tenants to fan a message out. Every query passes the tenantId explicitly.
 model WebhookDelivery {
   id             String    @id @default(cuid())
   subscriptionId String
@@ -426,6 +456,7 @@ model WebhookDelivery {
 // handlers by a worker. tenantId is nullable because a message can be staged
 // outside any request, and the relay reads across tenants, so the table sits
 // outside the row-level policies the way MailLog does.
+/// @hery.appEnforcedTenant Staged inside the transaction of the write it describes, and drained by a relay with no request behind it, so it can be neither stamped nor filtered by the ambient tenant.
 model OutboxMessage {
   id            String    @id @default(cuid())
   tenantId      String?
@@ -449,6 +480,7 @@ model OutboxMessage {
 
 // One row per handler that finished a message, so a retry after a partial
 // failure reruns only the handlers that did not.
+/// @hery.tenantFree Bookkeeping keyed by an OutboxMessage id, which carries the tenant.
 model OutboxReceipt {
   id          String   @id @default(cuid())
   messageId   String
@@ -464,6 +496,7 @@ model OutboxReceipt {
 // here: the adapter checks every field at boot and refuses the whole instance
 // on a mismatch, which turns a missing column into "every registration returns
 // 500" rather than into a 2FA-only failure.
+/// @hery.tenantFree Second-factor secrets and backup codes, hanging off a User like Session and Account and written only by better-auth's own adapter.
 model TwoFactor {
   id                      String    @id @default(cuid())
   secret                  String
@@ -479,6 +512,7 @@ model TwoFactor {
   @@index([userId])
 }
 
+/// @hery.tenantFree WebAuthn credentials, hanging off a User and written only by better-auth's passkey plugin. A sign-in finds the row by its credential id before any session exists, so there is no tenant to scope the lookup by -- the user it resolves to carries the tenant.
 model Passkey {
   id           String    @id @default(cuid())
   name         String?
@@ -502,6 +536,7 @@ model Passkey {
 // belong to an account, and the number is what a regulator asks about. A log
 // rather than a flag -- a revocation is a new row, because overwriting the
 // grant erases the evidence a dispute turns on.
+/// @hery.tenantScoped
 model SmsConsent {
   id        String   @id @default(cuid())
   tenantId  String
@@ -517,6 +552,7 @@ model SmsConsent {
 // tablet. lastSeenAt is what separates a token that went quiet from one that
 // died -- a provider only reports a dead token in answer to a send, so a
 // device nobody sends to needs a sweep of its own.
+/// @hery.tenantScoped
 model PushToken {
   id         String   @id @default(cuid())
   tenantId   String
@@ -538,6 +574,7 @@ model PushToken {
 // tenant may hold more than one subscription, one per product sold
 // separately, and a single row per tenant would make a second subscription
 // overwrite the first.
+/// @hery.tenantScoped
 model BillingSubscription {
   id                     String   @id @default(cuid())
   tenantId               String
@@ -556,6 +593,7 @@ model BillingSubscription {
 // A limit set for one tenant, replacing the default declared under `quotas` in
 // hery.config.ts. A row is an exception, so most tenants have none; the
 // rate-limit guard reads `rate-limit:<bucket>` rows the same way.
+/// @hery.tenantScoped
 model QuotaOverride {
   id        String   @id @default(cuid())
   tenantId  String
@@ -571,6 +609,7 @@ model QuotaOverride {
 // key ("2026-10", "2026-10-21" or "total"), not a date, so a new period is a
 // new row rather than a reset of the old one, and last month's figure stays
 // readable for usage-based billing.
+/// @hery.tenantScoped
 model QuotaUsage {
   id        String   @id @default(cuid())
   tenantId  String
@@ -583,6 +622,7 @@ model QuotaUsage {
   @@unique([tenantId, name, period])
 }
 
+/// @hery.appEnforcedTenant Read and written by the idempotency interceptor around the handler, keyed by the tenant it passes explicitly with every query.
 model IdempotencyKey {
   id              String    @id @default(cuid())
   tenantId        String
@@ -600,6 +640,7 @@ model IdempotencyKey {
   @@index([tenantId])
 }
 
+/// @hery.tenantFree A provider identity hanging off a User, which carries the tenant; a sign-in looks it up by provider and provider user id before any session exists, so there is no tenant to scope the lookup by.
 model OauthIdentity {
   id             String   @id @default(cuid())
   userId         String
@@ -612,6 +653,7 @@ model OauthIdentity {
   @@index([userId])
 }
 
+/// @hery.tenantScoped
 model TwoFactorEnrolment {
   id             String    @id @default(cuid())
   tenantId       String
@@ -629,6 +671,7 @@ model TwoFactorEnrolment {
   @@index([tenantId])
 }
 
+/// @hery.tenantScoped
 model TwoFactorRecoveryCode {
   id        String    @id @default(cuid())
   tenantId  String
@@ -642,6 +685,7 @@ model TwoFactorRecoveryCode {
   @@index([tenantId, userId])
 }
 
+/// @hery.tenantScoped
 model TwoFactorRoleRequirement {
   id        String   @id @default(cuid())
   tenantId  String
@@ -651,6 +695,7 @@ model TwoFactorRoleRequirement {
   @@unique([tenantId, role])
 }
 
+/// @hery.tenantScoped
 model TwoFactorVerifiedSession {
   id        String   @id @default(cuid())
   tenantId  String
@@ -664,16 +709,22 @@ model TwoFactorVerifiedSession {
   @@index([tenantId, userId])
 }
 
+/// @hery.tenantScoped
 model Snippet {
   id        String    @id @default(cuid())
   tenantId  String
   ownerId   String
+  /// @hery.history
   title     String
+  /// @hery.history
   summary   String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  /// @hery.history
   deletedAt DateTime?
+  /// @hery.history
   version   Int       @default(1)
+  /// @hery.history
   status    String    @default("draft")
 
   owner User @relation(fields: [ownerId], references: [id])
@@ -684,6 +735,7 @@ model Snippet {
   @@index([tenantId, deletedAt])
 }
 
+/// @hery.tenantScoped
 model NotificationPreference {
   id        String   @id @default(cuid())
   tenantId  String
@@ -701,6 +753,7 @@ model NotificationPreference {
   @@index([tenantId])
 }
 
+/// @hery.tenantScoped
 model NotificationSetting {
   id              String   @id @default(cuid())
   tenantId        String
@@ -717,6 +770,7 @@ model NotificationSetting {
   @@index([tenantId])
 }
 
+/// @hery.appEnforcedTenant Staged inside the transaction of the write it describes, and drained by a relay with no request behind it, so it can be neither stamped nor filtered by the ambient tenant.
 model NotificationDigestEntry {
   id        String   @id @default(cuid())
   tenantId  String
@@ -732,6 +786,7 @@ model NotificationDigestEntry {
   @@index([userId])
 }
 
+/// @hery.appEnforcedTenant Written in batches from a buffer that flushes on a timer, long after the request that produced an entry has ended, so there is no ambient tenant to stamp: each entry carries the tenant it was recorded under.
 model DevtoolsEntry {
   id         String   @id @default(cuid())
   tenantId   String
@@ -747,6 +802,7 @@ model DevtoolsEntry {
   @@index([createdAt])
 }
 
+/// @hery.appEnforcedTenant Started from a request or from a worker, so a tenant cannot be stamped from the ambient context; every call names the tenant it acts for.
 model SsoConnection {
   id                   String   @id @default(cuid())
   tenantId             String
@@ -769,6 +825,7 @@ model SsoConnection {
   @@index([tenantId])
 }
 
+/// @hery.appEnforcedTenant Started from a request or from a worker, so a tenant cannot be stamped from the ambient context; every call names the tenant it acts for.
 model SsoDomain {
   id                String    @id @default(cuid())
   tenantId          String
@@ -785,6 +842,7 @@ model SsoDomain {
   @@index([domain])
 }
 
+/// @hery.appEnforcedTenant Started from a request or from a worker, so a tenant cannot be stamped from the ambient context; every call names the tenant it acts for.
 model SsoIdentity {
   id           String   @id @default(cuid())
   tenantId     String
@@ -800,6 +858,7 @@ model SsoIdentity {
   @@index([userId])
 }
 
+/// @hery.appEnforcedTenant Written from a buffer that flushes on a timer, long after the request that produced a line has ended, so there is no ambient tenant to stamp: each entry carries the tenant it was logged under, or `system` when it had none.
 model LogEntry {
   id       String   @id @default(cuid())
   tenantId String
@@ -812,6 +871,7 @@ model LogEntry {
   @@index([loggedAt])
 }
 
+/// @hery.appEnforcedTenant Looked up by the hash of the bearer token a directory sends, which is how the tenant is learned in the first place: there is no ambient tenant to scope the lookup by, and each row carries the one it belongs to.
 model ScimToken {
   id         String    @id @default(cuid())
   tenantId   String    @unique
@@ -822,6 +882,7 @@ model ScimToken {
   lastUsedAt DateTime?
 }
 
+/// @hery.tenantScoped
 model ScimIdentity {
   id         String   @id @default(cuid())
   tenantId   String
@@ -838,6 +899,7 @@ model ScimIdentity {
   @@index([tenantId])
 }
 
+/// @hery.appEnforcedTenant Started from a request or from a worker, so a tenant cannot be stamped from the ambient context; every call names the tenant it acts for.
 model JobFlow {
   id          String    @id @default(cuid())
   tenantId    String
@@ -857,6 +919,8 @@ model JobFlow {
 // One row grants one user or one team read or write access to one record of a
 // sharing-enabled resource. resource is the Prisma model name, so the table is
 // shared by every such resource and carries no foreign key to any of them.
+/// @hery.tenantScoped
+/// @hery.audited
 model RecordShare {
   id          String   @id @default(cuid())
   tenantId    String
@@ -878,6 +942,7 @@ model RecordShare {
 // One export, user erasure or tenant erasure, run by a worker. `result` holds an
 // export's bundle until the requester reads it once; it is the only place the
 // bundle is kept, and reading it clears it.
+/// @hery.tenantScoped
 model PrivacyRequest {
   id          String    @id @default(cuid())
   tenantId    String

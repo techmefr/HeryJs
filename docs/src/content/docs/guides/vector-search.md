@@ -37,7 +37,7 @@ Then import `EmbeddingsModule` into `src/app.module.ts`. A resource with a vecto
 
 ## Writing
 
-The embedding rides on the [transactional outbox](../guides/outbox/). A write to a model in `TENANT_SCOPED_MODELS` already stages a `model.created` or `model.updated` message in the transaction of the write itself, and the kernel's `vector-embedding` handler takes it from there: on a creation, or on an update whose `changedFields` contain the source field, it reads the source text **at delivery time**, embeds it and stores the vector. A burst of edits therefore converges on the last text, and a restore that patches the source re-embeds like any other update.
+The embedding rides on the [transactional outbox](../guides/outbox/). A write to a model annotated `/// @hery.tenantScoped` already stages a `model.created` or `model.updated` message in the transaction of the write itself, and the kernel's `vector-embedding` handler takes it from there: on a creation, or on an update whose `changedFields` contain the source field, it reads the source text **at delivery time**, embeds it and stores the vector. A burst of edits therefore converges on the last text, and a restore that patches the source re-embeds like any other update.
 
 Because the message commits with the row, an embedding cannot be lost between the commit and the enqueue. A provider that is down never fails the write: the relay retries with backoff and dead-letters after its attempts (`OutboxService.deadLetters()` and `requeue()`). An emptied source clears the embedding, so a stale vector stops matching. Until the message is delivered the row has no embedding and similarity search skips it, which is up to the relay interval (`OUTBOX_RELAY_INTERVAL_MS`, 2 seconds by default).
 

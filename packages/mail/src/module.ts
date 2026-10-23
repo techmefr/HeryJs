@@ -1,6 +1,7 @@
 import type { ModuleDefinition } from 'heryjs';
 
 const MAIL_LOG_MODEL = `
+/// @hery.appEnforcedTenant Written by a queue worker as well as by a request. A worker runs outside any request, so there is no ambient tenant to stamp or filter by, and the call site passes the tenantId the job carries instead.
 model MailLog {
   id        String    @id @default(cuid())
   tenantId  String

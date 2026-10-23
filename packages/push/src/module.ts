@@ -1,6 +1,7 @@
 import type { ModuleDefinition } from 'heryjs';
 
 const PUSH_TOKEN_MODEL = `
+/// @hery.tenantScoped
 model PushToken {
   id         String   @id @default(cuid())
   tenantId   String

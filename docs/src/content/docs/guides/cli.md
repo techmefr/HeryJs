@@ -139,7 +139,7 @@ It also patches `prisma/schema.prisma` (the new model plus its inverse relation 
 
 ## `hery migrate --name <migration-name>`
 
-Runs `prisma migrate dev`, then does the second half `generate` deliberately left undone: it reads the schema and `TENANT_SCOPED_MODELS`, writes the `ENABLE ROW LEVEL SECURITY` migration for any tenant-scoped table that has no policy yet, and applies it. Writing that migration by hand is how the teams tables spent a month scoped by the extension with nothing behind them.
+Runs `prisma migrate dev`, then does the second half `generate` deliberately left undone: it reads the schema's `/// @hery.tenantScoped` annotations, writes the `ENABLE ROW LEVEL SECURITY` migration for any tenant-scoped table that has no policy yet, and applies it. Writing that migration by hand is how the teams tables spent a month scoped by the extension with nothing behind them.
 
 ## `hery install [modules...]`
 
