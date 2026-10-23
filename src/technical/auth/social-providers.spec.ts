@@ -4,7 +4,7 @@ import { buildSocialProviders } from './social-providers';
 describe('buildSocialProviders', () => {
   it('registers nothing when no provider credentials are set', () => {
     const providers = buildSocialProviders(
-      parseEnv({ DATABASE_URL: 'postgresql://x' }),
+      parseEnv({ DATABASE_URL: 'postgresql://x', NODE_ENV: 'development' }),
     );
 
     expect(providers).toEqual({});
@@ -16,6 +16,7 @@ describe('buildSocialProviders', () => {
     const providers = buildSocialProviders(
       parseEnv({
         DATABASE_URL: 'postgresql://x',
+        NODE_ENV: 'development',
         AUTH_GOOGLE_CLIENT_ID: 'google-id',
         AUTH_GOOGLE_CLIENT_SECRET: 'google-secret',
       }),
@@ -30,6 +31,7 @@ describe('buildSocialProviders', () => {
     const providers = buildSocialProviders(
       parseEnv({
         DATABASE_URL: 'postgresql://x',
+        NODE_ENV: 'development',
         AUTH_GITHUB_CLIENT_ID: 'github-id',
       }),
     );
@@ -41,6 +43,7 @@ describe('buildSocialProviders', () => {
     const providers = buildSocialProviders(
       parseEnv({
         DATABASE_URL: 'postgresql://x',
+        NODE_ENV: 'development',
         AUTH_GOOGLE_CLIENT_ID: 'google-id',
         AUTH_GOOGLE_CLIENT_SECRET: 'google-secret',
         AUTH_GITHUB_CLIENT_ID: 'github-id',
@@ -54,7 +57,10 @@ describe('buildSocialProviders', () => {
 
 describe('parseAuthEnv', () => {
   it('defaults every secret to absent rather than to a placeholder', () => {
-    const parsed = parseEnv({ DATABASE_URL: 'postgresql://x' });
+    const parsed = parseEnv({
+      DATABASE_URL: 'postgresql://x',
+      NODE_ENV: 'development',
+    });
 
     expect(parsed.AUTH_GOOGLE_CLIENT_SECRET).toBeUndefined();
     expect(parsed.AUTH_GITHUB_CLIENT_SECRET).toBeUndefined();
@@ -63,6 +69,7 @@ describe('parseAuthEnv', () => {
   it('reads email verification as a boolean and expiries as numbers', () => {
     const parsed = parseEnv({
       DATABASE_URL: 'postgresql://x',
+      NODE_ENV: 'development',
       AUTH_REQUIRE_EMAIL_VERIFICATION: 'true',
       AUTH_RESET_PASSWORD_EXPIRES_SECONDS: '900',
     });
@@ -76,6 +83,7 @@ describe('parseAuthEnv', () => {
     expect(() =>
       parseEnv({
         DATABASE_URL: 'postgresql://x',
+        NODE_ENV: 'development',
         AUTH_RESET_PASSWORD_EXPIRES_SECONDS: '0',
       }),
     ).toThrow(/Invalid environment configuration/);

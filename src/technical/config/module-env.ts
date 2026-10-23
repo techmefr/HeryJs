@@ -1,3 +1,5 @@
+import { devEnvironmentsOf, isDevEnvironment } from './dev-environments';
+import { heryConfig } from './hery-config';
 import { z } from 'zod';
 
 /**
@@ -27,8 +29,8 @@ export function parseModuleEnv<TShape extends z.ZodRawShape>(
 }
 
 /**
- * A value that ships with a working development default and is refused once
- * NODE_ENV is production -- the same contract the kernel's own two secrets
+ * A value that ships with a working development default and is refused unless
+ * NODE_ENV is one of `devTools.environments` -- the same contract the kernel's own two secrets
  * answer to, because a credential printed in a public repository is not a
  * credential and a service URL pointing at localhost is not a service.
  */
@@ -38,7 +40,9 @@ export function devOnlyDefault(variable: string, devValue: string) {
     .min(1)
     .default(devValue)
     .refine(
-      (value) => value !== devValue || process.env.NODE_ENV !== 'production',
+      (value) =>
+        value !== devValue ||
+        isDevEnvironment(process.env.NODE_ENV, devEnvironmentsOf(heryConfig)),
       {
         message: `is still the development default (${devValue}); set ${variable} before deploying`,
       },

@@ -48,6 +48,13 @@ export default {
   admin: {
     studioAccess: 'operator',
   },
+  // The NODE_ENV values that open the devtools routes and the seeders and
+  // accept the development secrets. Anything else, an unset NODE_ENV included,
+  // runs as production. A demo may be listed: its seeders then stay behind an
+  // admin or the platform operator.
+  devTools: {
+    environments: ['development', 'test'],
+  },
   logging: {
     default: 'stdout',
     drivers: {
