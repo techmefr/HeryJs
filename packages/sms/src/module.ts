@@ -26,7 +26,6 @@ export default {
 
     context.nextSteps([
       'Run "pnpm hery migrate --name add_sms_consent"',
-      'Import "SmsModule" into src/app.module.ts',
       "Declare it in hery.config.ts, e.g. { sms: { default: process.env.SMS_DRIVER ?? 'log', drivers: { log: { driver: 'log' } } } }",
       'Record consent with SmsConsentService.grant(phone, source) wherever a number opts in -- nothing marketing sends without it',
       'Send with SmsService.send(sendable, { kind: "transactional" | "marketing" })',

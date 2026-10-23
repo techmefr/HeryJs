@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   existsSync,
   readFileSync,
@@ -197,13 +198,31 @@ export function modifiedKernelFiles(
 ): string[] {
   return copiedKernelFiles(root).filter((file) => {
     const reference = path.join(frameworkRoot, file);
+    const copied = readFileSync(path.join(root, file));
 
     return (
       !existsSync(reference) ||
-      !readFileSync(reference).equals(readFileSync(path.join(root, file)))
+      (!readFileSync(reference).equals(copied) &&
+        !(
+          EARLIER_KERNEL_VERSIONS[file.split(path.sep).join('/')] ?? []
+        ).includes(createHash('sha256').update(copied).digest('hex')))
     );
   });
 }
+
+/**
+ * The sha256 of kernel files as a project that copied the kernel holds them,
+ * for the files the kernel changed since: such a copy is unmodified, not a
+ * local change to keep.
+ */
+export const EARLIER_KERNEL_VERSIONS: Record<string, string[]> = {
+  'src/technical/config/hery-config.types.ts': [
+    'f090a2996278693cee3844303de133f0e8e6f3751572c51742d25fdba8df19a0',
+  ],
+  'src/technical/public/config.ts': [
+    'bd174ed4d760d4fc007c4a50467a41ab41ba4a78fc040e7b5cfae7fe66d169ed',
+  ],
+};
 
 /** Deletes the copied kernel, keeping the test support the project owns. */
 export function removeCopiedKernel(root: string): void {

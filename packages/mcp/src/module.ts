@@ -12,7 +12,7 @@ export default {
     context.nextSteps([
       'Run "hery generate <Name> --mcp" to add a tool registrar to a resource',
       "Export that registrar from the resource's own module (provider + exports)",
-      `Import "McpGatewayModule.forRoot({ imports, registrars })" into src/app.module.ts, listing each resource module and its registrar`,
+      `Declare it in hery.config.ts with its options, e.g. ['@heryjs/mcp', { imports, registrars }], listing each resource module and its registrar`,
     ]);
   },
 } satisfies ModuleDefinition;

@@ -201,6 +201,7 @@ function kernelPackageProblems(root: PackageManifest): string[] {
   const sources = [
     ...shippedSources(kernelDir),
     ...shippedSources(devtoolsDir).filter((file) => !isTestSupport(file)),
+    ...shippedSources(path.join(sourceRoot, 'hery')),
   ];
   const effects = sources
     .filter(hasTopLevelEffect)

@@ -3,6 +3,7 @@ export { HeryConfigModule } from '../config/hery-config.module';
 export type {
   HeryConfig,
   HeryConfigDrivers,
+  HeryConfigModuleEntry,
 } from '../config/hery-config.types';
 export {
   devOnlyDefault,

@@ -15,7 +15,7 @@ export default {
 
     context.nextSteps([
       'Run "hery install live" first if not already installed: peer signals over its gateway rather than opening a second one',
-      'Import "PeerModule" and add "PeerGateway" to the imports/providers of app.module.ts',
+      'Add "PeerGateway" to the providers of src/app.module.ts',
       'Set PEER_TURN_SECRET (and, in production, PEER_TURN_URIS) before minting TURN credentials',
       'Clients connect with "io(\'/peer\', { auth: { token } })" using the same bearer token as REST, then join a room and exchange offer/answer/ice-candidate events',
     ]);
