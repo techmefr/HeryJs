@@ -271,21 +271,48 @@ jobs:
       - name: Create the application database role
         run: psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f scripts/postgres/app-role.sql
 
+      # The project installs the kernel from this build, as it would install
+      # the published tarball: dist and the manifest, never the symlinks
+      # packages/core/src holds into this repository.
+      - name: Build the kernel and check what its tarball carries
+        run: |
+          pnpm run db:generate
+          pnpm run build:core
+          cd packages/core
+          npm pack --dry-run --json | node -e '
+            const [pack] = JSON.parse(require("node:fs").readFileSync(0, "utf8"));
+            const paths = pack.files.map((file) => file.path);
+            const outside = paths.filter((p) => p !== "package.json" && !p.startsWith("dist/"));
+            if (outside.length > 0 || !paths.includes("dist/technical/public/auth.js")) {
+              console.error("unexpected tarball:", outside, paths.length);
+              process.exit(1);
+            }
+          '
+
       - name: Scaffold a project
         run: |
           mkdir -p "$RUNNER_TEMP/scaffold"
           cd "$RUNNER_TEMP/scaffold"
-          NODE_OPTIONS=--conditions=development \
+          NODE_OPTIONS="--conditions=development --conditions=heryjs-source" \
             "$GITHUB_WORKSPACE/node_modules/.bin/ts-node" \
             -P "$GITHUB_WORKSPACE/tsconfig.json" \
             "$GITHUB_WORKSPACE/cli/heryjs.ts" new my-app
 
+      # The kernel is a dependency, not a copy, and the project resolves it to
+      # dist even with the development condition on.
       - name: Install, migrate, typecheck and build it
         working-directory: ${{ runner.temp }}/scaffold/my-app
         run: |
           test "$(ls src/modules | tr '\n' ' ')" = 'impersonation push two-factor '
+          test ! -e src/technical
+          test ! -e packages/core
+          test "$(ls src/devtools | tr '\n' ' ')" = 'test-support.ts testing '
+          test -f src/devtools/testing/register-and-login.ts
+          grep -q '"@heryjs/core": "file:' package.json
           cp .env.example .env
           pnpm install
+          node --conditions=development -p "require.resolve('@heryjs/core/tenancy')" |
+            grep -q '/dist/technical/public/tenancy.js$'
           pnpm hery migrate --name init
           pnpm run typecheck
           pnpm run build
@@ -341,6 +368,101 @@ jobs:
           pnpm exec prisma generate
           pnpm run typecheck
           pnpm run build
+          test ! -e src/technical
+
+      # A project generated before the kernel became a dependency: the last
+      # commit whose "hery new" still copied src/technical writes it, and
+      # "hery kernel:migrate" from this commit moves it onto the package. It
+      # gets a database of its own, created from template1 with the app role's
+      # grants, so its migrations do not meet the project above.
+      - name: Generate a project that still copies the kernel
+        env:
+          LAST_COPYING_COMMIT: 1c55ed42d81c91bb84feb9e619254f3a6cc0628a
+        run: |
+          git fetch --depth=1 origin "$LAST_COPYING_COMMIT"
+          git worktree add --detach "$RUNNER_TEMP/old-heryjs" "$LAST_COPYING_COMMIT"
+          cd "$RUNNER_TEMP/old-heryjs"
+          pnpm install --frozen-lockfile
+          mkdir -p "$RUNNER_TEMP/old"
+          cd "$RUNNER_TEMP/old"
+          NODE_OPTIONS=--conditions=development \
+            "$RUNNER_TEMP/old-heryjs/node_modules/.bin/ts-node" \
+            -P "$RUNNER_TEMP/old-heryjs/tsconfig.json" \
+            "$RUNNER_TEMP/old-heryjs/cli/heryjs.ts" new old-app
+          cd old-app
+          test -d src/technical
+          printf "export const projectOwned = 'kept';\n" > src/functional/project-owned.ts
+          cp .env.example .env
+          pnpm install
+
+      - name: Refuse to migrate a kernel the project modified
+        working-directory: ${{ runner.temp }}/old
+        run: |
+          cp -r old-app tampered
+          cd tampered
+          echo '// a local change' >> src/technical/config/env.ts
+          if NODE_OPTIONS="--conditions=development --conditions=heryjs-source" \
+            "$GITHUB_WORKSPACE/node_modules/.bin/ts-node" \
+            -P "$GITHUB_WORKSPACE/tsconfig.json" \
+            "$GITHUB_WORKSPACE/cli/hery.ts" kernel:migrate 2> refusal.log; then
+            echo 'kernel:migrate accepted a modified kernel'
+            exit 1
+          fi
+          cat refusal.log
+          grep -q 'src/technical/config/env.ts' refusal.log
+          test -d src/technical
+          test -d packages/core
+          diff -rq --exclude=node_modules --exclude=.git ../old-app . > ../refused.diff || true
+          cat ../refused.diff
+          test "$(grep -vc -e 'src/technical/config/env.ts differ$' -e 'Only in .: refusal.log$' ../refused.diff)" = 0
+
+      - name: Migrate it onto the package, then install, migrate, typecheck and build it
+        working-directory: ${{ runner.temp }}/old/old-app
+        env:
+          DATABASE_URL: postgresql://heryjs_app:heryjs_app@localhost:5432/heryjs_old
+          DATABASE_MIGRATION_URL: postgresql://heryjs:heryjs@localhost:5432/heryjs_old
+        run: |
+          NODE_OPTIONS="--conditions=development --conditions=heryjs-source" \
+            "$GITHUB_WORKSPACE/node_modules/.bin/ts-node" \
+            -P "$GITHUB_WORKSPACE/tsconfig.json" \
+            "$GITHUB_WORKSPACE/cli/hery.ts" kernel:migrate
+          test ! -e src/technical
+          test ! -e packages/core
+          test "$(ls src/devtools | tr '\n' ' ')" = 'test-support.ts testing '
+          test "$(cat src/functional/project-owned.ts)" = "export const projectOwned = 'kept';"
+          grep -q '"@heryjs/core": "file:' package.json
+          psql postgresql://heryjs:heryjs@localhost:5432/heryjs -v ON_ERROR_STOP=1 -c 'CREATE DATABASE heryjs_old'
+          pnpm install --no-frozen-lockfile
+          pnpm hery migrate --name init
+          pnpm run typecheck
+          pnpm run build
+
+      - name: Boot the migrated build in production
+        working-directory: ${{ runner.temp }}/old/old-app
+        env:
+          DATABASE_URL: postgresql://heryjs_app:heryjs_app@localhost:5432/heryjs_old
+          NODE_ENV: production
+          PORT: '3918'
+          CORS_ORIGINS: https://app.example.com
+        run: |
+          secret() { openssl rand -base64 32; }
+          export BETTER_AUTH_SECRET="$(secret)" SIGNAL_TOKEN_SECRET="$(secret)" \
+            SSE_TOKEN_SECRET="$(secret)" OAUTH_STATE_SECRET="$(secret)" \
+            STORAGE_URL_SECRET="$(secret)" SECRETS_KEYS="1:$(secret)"
+          node dist/src/main > boot.log 2>&1 &
+          pid=$!
+          for _ in $(seq 1 60); do
+            if curl -fsS http://localhost:3918/health/live; then
+              kill "$pid"
+              exit 0
+            fi
+            if ! kill -0 "$pid" 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          tail -n 60 boot.log
+          exit 1
 
   # The specs that boot a module for real: the two search drivers against
   # live engines, and the GraphQL module against a live HTTP server. They

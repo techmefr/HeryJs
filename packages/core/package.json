@@ -26,104 +26,109 @@
   ],
   "exports": {
     "./auth": {
-      "development": "./src/technical/public/auth.ts",
+      "heryjs-source": "./src/technical/public/auth.ts",
       "types": "./dist/technical/public/auth.d.ts",
       "default": "./dist/technical/public/auth.js"
     },
     "./capabilities": {
-      "development": "./src/technical/public/capabilities.ts",
+      "heryjs-source": "./src/technical/public/capabilities.ts",
       "types": "./dist/technical/public/capabilities.d.ts",
       "default": "./dist/technical/public/capabilities.js"
     },
     "./config": {
-      "development": "./src/technical/public/config.ts",
+      "heryjs-source": "./src/technical/public/config.ts",
       "types": "./dist/technical/public/config.d.ts",
       "default": "./dist/technical/public/config.js"
     },
     "./database": {
-      "development": "./src/technical/public/database.ts",
+      "heryjs-source": "./src/technical/public/database.ts",
       "types": "./dist/technical/public/database.d.ts",
       "default": "./dist/technical/public/database.js"
     },
     "./drivers": {
-      "development": "./src/technical/public/drivers.ts",
+      "heryjs-source": "./src/technical/public/drivers.ts",
       "types": "./dist/technical/public/drivers.d.ts",
       "default": "./dist/technical/public/drivers.js"
     },
     "./env": {
-      "development": "./src/technical/public/env.ts",
+      "heryjs-source": "./src/technical/public/env.ts",
       "types": "./dist/technical/public/env.d.ts",
       "default": "./dist/technical/public/env.js"
     },
     "./errors": {
-      "development": "./src/technical/public/errors.ts",
+      "heryjs-source": "./src/technical/public/errors.ts",
       "types": "./dist/technical/public/errors.d.ts",
       "default": "./dist/technical/public/errors.js"
     },
     "./http": {
-      "development": "./src/technical/public/http.ts",
+      "heryjs-source": "./src/technical/public/http.ts",
       "types": "./dist/technical/public/http.d.ts",
       "default": "./dist/technical/public/http.js"
     },
     "./i18n": {
-      "development": "./src/technical/public/i18n.ts",
+      "heryjs-source": "./src/technical/public/i18n.ts",
       "types": "./dist/technical/public/i18n.d.ts",
       "default": "./dist/technical/public/i18n.js"
     },
     "./jobs": {
-      "development": "./src/technical/public/jobs.ts",
+      "heryjs-source": "./src/technical/public/jobs.ts",
       "types": "./dist/technical/public/jobs.d.ts",
       "default": "./dist/technical/public/jobs.js"
     },
     "./load-env": {
-      "development": "./src/technical/public/load-env.ts",
+      "heryjs-source": "./src/technical/public/load-env.ts",
       "types": "./dist/technical/public/load-env.d.ts",
       "default": "./dist/technical/public/load-env.js"
     },
     "./notifications": {
-      "development": "./src/technical/public/notifications.ts",
+      "heryjs-source": "./src/technical/public/notifications.ts",
       "types": "./dist/technical/public/notifications.d.ts",
       "default": "./dist/technical/public/notifications.js"
     },
     "./observability": {
-      "development": "./src/technical/public/observability.ts",
+      "heryjs-source": "./src/technical/public/observability.ts",
       "types": "./dist/technical/public/observability.d.ts",
       "default": "./dist/technical/public/observability.js"
     },
     "./platform": {
-      "development": "./src/technical/public/platform.ts",
+      "heryjs-source": "./src/technical/public/platform.ts",
       "types": "./dist/technical/public/platform.d.ts",
       "default": "./dist/technical/public/platform.js"
     },
     "./privacy": {
-      "development": "./src/technical/public/privacy.ts",
+      "heryjs-source": "./src/technical/public/privacy.ts",
       "types": "./dist/technical/public/privacy.d.ts",
       "default": "./dist/technical/public/privacy.js"
     },
     "./realtime": {
-      "development": "./src/technical/public/realtime.ts",
+      "heryjs-source": "./src/technical/public/realtime.ts",
       "types": "./dist/technical/public/realtime.d.ts",
       "default": "./dist/technical/public/realtime.js"
     },
     "./resources": {
-      "development": "./src/technical/public/resources.ts",
+      "heryjs-source": "./src/technical/public/resources.ts",
       "types": "./dist/technical/public/resources.d.ts",
       "default": "./dist/technical/public/resources.js"
     },
     "./tenancy": {
-      "development": "./src/technical/public/tenancy.ts",
+      "heryjs-source": "./src/technical/public/tenancy.ts",
       "types": "./dist/technical/public/tenancy.d.ts",
       "default": "./dist/technical/public/tenancy.js"
     },
     "./testing": {
-      "development": "./src/technical/public/testing.ts",
+      "heryjs-source": "./src/technical/public/testing.ts",
       "types": "./dist/technical/public/testing.d.ts",
       "default": "./dist/technical/public/testing.js"
     },
     "./devtools": {
-      "development": "./src/devtools/public.ts",
+      "heryjs-source": "./src/devtools/public.ts",
       "types": "./dist/devtools/public.d.ts",
       "default": "./dist/devtools/public.js"
+    },
+    "./technical/*": {
+      "heryjs-source": "./src/technical/*.ts",
+      "types": "./dist/technical/*.d.ts",
+      "default": "./dist/technical/*.js"
     },
     "./package.json": "./package.json"
   },

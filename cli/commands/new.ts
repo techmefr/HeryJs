@@ -14,29 +14,39 @@ import pc from 'picocolors';
 import { APP_MODULE, unwireModule } from '../lib/app-module-patch';
 import { loadBlueprint } from '../lib/blueprint';
 import { frameworkRoot } from '../lib/framework-root';
+import {
+  applyKernelPackageRewrites,
+  kernelDependency,
+  kernelIsBuilt,
+} from '../lib/kernel-dependency';
+import { KERNEL_PACKAGE, KERNEL_PACKAGE_DIR } from '../lib/kernel-public-api';
 import { pascalCase } from '../lib/naming';
 import { bareName, runtimeImports } from '../lib/runtime-imports';
 import { stripModelsFromSchema } from '../lib/strip-example';
+
+export { withoutKernelDependency } from '../lib/kernel-dependency';
 
 const REPO_ROOT = frameworkRoot();
 
 /**
  * Everything a fresh project needs to run `hery generate`/`hery install` on
- * its own: the CLI itself, every module's authoring package, the kernel
- * (technical/), the always-there DX tools (devtools/), the modules this
+ * its own: the CLI itself, every module's authoring package, the test support
+ * of devtools/ (it boots the project's own AppModule), the modules this
  * repository has installed (modules/, trimmed by dropOptionalModules to the
- * ones the kernel needs), and the config each of those depends on. Deliberately excluded: examples/ and docs/ (this framework's
- * own demo and doc site, not part of what ships), admin/ (installed later via
- * `hery install admin-astro`, same as any other opt-in module), and anything
- * that is this repository's own build/dev state (node_modules, dist, the
- * lockfile, .git, .env).
+ * ones the kernel needs), and the config each of those depends on. The kernel
+ * itself is not copied: src/technical and the rest of src/devtools are the
+ * `@heryjs/core` package, which the project installs. Deliberately excluded
+ * as well: examples/ and docs/ (this framework's own demo and doc site, not
+ * part of what ships), admin/ (installed later via `hery install admin-astro`,
+ * same as any other opt-in module), and anything that is this repository's
+ * own build/dev state (node_modules, dist, the lockfile, .git, .env).
  */
 export const COPY_ENTRIES = [
   'cli',
   'packages',
   'scripts',
-  'src/technical',
-  'src/devtools',
+  'src/devtools/testing',
+  'src/devtools/test-support.ts',
   'src/modules',
   'src/functional',
   'src/app.controller.ts',
@@ -114,20 +124,6 @@ function dropChecksThisRepositoryOwns(destRoot: string): void {
   }
 
   writeFileSync(registry, source);
-}
-
-/**
- * Two kernel specs need a real resource to exercise (introspection/inspector
- * both introspect whatever routes exist) and reach for examples/blog-post for
- * one, since this repository always has it. A fresh project has no resource
- * yet, and does not need to re-prove that introspection works with one —
- * that is this framework's own test suite's job, not a downstream project's.
- */
-function dropSpecsThatNeedTheExample(destRoot: string): void {
-  rmSync(
-    path.join(destRoot, 'src/technical/introspection/introspection.spec.ts'),
-  );
-  rmSync(path.join(destRoot, 'src/devtools/inspector/inspector.spec.ts'));
 }
 
 function specFilesUnder(dir: string): string[] {
@@ -495,51 +491,6 @@ function rewritePackageJson(destRoot: string, projectName: string): void {
 }
 
 /**
- * Each module package lists `heryjs@workspace:*` so this repository builds it
- * against the kernel sitting next to it. A project renames that root package,
- * so the specifier names a workspace member that no longer exists and the
- * first `pnpm install` refuses to resolve. The dependency only ever carried
- * the `ModuleDefinition` type, which every package's tsconfig already maps to
- * cli/module-contract.ts by path, so inside a project it is dropped.
- */
-export function withoutKernelDependency(
-  manifest: Record<string, unknown>,
-): Record<string, unknown> {
-  const copy = structuredClone(manifest);
-
-  for (const field of ['dependencies', 'devDependencies', 'peerDependencies']) {
-    const entries = copy[field] as Record<string, string> | undefined;
-
-    if (entries) {
-      delete entries.heryjs;
-    }
-  }
-
-  return copy;
-}
-
-function rewriteModuleManifests(destRoot: string): void {
-  const packagesDir = path.join(destRoot, 'packages');
-
-  for (const entry of readdirSync(packagesDir, { withFileTypes: true })) {
-    const file = path.join(packagesDir, entry.name, 'package.json');
-
-    if (!entry.isDirectory() || !existsSync(file)) {
-      continue;
-    }
-
-    const manifest = JSON.parse(readFileSync(file, 'utf8')) as Record<
-      string,
-      unknown
-    >;
-    writeFileSync(
-      file,
-      `${JSON.stringify(withoutKernelDependency(manifest), null, 2)}\n`,
-    );
-  }
-}
-
-/**
  * 'admin' and 'docs' are this repository's own workspace members. Neither
  * ships: the admin is opt-in (`hery install admin-astro` adds it back to this
  * same file), and the doc site is specific to the framework itself.
@@ -600,6 +551,20 @@ pnpm hery generate blueprints/<name>.yaml
 \`\`\`
 
 The blueprint is only read once, at generation time. From then on the generated files are yours to edit like any other NestJS code — nothing re-syncs.
+
+## The kernel
+
+The kernel is the \`@heryjs/core\` package, not a folder of this project. Until
+it is published, \`package.json\` installs the one a local HeryJs checkout
+builds, with a \`file:\` path. To move to the registry, change that one line to
+a version range and install again:
+
+\`\`\`json
+"@heryjs/core": "^0.1.0"
+\`\`\`
+
+\`src/devtools/testing\` and \`src/devtools/test-support.ts\` stay here: they
+boot this project's own AppModule.
 
 ## Adding a module
 
@@ -690,10 +655,20 @@ export function registerNewCommand(program: Command): void {
         return;
       }
 
+      if (!kernelIsBuilt(REPO_ROOT)) {
+        console.error(
+          pc.red(
+            `${KERNEL_PACKAGE} is not built in ${REPO_ROOT}: run "pnpm run build:core" there first, the project installs it from there.`,
+          ),
+        );
+        process.exitCode = 1;
+        return;
+      }
+
       mkdirSync(destRoot, { recursive: true });
       copyInto(destRoot);
+      rmSync(path.join(destRoot, KERNEL_PACKAGE_DIR), { recursive: true });
       dropChecksThisRepositoryOwns(destRoot);
-      dropSpecsThatNeedTheExample(destRoot);
       const removedModels = dropExampleModels(destRoot);
       const droppedSpecs = dropSpecsNamingRemovedModels(
         destRoot,
@@ -702,11 +677,13 @@ export function registerNewCommand(program: Command): void {
       rewriteWorkflows(destRoot);
       rewritePackageJson(destRoot, name);
       const removedModules = dropOptionalModules(destRoot);
-      rewriteModuleManifests(destRoot);
       rewriteWorkspaceFile(destRoot);
       writeReadme(destRoot, name);
       writeGitignore(destRoot);
       writeContainerFiles(destRoot);
+      applyKernelPackageRewrites(destRoot, kernelDependency(REPO_ROOT), {
+        write: true,
+      });
 
       spawnSync('git', ['init'], { cwd: destRoot, stdio: 'ignore' });
       spawnSync('git', ['add', '-A'], { cwd: destRoot, stdio: 'ignore' });
