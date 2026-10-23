@@ -8,6 +8,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
+import { databaseOwnerClient } from '#devtools/testing/database-owner-client';
 import { env } from '#technical/config/env';
 import { actingAs } from '#devtools/testing/acting-as';
 import {
@@ -77,7 +78,7 @@ function hasBackupTools(): boolean {
       await waitFor(
         async () =>
           (
-            await authPrismaClient.privacyRequest.findUniqueOrThrow({
+            await databaseOwnerClient.privacyRequest.findUniqueOrThrow({
               where: { id: requestId },
             })
           ).status === 'done',
