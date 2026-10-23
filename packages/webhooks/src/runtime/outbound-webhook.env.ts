@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isLocalEnvironmentNow, parseModuleEnv } from '#kernel/public/config';
+import { isLocalEnvironmentNow, parseModuleEnv } from '@heryjs/core/config';
 
 export const outboundWebhookEnv = parseModuleEnv('webhooks', {
   WEBHOOK_SECRET_ROTATION_GRACE_SECONDS: z.coerce

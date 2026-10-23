@@ -1,8 +1,8 @@
 import type { Job } from 'bullmq';
-import type { DriverResolver, StorageDriver } from '#kernel/public/drivers';
-import type { JobsService } from '#kernel/public/jobs';
-import type { NotificationProvider } from '#kernel/public/notifications';
-import { TenantContextStorage } from '#kernel/public/tenancy';
+import type { DriverResolver, StorageDriver } from '@heryjs/core/drivers';
+import type { JobsService } from '@heryjs/core/jobs';
+import type { NotificationProvider } from '@heryjs/core/notifications';
+import { TenantContextStorage } from '@heryjs/core/tenancy';
 import { CsvExportDriver } from './csv-export.driver';
 import { EXPORT_GENERATE_JOB } from './export.constants';
 import type { ExportDriverRegistry } from './export-driver.registry';

@@ -146,7 +146,8 @@
     "lint:package-manifests": "pnpm run lint:conventions package-manifests",
     "lint:example": "pnpm run lint:conventions example-freshness",
     "lint:hery": "NODE_OPTIONS=--conditions=development ts-node cli/hery.ts lint --min-score 100",
-    "hery": "NODE_OPTIONS=--conditions=development ts-node cli/hery.ts"
+    "hery": "NODE_OPTIONS=--conditions=development ts-node cli/hery.ts",
+    "codemod:kernel": "pnpm hery kernel:migrate packages examples --peer workspace:^"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1127.0",
@@ -268,6 +269,7 @@
       "<rootDir>/examples"
     ],
     "moduleNameMapper": {
+      "^@heryjs/core/(.*)$": "<rootDir>/src/technical/public/$1",
       "^#kernel/(.*)$": "<rootDir>/src/technical/$1",
       "^#technical/(.*)$": "<rootDir>/src/technical/$1",
       "^#devtools/(.*)$": "<rootDir>/src/devtools/$1",

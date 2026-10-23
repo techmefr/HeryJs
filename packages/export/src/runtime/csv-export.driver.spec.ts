@@ -1,4 +1,4 @@
-import type { Exportable } from '#kernel/public/drivers';
+import type { Exportable } from '@heryjs/core/drivers';
 import { CsvExportDriver } from './csv-export.driver';
 
 const driver = new CsvExportDriver();

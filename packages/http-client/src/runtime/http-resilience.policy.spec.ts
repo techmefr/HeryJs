@@ -1,5 +1,5 @@
-import type { CapabilitySubject } from '#kernel/public/capabilities';
-import { env } from '#kernel/public/env';
+import type { CapabilitySubject } from '@heryjs/core/capabilities';
+import { env } from '@heryjs/core/env';
 import {
   canManageHttpCircuits,
   canReadHttpCircuits,

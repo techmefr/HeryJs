@@ -1,5 +1,5 @@
-import { TenantContextStorage } from '#kernel/public/tenancy';
-import type { AuthenticatedUser, AuthProvider } from '#kernel/public/auth';
+import { TenantContextStorage } from '@heryjs/core/tenancy';
+import type { AuthenticatedUser, AuthProvider } from '@heryjs/core/auth';
 import { authenticateLiveSocket } from './live-auth.guard';
 import type { LiveSocket } from './live-auth.guard';
 import { withTenant } from './with-tenant';

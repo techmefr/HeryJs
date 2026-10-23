@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { CanActivate, ExecutionContext } from '@nestjs/common';
-import type { RequestWithUser } from '#kernel/public/auth';
+import type { RequestWithUser } from '@heryjs/core/auth';
 import { MaintenanceException } from './maintenance.exception';
 
 /**

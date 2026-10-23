@@ -1,15 +1,15 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { authPrismaClient } from '#kernel/public/auth';
+import { authPrismaClient } from '@heryjs/core/auth';
 import {
   recipientLocale,
   translateMessage as translated,
-} from '#kernel/public/i18n';
-import { notifierMailChannel } from '#kernel/public/notifications';
+} from '@heryjs/core/i18n';
+import { notifierMailChannel } from '@heryjs/core/notifications';
 import {
   PRISMA_CLIENT,
   type TenantScopedPrismaClient,
-} from '#kernel/public/database';
-import { runInTenant } from '#kernel/public/tenancy';
+} from '@heryjs/core/database';
+import { runInTenant } from '@heryjs/core/tenancy';
 import { escapeHtml } from './escape-html';
 import { localHour } from './local-time';
 import { DEFAULT_SETTINGS } from './notification-rules';

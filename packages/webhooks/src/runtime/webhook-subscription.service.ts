@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import type { WebhookSubscription } from '@prisma/client';
-import { authPrismaClient } from '#kernel/public/auth';
+import { authPrismaClient } from '@heryjs/core/auth';
 import { MAX_SUBSCRIPTIONS_PER_TENANT } from './outbound-webhook.constants';
 import type {
   CreateSubscriptionInput,

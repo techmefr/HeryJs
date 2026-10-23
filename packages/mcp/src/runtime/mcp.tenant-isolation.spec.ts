@@ -1,8 +1,8 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { Response } from 'express';
-import type { AuthenticatedUser, RequestWithUser } from '#kernel/public/auth';
-import type { CapabilitySubject } from '#kernel/public/capabilities';
+import type { AuthenticatedUser, RequestWithUser } from '@heryjs/core/auth';
+import type { CapabilitySubject } from '@heryjs/core/capabilities';
 import { McpGatewayController } from './mcp-gateway.controller';
 
 function callerOf(tenantId: string, id: string): AuthenticatedUser {

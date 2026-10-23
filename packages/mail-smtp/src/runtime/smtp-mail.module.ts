@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { mailDriverToken } from '#kernel/public/drivers';
+import { mailDriverToken } from '@heryjs/core/drivers';
 import { SmtpMailDriver } from './smtp-mail.driver';
 
 const TOKEN = mailDriverToken('smtp');

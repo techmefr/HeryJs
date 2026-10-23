@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import { CacheService } from '#kernel/public/platform';
-import { TenantContextStorage } from '#kernel/public/tenancy';
+import { CacheService } from '@heryjs/core/platform';
+import { TenantContextStorage } from '@heryjs/core/tenancy';
 import {
   EXTENSION_BY_CONTENT_TYPE,
   allowedContentTypes,

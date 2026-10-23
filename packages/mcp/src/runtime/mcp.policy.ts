@@ -1,4 +1,4 @@
-import type { PolicyCheck } from '#kernel/public/capabilities';
+import type { PolicyCheck } from '@heryjs/core/capabilities';
 
 // The gateway itself exposes nothing: each registrar decides, per tool and per
 // call, what this subject may see. So this answers only "may the caller open an

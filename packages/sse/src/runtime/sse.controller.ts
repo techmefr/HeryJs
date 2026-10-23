@@ -12,9 +12,9 @@ import {
   CapabilitiesGuard,
   Capability,
   PublicRoute,
-} from '#kernel/public/capabilities';
-import { ok, RateLimit, UnpaginatedRoute } from '#kernel/public/http';
-import { type RequestWithUser, SessionGuard } from '#kernel/public/auth';
+} from '@heryjs/core/capabilities';
+import { ok, RateLimit, UnpaginatedRoute } from '@heryjs/core/http';
+import { type RequestWithUser, SessionGuard } from '@heryjs/core/auth';
 import { SseTokenGuard } from './sse-token.guard';
 import type { RequestWithSseToken } from './sse-token.guard';
 import { SseTokenService } from './sse-token.service';

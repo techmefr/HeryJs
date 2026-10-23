@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { type AuthenticatedUser, authPrismaClient } from '#kernel/public/auth';
-import { createTenantScopedPrismaClient } from '#kernel/public/testing';
-import { runInTenant } from '#kernel/public/tenancy';
+import { type AuthenticatedUser, authPrismaClient } from '@heryjs/core/auth';
+import { createTenantScopedPrismaClient } from '@heryjs/core/testing';
+import { runInTenant } from '@heryjs/core/tenancy';
 import { TwoFactorCodeVerifier } from './two-factor-code.verifier';
 import { TwoFactorRequirementService } from './two-factor-requirement.service';
 import { TwoFactorSessionService } from './two-factor-session.service';

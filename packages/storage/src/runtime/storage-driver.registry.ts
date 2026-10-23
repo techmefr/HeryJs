@@ -3,13 +3,13 @@ import {
   HERY_CONFIG,
   type HeryConfig,
   type HeryConfigDrivers,
-} from '#kernel/public/config';
+} from '@heryjs/core/config';
 import {
   DriverResolver,
   missingDriverMessage,
   STORAGE_MODULE,
   type StorageDriver,
-} from '#kernel/public/drivers';
+} from '@heryjs/core/drivers';
 import { LocalStorageDriver } from './local-storage.driver';
 import { storageEnv } from './storage.env';
 

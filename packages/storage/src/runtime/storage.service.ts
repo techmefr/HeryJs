@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
-import { isTenantFileKey, TenantContextStorage } from '#kernel/public/tenancy';
+import { isTenantFileKey, TenantContextStorage } from '@heryjs/core/tenancy';
 import { storageEnv } from './storage.env';
 import { StorageUploadRejectedException } from './storage-upload-rejected.exception';
 import { StorageNotInTenantException } from './storage-not-in-tenant.exception';

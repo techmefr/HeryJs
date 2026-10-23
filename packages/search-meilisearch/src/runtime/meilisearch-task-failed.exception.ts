@@ -1,5 +1,5 @@
 import { HttpStatus } from '@nestjs/common';
-import { DomainException } from '#kernel/public/errors';
+import { DomainException } from '@heryjs/core/errors';
 
 export class MeilisearchTaskFailedException extends DomainException {
   constructor(operation: string, collection: string, reason: string) {

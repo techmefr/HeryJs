@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { ImportDriver, ImportRow } from '#kernel/public/drivers';
+import type { ImportDriver, ImportRow } from '@heryjs/core/drivers';
 
 const BOM = '﻿';
 

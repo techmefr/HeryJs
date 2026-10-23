@@ -1,6 +1,6 @@
 import { inflateSync } from 'node:zlib';
-import type { Exportable } from '#kernel/public/drivers';
-import { TenantContextStorage } from '#kernel/public/tenancy';
+import type { Exportable } from '@heryjs/core/drivers';
+import { TenantContextStorage } from '@heryjs/core/tenancy';
 import { PdfExportDriver } from './pdf-export.driver';
 
 const driver = new PdfExportDriver();

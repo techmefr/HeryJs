@@ -1,9 +1,9 @@
 import { DynamicModule, Module, Type } from '@nestjs/common';
-import { AuthModule } from '#kernel/public/auth';
-import { PrivacyModule } from '#kernel/public/privacy';
-import { isLocalEnvironmentNow } from '#kernel/public/config';
-import { env } from '#kernel/public/env';
-import { PrismaModule } from '#kernel/public/database';
+import { AuthModule } from '@heryjs/core/auth';
+import { PrivacyModule } from '@heryjs/core/privacy';
+import { isLocalEnvironmentNow } from '@heryjs/core/config';
+import { env } from '@heryjs/core/env';
+import { PrismaModule } from '@heryjs/core/database';
 import { OAuthAccountService } from './oauth-account.service';
 import { OAUTH_FETCH } from './oauth-http';
 import {

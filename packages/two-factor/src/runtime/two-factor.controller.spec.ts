@@ -1,4 +1,4 @@
-import { RATE_LIMIT_BUCKET } from '#kernel/public/testing';
+import { RATE_LIMIT_BUCKET } from '@heryjs/core/testing';
 import { TwoFactorController } from './two-factor.controller';
 import { TwoFactorRequirementController } from './two-factor-requirement.controller';
 

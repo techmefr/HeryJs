@@ -15,9 +15,9 @@ import {
   authenticateSocket,
   type AuthProvider,
   SocketAuthGuard,
-} from '#kernel/public/auth';
-import { subjectOf } from '#kernel/public/capabilities';
-import { withTenant } from '#kernel/public/tenancy';
+} from '@heryjs/core/auth';
+import { subjectOf } from '@heryjs/core/capabilities';
+import { withTenant } from '@heryjs/core/tenancy';
 import { PeerRoomPresenceService } from './peer-room-presence.service';
 import { PeerTurnCredentialsService } from './peer-turn-credentials.service';
 import { canJoinPeerRoom, canViewPeerRoomParticipants } from './peer.policy';

@@ -4,10 +4,10 @@ import type {
   DriverResolver,
   Importable,
   StorageDriver,
-} from '#kernel/public/drivers';
-import type { JobsService } from '#kernel/public/jobs';
-import type { NotificationProvider } from '#kernel/public/notifications';
-import { TenantContextStorage } from '#kernel/public/tenancy';
+} from '@heryjs/core/drivers';
+import type { JobsService } from '@heryjs/core/jobs';
+import type { NotificationProvider } from '@heryjs/core/notifications';
+import { TenantContextStorage } from '@heryjs/core/tenancy';
 import { CsvImportDriver } from './csv-import.driver';
 import { IMPORT_CONSUME_JOB } from './import.constants';
 import type { ImportDriverRegistry } from './import-driver.registry';

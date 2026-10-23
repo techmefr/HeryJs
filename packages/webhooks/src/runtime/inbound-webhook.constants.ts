@@ -1,4 +1,4 @@
-import type { JobPolicy } from '#kernel/public/jobs';
+import type { JobPolicy } from '@heryjs/core/jobs';
 
 export const INBOUND_WEBHOOK_HANDLER = 'inbound-webhooks';
 export const INBOUND_WEBHOOK_MESSAGE = 'inbound-webhook.received';

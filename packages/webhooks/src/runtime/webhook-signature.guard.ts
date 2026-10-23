@@ -1,9 +1,9 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import type { RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
-import { authPrismaClient } from '#kernel/public/auth';
-import { env } from '#kernel/public/env';
-import { TraceContextStorage } from '#kernel/public/observability';
+import { authPrismaClient } from '@heryjs/core/auth';
+import { env } from '@heryjs/core/env';
+import { TraceContextStorage } from '@heryjs/core/observability';
 import { WEBHOOK_TIMESTAMP_HEADER } from './inbound-webhook.constants';
 import { InvalidWebhookSignatureException } from './invalid-webhook-signature.exception';
 import { WebhookEndpointSecretService } from './webhook-endpoint-secret.service';

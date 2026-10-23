@@ -1,11 +1,11 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import { authPrismaClient } from '#kernel/public/auth';
+import { authPrismaClient } from '@heryjs/core/auth';
 import {
   type OutboxDelivery,
   type OutboxHandler,
   OutboxRegistry,
-} from '#kernel/public/jobs';
+} from '@heryjs/core/jobs';
 import {
   DELIVERY_STATUS_PENDING,
   MODEL_EVENT_PREFIX,

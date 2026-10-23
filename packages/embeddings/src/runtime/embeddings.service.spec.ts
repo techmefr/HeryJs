@@ -1,7 +1,7 @@
 import {
   EmbeddingDimensionMismatchException,
   type EmbeddingDriver,
-} from '#kernel/public/drivers';
+} from '@heryjs/core/drivers';
 import type { EmbeddingDriverRegistry } from './embedding-driver.registry';
 import { EmbeddingsService } from './embeddings.service';
 

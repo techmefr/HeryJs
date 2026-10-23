@@ -7,7 +7,7 @@ import {
   matchesFrom,
   type SearchDriver,
   type SearchMatches,
-} from '#kernel/public/drivers';
+} from '@heryjs/core/drivers';
 
 const TENANT_FIELD = 'tenantId';
 const PRIMARY_KEY = 'id';

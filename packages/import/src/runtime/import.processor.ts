@@ -8,13 +8,13 @@ import {
   importableToken,
   STORAGE_MODULE,
   type StorageDriver,
-} from '#kernel/public/drivers';
-import { IMPORT_QUEUE } from '#kernel/public/jobs';
+} from '@heryjs/core/drivers';
+import { IMPORT_QUEUE } from '@heryjs/core/jobs';
 import {
   NOTIFICATION_PROVIDER,
   type NotificationProvider,
-} from '#kernel/public/notifications';
-import { TenantContextStorage } from '#kernel/public/tenancy';
+} from '@heryjs/core/notifications';
+import { TenantContextStorage } from '@heryjs/core/tenancy';
 import {
   IMPORT_CONSUME_JOB,
   IMPORT_DONE_NOTIFICATION,

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { EXPORT_QUEUE, JobsService } from '#kernel/public/jobs';
-import type { Exportable, ExportResult } from '#kernel/public/drivers';
-import { TenantContextStorage } from '#kernel/public/tenancy';
+import { EXPORT_QUEUE, JobsService } from '@heryjs/core/jobs';
+import type { Exportable, ExportResult } from '@heryjs/core/drivers';
+import { TenantContextStorage } from '@heryjs/core/tenancy';
 import {
   EXPORT_GENERATE_JOB,
   EXPORT_GENERATE_POLICY,

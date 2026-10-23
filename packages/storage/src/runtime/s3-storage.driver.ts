@@ -16,7 +16,7 @@ import type {
   StoredObject,
   StoredObjectStat,
   StoredObjectSummary,
-} from '#kernel/public/drivers';
+} from '@heryjs/core/drivers';
 
 const DEFAULT_TTL_SECONDS = 900;
 const PRESIGN_PUT_TTL_SECONDS = 300;

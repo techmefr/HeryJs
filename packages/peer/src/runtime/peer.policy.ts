@@ -1,4 +1,4 @@
-import { everyone, type PolicyCheck } from '#kernel/public/capabilities';
+import { everyone, type PolicyCheck } from '@heryjs/core/capabilities';
 
 /**
  * A peer room is not a generated resource with an owner column and presets of

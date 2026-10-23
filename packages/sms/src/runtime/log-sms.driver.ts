@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { SmsDriver, SmsMessage } from '#kernel/public/drivers';
+import type { SmsDriver, SmsMessage } from '@heryjs/core/drivers';
 
 /**
  * The zero-config default, and the counterpart of mail's log driver: it

@@ -1,4 +1,4 @@
-import type { ImportRow } from '#kernel/public/drivers';
+import type { ImportRow } from '@heryjs/core/drivers';
 import { CsvImportDriver } from './csv-import.driver';
 
 const driver = new CsvImportDriver();

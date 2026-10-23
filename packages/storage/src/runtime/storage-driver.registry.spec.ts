@@ -1,7 +1,7 @@
 import type { ModuleRef } from '@nestjs/core';
-import type { HeryConfig, HeryConfigDrivers } from '#kernel/public/config';
-import { DriverResolver, type StorageDriver } from '#kernel/public/drivers';
-import { driverToken } from '#kernel/public/testing';
+import type { HeryConfig, HeryConfigDrivers } from '@heryjs/core/config';
+import { DriverResolver, type StorageDriver } from '@heryjs/core/drivers';
+import { driverToken } from '@heryjs/core/testing';
 import { LocalStorageDriver } from './local-storage.driver';
 import { StorageDriverRegistry } from './storage-driver.registry';
 import { storageEnv } from './storage.env';

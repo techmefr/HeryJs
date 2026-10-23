@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { PersonalDataRegistry } from '#kernel/public/privacy';
+import { PersonalDataRegistry } from '@heryjs/core/privacy';
 import { ElasticsearchSearchDriver } from './elasticsearch-search.driver';
 
 /**

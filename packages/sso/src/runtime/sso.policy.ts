@@ -1,3 +1,3 @@
-import { adminAbility, type PolicyCheck } from '#kernel/public/capabilities';
+import { adminAbility, type PolicyCheck } from '@heryjs/core/capabilities';
 
 export const canManageSso: PolicyCheck = adminAbility;

@@ -1,4 +1,4 @@
-import { registerCatalogue } from '#kernel/public/i18n';
+import { registerCatalogue } from '@heryjs/core/i18n';
 
 export const TWO_FACTOR_CATALOGUE = registerCatalogue({
   'two-factor.code.invalid': {

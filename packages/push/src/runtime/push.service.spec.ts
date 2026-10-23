@@ -2,9 +2,9 @@ import type {
   PushDriver,
   PushMessage,
   PushOutcome,
-} from '#kernel/public/drivers';
-import { TelemetryBus } from '#kernel/public/observability';
-import type { TelemetryRecord } from '#kernel/public/testing';
+} from '@heryjs/core/drivers';
+import { TelemetryBus } from '@heryjs/core/observability';
+import type { TelemetryRecord } from '@heryjs/core/testing';
 import { PushDriverRegistry } from './push-driver.registry';
 import { PushService } from './push.service';
 import { PushTokenService } from './push.tokens';

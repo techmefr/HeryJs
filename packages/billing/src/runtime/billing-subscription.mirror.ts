@@ -3,8 +3,8 @@ import type { Prisma } from '@prisma/client';
 import {
   PRISMA_CLIENT,
   type TenantScopedPrismaClient,
-} from '#kernel/public/database';
-import type { BillingEvent } from '#kernel/public/drivers';
+} from '@heryjs/core/database';
+import type { BillingEvent } from '@heryjs/core/drivers';
 
 /**
  * The local truth about what a tenant is subscribed to, refreshed from the

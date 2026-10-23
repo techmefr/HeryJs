@@ -2,7 +2,7 @@ import type {
   AuthenticatedSocket,
   AuthenticatedUser,
   AuthProvider,
-} from '#kernel/public/auth';
+} from '@heryjs/core/auth';
 import { PeerGateway } from './peer.gateway';
 import { PeerRoomPresenceService } from './peer-room-presence.service';
 import { PeerTurnCredentialsService } from './peer-turn-credentials.service';

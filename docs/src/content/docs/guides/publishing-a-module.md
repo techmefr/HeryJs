@@ -85,7 +85,7 @@ Two fields are not in there. `name` is kebab-case, checked and refused otherwise
 
 The scaffold writes both, and they differ in one thing:
 
-- `tsconfig.json` — `noEmit`, `include: ["src", "test"]`. What your editor, your `tsc` and your typed lint rules read. It maps `#kernel/*`, which is what lets your runtime typecheck against a kernel your package does not ship.
+- `tsconfig.json` — `noEmit`, `include: ["src", "test"]`. What your editor, your `tsc` and your typed lint rules read. It maps `@heryjs/core/*` to the kernel's public entries and `#kernel/*` to the kernel itself, which is what lets your runtime typecheck against a kernel your package does not ship.
 - `tsconfig.build.json` — emits `dist/` from `src/module.ts` alone, with `declaration`. What `prepack` runs.
 
 Only the entry point is compiled. `src/runtime` is published as TypeScript source, because `copyRuntime` copies it into a project that compiles it itself — building it here would produce a `dist/runtime` nothing ever reads.
@@ -128,7 +128,7 @@ That list is the whole vocabulary, and each intent appears in it once — there 
 
 Your `module.ts` never imports `node:fs`. That is checked, and it is what makes idempotence, the skip logging and the record of what was touched hold for every module rather than for the careful ones. Your **runtime** is free to touch the filesystem — writing files is the whole point of a storage module.
 
-Two things nothing lets you do, deliberately: edit the developer's `app.module.ts` (wiring is a next step they perform where they can read it), and reach the kernel through anything but its public entries, `#kernel/public/<entry>` (`auth`, `capabilities`, `config`, `database`, `drivers`, `env`, `errors`, `http`, `i18n`, `jobs`, `notifications`, `observability`, `platform`, `privacy`, `realtime`, `tenancy`, `testing`), which are rewritten to their own `#technical/public/` as the file is copied. Every other file under the kernel is internal and may move between releases.
+Two things nothing lets you do, deliberately: edit the developer's `app.module.ts` (wiring is a next step they perform where they can read it), and reach the kernel through anything but its public entries, `@heryjs/core/<entry>` (`auth`, `capabilities`, `config`, `database`, `drivers`, `env`, `errors`, `http`, `i18n`, `jobs`, `notifications`, `observability`, `platform`, `privacy`, `realtime`, `tenancy`, `testing`), which are rewritten to the project's own `#technical/public/` as the file is copied. A module written against the older `#kernel/public/<entry>` still installs; `pnpm hery kernel:migrate` rewrites it. Every other file under the kernel is internal and may move between releases.
 
 ## Validate before you publish
 
@@ -137,9 +137,9 @@ pnpm add ./hery-module-maintenance
 pnpm hery module:validate maintenance
 ```
 
-From a project that depends on your package, so the check runs against the module exactly as a user receives it — which is what `files` decided. It reads your `package.json` first: the `heryjs.module` marker, a `main` at JavaScript, and a `files` that publishes both `src/runtime` and whatever `main` compiles to. Then it reads the definition the way `install` does, and checks what is around it: no `node:fs` in the entry, a `src/runtime` of real files, a spec shipped with them, `#kernel/public/<entry>` as the only subpath import, and no relative import climbing out of the package.
+From a project that depends on your package, so the check runs against the module exactly as a user receives it — which is what `files` decided. It reads your `package.json` first: the `heryjs.module` marker, a `main` at JavaScript, and a `files` that publishes both `src/runtime` and whatever `main` compiles to. Then it reads the definition the way `install` does, and checks what is around it: no `node:fs` in the entry, a `src/runtime` of real files, a spec shipped with them, `@heryjs/core/<entry>` (or the older `#kernel/public/<entry>`) for every kernel import, and no relative import climbing out of the package.
 
-Run it in your own package directory too. There it also sees your `tsconfig.json`, and asks that it map `#kernel/*` — a mapping that only matters where the module is authored, since your tsconfig is not something you publish.
+Run it in your own package directory too. There it also sees your `tsconfig.json`, and asks that it map `@heryjs/core/*` (and `#kernel/*` where it still uses it) — a mapping that only matters where the module is authored, since your tsconfig is not something you publish.
 
 The same checks run over this repository's own modules in CI. What is asked of your module is asked of the official ones first.
 
@@ -159,6 +159,6 @@ Anything that needs a real service — an engine, a broker, a running app — be
 - [ ] a definition with a kebab-case `name`, a `description` and `meta.compatibility`, closed with `satisfies ModuleDefinition`
 - [ ] no `dest` unless your runtime lands outside `src/modules/<name>`
 - [ ] no `node:fs` in `src/module.ts`
-- [ ] `#kernel/public/<entry>` for every kernel import, nothing relative climbing out
+- [ ] `@heryjs/core/<entry>` for every kernel import, nothing relative climbing out
 - [ ] a spec under `src/runtime`, and `test` in your tsconfig if you keep integration tests
 - [ ] `hery module:validate <name>` green from a project that depends on you

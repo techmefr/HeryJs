@@ -1,6 +1,6 @@
 import { Global, Module } from '@nestjs/common';
-import { PrivacyModule } from '#kernel/public/privacy';
-import { searchDriverToken } from '#kernel/public/drivers';
+import { PrivacyModule } from '@heryjs/core/privacy';
+import { searchDriverToken } from '@heryjs/core/drivers';
 import { ElasticsearchSearchDriver } from './elasticsearch-search.driver';
 import { ElasticsearchSearchPersonalData } from './elasticsearch-search.personal-data';
 

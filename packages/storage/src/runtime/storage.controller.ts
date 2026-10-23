@@ -1,7 +1,7 @@
 import { Controller, Get, Param, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
-import { PublicRoute } from '#kernel/public/capabilities';
-import { RateLimit } from '#kernel/public/http';
+import { PublicRoute } from '@heryjs/core/capabilities';
+import { RateLimit } from '@heryjs/core/http';
 import { LocalStorageDriver } from './local-storage.driver';
 import { StorageSignatureGuard } from './storage-signature.guard';
 

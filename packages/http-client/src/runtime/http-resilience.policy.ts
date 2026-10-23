@@ -1,4 +1,4 @@
-import { operatorAbility, type PolicyCheck } from '#kernel/public/capabilities';
+import { operatorAbility, type PolicyCheck } from '@heryjs/core/capabilities';
 
 // What a circuit says is which third parties the deployment depends on and how
 // they are doing, and what an operator can do to it -- shed a dependency, let

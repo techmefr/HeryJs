@@ -13,7 +13,7 @@ import { loadOfficialModules } from '../cli/lib/module-discovery';
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const SKIPPED_DIRECTORIES = new Set(['node_modules', 'dist', '.astro']);
-const KERNEL_LITERAL = /['"](#kernel\/[^'"]*)['"]/g;
+const KERNEL_LITERAL = /['"]((?:#kernel|@heryjs\/core)\/[^'"]*)['"]/g;
 
 function sourceFiles(dir: string): string[] {
   if (!existsSync(dir)) {
@@ -61,8 +61,9 @@ function authoredPackages(): Array<{
 }
 
 /**
- * A module reaches the kernel only through the entries under
- * src/technical/public. Every #kernel/ string a package holds is checked, not
+ * A module reaches the kernel only through the entries of @heryjs/core, built
+ * from src/technical/public. Every #kernel/ and @heryjs/core/ string a package
+ * holds is checked, not
  * only its imports: a jest.mock or a requireActual on an internal path couples
  * a spec to a file the kernel is free to move.
  */

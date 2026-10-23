@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
-import { type AuthenticatedUser, authPrismaClient } from '#kernel/public/auth';
-import { RecordNotFoundException } from '#kernel/public/errors';
-import { createTenantScopedPrismaClient } from '#kernel/public/testing';
-import { runInTenant } from '#kernel/public/tenancy';
+import { type AuthenticatedUser, authPrismaClient } from '@heryjs/core/auth';
+import { RecordNotFoundException } from '@heryjs/core/errors';
+import { createTenantScopedPrismaClient } from '@heryjs/core/testing';
+import { runInTenant } from '@heryjs/core/tenancy';
 import { ImpersonationService } from './impersonation.service';
 
 describe('tenant isolation', () => {

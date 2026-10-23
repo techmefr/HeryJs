@@ -2,7 +2,7 @@ import { createHmac } from 'node:crypto';
 import {
   BillingEventUnattributedException,
   BillingWebhookSignatureException,
-} from '#kernel/public/drivers';
+} from '@heryjs/core/drivers';
 import { StripeBillingDriver } from './stripe-billing.driver';
 
 const SECRET = 'whsec_test_secret';

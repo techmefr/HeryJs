@@ -6,7 +6,7 @@ import {
   BillingEventUnattributedException,
   type BillingSubscriptionStatus,
   BillingWebhookSignatureException,
-} from '#kernel/public/drivers';
+} from '@heryjs/core/drivers';
 import { stripeBillingEnv } from './stripe-billing.env';
 
 /**

@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import {
   PRISMA_CLIENT,
   type TenantScopedPrismaClient,
-} from '#kernel/public/database';
+} from '@heryjs/core/database';
 
 export const OAUTH_IDENTITY_STORE = Symbol('OAUTH_IDENTITY_STORE');
 

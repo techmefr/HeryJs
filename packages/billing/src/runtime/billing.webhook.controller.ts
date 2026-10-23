@@ -1,7 +1,7 @@
 import { Controller, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
-import { ok, UnthrottledRoute } from '#kernel/public/http';
-import { PublicRoute } from '#kernel/public/capabilities';
-import { BILLING_QUEUE, JobsService } from '#kernel/public/jobs';
+import { ok, UnthrottledRoute } from '@heryjs/core/http';
+import { PublicRoute } from '@heryjs/core/capabilities';
+import { BILLING_QUEUE, JobsService } from '@heryjs/core/jobs';
 import { BillingWebhookGuard } from './billing-webhook.guard';
 import type { RequestWithBillingEvents } from './billing-webhook.guard';
 import { BILLING_MIRROR_JOB, BILLING_MIRROR_POLICY } from './billing.constants';
