@@ -252,6 +252,18 @@ describe('a project that still carries a copy of the kernel', () => {
     ]);
   });
 
+  it('accepts a kernel file as an earlier release shipped it', () => {
+    writeFileSync(
+      path.join(root, 'src', 'technical', 'public', 'config.ts'),
+      readFileSync(
+        path.join(REPO_ROOT, 'src', 'technical', 'public', 'config.ts'),
+        'utf8',
+      ).replace('  HeryConfigModuleEntry,\n', ''),
+    );
+
+    expect(modifiedKernelFiles(root, REPO_ROOT)).toEqual([]);
+  });
+
   it('ignores the test support it keeps', () => {
     appendFileSync(
       path.join(root, 'src', 'devtools', 'testing', 'wait-for.ts'),
