@@ -47,6 +47,15 @@ A driver shipped as a package binds `logDriverToken('<name>')` from outside the 
 
 A declared driver that cannot be built stops the boot with the install command in the message. An app that asked for a collector and quietly got the console looks healthy until someone goes looking for the logs.
 
+## No personal data in a line
+
+Every line is redacted once, in the pipeline, before any driver sees it: the HTTP request logs, the application's own `Logger` calls, error messages and stack traces, job and outbox failures, Better Auth's messages, and what is shipped to a collector.
+
+- A field whose key is a known secret or personal key (`password`, `token`, `secret`, `authorization`, `cookie`, `email`, `phoneNumber`, `address`, `firstName`…) is replaced by `[redacted]`, at any depth. So is the `name` of an object that also carries an address, a phone number or a password, and every field a resource declared `personal` in its `*.personal-data.ts`.
+- Every remaining string is masked for e-mail addresses (plain or url-encoded), phone numbers, JWTs, `Bearer` tokens and `token=…`-style labelled secrets.
+
+A name written into a free-text message cannot be recognised: log ids, not people. `pnpm run lint:conventions no-raw-pii-log` refuses a log call that hands over a `user`, a request `body` or a DTO whole; pass it through `redactForLog(...)` from `#technical/logging/log-redaction` when it really has to be logged. `LOG_LEVEL` overrides the level the environment picks.
+
 ## Every line carries its tenant
 
 A pino mixin stamps each line with the tenant of the ambient request context, the same one the Prisma client reads. A line logged outside any request carries none and is stored against `system`, which no caller can query.

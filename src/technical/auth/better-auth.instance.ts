@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import { env } from '#technical/config/env';
@@ -15,6 +16,20 @@ export const authPrismaClient = new PrismaClient({ adapter });
 const SIGN_IN_PATH = '/sign-in/email';
 const CHANGE_PASSWORD_PATH = '/change-password';
 const UNAUTHORIZED_STATUS = 401;
+
+const betterAuthLogger = new Logger('BetterAuth');
+
+function logAuthEvent(level: string, message: string, ...args: unknown[]) {
+  if (level === 'error') {
+    betterAuthLogger.error(message, ...args);
+  } else if (level === 'warn') {
+    betterAuthLogger.warn(message, ...args);
+  } else if (level === 'debug') {
+    betterAuthLogger.debug(message, ...args);
+  } else {
+    betterAuthLogger.log(message, ...args);
+  }
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -36,6 +51,7 @@ async function createAuth() {
 
   const auth = betterAuth({
     database: prismaAdapter(authPrismaClient, { provider: 'postgresql' }),
+    logger: { log: logAuthEvent },
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: authEnv.AUTH_REQUIRE_EMAIL_VERIFICATION,

@@ -69,11 +69,12 @@ const telemetryOptions = telemetryPinoOptions();
         {
           ...telemetryOptions,
           level:
-            process.env.NODE_ENV === 'test'
+            process.env.LOG_LEVEL ??
+            (process.env.NODE_ENV === 'test'
               ? 'silent'
               : process.env.NODE_ENV === 'production'
                 ? 'info'
-                : 'debug',
+                : 'debug'),
           mixin: () => ({
             ...telemetryOptions.mixin?.(),
             ...tenantLogMixin(),
