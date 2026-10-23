@@ -208,6 +208,26 @@ describe('HeryModule', () => {
     expect(() => HeryModule.forRoot(config, heryModules)).not.toThrow();
   });
 
+  it('loads every declared module from its package when none is passed in', () => {
+    const config: HeryConfig = {
+      modules: heryModules.map((contract) => contract.name),
+    };
+
+    const moduleClasses = (imports: unknown[] = []): unknown[] =>
+      imports.map((entry) =>
+        typeof entry === 'object' && entry !== null && 'module' in entry
+          ? entry.module
+          : entry,
+      );
+
+    expect(moduleClasses(HeryModule.forRoot(config).imports)).toEqual(
+      moduleClasses(HeryModule.forRoot(config, heryModules).imports),
+    );
+    expect(moduleClasses(HeryModule.forRoot(config).imports)).toContain(
+      SsoModule,
+    );
+  });
+
   it.each<[string, HeryConfig, string]>([
     [
       'a module that is not installed',

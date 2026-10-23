@@ -15,8 +15,8 @@ import {
   clearWebhookHandlers,
   registerWebhookHandler,
 } from '@heryjs/core/platform';
-import { WebhooksProcessor } from './webhooks.processor';
-import { WebhooksService } from './webhooks.service';
+import { WebhooksProcessor } from '#modules/webhooks/webhooks.processor';
+import { WebhooksService } from '#modules/webhooks/webhooks.service';
 
 interface MintedEndpoint {
   id: string;

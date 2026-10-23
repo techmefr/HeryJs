@@ -295,6 +295,7 @@ exports[`the kernel public API exports exactly the recorded names 1`] = `
     "HeryNestImport: type",
     "classOption: value",
     "defineHeryModule: value",
+    "loadHeryModules: value",
     "loginHandlerOptions: value",
     "noOptions: value",
     "resolveHeryModules: value",

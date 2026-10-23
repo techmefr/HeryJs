@@ -10,8 +10,8 @@ import {
   createTestTenantId,
   purgeTenant,
 } from '#devtools/testing/tenant-isolation';
-import { ScimTokenService } from './scim-token.service';
-import { SCIM_CONTENT_TYPE, SCIM_PATCH_SCHEMA } from './scim.types';
+import { ScimTokenService } from '#modules/scim/scim-token.service';
+import { SCIM_CONTENT_TYPE, SCIM_PATCH_SCHEMA } from '#modules/scim/scim.types';
 
 interface ScimBody {
   id: string;

@@ -1,10 +1,19 @@
 {
-  "moduleFileExtensions": ["js", "json", "ts"],
+  "moduleFileExtensions": [
+    "js",
+    "json",
+    "ts"
+  ],
   "rootDir": "..",
-  "roots": ["<rootDir>/packages"],
+  "roots": [
+    "<rootDir>/packages"
+  ],
   "testEnvironment": "node",
   "testRegex": "src/runtime/.*\\.spec\\.ts$",
-  "testPathIgnorePatterns": ["/node_modules/", "packages/admin-astro/"],
+  "testPathIgnorePatterns": [
+    "/node_modules/",
+    "packages/admin-astro/"
+  ],
   "globalSetup": "<rootDir>/test/global-setup.ts",
   "moduleNameMapper": {
     "^@heryjs/core/devtools$": "<rootDir>/src/devtools/public",
@@ -13,7 +22,9 @@
     "^#kernel/(.*)$": "<rootDir>/src/technical/$1",
     "^#technical/(.*)$": "<rootDir>/src/technical/$1",
     "^#devtools/(.*)$": "<rootDir>/src/devtools/$1",
-    "^#modules/(.*)$": "<rootDir>/src/modules/$1",
+    "^@heryjs/(?!core/|cli/)([^/]+)/hery$": "<rootDir>/packages/$1/src/runtime/$1.hery",
+    "^@heryjs/(?!core/|cli/)([^/]+)/(.*)$": "<rootDir>/packages/$1/src/runtime/$2",
+    "^#modules/([^/]+)/(.*)$": "<rootDir>/packages/$1/src/runtime/$2",
     "^#functional/(.*)$": "<rootDir>/src/functional/$1"
   },
   "transform": {

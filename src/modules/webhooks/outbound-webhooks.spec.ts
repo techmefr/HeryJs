@@ -13,9 +13,9 @@ import { waitFor } from '#devtools/testing/wait-for';
 import { OutboxRelay } from '@heryjs/core/jobs';
 import { OutboxService } from '@heryjs/core/jobs';
 import { runInTenant } from '@heryjs/core/tenancy';
-import { verifyOutboundWebhook } from './outbound-webhook-signature';
-import { OUTBOUND_WEBHOOK_POLICY } from './outbound-webhook.constants';
-import { WebhookDeliveryService } from './webhook-delivery.service';
+import { verifyOutboundWebhook } from '#modules/webhooks/outbound-webhook-signature';
+import { OUTBOUND_WEBHOOK_POLICY } from '#modules/webhooks/outbound-webhook.constants';
+import { WebhookDeliveryService } from '#modules/webhooks/webhook-delivery.service';
 
 interface Recorded {
   url: string;

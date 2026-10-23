@@ -39,7 +39,11 @@ export function rewriteKernelSpecifiers(source: string): string {
  * Returns the paths it actually wrote, so the install context can record what
  * a module touched without the module reporting it itself.
  */
-export function copyRuntime(runtimeDir: string, destDir: string): string[] {
+export function copyRuntime(
+  runtimeDir: string,
+  destDir: string,
+  { quiet = false }: { quiet?: boolean } = {},
+): string[] {
   const written: string[] = [];
 
   for (const entry of readdirSync(runtimeDir, { withFileTypes: true })) {
@@ -47,19 +51,24 @@ export function copyRuntime(runtimeDir: string, destDir: string): string[] {
     const destPath = path.join(destDir, entry.name);
 
     if (entry.isDirectory()) {
-      written.push(...copyRuntime(sourcePath, destPath));
+      written.push(...copyRuntime(sourcePath, destPath, { quiet }));
       continue;
     }
 
     if (existsSync(destPath)) {
-      console.log(pc.yellow(`${destPath} already exists, skipping.`));
+      if (!quiet) {
+        console.log(pc.yellow(`${destPath} already exists, skipping.`));
+      }
       continue;
     }
 
     const content = rewriteKernelSpecifiers(readFileSync(sourcePath, 'utf8'));
     mkdirSync(path.dirname(destPath), { recursive: true });
     writeFileSync(destPath, content);
-    console.log(pc.green(`✔ ${destPath}`));
+
+    if (!quiet) {
+      console.log(pc.green(`✔ ${destPath}`));
+    }
     written.push(destPath);
   }
 

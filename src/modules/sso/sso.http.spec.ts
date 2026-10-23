@@ -8,14 +8,14 @@ import { AppModule } from '#app.module';
 import { authPrismaClient } from '@heryjs/core/auth';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 import type { TestUser } from '#devtools/testing/register-and-login';
-import { SSO_TXT_RESOLVER } from './sso-domain-verifier';
-import { SSO_FETCH } from './sso-http';
-import { SSO_HOST_RESOLVER } from './sso-url-guard';
+import { SSO_TXT_RESOLVER } from '#modules/sso/sso-domain-verifier';
+import { SSO_FETCH } from '#modules/sso/sso-http';
+import { SSO_HOST_RESOLVER } from '#modules/sso/sso-url-guard';
 import {
   encodeSamlResponse,
   generateSamlTestIdp,
   samlResponseXml,
-} from './sso-saml.fakes';
+} from '#modules/sso/sso-saml.fakes';
 
 const ISSUER = 'https://idp.sso-spec.test';
 const CLIENT_SECRET = 'sso-spec-client-secret';

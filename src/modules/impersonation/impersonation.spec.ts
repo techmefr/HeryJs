@@ -8,8 +8,8 @@ import { authPrismaClient } from '@heryjs/core/auth';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 import type { TestUser } from '#devtools/testing/register-and-login';
 import { BlogPostModule } from '../../../examples/blog-post/blog-post.module';
-import { ImpersonationExpiryTask } from './impersonation-expiry.task';
-import { ImpersonationService } from './impersonation.service';
+import { ImpersonationExpiryTask } from '#modules/impersonation/impersonation-expiry.task';
+import { ImpersonationService } from '#modules/impersonation/impersonation.service';
 
 describe('Impersonation', () => {
   let app: INestApplication<App>;
