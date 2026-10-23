@@ -13,6 +13,7 @@ import {
   OUTBOX_QUEUE,
   WEBHOOK_DELIVERY_QUEUE,
   PRIVACY_QUEUE,
+  WEBHOOK_QUEUE,
 } from './jobs.constants';
 
 @Injectable()
@@ -28,6 +29,7 @@ export class JobsService {
     @InjectQueue(OUTBOX_QUEUE) outbox: Queue,
     @InjectQueue(WEBHOOK_DELIVERY_QUEUE) webhookDeliveries: Queue,
     @InjectQueue(PRIVACY_QUEUE) privacy: Queue,
+    @InjectQueue(WEBHOOK_QUEUE) webhooks: Queue,
   ) {
     this.queues = {
       [DEFAULT_QUEUE]: queue,
@@ -38,6 +40,7 @@ export class JobsService {
       [OUTBOX_QUEUE]: outbox,
       [WEBHOOK_DELIVERY_QUEUE]: webhookDeliveries,
       [PRIVACY_QUEUE]: privacy,
+      [WEBHOOK_QUEUE]: webhooks,
     };
   }
 
@@ -55,12 +58,17 @@ export class JobsService {
    * its name is not retried or dead-lettered -- the worker returns, and BullMQ
    * marks it completed -- so the queue, not the job name, is what actually
    * routes work to the right handler.
+   *
+   * A jobId makes the dispatch idempotent: BullMQ ignores a second job under an
+   * id it still holds, so two paths may queue the same work without running it
+   * twice.
    */
   dispatchTo(
     queueName: string,
     name: string,
     data: Record<string, unknown> = {},
     policy?: JobPolicy,
+    jobId?: string,
   ) {
     const queue = this.queues[queueName];
 
@@ -70,6 +78,9 @@ export class JobsService {
       );
     }
 
-    return queue.add(name, withJobLocale(data), jobOptions(policy));
+    return queue.add(name, withJobLocale(data), {
+      ...jobOptions(policy),
+      ...(jobId === undefined ? {} : { jobId }),
+    });
   }
 }
