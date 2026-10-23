@@ -10,7 +10,6 @@ export default {
     context.copyRuntime();
 
     context.nextSteps([
-      'Import "ExportModule" into src/app.module.ts',
       "Declare it in hery.config.ts, e.g. { export: { default: 'csv', drivers: { csv: { driver: 'csv' } } } }",
       'Generate an exportable with "pnpm hery make:export TaskListExport"',
       'Inject "ExportService" and call ".as(\'csv\').generate(new TaskListExport(tasks))"',

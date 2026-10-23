@@ -28,7 +28,6 @@ export default {
 
     context.nextSteps([
       'Run "pnpm hery migrate --name add_mail_log"',
-      `Import "MailModule" into src/app.module.ts`,
       `Inject "MailService" and call ".send(new WelcomeMail(user))" from any resource that needs to send mail`,
       'Generate a mailable with "pnpm hery make:mail WelcomeMail"',
       "Declare the driver in hery.config.ts, e.g. { mail: { default: process.env.MAIL_DRIVER ?? 'log', drivers: { log: { driver: 'log' } } } }",

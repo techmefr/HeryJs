@@ -1,6 +1,17 @@
 import type { HeryConfig } from './src/technical/config/hery-config.types';
 
 export default {
+  modules: [
+    '@heryjs/export',
+    '@heryjs/impersonation',
+    '@heryjs/mail',
+    '@heryjs/oauth',
+    '@heryjs/sse',
+    '@heryjs/sso',
+    '@heryjs/scim',
+    '@heryjs/storage',
+    '@heryjs/webhooks',
+  ],
   search: {
     default: 'prisma',
     engines: {

@@ -11,7 +11,6 @@ export default {
     context.copyRuntime();
 
     context.nextSteps([
-      `Import "ElasticsearchSearchModule" into src/app.module.ts`,
       "Declare it in hery.config.ts, e.g. { search: { default: 'prisma', engines: { prisma: { driver: 'prisma' }, elasticsearch: { driver: 'elasticsearch' } } } }",
       'Run "pnpm hery up --start" to boot Elasticsearch and resolve ELASTICSEARCH_URL',
     ]);

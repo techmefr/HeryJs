@@ -11,7 +11,6 @@ export default {
     context.copyRuntime();
 
     context.nextSteps([
-      'Import "PdfExportModule" into src/app.module.ts',
       "Declare it in hery.config.ts under export.drivers, e.g. pdf: { driver: 'pdf' }",
       'Call ".as(\'pdf\').generate(new TaskListExport(tasks))" on ExportService',
     ]);

@@ -2,6 +2,9 @@
 
 exports[`the kernel public API exports exactly the recorded names 1`] = `
 {
+  "app": [
+    "HeryModule: value",
+  ],
   "auth": [
     "AUTH_MAILER: value",
     "AUTH_PROVIDER: value",
@@ -45,6 +48,7 @@ exports[`the kernel public API exports exactly the recorded names 1`] = `
     "HeryConfig: type",
     "HeryConfigDrivers: type",
     "HeryConfigModule: value",
+    "HeryConfigModuleEntry: type",
     "devEnvironmentsOf: value",
     "devOnlyDefault: value",
     "heryConfig: value",
@@ -284,6 +288,16 @@ exports[`the kernel public API exports exactly the recorded names 1`] = `
   ],
   "load-env": [
     "ENV_FILE: value",
+  ],
+  "modules": [
+    "HeryModuleConfigError: value",
+    "HeryModuleContract: type",
+    "HeryNestImport: type",
+    "classOption: value",
+    "defineHeryModule: value",
+    "loginHandlerOptions: value",
+    "noOptions: value",
+    "resolveHeryModules: value",
   ],
   "notifications": [
     "NOTIFICATION_PROVIDER: value",

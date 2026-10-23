@@ -14,7 +14,11 @@
     "noEmit": false,
     "types": ["node"]
   },
-  "include": ["../../src/technical/**/*.ts", "../../src/devtools/**/*.ts"],
+  "include": [
+    "../../src/technical/**/*.ts",
+    "../../src/devtools/**/*.ts",
+    "../../src/hery/**/*.ts"
+  ],
   "exclude": [
     "node_modules",
     "dist",
@@ -22,6 +26,7 @@
     "../../src/technical/**/*.e2e-spec.ts",
     "../../src/devtools/**/*.spec.ts",
     "../../src/devtools/testing",
-    "../../src/devtools/test-support.ts"
+    "../../src/devtools/test-support.ts",
+    "../../src/hery/**/*.spec.ts"
   ]
 }

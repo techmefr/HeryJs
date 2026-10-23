@@ -15,7 +15,6 @@ export default {
     context.copyRuntime();
 
     context.nextSteps([
-      'Import "ResendMailModule" into src/app.module.ts',
       "Declare it in hery.config.ts, e.g. { mail: { default: process.env.MAIL_DRIVER ?? 'log', drivers: { log: { driver: 'log' }, resend: { driver: 'resend' } } } }",
       'Set RESEND_API_KEY and RESEND_FROM in .env, then MAIL_DRIVER=resend to switch',
     ]);

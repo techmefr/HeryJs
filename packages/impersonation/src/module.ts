@@ -18,7 +18,6 @@ export default {
 
     context.nextSteps([
       'Run "pnpm hery migrate --name add_impersonation"',
-      `Import "ImpersonationModule" into src/app.module.ts`,
       "There is no role-management endpoint, by design (see Teams): promote a user to admin by hand, e.g. UPDATE \"User\" SET role = 'admin' WHERE email = '...'",
       'POST /impersonation/:userId as an admin to get a bearer token for the target; DELETE /impersonation with that token to end it and go back to using your own',
     ]);

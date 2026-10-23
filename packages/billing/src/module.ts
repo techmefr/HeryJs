@@ -30,7 +30,6 @@ export default {
 
     context.nextSteps([
       'Run "pnpm hery migrate --name add_billing_subscription"',
-      'Import "BillingModule" into src/app.module.ts',
       "Declare it in hery.config.ts, e.g. { billing: { default: 'log', drivers: { log: { driver: 'log' } } } }",
       'Install a provider driver, e.g. "pnpm hery install billing-stripe", then point billing.default at it',
       "Declare what each plan grants in hery.config.ts's billingQuotas: { pro: { projects: 50 } }",

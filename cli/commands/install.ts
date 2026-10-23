@@ -5,6 +5,7 @@ import type { LoadedModule } from '../lib/module-definition';
 import { createInstallContext } from '../lib/module-context';
 import { findModule, loadModules } from '../lib/module-discovery';
 import { installableModules } from '../lib/module-compatibility';
+import { modulePackageName, wireModule } from '../lib/hery-config-patch';
 
 interface InstallOptions {
   all?: boolean;
@@ -44,6 +45,15 @@ export function registerInstallCommand(program: Command): void {
         }
 
         await module.install(createInstallContext(module));
+
+        for (const file of wireModule(process.cwd(), {
+          name: modulePackageName(module.packageDir, module.name),
+          moduleName: module.name,
+          dest: module.dest,
+        })) {
+          console.log(pc.green(`✔ declared ${module.name} in ${file}`));
+        }
+
         console.log(pc.green(`✔ ${module.name} installed`));
       }
     });

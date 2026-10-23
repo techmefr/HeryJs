@@ -10,7 +10,6 @@ export default {
     context.copyRuntime();
 
     context.nextSteps([
-      'Import "SseModule" into src/app.module.ts',
       'Set SSE_TOKEN_SECRET in production -- the dev default refuses to run there',
       'Add "SseStreamService" to any EventListener that should reach a browser: call ".publish(tenantId, channel, event.constructor.name, payload)" from inside handle()',
       'Row changes: POST /sse/changes/token, then EventSource(`/sse/changes?token=...&channels=blogPost`) -- filtered per subscriber by capability, see the change feed guide',

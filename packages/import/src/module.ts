@@ -10,7 +10,6 @@ export default {
     context.copyRuntime();
 
     context.nextSteps([
-      'Import "ImportModule" into src/app.module.ts',
       "Declare it in hery.config.ts, e.g. { import: { default: 'csv', drivers: { csv: { driver: 'csv' } } } }",
       'Write an importable: a class implementing Importable from "#technical/import/import-driver"',
       'Inject "ImportService" and call ".from(\'csv\').read(file.buffer, new TaskListImport())"',

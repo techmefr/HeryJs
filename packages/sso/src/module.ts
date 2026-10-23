@@ -76,12 +76,11 @@ export default {
     context.nextSteps([
       'Run "pnpm hery migrate --name add_sso"',
       'Add CREATE UNIQUE INDEX "SsoDomain_verified_domain_key" ON "SsoDomain"("domain") WHERE "verifiedAt" IS NOT NULL to that migration: it makes "one verified domain, one tenant" hold under concurrent verification',
-      'Import "SsoModule.forRoot()" into src/app.module.ts',
       'Set SSO_STATE_SECRET and SSO_SECRET_KEY (openssl rand -base64 32) in production -- the development defaults refuse to run there',
       'Set SSO_REDIRECT_BASE_URL to your public origin and register "<origin>/sso/callback" at each OIDC identity provider, or "<origin>/sso/saml/acs" and the connection\'s saml.spEntityId at each SAML one',
       'A tenant admin creates a connection with POST /sso/connections (protocol "oidc", the default, or "saml" with the provider\'s entity ID, sign-on URL and signing certificate), publishes the returned TXT record, then calls POST /sso/connections/:id/domains/:domain/verify',
       'Users start with GET /sso/start?email=<address>: the email domain picks the tenant identity provider',
-      'Pass a loginHandler to SsoModule.forRoot({ loginHandler }) to replace the default, which mints a Better Auth session and returns its bearer token next to the login result',
+      "Declare ['@heryjs/sso', { loginHandler }] in hery.config.ts to replace the default, which mints a Better Auth session and returns its bearer token next to the login result",
     ]);
   },
 } satisfies ModuleDefinition;

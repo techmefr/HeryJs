@@ -12,6 +12,10 @@ import { spawnSync } from 'node:child_process';
 import type { Command } from 'commander';
 import pc from 'picocolors';
 import { APP_MODULE, unwireModule } from '../lib/app-module-patch';
+import {
+  modulePackageName,
+  unwireDeclaredModule,
+} from '../lib/hery-config-patch';
 import { loadBlueprint } from '../lib/blueprint';
 import {
   withProjectConventionScripts,
@@ -56,6 +60,7 @@ export const COPY_ENTRIES = [
   'src/app.controller.ts',
   'src/app.controller.spec.ts',
   'src/app.module.ts',
+  'src/hery.modules.ts',
   'src/app.service.ts',
   'src/create-app.ts',
   'src/main.ts',
@@ -223,7 +228,7 @@ function packagesImportedUnder(dirs: string[]): Set<string> {
 
 /**
  * The kernel-side files a module brings: its directory under src/modules, its
- * Prisma models, its AppModule line, the compose file its install copies, the
+ * Prisma models, its hery.config.ts entry, the compose file its install copies, the
  * root dependencies nothing else imports, and any kernel spec written against
  * it. All of it comes back with `hery install <name>`.
  */
@@ -265,6 +270,11 @@ function dropOptionalModules(destRoot: string): string[] {
     }
 
     appModule = unwireModule(appModule, name)?.source ?? appModule;
+    unwireDeclaredModule(destRoot, {
+      name: modulePackageName(path.join(destRoot, 'packages', name), name),
+      moduleName: name,
+      dest: path.join('src', 'modules', name),
+    });
 
     const packageDir = path.join(destRoot, 'packages', name);
 

@@ -27,12 +27,11 @@ export default {
 
     context.nextSteps([
       'Run "pnpm hery migrate --name add_oauth_identity"',
-      'Import "OAuthModule.forRoot()" into src/app.module.ts',
       'Set OAUTH_STATE_SECRET in production -- the dev default refuses to run there',
       'Set OAUTH_REDIRECT_BASE_URL to your public origin and register "<origin>/oauth/<provider>/callback" at each provider',
       'Set OAUTH_<PROVIDER>_CLIENT_ID and OAUTH_<PROVIDER>_CLIENT_SECRET (google, github, microsoft) -- a provider missing either half is not registered',
       'Choose OAUTH_LINK_POLICY: "refuse" (default), "link-authenticated" or "link-verified" -- read the guide before loosening it',
-      'Pass a loginHandler to OAuthModule.forRoot({ loginHandler }) to replace the default, which mints a Better Auth session and returns its bearer token next to the login result',
+      "Declare ['@heryjs/oauth', { loginHandler }] in hery.config.ts to replace the default, which mints a Better Auth session and returns its bearer token next to the login result",
     ]);
   },
 } satisfies ModuleDefinition;

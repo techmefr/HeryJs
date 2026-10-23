@@ -42,7 +42,6 @@ export default {
 
     context.nextSteps([
       'Run "pnpm hery migrate --name add_scim": ScimIdentity is annotated @hery.tenantScoped, so the same run emits its row-level security policy',
-      'Import "ScimModule" into src/app.module.ts',
       'A tenant admin issues the tenant token with POST /scim/token (shown once; calling it again rotates it) and gives the identity provider the base URL "<origin>/scim/v2" with that token as a bearer token',
       'GET /scim/token shows whether a token is set and when it was last used, and GET /scim/activity lists what the directory created, updated and deactivated: both appear in the admin panel on their own',
       'Set the proxy trust of your HTTP server so the "location" URLs the module returns use your public origin',

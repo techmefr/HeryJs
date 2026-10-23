@@ -14,12 +14,14 @@ import {
 } from '../lib/kernel-dependency';
 import { migrateLegacyRegistries } from '../lib/legacy-registries';
 import { KERNEL_PACKAGE } from '../lib/kernel-public-api';
+import { APP_MODULE } from '../lib/app-module-patch';
+import { migrateAppModuleWiring } from '../lib/app-module-migration';
 
 export function registerKernelMigrateCommand(program: Command): void {
   program
     .command('kernel:migrate [paths...]')
     .description(
-      `Rewrite #kernel/public/<entry> imports to ${KERNEL_PACKAGE}/<entry> and map ${KERNEL_PACKAGE}/* in each tsconfig, under packages/ unless paths are given, turn the kernel model lists into /// @hery.* annotations of prisma/schema.prisma, replace a copied src/technical with the ${KERNEL_PACKAGE} dependency when it is unmodified, and remove the convention scripts an older "hery new" copied into scripts/ when they are unmodified, keeping the others with a warning. Safe to run again.`,
+      `Rewrite #kernel/public/<entry> imports to ${KERNEL_PACKAGE}/<entry> and map ${KERNEL_PACKAGE}/* in each tsconfig, under packages/ unless paths are given, turn the kernel model lists into /// @hery.* annotations of prisma/schema.prisma, replace a copied src/technical with the ${KERNEL_PACKAGE} dependency when it is unmodified, and remove the convention scripts an older "hery new" copied into scripts/ when they are unmodified, keeping the others with a warning, and move the modules wired by hand in ${APP_MODULE} to hery.config.ts behind HeryModule.forRoot. Safe to run again.`,
     )
     .option(
       '--peer <range>',
@@ -51,6 +53,20 @@ export function registerKernelMigrateCommand(program: Command): void {
         }
       }
 
+      const wiring = migrateAppModuleWiring(root, reference, { write });
+
+      if (wiring.problems.length > 0) {
+        console.error(
+          pc.red(
+            `✖ ${APP_MODULE} was left as it is: HeryModule.forRoot would not boot the same graph.`,
+          ),
+        );
+        wiring.problems.forEach((problem) =>
+          console.error(pc.red(`  ${problem}`)),
+        );
+        process.exitCode = 1;
+      }
+
       const conventionScripts = isProject
         ? copiedConventionScripts(root)
         : { identical: [], modified: [] };
@@ -73,6 +89,7 @@ export function registerKernelMigrateCommand(program: Command): void {
           (annotation) => `prisma/schema.prisma: ${annotation}`,
         ),
         ...(copiedKernel ? adoptKernelPackage(root, reference, { write }) : []),
+        ...wiring.changed,
       ]);
 
       if (changed.size === 0) {

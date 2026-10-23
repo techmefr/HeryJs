@@ -31,7 +31,6 @@ export default {
 
     context.nextSteps([
       'Run "pnpm hery migrate --name add_push_tokens"',
-      'Import "PushModule" into src/app.module.ts',
       "Declare it in hery.config.ts, e.g. { push: { default: process.env.PUSH_DRIVER ?? 'log', drivers: { log: { driver: 'log' } } } }",
       'Register a device with PushTokenService.register(userId, token, platform) when a client subscribes',
       'Sweep tokens nobody has seen in a while with PushTokenService.forgetUnseenSince(cutoff) from a scheduled task',
