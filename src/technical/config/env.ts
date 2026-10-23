@@ -1,7 +1,12 @@
+import { devEnvironmentsOf } from './dev-environments';
 import { buildPublicSchema, buildServerSchema } from './env-schema';
+import { heryConfig } from './hery-config';
 
 export function parseEnv(source: NodeJS.ProcessEnv) {
-  const result = buildServerSchema(source.NODE_ENV).safeParse(source);
+  const result = buildServerSchema(
+    source.NODE_ENV,
+    devEnvironmentsOf(heryConfig),
+  ).safeParse(source);
 
   if (!result.success) {
     const issues = result.error.issues

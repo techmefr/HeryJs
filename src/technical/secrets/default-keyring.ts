@@ -1,3 +1,8 @@
+import {
+  devEnvironmentsOf,
+  isDevEnvironment,
+} from '../config/dev-environments';
+import { heryConfig } from '../config/hery-config';
 import { DEV_SECRETS_KEYS } from '../config/env-schema';
 import { env } from '../config/env';
 import { SecretsMisconfiguredException } from '../errors/secrets-misconfigured.exception';
@@ -11,7 +16,7 @@ export function defaultKeyring(): Keyring {
   }
 
   if (
-    process.env.NODE_ENV === 'production' &&
+    !isDevEnvironment(process.env.NODE_ENV, devEnvironmentsOf(heryConfig)) &&
     env.SECRETS_KEYS === DEV_SECRETS_KEYS
   ) {
     throw new SecretsMisconfiguredException(
