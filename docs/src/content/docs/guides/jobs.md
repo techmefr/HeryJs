@@ -191,5 +191,10 @@ flows.define(
 
 ## Watching what failed
 
-`/jobs` mounts Bull Board outside production. It is **unauthenticated and
-cross-tenant**, which is why it is not mounted in production at all.
+`/jobs` mounts Bull Board in the environments listed in
+`devTools.environments`, never in production. It reads, retries and removes
+the jobs of **every tenant**, so it opens for the platform operator only
+(`PLATFORM_OPERATOR_IDS`), whose session or API key goes in the
+`Authorization: Bearer` header; any other caller, a tenant admin included,
+gets a 404. The admin panel's [Job flows](#chains-batches-and-resume) page and
+the jobs tab of the [Dev dashboard](../dev-dashboard/) are the per-tenant views.

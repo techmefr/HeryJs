@@ -16,6 +16,9 @@ First public release.
 ### Modules honour devTools.environments
 
 The `sso`, `oauth` and `webhooks` modules still compared NODE_ENV with `production` themselves, so an unset or unlisted NODE_ENV let `SSO_ALLOW_PRIVATE_ISSUERS` and `WEBHOOK_ALLOW_PRIVATE_URLS` through, fell back to a localhost callback and sent non-secure state cookies. They now ask `isDevEnvironmentNow()`, exported by `#kernel/config/module-env` next to `devOnlyDefault`, which answers from `devTools.environments`. **Upgrade note:** copy `src/technical/config/module-env.ts` by hand; a project that installed `sso` copies `sso.env.ts`, `sso-redirect.ts` and `sso-state.service.ts`, one that installed `oauth` copies `oauth.module.ts`, one that installed `webhooks` copies `outbound-webhook.env.ts`.
+### Bull Board reserved to the platform operator
+
+`/jobs` mounted Bull Board with no guard: any caller reaching a development environment could read the payloads of every tenant's jobs and retry, remove, clean or pause their queues. It now resolves the bearer token like the session guard and opens for the platform operator only (`PLATFORM_OPERATOR_IDS`); anyone else, a tenant admin included, gets a 404. It stays in place until the admin panel covers raw queues. **Upgrade note:** copy `src/technical/jobs/bull-board.ts` by hand, and open the dashboard with an operator's token in the `Authorization` header.
 
 ### Dev routes open only in declared environments
 
