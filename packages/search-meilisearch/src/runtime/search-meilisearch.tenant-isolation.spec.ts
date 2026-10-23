@@ -1,4 +1,4 @@
-import { PersonalDataRegistry } from '#kernel/public/privacy';
+import { PersonalDataRegistry } from '@heryjs/core/privacy';
 import { MeilisearchSearchDriver } from './meilisearch-search.driver';
 import { MeilisearchSearchPersonalData } from './meilisearch-search.personal-data';
 

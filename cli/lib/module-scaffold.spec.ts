@@ -211,6 +211,12 @@ describe('what is scaffolded', () => {
     );
   });
 
+  it('maps @heryjs/core to the public entries of the same kernel', () => {
+    expect(read('packages/audit-trail/tsconfig.json')).toContain(
+      '"@heryjs/core/*": ["../../src/technical/public/*"]',
+    );
+  });
+
   // Before the directory exists, because the day an author adds integration
   // tests is the day their typed lint rules start reporting every file in it
   // as outside the project -- and module:validate refuses that shape.

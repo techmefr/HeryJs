@@ -1,11 +1,11 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { type AuthenticatedUser, authPrismaClient } from '#kernel/public/auth';
-import { subjectOf } from '#kernel/public/capabilities';
-import { CapabilityForbiddenException } from '#kernel/public/errors';
-import { ExpositionRegistry } from '#kernel/public/platform';
-import { stageOutboxMessages } from '#kernel/public/jobs';
+import { type AuthenticatedUser, authPrismaClient } from '@heryjs/core/auth';
+import { subjectOf } from '@heryjs/core/capabilities';
+import { CapabilityForbiddenException } from '@heryjs/core/errors';
+import { ExpositionRegistry } from '@heryjs/core/platform';
+import { stageOutboxMessages } from '@heryjs/core/jobs';
 import { exposedActionOf } from './exposed-webhook-source';
 import {
   INBOUND_WEBHOOK_MESSAGE,

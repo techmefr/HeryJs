@@ -8,7 +8,7 @@ import {
   type HttpRequestOptions,
   HttpRequestTimeoutException,
   type HttpResponse,
-} from '#kernel/public/drivers';
+} from '@heryjs/core/drivers';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_RETRIES = 2;

@@ -1,18 +1,18 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
-import { EXPORT_QUEUE, runInJobLocale } from '#kernel/public/jobs';
+import { EXPORT_QUEUE, runInJobLocale } from '@heryjs/core/jobs';
 import {
   DriverResolver,
   type ExportRow,
   STORAGE_MODULE,
   type StorageDriver,
-} from '#kernel/public/drivers';
+} from '@heryjs/core/drivers';
 import {
   NOTIFICATION_PROVIDER,
   type NotificationProvider,
-} from '#kernel/public/notifications';
-import { TenantContextStorage } from '#kernel/public/tenancy';
+} from '@heryjs/core/notifications';
+import { TenantContextStorage } from '@heryjs/core/tenancy';
 import {
   EXPORT_GENERATE_JOB,
   EXPORT_READY_NOTIFICATION,

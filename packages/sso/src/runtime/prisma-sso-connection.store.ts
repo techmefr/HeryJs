@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { authPrismaClient } from '#kernel/public/auth';
+import { authPrismaClient } from '@heryjs/core/auth';
 import { SSO_LINK_POLICIES, SSO_PROTOCOLS } from './sso.types';
 import type {
   NewSsoConnection,

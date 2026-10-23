@@ -11,11 +11,11 @@ import {
   type AuthenticatedUser,
   type AuthProvider,
   resolveCallerOnce,
-} from '#kernel/public/auth';
+} from '@heryjs/core/auth';
 import {
   InvalidSessionException,
   MissingSessionException,
-} from '#kernel/public/errors';
+} from '@heryjs/core/errors';
 
 export type GqlRequestWithUser = Request & { user: AuthenticatedUser };
 

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseModuleEnv } from '#kernel/public/config';
+import { parseModuleEnv } from '@heryjs/core/config';
 
 export const DEFAULT_EMBEDDING_DIMENSIONS = 1536;
 

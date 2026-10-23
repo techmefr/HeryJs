@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { parseModuleEnv } from '#kernel/public/config';
+import { parseModuleEnv } from '@heryjs/core/config';
 
 /**
  * Parsed lazily, as a function rather than a module-level constant, for the

@@ -1,4 +1,4 @@
-import type { PolicyCheck } from '#kernel/public/capabilities';
+import type { PolicyCheck } from '@heryjs/core/capabilities';
 
 export const canLinkOAuthIdentity: PolicyCheck = () => ({
   allowed: true,

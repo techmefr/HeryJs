@@ -1,6 +1,6 @@
-import { IMPORT_QUEUE, type JobsService } from '#kernel/public/jobs';
-import type { Importable } from '#kernel/public/drivers';
-import { TenantContextStorage } from '#kernel/public/tenancy';
+import { IMPORT_QUEUE, type JobsService } from '@heryjs/core/jobs';
+import type { Importable } from '@heryjs/core/drivers';
+import { TenantContextStorage } from '@heryjs/core/tenancy';
 import { CsvImportDriver } from './csv-import.driver';
 import { IMPORT_CONSUME_JOB } from './import.constants';
 import { ImportDriverRegistry } from './import-driver.registry';

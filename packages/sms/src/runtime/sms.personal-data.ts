@@ -2,11 +2,11 @@ import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import {
   PRISMA_CLIENT,
   type TenantScopedPrismaClient,
-} from '#kernel/public/database';
+} from '@heryjs/core/database';
 import {
   PersonalDataRegistry,
   type PersonalDataSubject,
-} from '#kernel/public/privacy';
+} from '@heryjs/core/privacy';
 
 /**
  * Consent is kept per number, so the rows of a user are the ones of the number

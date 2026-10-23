@@ -15,9 +15,9 @@ import {
   parsePageQuery,
   RateLimit,
   UnpaginatedRoute,
-} from '#kernel/public/http';
-import { type RequestWithUser, SessionGuard } from '#kernel/public/auth';
-import { CapabilitiesGuard, Capability } from '#kernel/public/capabilities';
+} from '@heryjs/core/http';
+import { type RequestWithUser, SessionGuard } from '@heryjs/core/auth';
+import { CapabilitiesGuard, Capability } from '@heryjs/core/capabilities';
 import { ScimActivityService } from './scim-activity.service';
 import { ScimTokenService } from './scim-token.service';
 import { canManageScim } from './scim.policy';

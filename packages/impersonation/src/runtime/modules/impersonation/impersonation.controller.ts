@@ -6,10 +6,10 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { CapabilitiesGuard, Capability } from '#kernel/public/capabilities';
-import { ok, RateLimit } from '#kernel/public/http';
-import { MissingSessionException } from '#kernel/public/errors';
-import { type RequestWithUser, SessionGuard } from '#kernel/public/auth';
+import { CapabilitiesGuard, Capability } from '@heryjs/core/capabilities';
+import { ok, RateLimit } from '@heryjs/core/http';
+import { MissingSessionException } from '@heryjs/core/errors';
+import { type RequestWithUser, SessionGuard } from '@heryjs/core/auth';
 import { canImpersonate, canStopImpersonation } from './impersonation.policy';
 import { ImpersonationService } from './impersonation.service';
 

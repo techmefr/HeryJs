@@ -1,5 +1,5 @@
 import { Global, Module } from '@nestjs/common';
-import { exportDriverToken } from '#kernel/public/drivers';
+import { exportDriverToken } from '@heryjs/core/drivers';
 import { PdfExportDriver } from './pdf-export.driver';
 
 const TOKEN = exportDriverToken('pdf');

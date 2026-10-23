@@ -30,7 +30,7 @@ export function registerModuleNewCommand(program: Command): void {
 
       printNextSteps([
         `Say what it does in packages/${name}/src/module.ts — that line is what module:list prints`,
-        `Write the module's real files in packages/${name}/src/runtime, importing the kernel as #kernel/... and never through a relative path out of the package`,
+        `Write the module's real files in packages/${name}/src/runtime, importing the kernel as @heryjs/core/<entry> and never through a relative path out of the package`,
         'Run "pnpm install" so the new workspace is linked',
         `Run "pnpm hery install ${name}" to install it into this project, which is also what puts its spec where the test suite looks`,
         'Run "pnpm test" and "pnpm lint:module-drift"',

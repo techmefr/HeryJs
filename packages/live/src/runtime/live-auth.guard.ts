@@ -7,5 +7,5 @@
 export {
   authenticateSocket as authenticateLiveSocket,
   SocketAuthGuard as LiveAuthGuard,
-} from '#kernel/public/auth';
-export type { AuthenticatedSocket as LiveSocket } from '#kernel/public/auth';
+} from '@heryjs/core/auth';
+export type { AuthenticatedSocket as LiveSocket } from '@heryjs/core/auth';

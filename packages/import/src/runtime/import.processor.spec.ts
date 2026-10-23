@@ -4,8 +4,8 @@ import {
   DriverResolver,
   type Importable,
   type StorageDriver,
-} from '#kernel/public/drivers';
-import type { NotificationProvider } from '#kernel/public/notifications';
+} from '@heryjs/core/drivers';
+import type { NotificationProvider } from '@heryjs/core/notifications';
 import { CsvImportDriver } from './csv-import.driver';
 import {
   IMPORT_CONSUME_JOB,

@@ -1,7 +1,7 @@
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
-import { SessionGuard } from '#kernel/public/auth';
-import { CapabilitiesGuard, Capability } from '#kernel/public/capabilities';
-import { ok, RateLimit, ZodValidationPipe } from '#kernel/public/http';
+import { SessionGuard } from '@heryjs/core/auth';
+import { CapabilitiesGuard, Capability } from '@heryjs/core/capabilities';
+import { ok, RateLimit, ZodValidationPipe } from '@heryjs/core/http';
 import {
   confirmUploadIntentSchema,
   createUploadIntentSchema,

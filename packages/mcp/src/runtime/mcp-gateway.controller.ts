@@ -3,13 +3,13 @@ import { Controller } from '@nestjs/common';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { Request, Response } from 'express';
-import { type RequestWithUser, SessionGuard } from '#kernel/public/auth';
-import { RateLimit } from '#kernel/public/http';
+import { type RequestWithUser, SessionGuard } from '@heryjs/core/auth';
+import { RateLimit } from '@heryjs/core/http';
 import {
   CapabilitiesGuard,
   Capability,
   subjectOf,
-} from '#kernel/public/capabilities';
+} from '@heryjs/core/capabilities';
 import { canReachMcpGateway } from './mcp.policy';
 import { MCP_TOOL_REGISTRARS } from './mcp-tool-registrar';
 import type { McpToolRegistrar } from './mcp-tool-registrar';

@@ -1,10 +1,10 @@
 import type { ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
-import type { AuthenticatedUser, AuthProvider } from '#kernel/public/auth';
+import type { AuthenticatedUser, AuthProvider } from '@heryjs/core/auth';
 import {
   InvalidSessionException,
   MissingSessionException,
-} from '#kernel/public/errors';
+} from '@heryjs/core/errors';
 import { GqlSessionGuard } from './gql-session.guard';
 import type { GqlRequestWithUser } from './gql-session.guard';
 

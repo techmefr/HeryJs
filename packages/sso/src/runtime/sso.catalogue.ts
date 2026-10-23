@@ -1,4 +1,4 @@
-import { registerCatalogue } from '#kernel/public/i18n';
+import { registerCatalogue } from '@heryjs/core/i18n';
 import type { SsoConflictReason } from './sso-connection-conflict.exception';
 import type { SsoRefusalReason } from './sso-refused.exception';
 

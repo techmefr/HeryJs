@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import * as path from 'node:path';
 import pc from 'picocolors';
+import { KERNEL_PACKAGE } from '../cli/lib/kernel-public-api';
 import { loadOfficialModules } from '../cli/lib/module-discovery';
 import { bareName, runtimeImports } from '../cli/lib/runtime-imports';
 
@@ -56,7 +57,9 @@ function workspaceDependencies(file: string): Set<string> {
  * framework itself never noticed `express` was undeclared until a scaffolded
  * project ran `node dist/src/main`. Kernel code answers to the root
  * `dependencies`; a module's runtime answers to those plus what its own
- * definition installs, since `hery install` adds exactly that list.
+ * definition installs, since `hery install` adds exactly that list. The one
+ * exception is @heryjs/core: the copy lands as the project's own #technical/,
+ * so the kernel the module imports is the one the project already has.
  */
 export function checkRuntimeDependencies(): boolean {
   const manifest = JSON.parse(
@@ -76,6 +79,7 @@ export function checkRuntimeDependencies(): boolean {
           : new Set([
               ...declared,
               ...(module.dependencies ?? []).map(bareName),
+              KERNEL_PACKAGE,
             ]),
       };
     }),

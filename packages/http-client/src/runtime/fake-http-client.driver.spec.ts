@@ -1,4 +1,4 @@
-import { UnstubbedHttpRequestException } from '#kernel/public/drivers';
+import { UnstubbedHttpRequestException } from '@heryjs/core/drivers';
 import { FakeHttpClientDriver } from './fake-http-client.driver';
 
 describe('FakeHttpClientDriver', () => {

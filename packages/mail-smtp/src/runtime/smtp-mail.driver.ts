@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { createTransport } from 'nodemailer';
-import type { MailDriver, MailMessage } from '#kernel/public/drivers';
+import type { MailDriver, MailMessage } from '@heryjs/core/drivers';
 import { smtpMailEnv } from './smtp-mail.env';
 
 const CONNECTION_TIMEOUT_MS = 10_000;

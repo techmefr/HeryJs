@@ -1,6 +1,6 @@
 import { Meilisearch } from 'meilisearch';
 import { MeilisearchSearchDriver } from '../src/runtime/meilisearch-search.driver';
-import type { SearchDriver } from '#kernel/public/drivers';
+import type { SearchDriver } from '@heryjs/core/drivers';
 
 /**
  * This one talks to a real Meilisearch, because the bug it guards against was

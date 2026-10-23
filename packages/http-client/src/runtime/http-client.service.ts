@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { HttpRequestOptions, HttpResponse } from '#kernel/public/drivers';
+import type { HttpRequestOptions, HttpResponse } from '@heryjs/core/drivers';
 import { HttpClientDriverRegistry } from './http-client-driver.registry';
 import { HttpResilienceService } from './http-resilience.service';
 

@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { AuthModule } from '#kernel/public/auth';
-import { ChangeFeedModule } from '#kernel/public/realtime';
+import { AuthModule } from '@heryjs/core/auth';
+import { ChangeFeedModule } from '@heryjs/core/realtime';
 import { SseChangesController } from './sse-changes.controller';
 import { SseController } from './sse.controller';
 import { SseStreamService } from './sse-stream.service';

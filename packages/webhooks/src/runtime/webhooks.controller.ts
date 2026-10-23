@@ -11,20 +11,20 @@ import {
   CapabilitiesGuard,
   Capability,
   PublicRoute,
-} from '#kernel/public/capabilities';
+} from '@heryjs/core/capabilities';
 import {
   ok,
   RateLimit,
   UnthrottledRoute,
   ZodValidationPipe,
-} from '#kernel/public/http';
+} from '@heryjs/core/http';
 import { WebhookSignatureGuard } from './webhook-signature.guard';
 import {
   WEBHOOK_ID_HEADER,
   WEBHOOK_TIMESTAMP_HEADER,
 } from './inbound-webhook.constants';
 import type { RequestWithWebhookEndpoint } from './webhook-signature.guard';
-import { type RequestWithUser, SessionGuard } from '#kernel/public/auth';
+import { type RequestWithUser, SessionGuard } from '@heryjs/core/auth';
 import { canManageWebhooks } from './webhooks.policy';
 import { WebhooksService } from './webhooks.service';
 

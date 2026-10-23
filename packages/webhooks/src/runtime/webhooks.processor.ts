@@ -1,21 +1,21 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
-import { authPrismaClient } from '#kernel/public/auth';
-import { writeAuditLog } from '#kernel/public/privacy';
-import { WEBHOOK_QUEUE } from '#kernel/public/jobs';
+import { authPrismaClient } from '@heryjs/core/auth';
+import { writeAuditLog } from '@heryjs/core/privacy';
+import { WEBHOOK_QUEUE } from '@heryjs/core/jobs';
 import {
   ExpositionRegistry,
   ExpositionRunner,
   webhookHandlersFor,
-} from '#kernel/public/platform';
-import { InvalidQueryException } from '#kernel/public/errors';
+} from '@heryjs/core/platform';
+import { InvalidQueryException } from '@heryjs/core/errors';
 import {
   NOTIFICATION_PROVIDER,
   type NotificationProvider,
-} from '#kernel/public/notifications';
-import { SignalService } from '#kernel/public/realtime';
-import { runInTenant } from '#kernel/public/tenancy';
+} from '@heryjs/core/notifications';
+import { SignalService } from '@heryjs/core/realtime';
+import { runInTenant } from '@heryjs/core/tenancy';
 import { exposedActionOf } from './exposed-webhook-source';
 import { INBOUND_WEBHOOK_JOB } from './inbound-webhook.constants';
 

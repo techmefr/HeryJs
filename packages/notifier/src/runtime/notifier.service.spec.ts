@@ -1,9 +1,9 @@
-import { LocaleContextStorage } from '#kernel/public/i18n';
+import { LocaleContextStorage } from '@heryjs/core/i18n';
 import type {
   MailMessage,
   PushMessage,
   SmsMessage,
-} from '#kernel/public/drivers';
+} from '@heryjs/core/drivers';
 import {
   type NotifierMailChannel,
   type NotifierPushChannel,
@@ -13,11 +13,11 @@ import {
   setNotifierPushChannel,
   setNotifierSmsChannel,
   setNotifierSmsConsent,
-} from '#kernel/public/testing';
+} from '@heryjs/core/testing';
 import type {
   NotificationProvider,
   NotifierSmsChannel,
-} from '#kernel/public/notifications';
+} from '@heryjs/core/notifications';
 import type { Notification, NotificationRecipient } from './notification';
 import { NotificationDigestService } from './notification-digest.service';
 import type { DigestEntryInput } from './notification-digest.service';

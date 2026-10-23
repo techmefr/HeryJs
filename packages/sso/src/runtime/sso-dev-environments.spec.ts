@@ -1,6 +1,6 @@
 import { ssoRedirectUri } from './sso-redirect';
 import { SsoStateService } from './sso-state.service';
-import { heryConfig } from '#kernel/public/config';
+import { heryConfig } from '@heryjs/core/config';
 
 describe('sso outside devTools.environments', () => {
   const originalNodeEnv = process.env.NODE_ENV;

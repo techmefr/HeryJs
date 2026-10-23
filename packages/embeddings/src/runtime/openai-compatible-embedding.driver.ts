@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { EmbeddingDriver } from '#kernel/public/drivers';
+import type { EmbeddingDriver } from '@heryjs/core/drivers';
 import { EmbeddingRequestFailedException } from './embedding-request-failed.exception';
 import { embeddingsEnv, openAiEmbeddingsEnv } from './embeddings.env';
 

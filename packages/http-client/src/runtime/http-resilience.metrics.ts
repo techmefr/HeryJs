@@ -1,6 +1,6 @@
 import { Gauge } from '@prometheus-io/client';
-import { metricsRegistry } from '#kernel/public/observability';
-import type { HttpResilience } from '#kernel/public/drivers';
+import { metricsRegistry } from '@heryjs/core/observability';
+import type { HttpResilience } from '@heryjs/core/drivers';
 
 const STATE_VALUE = { closed: 0, 'half-open': 1, open: 2 } as const;
 

@@ -1,4 +1,4 @@
-import { PersonalDataRegistry } from '#kernel/public/privacy';
+import { PersonalDataRegistry } from '@heryjs/core/privacy';
 import { ElasticsearchSearchDriver } from './elasticsearch-search.driver';
 import { ElasticsearchSearchPersonalData } from './elasticsearch-search.personal-data';
 

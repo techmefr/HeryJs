@@ -2,8 +2,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   PRISMA_CLIENT,
   type TenantScopedPrismaClient,
-} from '#kernel/public/database';
-import type { AuthenticatedUser } from '#kernel/public/auth';
+} from '@heryjs/core/database';
+import type { AuthenticatedUser } from '@heryjs/core/auth';
 import { generateRecoveryCodes, hashRecoveryCode } from './recovery-code';
 import { encryptSecret } from './secret-cipher';
 import { generateSecret, otpauthUrl } from './totp';

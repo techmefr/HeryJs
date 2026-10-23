@@ -125,6 +125,7 @@ const TSCONFIG = `{
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "paths": {
+      "@heryjs/core/*": ["../../src/technical/public/*"],
       "#kernel/*": ["../../src/technical/*"],
       "heryjs": ["../../cli/module-contract.ts"]
     },
@@ -205,7 +206,7 @@ function service(name: string): string {
 /**
  * The placeholder this module was scaffolded with. Replace it: the shape is
  * what matters here -- a real file under src/runtime, copied into the project
- * once and owned by it from then on, importing the kernel as #kernel/public/...
+ * once and owned by it from then on, importing the kernel as @heryjs/core/...
  * so the copy that lands can be rewritten to the app's own #technical/.
  */
 @Injectable()

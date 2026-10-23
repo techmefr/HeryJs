@@ -1,11 +1,11 @@
 import { Global, Module } from '@nestjs/common';
-import { AUTH_MAILER, AuthModule } from '#kernel/public/auth';
-import { HeryConfigModule } from '#kernel/public/config';
-import { DriversModule } from '#kernel/public/drivers';
-import { JobsModule } from '#kernel/public/jobs';
-import { PrismaModule } from '#kernel/public/database';
-import { PrivacyModule } from '#kernel/public/privacy';
-import { NOTIFIER_MAIL_CHANNEL } from '#kernel/public/notifications';
+import { AUTH_MAILER, AuthModule } from '@heryjs/core/auth';
+import { HeryConfigModule } from '@heryjs/core/config';
+import { DriversModule } from '@heryjs/core/drivers';
+import { JobsModule } from '@heryjs/core/jobs';
+import { PrismaModule } from '@heryjs/core/database';
+import { PrivacyModule } from '@heryjs/core/privacy';
+import { NOTIFIER_MAIL_CHANNEL } from '@heryjs/core/notifications';
 import { AUTH_MAILER_PROVIDER, AuthMailAdapter } from './auth-mail.adapter';
 import { LogMailDriver } from './log-mail.driver';
 import { MailAdminController } from './mail-admin.controller';

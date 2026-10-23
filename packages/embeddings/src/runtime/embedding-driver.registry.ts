@@ -1,11 +1,11 @@
 import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
-import { HERY_CONFIG, type HeryConfig } from '#kernel/public/config';
+import { HERY_CONFIG, type HeryConfig } from '@heryjs/core/config';
 import {
   DriverResolver,
   type EmbeddingDriver,
   EMBEDDINGS_MODULE,
   missingDriverMessage,
-} from '#kernel/public/drivers';
+} from '@heryjs/core/drivers';
 import { FakeEmbeddingDriver } from './fake-embedding.driver';
 import { OpenAiCompatibleEmbeddingDriver } from './openai-compatible-embedding.driver';
 

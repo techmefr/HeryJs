@@ -13,8 +13,8 @@ import {
   UseFilters,
   UseGuards,
 } from '@nestjs/common';
-import { PublicRoute } from '#kernel/public/capabilities';
-import { RateLimit, UnpaginatedRoute } from '#kernel/public/http';
+import { PublicRoute } from '@heryjs/core/capabilities';
+import { RateLimit, UnpaginatedRoute } from '@heryjs/core/http';
 import { SCIM_BASE_PATH } from './scim.types';
 import { ScimActivityService } from './scim-activity.service';
 import {

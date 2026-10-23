@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
-import type { Exportable } from '#kernel/public/drivers';
-import { TenantContextStorage } from '#kernel/public/tenancy';
+import type { Exportable } from '@heryjs/core/drivers';
+import { TenantContextStorage } from '@heryjs/core/tenancy';
 import { XlsxExportDriver } from './xlsx-export.driver';
 
 type LoadableBuffer = Parameters<ExcelJS.Workbook['xlsx']['load']>[0];

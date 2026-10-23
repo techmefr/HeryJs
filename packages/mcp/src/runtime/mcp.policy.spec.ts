@@ -3,9 +3,9 @@ import {
   CapabilitiesGuard,
   type CapabilitySubject,
   type PolicyCheck,
-} from '#kernel/public/capabilities';
-import { CAPABILITY_CHECK } from '#kernel/public/testing';
-import { SessionGuard } from '#kernel/public/auth';
+} from '@heryjs/core/capabilities';
+import { CAPABILITY_CHECK } from '@heryjs/core/testing';
+import { SessionGuard } from '@heryjs/core/auth';
 import { McpGatewayController } from './mcp-gateway.controller';
 import { canReachMcpGateway } from './mcp.policy';
 

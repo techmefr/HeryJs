@@ -3,8 +3,8 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   PRISMA_CLIENT,
   type TenantScopedPrismaClient,
-} from '#kernel/public/database';
-import type { AuthenticatedUser } from '#kernel/public/auth';
+} from '@heryjs/core/database';
+import type { AuthenticatedUser } from '@heryjs/core/auth';
 import { MS_PER_SECOND } from './two-factor.constants';
 import { twoFactorEnv } from './two-factor.env';
 
