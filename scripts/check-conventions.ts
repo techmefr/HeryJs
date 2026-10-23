@@ -15,6 +15,7 @@ import { checkModulePatches } from './check-module-patches';
 import { checkModuleValidity } from './check-module-validity';
 import { checkNoFixedSleeps } from './check-no-fixed-sleeps';
 import { checkNoInlineDevGuard } from './check-no-inline-dev-guard';
+import { checkNoRawPiiLog } from './check-no-raw-pii-log';
 import { checkPagination } from './check-pagination';
 import { checkRateLimitDecorator } from './check-rate-limit-decorator';
 import { checkRls } from './check-rls';
@@ -37,6 +38,7 @@ const CHECKS: Array<{ name: string; run: () => boolean | Promise<boolean> }> = [
   { name: 'coverage', run: checkLintCoverage },
   { name: 'dev-guard', run: checkNoInlineDevGuard },
   { name: 'no-fixed-sleeps', run: checkNoFixedSleeps },
+  { name: 'no-raw-pii-log', run: checkNoRawPiiLog },
   { name: 'subject', run: checkSubjectConstruction },
   { name: 'template-imports', run: checkTemplateImports },
   { name: 'tenant-isolation', run: checkTenantIsolation },
