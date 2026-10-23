@@ -10,6 +10,7 @@ import type { AuthenticatedUser } from '#technical/auth/auth.types';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import { WEBHOOK_QUEUE } from '#technical/jobs/jobs.constants';
 import { OutboxRelay } from '#technical/outbox/outbox.relay';
+import { waitFor } from '#devtools/testing/wait-for';
 import {
   clearWebhookHandlers,
   registerWebhookHandler,
@@ -83,24 +84,17 @@ describe('inbound webhook reliability', () => {
     return (accepted.body as { data: { eventId: string } }).data.eventId;
   }
 
-  async function waitFor<T>(
+  async function drainUntil<T>(
     probe: () => Promise<T | null | undefined>,
     timeoutMs = 10_000,
   ): Promise<T | null> {
-    const deadline = Date.now() + timeoutMs;
-
-    while (Date.now() < deadline) {
-      await relay.drain();
-      const found = await probe();
-
-      if (found) {
-        return found;
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-
-    return null;
+    return waitFor(
+      async () => {
+        await relay.drain();
+        return probe();
+      },
+      { timeoutMs, intervalMs: 100 },
+    ).catch(() => null);
   }
 
   it('records a redelivery carrying the same provider id only once', async () => {
@@ -174,7 +168,7 @@ describe('inbound webhook reliability', () => {
       add.mockRestore();
     }
 
-    const processed = await waitFor(() =>
+    const processed = await drainUntil(() =>
       authPrismaClient.webhookEvent.findFirst({
         where: { id: eventId, processedAt: { not: null } },
       }),
@@ -187,7 +181,7 @@ describe('inbound webhook reliability', () => {
     const endpoint = await mint(tenantA, 'billing-provider');
     const eventId = await deliver(endpoint, { event: 'invoice.paid' });
 
-    const job = await waitFor(async () => {
+    const job = await drainUntil(async () => {
       const jobs = await queue.getJobs([
         'completed',
         'active',

@@ -12,14 +12,6 @@ const FIXED_WAIT = /\bsetTimeout\s*\(|['"]node:timers\/promises['"]/;
 // sleep, with the reason it has not moved yet; nothing new belongs here.
 const ALLOWED = new Map([
   [
-    'src/modules/webhooks/webhooks.spec.ts',
-    'polls with its own loop; the webhooks specs are being reworked by a concurrent change and move to waitFor once it lands',
-  ],
-  [
-    'src/modules/webhooks/outbound-webhooks.spec.ts',
-    'polls with its own loop; the webhooks specs are being reworked by a concurrent change and move to waitFor once it lands',
-  ],
-  [
     'src/technical/privacy/privacy-history.http.spec.ts',
     'polls with its own loop; the privacy specs are being reworked by a concurrent change and move to waitFor once it lands',
   ],
