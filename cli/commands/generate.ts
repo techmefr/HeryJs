@@ -4,7 +4,7 @@ import type { Command } from 'commander';
 import pc from 'picocolors';
 import { loadBlueprint, resolveBlueprintPath } from '../lib/blueprint';
 import { buildResourceContext } from '../lib/resource-context';
-import { patchPrismaSchema } from '../lib/schema-patch';
+import { PRISMA_SCHEMA_FOLDER, patchPrismaSchema } from '../lib/schema-patch';
 import {
   changeFeedFile,
   controllerFile,
@@ -131,19 +131,23 @@ export function registerGenerateCommand(program: Command): void {
           console.log(pc.green(`✔ ${path.join(targetDir, fileName)}`));
         }
 
-        const schemaPath = path.join(root, 'prisma', 'schema.prisma');
         // A resource declaring another resource's model -- a second version of
         // a contract over the same table -- owns none of the schema. Emitting
         // the model again would duplicate a table that already exists, along
         // with the annotations that make it tenant-scoped and audited.
         if (ctx.ownsModel) {
-          const schemaPatched = patchPrismaSchema(schemaPath, ctx);
-          console.log(
-            schemaPatched
-              ? pc.green(`✔ patched ${schemaPath}`)
-              : pc.dim(
-                  `model ${ctx.pascalName} already in ${schemaPath}, schema left untouched`,
-                ),
+          const schemaPatched = patchPrismaSchema(root, ctx);
+
+          if (schemaPatched.length === 0) {
+            console.log(
+              pc.dim(
+                `model ${ctx.pascalName} already in ${PRISMA_SCHEMA_FOLDER}, schema left untouched`,
+              ),
+            );
+          }
+
+          schemaPatched.forEach((file) =>
+            console.log(pc.green(`✔ patched ${path.relative(root, file)}`)),
           );
         } else {
           console.log(

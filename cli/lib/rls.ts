@@ -1,10 +1,4 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import {
   annotatedModelsIn,
@@ -15,6 +9,7 @@ import {
   tenantModelsIn,
   type TenantModel,
 } from '#technical/prisma/rls-schema';
+import { readPrismaSchema } from '#technical/prisma/schema-files';
 
 export {
   declaredModelsIn,
@@ -67,13 +62,12 @@ CREATE POLICY tenant_isolation ON "${model.name}"
  * be remembered -- which is how the teams tables went a month without one.
  */
 export function pendingRlsModels(root: string): TenantModel[] {
-  const schema = path.join(root, 'prisma', 'schema.prisma');
+  const source = readPrismaSchema(root);
 
-  if (!existsSync(schema)) {
+  if (source === undefined) {
     return [];
   }
 
-  const source = readFileSync(schema, 'utf8');
   const governed = new Set(tenantScopedModelsIn(source));
   const covered = rlsEnabledTablesIn(path.join(root, 'prisma', 'migrations'));
 

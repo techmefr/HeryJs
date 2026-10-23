@@ -5,10 +5,16 @@ import { loadOfficialModules } from '../cli/lib/module-discovery';
 import { missingMarks, recordPatches } from '../cli/lib/module-patches';
 import type { PatchRecord } from '../cli/lib/module-patches';
 import type { LoadedModule } from '../cli/lib/module-definition';
+import { PRISMA_SCHEMA_FOLDER } from '../cli/lib/schema-patch';
+import { readPrismaSchema } from '#technical/prisma/schema-files';
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 
 function read(file: string): string | undefined {
+  if (file === PRISMA_SCHEMA_FOLDER) {
+    return readPrismaSchema(REPO_ROOT);
+  }
+
   const full = path.join(REPO_ROOT, file);
 
   return existsSync(full) ? readFileSync(full, 'utf8') : undefined;

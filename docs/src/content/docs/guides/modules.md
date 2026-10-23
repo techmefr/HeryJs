@@ -216,7 +216,7 @@ A module never imports `node:fs`. Every write goes through the context it is han
 | --------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | `copyRuntime()`                         | copies `src/runtime/` to `dest`, rewriting `#kernel/` on the way, skipping any file already there |
 | `copyPackageFile(name)`                 | copies a file from the package root into the project, skipping one already there                  |
-| `addPrismaModels(models)`               | appends models the module owns to `prisma/schema.prisma`                                          |
+| `addPrismaModels(models)`               | writes the models it owns to `prisma/schema/<module>.prisma`                                        |
 | `addModelFields(model, fields)`         | adds columns to a Prisma model the module does not own                                            |
 | `chainScript(script, command)`          | appends a command to one of the root `package.json` scripts                                       |
 | `addWorkspace(directory)`               | declares a directory in `pnpm-workspace.yaml`                                                     |
@@ -246,7 +246,7 @@ src/modules/storage/storage.module.ts already exists, skipping.
 
 Nothing is overwritten and nothing is re-templated, so a file you have edited by hand survives a re-install untouched. `install --force` does not change this: it overrides the compatibility refusal above and nothing else, so there is no way to make `install` overwrite a file, unlike `generate`.
 
-The modules that patch an existing file guard on content rather than existence: `mail` skips if `prisma/schema.prisma` already contains `model MailLog`, `webhooks` skips the same file if it already has `model WebhookEndpoint`, `admin-astro` skips if `pnpm-workspace.yaml` already lists `admin`, and `impersonation` skips each of its six kernel-file patches independently, once its own marker is already there.
+The modules that patch an existing file guard on content rather than existence: `mail` skips if `prisma/schema/` already declares `model MailLog`, `webhooks` skips the same file if it already has `model WebhookEndpoint`, `admin-astro` skips if `pnpm-workspace.yaml` already lists `admin`, and `impersonation` skips each of its six kernel-file patches independently, once its own marker is already there.
 
 Be aware of what this does _not_ give you. There is no record anywhere of which modules are installed — no manifest, no marker in `package.json`. "Installed" is inferred one file at a time, at write time.
 
@@ -279,7 +279,7 @@ Two modules wire into a _resource_ module rather than the app module, because th
 
 ## Schema and environment
 
-`mail`, `webhooks` and `impersonation` are the three that touch `prisma/schema.prisma` — `mail` and `webhooks` each append their own new models (`MailLog`, and `WebhookEndpoint`/`WebhookEvent`), `impersonation` adds fields to the existing `User` and `Session` models instead, since it needs columns on a model it does not own. All three leave you one migration behind, which is why their next steps start with `pnpm hery migrate --name add_mail_log`, `add_webhooks` or `add_impersonation`. `hery install` never runs Prisma itself.
+`mail`, `webhooks` and `impersonation` are the three that touch `prisma/schema/` — `mail` and `webhooks` each append their own new models (`MailLog`, and `WebhookEndpoint`/`WebhookEvent`), `impersonation` adds fields to the existing `User` and `Session` models instead, since it needs columns on a model it does not own. All three leave you one migration behind, which is why their next steps start with `pnpm hery migrate --name add_mail_log`, `add_webhooks` or `add_impersonation`. `hery install` never runs Prisma itself.
 
 **No module writes to `.env`.** Every variable a module needs has a working development default, so a fresh install runs with no configuration at all. It is still validated: a module is opt-in, so `technical/config/env.ts` cannot declare variables for a module that may not be installed, and each module declares a schema of its own instead — `storage.env.ts`, `stream.env.ts`, one per module that has configuration — parsed through `technical/config/module-env.ts` when the module is imported. A misspelled `STORAGE_DRIVR` is refused at boot with the module's name on it, rather than silently becoming `local`.
 

@@ -30,7 +30,7 @@ import {
 import { KERNEL_PACKAGE, KERNEL_PACKAGE_DIR } from '../lib/kernel-public-api';
 import { pascalCase } from '../lib/naming';
 import { bareName, runtimeImports } from '../lib/runtime-imports';
-import { stripModelsFromSchema } from '../lib/strip-example';
+import { stripModelsFromSchemaFolder } from '../lib/strip-example';
 
 export { withoutKernelDependency } from '../lib/kernel-dependency';
 
@@ -66,7 +66,7 @@ export const COPY_ENTRIES = [
   'src/main.ts',
   'test',
   '.github',
-  'prisma/schema.prisma',
+  'prisma/schema',
   'prisma.config.ts',
   'hery.config.ts',
   'cors.config.ts',
@@ -176,14 +176,7 @@ function dropExampleModels(destRoot: string): string[] {
     return [];
   }
 
-  const schemaFile = path.join(destRoot, 'prisma', 'schema.prisma');
-  const { schema, removed } = stripModelsFromSchema(
-    readFileSync(schemaFile, 'utf8'),
-    names,
-  );
-  writeFileSync(schemaFile, schema);
-
-  return removed;
+  return stripModelsFromSchemaFolder(destRoot, names);
 }
 
 /**
@@ -288,11 +281,7 @@ function dropOptionalModules(destRoot: string): string[] {
   writeFileSync(appModuleFile, appModule);
   removedDirs.forEach((dir) => rmSync(dir, { recursive: true }));
 
-  const schemaFile = path.join(destRoot, 'prisma', 'schema.prisma');
-  writeFileSync(
-    schemaFile,
-    stripModelsFromSchema(readFileSync(schemaFile, 'utf8'), models).schema,
-  );
+  stripModelsFromSchemaFolder(destRoot, models);
 
   const specifiers = new RegExp(
     removable.map((name) => `'#modules/${name}/`).join('|'),

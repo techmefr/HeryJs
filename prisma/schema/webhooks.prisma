@@ -1,0 +1,88 @@
+// The secret is sealed with the kernel's SecretsService: verifying an inbound
+// signature recomputes the sender's HMAC, so it cannot be a one-way hash, but
+// it does not have to sit readable in the table. deliveryId is the sender's own
+// event id, or a hash of the signed bytes, so a redelivery is recorded once.
+/// @hery.appEnforcedTenant Written by a queue worker as well as by a request. A worker runs outside any request, so there is no ambient tenant to stamp or filter by, and the call site passes the tenantId the job carries instead.
+model WebhookEndpoint {
+  id        String   @id @default(cuid())
+  tenantId  String
+  source    String
+  secret    String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  events WebhookEvent[]
+
+  @@index([tenantId])
+}
+
+/// @hery.appEnforcedTenant Written by a queue worker as well as by a request. A worker runs outside any request, so there is no ambient tenant to stamp or filter by, and the call site passes the tenantId the job carries instead.
+model WebhookEvent {
+  id          String    @id @default(cuid())
+  endpointId  String
+  tenantId    String
+  source      String
+  deliveryId  String?
+  payload     Json
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+
+  endpoint WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, endpointId, deliveryId])
+  @@index([tenantId])
+  @@index([endpointId])
+}
+
+// A customer's own URL receiving signed events. The secret is sealed with the
+// kernel's SecretsService: signing needs the plaintext back, so it cannot be a
+// one-way hash, but it does not have to sit readable in the table. During a
+// rotation the previous secret stays valid until previousSecretExpiresAt, and
+// every delivery in that window carries a signature for both.
+/// @hery.appEnforcedTenant Subscriptions are managed through the admin routes, but deliveries are written and updated by the outbox relay and a queue worker with no request behind them, and both read across tenants to fan a message out. Every query passes the tenantId explicitly.
+model WebhookSubscription {
+  id                      String    @id @default(cuid())
+  tenantId                String
+  url                     String
+  description             String?
+  events                  String[]
+  secret                  String
+  previousSecret          String?
+  previousSecretExpiresAt DateTime?
+  active                  Boolean   @default(true)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  deliveries WebhookDelivery[]
+
+  @@index([tenantId])
+}
+
+// One row per (subscription, outbox message): the delivery log and the dead
+// letter in the same table. The unique pair is what makes the fan-out
+// idempotent when the relay hands the same message over twice. round counts
+// manual redeliveries, so each run gets a queue job id of its own.
+/// @hery.appEnforcedTenant Subscriptions are managed through the admin routes, but deliveries are written and updated by the outbox relay and a queue worker with no request behind them, and both read across tenants to fan a message out. Every query passes the tenantId explicitly.
+model WebhookDelivery {
+  id             String    @id @default(cuid())
+  subscriptionId String
+  tenantId       String
+  messageId      String
+  event          String
+  payload        Json
+  status         String    @default("pending")
+  attempts       Int       @default(0)
+  round          Int       @default(0)
+  lastStatusCode Int?
+  lastError      String?
+  lastAttemptAt  DateTime?
+  deliveredAt    DateTime?
+  deadAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  subscription WebhookSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionId, messageId])
+  @@index([tenantId, status])
+  @@index([subscriptionId])
+}

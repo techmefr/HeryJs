@@ -1,0 +1,50 @@
+/// @hery.tenantScoped
+model NotificationPreference {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  channel   String
+  type      String
+  enabled   Boolean  @default(true)
+  digest    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, channel, type])
+  @@index([tenantId])
+}
+
+/// @hery.tenantScoped
+model NotificationSetting {
+  id              String   @id @default(cuid())
+  tenantId        String
+  userId          String   @unique
+  timezone        String   @default("UTC")
+  quietHoursStart String?
+  quietHoursEnd   String?
+  digestHour      Int      @default(8)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+/// @hery.appEnforcedTenant Staged inside the transaction of the write it describes, and drained by a relay with no request behind it, so it can be neither stamped nor filtered by the ambient tenant.
+model NotificationDigestEntry {
+  id        String   @id @default(cuid())
+  tenantId  String
+  userId    String
+  email     String
+  type      String
+  subject   String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([userId])
+}
