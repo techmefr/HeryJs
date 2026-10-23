@@ -44,6 +44,7 @@ export const COPY_ENTRIES = [
   'src/app.controller.spec.ts',
   'src/app.module.ts',
   'src/app.service.ts',
+  'src/create-app.ts',
   'src/main.ts',
   'test',
   '.github',
