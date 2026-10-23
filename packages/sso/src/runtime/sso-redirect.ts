@@ -1,4 +1,5 @@
 import { env } from '#kernel/config/env';
+import { isDevEnvironmentNow } from '#kernel/config/module-env';
 import { ssoEnv } from './sso.env';
 
 const CALLBACK_PATH = '/sso/callback';
@@ -6,7 +7,7 @@ const CALLBACK_PATH = '/sso/callback';
 export function ssoRedirectUri(): string {
   const configured = ssoEnv.SSO_REDIRECT_BASE_URL;
 
-  if (!configured && process.env.NODE_ENV === 'production') {
+  if (!configured && !isDevEnvironmentNow()) {
     throw new Error(
       'SSO_REDIRECT_BASE_URL must be set in production for the sso module.',
     );

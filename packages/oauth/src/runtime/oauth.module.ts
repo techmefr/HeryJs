@@ -2,6 +2,7 @@ import { DynamicModule, Module, Type } from '@nestjs/common';
 import { AuthModule } from '#kernel/auth/auth.module';
 import { PrivacyModule } from '#kernel/privacy/privacy.module';
 import { env } from '#kernel/config/env';
+import { isDevEnvironmentNow } from '#kernel/config/module-env';
 import { PrismaModule } from '#kernel/prisma/prisma.module';
 import { OAuthAccountService } from './oauth-account.service';
 import { OAUTH_FETCH } from './oauth-http';
@@ -35,7 +36,7 @@ function credentialsFrom(
   return clientId && clientSecret ? { clientId, clientSecret } : null;
 }
 
-function configFromEnv(): OAuthConfig {
+export function configFromEnv(): OAuthConfig {
   const pairs = {
     google: credentialsFrom(
       env.OAUTH_GOOGLE_CLIENT_ID,
@@ -58,7 +59,7 @@ function configFromEnv(): OAuthConfig {
     }
   }
 
-  const isProduction = process.env.NODE_ENV === 'production';
+  const isProduction = !isDevEnvironmentNow();
 
   return {
     linkPolicy: env.OAUTH_LINK_POLICY,
