@@ -29,6 +29,15 @@ export function parseModuleEnv<TShape extends z.ZodRawShape>(
 }
 
 /**
+ * Whether this process runs in one of `devTools.environments`, read on every
+ * call. A module asks this rather than comparing NODE_ENV with 'production'
+ * itself, so an unset or unlisted NODE_ENV is production for it too.
+ */
+export function isDevEnvironmentNow(): boolean {
+  return isDevEnvironment(process.env.NODE_ENV, devEnvironmentsOf(heryConfig));
+}
+
+/**
  * A value that ships with a working development default and is refused unless
  * NODE_ENV is one of `devTools.environments` -- the same contract the kernel's own two secrets
  * answer to, because a credential printed in a public repository is not a
@@ -39,14 +48,9 @@ export function devOnlyDefault(variable: string, devValue: string) {
     .string()
     .min(1)
     .default(devValue)
-    .refine(
-      (value) =>
-        value !== devValue ||
-        isDevEnvironment(process.env.NODE_ENV, devEnvironmentsOf(heryConfig)),
-      {
-        message: `is still the development default (${devValue}); set ${variable} before deploying`,
-      },
-    );
+    .refine((value) => value !== devValue || isDevEnvironmentNow(), {
+      message: `is still the development default (${devValue}); set ${variable} before deploying`,
+    });
 }
 
 /**

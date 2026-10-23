@@ -4,6 +4,7 @@ import {
   randomBytes,
   timingSafeEqual,
 } from 'node:crypto';
+import { isDevEnvironmentNow } from '#technical/config/module-env';
 import { Injectable } from '@nestjs/common';
 import type { CookieOptions } from 'express';
 import { SsoRefusedException } from './sso-refused.exception';
@@ -91,7 +92,7 @@ export class SsoStateService {
     return {
       httpOnly: true,
       sameSite: isCrossSitePost ? 'none' : 'lax',
-      secure: isCrossSitePost || process.env.NODE_ENV === 'production',
+      secure: isCrossSitePost || !isDevEnvironmentNow(),
       path: SSO_COOKIE_PATH,
       maxAge: SSO_STATE_TTL_SECONDS * 1000,
     };
