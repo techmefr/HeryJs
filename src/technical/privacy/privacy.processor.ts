@@ -8,6 +8,7 @@ import { PRIVACY_QUEUE } from '#technical/jobs/jobs.constants';
 import { PRISMA_CLIENT } from '#technical/prisma/prisma.client';
 import type { TenantScopedPrismaClient } from '#technical/prisma/prisma.client';
 import { runInTenant } from '#technical/tenancy/run-in-tenant';
+import { ErasureReplay } from './erasure-replay';
 import { PersonalDataRegistry } from './personal-data.registry';
 import {
   PRIVACY_DEFERRAL_DELAY_MS,
@@ -26,6 +27,7 @@ export class PrivacyProcessor extends WorkerHost {
     @Inject(PRISMA_CLIENT) private readonly prisma: TenantScopedPrismaClient,
     private readonly executor: PrivacyExecutor,
     private readonly registry: PersonalDataRegistry,
+    private readonly erasures: ErasureReplay,
   ) {
     super();
   }
@@ -82,6 +84,15 @@ export class PrivacyProcessor extends WorkerHost {
         data,
         request.subjectId,
       );
+
+      if (request.kind !== 'export') {
+        await this.erasures.record(
+          request.kind as 'erase-user' | 'erase-tenant',
+          data.tenantId,
+          request.subjectId,
+          request.kind === 'erase-tenant' ? data.userId : null,
+        );
+      }
 
       // The completion entry carries counts and the request id. It is written
       // after the erasure on purpose: the entries the erasure redacted are the

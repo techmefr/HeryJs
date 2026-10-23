@@ -65,6 +65,24 @@ The command restores into `DATABASE_URL`. To rehearse a restore without touching
 anything real, create a copy with `hery db:branch create rehearsal`, point
 `DATABASE_URL` at it, and restore there.
 
+### Erasures survive a restore
+
+A dump taken before a privacy erasure still holds the erased person. Every
+completed erasure is therefore appended to a journal kept **outside the
+database**, in `PRIVACY_ERASURE_JOURNAL` (default `privacy/erasures.jsonl`). It
+holds ids only: the tenant, the erased user, and for a tenant erasure the
+account that was kept. `hery db:restore` and the admin panel's restore run the
+whole journal again once the dump is back; an erasure that finds nothing left
+to erase is a no-op. To run it by hand, after restoring with `pg_restore`
+yourself for instance:
+
+```bash
+pnpm hery privacy:replay
+```
+
+Keep the journal on a volume that outlives the database and is never part of
+the dumps, and back it up separately.
+
 ## Running it on a schedule
 
 The kernel registers a `database-backup` task that runs **daily at 03:00** inside

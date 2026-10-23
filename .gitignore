@@ -47,3 +47,4 @@ monitoring/api-key
 
 # Database backups written by hery db:backup
 /backups/
+/privacy/

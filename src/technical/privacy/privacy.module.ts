@@ -3,6 +3,7 @@ import { AuthModule } from '#technical/auth/auth.module';
 import { JobsModule } from '#technical/jobs/jobs.module';
 import { PrismaModule } from '#technical/prisma/prisma.module';
 import { SchedulerModule } from '#technical/scheduler/scheduler.module';
+import { ErasureReplay } from './erasure-replay';
 import { PersonalDataRegistry } from './personal-data.registry';
 import { PrivacyController } from './privacy.controller';
 import { PrivacyExecutor } from './privacy.executor';
@@ -17,9 +18,10 @@ import { PrivacyService } from './privacy.service';
     PersonalDataRegistry,
     PrivacyService,
     PrivacyExecutor,
+    ErasureReplay,
     PrivacyProcessor,
     PrivacyRetentionTask,
   ],
-  exports: [PersonalDataRegistry],
+  exports: [PersonalDataRegistry, ErasureReplay],
 })
 export class PrivacyModule {}

@@ -145,6 +145,10 @@ export function buildServerSchema(
     BACKUP_DIR: z.string().min(1).default('backups'),
     BACKUP_KEEP: z.coerce.number().int().min(1).default(7),
     BACKUP_STORAGE_DRIVER: z.string().min(1).optional(),
+    PRIVACY_ERASURE_JOURNAL: z
+      .string()
+      .min(1)
+      .default('privacy/erasures.jsonl'),
     SEARCH_MATCH_LIMIT: z.coerce.number().int().positive().default(1000),
     // The most rows a similarity search ranks and returns. Nearest-neighbour
     // search never runs out of matches -- every embedded row has a distance --

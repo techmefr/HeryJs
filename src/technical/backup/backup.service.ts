@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { env } from '#technical/config/env';
 import { DriverResolver } from '#technical/drivers/driver-resolver';
+import { ErasureReplay } from '#technical/privacy/erasure-replay';
 import { STORAGE_MODULE } from '#technical/storage/storage-driver';
 import type { StorageDriver } from '#technical/storage/storage-driver';
 import { BackupNotFoundException } from './backup.exceptions';
@@ -31,6 +32,7 @@ export class BackupService {
   constructor(
     private readonly settings: BackupSettingsStore,
     private readonly drivers: DriverResolver,
+    private readonly erasures: ErasureReplay,
   ) {}
 
   async list(): Promise<BackupRow[]> {
@@ -83,6 +85,7 @@ export class BackupService {
       file: await this.pathOf(name),
       isForced: true,
     });
+    await this.erasures.replay();
   }
 
   private storageDriver(): StorageDriver | undefined {
