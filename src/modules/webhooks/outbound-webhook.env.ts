@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import {
-  isDevEnvironmentNow,
+  isLocalEnvironmentNow,
   parseModuleEnv,
 } from '#technical/config/module-env';
 
@@ -19,7 +19,7 @@ export const outboundWebhookEnv = parseModuleEnv('webhooks', {
     .string()
     .default('false')
     .transform((value) => value === 'true')
-    .refine((value) => !value || isDevEnvironmentNow(), {
+    .refine((value) => !value || isLocalEnvironmentNow(), {
       message: 'must not be enabled in production',
     }),
 });

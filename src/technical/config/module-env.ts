@@ -1,4 +1,8 @@
-import { devEnvironmentsOf, isDevEnvironment } from './dev-environments';
+import {
+  DEFAULT_DEV_ENVIRONMENTS,
+  devEnvironmentsOf,
+  isDevEnvironment,
+} from './dev-environments';
 import { heryConfig } from './hery-config';
 import { z } from 'zod';
 
@@ -35,6 +39,16 @@ export function parseModuleEnv<TShape extends z.ZodRawShape>(
  */
 export function isDevEnvironmentNow(): boolean {
   return isDevEnvironment(process.env.NODE_ENV, devEnvironmentsOf(heryConfig));
+}
+
+/**
+ * Whether this process runs locally, NODE_ENV development or test, whatever
+ * `devTools.environments` lists. Only this relaxes security -- a non-secure
+ * cookie, a private issuer or URL, an http callback -- because a listed demo is
+ * still a real server behind HTTPS.
+ */
+export function isLocalEnvironmentNow(): boolean {
+  return isDevEnvironment(process.env.NODE_ENV, DEFAULT_DEV_ENVIRONMENTS);
 }
 
 /**
