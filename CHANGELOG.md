@@ -15,7 +15,7 @@ First public release.
 
 ### Modules honour devTools.environments
 
-The ,  and  modules still compared NODE_ENV with  themselves, so an unset or unlisted NODE_ENV let  and  through, fell back to a localhost callback and sent non-secure state cookies. They now ask , exported by  next to , which answers from . **Upgrade note:** copy  by hand; a project that installed  copies ,  and , one that installed  copies , one that installed  copies .
+The `sso`, `oauth` and `webhooks` modules still compared NODE_ENV with `production` themselves, so an unset or unlisted NODE_ENV let `SSO_ALLOW_PRIVATE_ISSUERS` and `WEBHOOK_ALLOW_PRIVATE_URLS` through, fell back to a localhost callback and sent non-secure state cookies. They now ask `isDevEnvironmentNow()`, exported by `#kernel/config/module-env` next to `devOnlyDefault`, which answers from `devTools.environments`. **Upgrade note:** copy `src/technical/config/module-env.ts` by hand; a project that installed `sso` copies `sso.env.ts`, `sso-redirect.ts` and `sso-state.service.ts`, one that installed `oauth` copies `oauth.module.ts`, one that installed `webhooks` copies `outbound-webhook.env.ts`.
 
 ### Dev routes open only in declared environments
 
