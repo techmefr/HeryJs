@@ -33,4 +33,20 @@ describe('WEBHOOK_ALLOW_PRIVATE_URLS outside devTools.environments', () => {
   ])('stops the boot when NODE_ENV is %s', (_label, nodeEnv) => {
     expect(load(nodeEnv)).toThrow(/WEBHOOK_ALLOW_PRIVATE_URLS/);
   });
+
+  it('stops the boot under a listed demo', () => {
+    process.env.NODE_ENV = 'demo';
+    process.env.WEBHOOK_ALLOW_PRIVATE_URLS = 'true';
+    jest.resetModules();
+
+    expect(() =>
+      jest.isolateModules(() => {
+        const { heryConfig } = jest.requireActual<{
+          heryConfig: { devTools?: { environments?: string[] } };
+        }>('#technical/config/hery-config');
+        heryConfig.devTools = { environments: ['development', 'test', 'demo'] };
+        jest.requireActual('./outbound-webhook.env');
+      }),
+    ).toThrow(/WEBHOOK_ALLOW_PRIVATE_URLS/);
+  });
 });

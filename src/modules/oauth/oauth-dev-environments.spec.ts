@@ -1,3 +1,4 @@
+import { heryConfig } from '#technical/config/hery-config';
 import { configFromEnv } from './oauth.module';
 
 describe('oauth outside devTools.environments', () => {
@@ -24,5 +25,17 @@ describe('oauth outside devTools.environments', () => {
     }
 
     expect(configFromEnv().isProduction).toBe(true);
+  });
+
+  it('keeps production security under a listed demo', () => {
+    const originalDevTools = heryConfig.devTools;
+    heryConfig.devTools = { environments: ['development', 'test', 'demo'] };
+    process.env.NODE_ENV = 'demo';
+
+    try {
+      expect(configFromEnv().isProduction).toBe(true);
+    } finally {
+      heryConfig.devTools = originalDevTools;
+    }
   });
 });

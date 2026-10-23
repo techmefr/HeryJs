@@ -1,5 +1,8 @@
 import { z } from 'zod';
-import { isDevEnvironmentNow, parseModuleEnv } from '#kernel/config/module-env';
+import {
+  isLocalEnvironmentNow,
+  parseModuleEnv,
+} from '#kernel/config/module-env';
 
 export const outboundWebhookEnv = parseModuleEnv('webhooks', {
   WEBHOOK_SECRET_ROTATION_GRACE_SECONDS: z.coerce
@@ -16,7 +19,7 @@ export const outboundWebhookEnv = parseModuleEnv('webhooks', {
     .string()
     .default('false')
     .transform((value) => value === 'true')
-    .refine((value) => !value || isDevEnvironmentNow(), {
+    .refine((value) => !value || isLocalEnvironmentNow(), {
       message: 'must not be enabled in production',
     }),
 });
