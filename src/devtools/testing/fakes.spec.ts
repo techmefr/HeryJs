@@ -11,6 +11,7 @@ import { FakeSmsDriver } from './fake-sms.driver';
 import { FakeStorageDriver } from './fake-storage.driver';
 import { FakeStorageObjectNotFoundException } from './fake-storage-object-not-found.exception';
 import { createTestFakes, resetTestFakes } from './test-fakes';
+import { waitFor } from './wait-for';
 
 class OrderPaid {
   constructor(public readonly orderId: string) {}
@@ -305,7 +306,10 @@ describe('FakeClock', () => {
 
   it('freezes time at an instant and moves it on demand', async () => {
     clock.freeze('2026-01-01T00:00:00.000Z');
-    await new Promise((resolve) => setTimeout(resolve, 15));
+    const realStart = performance.now();
+    await waitFor(() => performance.now() - realStart >= 15, {
+      description: 'real time to move on',
+    });
 
     expect(clock.now().toISOString()).toBe('2026-01-01T00:00:00.000Z');
 

@@ -8,18 +8,32 @@ import type { RequestWithSseToken } from './sse-token.guard';
 function fakeResponse() {
   const req = new EventEmitter() as unknown as Request;
   const chunks: string[] = [];
+  const written = new EventEmitter();
   const res = {
     req,
     writeHead: () => res,
     write: (chunk: string) => {
       chunks.push(chunk);
+      written.emit('chunk');
       return true;
     },
     status: () => res,
     end: () => undefined,
   } as unknown as Response;
+  const received = (text: string) =>
+    new Promise<void>((resolve) => {
+      const check = () => {
+        if (chunks.join('').includes(text)) {
+          written.off('chunk', check);
+          resolve();
+        }
+      };
 
-  return { res, req, chunks };
+      written.on('chunk', check);
+      check();
+    });
+
+  return { res, req, chunks, received };
 }
 
 function fakeRequest(
@@ -88,7 +102,7 @@ describe('SseController', () => {
       n: 2,
     });
 
-    const { res, req, chunks } = fakeResponse();
+    const { res, req, chunks, received } = fakeResponse();
 
     await controller.stream(
       fakeRequest(tenantId, { channels: channel }, beforeConnect),
@@ -100,7 +114,7 @@ describe('SseController', () => {
     // arrive without anything replayed twice or a gap in between.
     await stream.publish(tenantId, channel, 'tick', { n: 3 });
 
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await received('"n":3');
     req.emit('close');
 
     const events = chunks
@@ -120,6 +134,12 @@ describe('SseController', () => {
 
   it('stops delivering once the connection closes', async () => {
     const channel = `stops-${Date.now()}`;
+    const setupId = await stream.publish(tenantId, channel, 'setup', {
+      n: 0,
+    });
+    // The probe below replays this one, so it tails live from a concrete id
+    // rather than from "$", which would race the publish that follows.
+    await stream.publish(tenantId, channel, 'setup', { n: 0 });
     const { res, req, chunks } = fakeResponse();
 
     await controller.stream(
@@ -128,12 +148,20 @@ describe('SseController', () => {
       res,
     );
     req.emit('close');
-
-    await new Promise((resolve) => setTimeout(resolve, 100));
     const before = chunks.length;
 
+    // A second connection still listening proves the tick was delivered to
+    // every live subscriber by the time it shows up there.
+    const probe = fakeResponse();
+    await controller.stream(
+      fakeRequest(tenantId, { channels: channel }, setupId),
+      channel,
+      probe.res,
+    );
+
     await stream.publish(tenantId, channel, 'tick', { n: 1 });
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await probe.received('"n":1');
+    probe.req.emit('close');
 
     expect(chunks.length).toBe(before);
   });

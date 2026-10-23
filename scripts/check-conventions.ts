@@ -13,6 +13,7 @@ import { checkLintCoverage } from './check-lint-coverage';
 import { checkModuleDrift } from './check-module-drift';
 import { checkModulePatches } from './check-module-patches';
 import { checkModuleValidity } from './check-module-validity';
+import { checkNoFixedSleeps } from './check-no-fixed-sleeps';
 import { checkNoInlineDevGuard } from './check-no-inline-dev-guard';
 import { checkPagination } from './check-pagination';
 import { checkRateLimitDecorator } from './check-rate-limit-decorator';
@@ -35,6 +36,7 @@ const CHECKS: Array<{ name: string; run: () => boolean | Promise<boolean> }> = [
   { name: 'module-patches', run: checkModulePatches },
   { name: 'coverage', run: checkLintCoverage },
   { name: 'dev-guard', run: checkNoInlineDevGuard },
+  { name: 'no-fixed-sleeps', run: checkNoFixedSleeps },
   { name: 'subject', run: checkSubjectConstruction },
   { name: 'template-imports', run: checkTemplateImports },
   { name: 'tenant-isolation', run: checkTenantIsolation },

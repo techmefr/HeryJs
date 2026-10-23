@@ -6,6 +6,7 @@ import { INestApplication, Module } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { waitFor } from '#devtools/testing/wait-for';
 import { AppModule } from '#app.module';
 import { authPrismaClient } from '#technical/auth/better-auth.instance';
 import {
@@ -107,15 +108,11 @@ describe('audit streaming to a sink (real database)', () => {
       data: { nextAttemptAt: new Date(Date.now() - 1000) },
     });
 
-    for (let attempt = 0; attempt < 50; attempt += 1) {
-      if ((await relay.drain()) !== null) {
-        return;
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    }
-
-    throw new Error('the outbox relay lock was never free');
+    await waitFor(async () => (await relay.drain()) !== null, {
+      timeoutMs: 5000,
+      intervalMs: 100,
+      description: 'the outbox relay lock to be free',
+    });
   };
 
   const stageParked = async (sinkId: string): Promise<string[]> => {

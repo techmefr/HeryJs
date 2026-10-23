@@ -13,6 +13,7 @@ import { env } from '#technical/config/env';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 import type { TestUser } from '#devtools/testing/register-and-login';
 import { RUN_ONCE_POLICY } from '#technical/jobs/job-policy';
+import { waitFor } from '#devtools/testing/wait-for';
 import { JobFlowHandlers } from './job-flow-handlers';
 import { JobFlowProcessor } from './job-flow.processor';
 import { JobFlowsService } from './job-flows.service';
@@ -39,15 +40,14 @@ async function waitForState(
   wanted: FlowState,
   timeoutMs = 8000,
 ): Promise<FlowDetail> {
-  const deadline = Date.now() + timeoutMs;
-  let detail = await flows.detail(tenantId, id);
+  return waitFor(
+    async () => {
+      const detail = await flows.detail(tenantId, id);
 
-  while (detail.state !== wanted && Date.now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    detail = await flows.detail(tenantId, id);
-  }
-
-  return detail;
+      return detail.state === wanted ? detail : null;
+    },
+    { timeoutMs, intervalMs: 100, description: `flow ${id} to be ${wanted}` },
+  );
 }
 
 function serve(processor: JobFlowProcessor, connection: IORedis): Worker {
@@ -431,7 +431,20 @@ describe('job flows', () => {
         await queue.resume();
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      await waitFor(
+        async () => {
+          const counts = await queue.getJobCounts(
+            'active',
+            'waiting',
+            'delayed',
+            'prioritized',
+            'waiting-children',
+          );
+
+          return Object.values(counts).every((count) => count === 0);
+        },
+        { description: 'the resumed queue to settle' },
+      );
 
       expect(ran).toEqual([]);
     });

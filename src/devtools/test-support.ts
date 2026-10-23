@@ -35,3 +35,5 @@ export {
 } from './testing/tenant-isolation';
 export { createTestFakes, resetTestFakes } from './testing/test-fakes';
 export type { TestFakeName, TestFakes } from './testing/test-fakes';
+export { waitFor } from './testing/wait-for';
+export type { WaitForOptions } from './testing/wait-for';
