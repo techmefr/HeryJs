@@ -1,7 +1,7 @@
 import '#technical/config/load-env';
-import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from '#app.module';
+import { createApp } from './create-app';
 import { env } from '#technical/config/env';
 import {
   loadCorsConfig,
@@ -12,15 +12,9 @@ import { mountBullBoard } from '#technical/jobs/bull-board';
 import { startTelemetry } from '#technical/telemetry/start-telemetry';
 
 async function bootstrap() {
-  const isTelemetryOn = await startTelemetry();
+  await startTelemetry();
 
-  const app = await NestFactory.create(AppModule, {
-    bufferLogs: true,
-    rawBody: true,
-  });
-  if (isTelemetryOn) {
-    app.enableShutdownHooks();
-  }
+  const app = await createApp(AppModule);
 
   const logger = app.get(Logger);
   app.useLogger(logger);
