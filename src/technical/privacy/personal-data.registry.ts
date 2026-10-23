@@ -5,6 +5,7 @@ import type {
   PersonalDataDeclaration,
   PersonalDataField,
   PersonalDataHook,
+  SearchIndexRemover,
   StoredFileRemover,
 } from './personal-data.types';
 
@@ -139,6 +140,7 @@ export class PersonalDataRegistry {
   private readonly declarations = new Map<string, PersonalDataDeclaration>();
   private readonly registeredHooks = new Map<string, PersonalDataHook>();
   private remover: StoredFileRemover | null = null;
+  private readonly indexRemovers = new Map<string, SearchIndexRemover>();
 
   register(declaration: PersonalDataDeclaration): void {
     this.declarations.set(declaration.model, declaration);
@@ -162,5 +164,16 @@ export class PersonalDataRegistry {
 
   fileRemover(): StoredFileRemover | null {
     return this.remover;
+  }
+
+  registerSearchIndexRemover(
+    engine: string,
+    remover: SearchIndexRemover,
+  ): void {
+    this.indexRemovers.set(engine, remover);
+  }
+
+  searchIndexRemovers(): SearchIndexRemover[] {
+    return [...this.indexRemovers.values()];
   }
 }

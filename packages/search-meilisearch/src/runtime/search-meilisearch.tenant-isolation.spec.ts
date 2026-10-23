@@ -1,4 +1,6 @@
+import { PersonalDataRegistry } from '#kernel/privacy/personal-data.registry';
 import { MeilisearchSearchDriver } from './meilisearch-search.driver';
+import { MeilisearchSearchPersonalData } from './meilisearch-search.personal-data';
 
 interface StoredDocument {
   id: string;
@@ -169,6 +171,40 @@ describe('tenant isolation', () => {
 
     expect(stored).toEqual([
       { id: 'a-1', title: 'final', tenantId: 'tenant-a' },
+    ]);
+  });
+});
+
+describe('privacy erasure', () => {
+  function erasureRemover(driver: MeilisearchSearchDriver) {
+    const registry = new PersonalDataRegistry();
+    new MeilisearchSearchPersonalData(registry, driver).onModuleInit();
+
+    return registry.searchIndexRemovers()[0]!;
+  }
+
+  it('removes an erased document from the index', async () => {
+    const { client, stored } = engine();
+    const driver = driverOn(client);
+    await driver.index('posts', 'a-1', { title: 'hello world' }, 'tenant-a');
+
+    await erasureRemover(driver)('posts', 'a-1', 'tenant-a');
+
+    expect(stored).toEqual([]);
+  });
+
+  it('leaves the index of another tenant untouched by an erasure', async () => {
+    const { client, stored } = engine();
+    const driver = driverOn(client);
+    await driver.index('posts', 'a-1', { title: 'hello world' }, 'tenant-a');
+    await driver.index('posts', 'b-1', { title: 'hello world' }, 'tenant-b');
+    const remove = erasureRemover(driver);
+
+    await remove('posts', 'a-1', 'tenant-a');
+    await remove('posts', 'b-1', 'tenant-a');
+
+    expect(stored).toEqual([
+      { id: 'b-1', title: 'hello world', tenantId: 'tenant-b' },
     ]);
   });
 });

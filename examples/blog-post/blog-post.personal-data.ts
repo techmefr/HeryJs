@@ -9,6 +9,7 @@ export class BlogPostPersonalData implements OnModuleInit {
     this.registry.register({
       model: 'BlogPost',
       erase: 'anonymise',
+      searchCollection: 'blog-post',
       fields: [
         {
           name: 'title',

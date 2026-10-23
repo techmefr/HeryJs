@@ -1,4 +1,6 @@
+import { PersonalDataRegistry } from '#kernel/privacy/personal-data.registry';
 import { ElasticsearchSearchDriver } from './elasticsearch-search.driver';
+import { ElasticsearchSearchPersonalData } from './elasticsearch-search.personal-data';
 
 interface IndexedDocument {
   index: string;
@@ -160,5 +162,41 @@ describe('tenant isolation', () => {
     expect(stored.map((entry) => entry.document)).toEqual([
       { title: 'final', tenantId: 'tenant-a' },
     ]);
+  });
+});
+
+describe('privacy erasure', () => {
+  function erasureRemover(driver: ElasticsearchSearchDriver) {
+    const registry = new PersonalDataRegistry();
+    new ElasticsearchSearchPersonalData(registry, driver).onModuleInit();
+
+    return registry.searchIndexRemovers()[0]!;
+  }
+
+  it('removes an erased document from the index', async () => {
+    const { client } = engine();
+    const driver = driverOn(client);
+    await driver.index('posts', 'a-1', { title: 'hello world' }, 'tenant-a');
+
+    await erasureRemover(driver)('posts', 'a-1', 'tenant-a');
+
+    await expect(
+      driver.search('posts', 'hello', ['title'], 'tenant-a', 10),
+    ).resolves.toMatchObject({ ids: [] });
+  });
+
+  it('leaves the index of another tenant untouched by an erasure', async () => {
+    const { client } = engine();
+    const driver = driverOn(client);
+    await driver.index('posts', 'a-1', { title: 'hello world' }, 'tenant-a');
+    await driver.index('posts', 'b-1', { title: 'hello world' }, 'tenant-b');
+    const remove = erasureRemover(driver);
+
+    await remove('posts', 'a-1', 'tenant-a');
+    await remove('posts', 'b-1', 'tenant-a');
+
+    await expect(
+      driver.search('posts', 'hello', ['title'], 'tenant-b', 10),
+    ).resolves.toMatchObject({ ids: ['b-1'] });
   });
 });

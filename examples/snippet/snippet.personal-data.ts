@@ -9,6 +9,7 @@ export class SnippetPersonalData implements OnModuleInit {
     this.registry.register({
       model: 'Snippet',
       erase: 'delete',
+      searchCollection: 'snippet',
       fields: [
         {
           name: 'title',
