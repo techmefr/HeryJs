@@ -54,7 +54,7 @@ describe('S3StorageDriver', () => {
         { key: 'privacy/erasures/b.json', size: 2 },
       ]);
       expect(
-        (send.mock.calls[1]?.[0] as ListObjectsV2Command).input
+        (send.mock.calls[1]![0] as ListObjectsV2Command).input
           .ContinuationToken,
       ).toBe('next');
     } finally {
