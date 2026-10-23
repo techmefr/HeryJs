@@ -20,6 +20,7 @@ import type {
 
 const DEFAULT_TTL_SECONDS = 900;
 const PRESIGN_PUT_TTL_SECONDS = 300;
+const S3_PAGE_SIZE = 1000;
 
 interface S3Connection {
   bucket: string;
@@ -156,17 +157,32 @@ export class S3StorageDriver implements StorageDriver {
 
   async list(prefix: string, limit: number): Promise<StoredObjectSummary[]> {
     const { bucket, client } = this.connect();
+    const found: StoredObjectSummary[] = [];
+    let continuationToken: string | undefined;
 
-    const { Contents = [] } = await client.send(
-      new ListObjectsV2Command({
-        Bucket: bucket,
-        Prefix: prefix,
-        MaxKeys: limit,
-      }),
-    );
+    // S3 answers at most 1000 keys per call, whatever MaxKeys asks for, so a
+    // listing longer than that is read page by page.
+    do {
+      const page = await client.send(
+        new ListObjectsV2Command({
+          Bucket: bucket,
+          Prefix: prefix,
+          MaxKeys: Math.min(limit - found.length, S3_PAGE_SIZE),
+          ContinuationToken: continuationToken,
+        }),
+      );
 
-    return Contents.flatMap((object) =>
-      object.Key ? [{ key: object.Key, size: object.Size ?? 0 }] : [],
-    );
+      for (const object of page.Contents ?? []) {
+        if (object.Key) {
+          found.push({ key: object.Key, size: object.Size ?? 0 });
+        }
+      }
+
+      continuationToken = page.IsTruncated
+        ? page.NextContinuationToken
+        : undefined;
+    } while (continuationToken && found.length < limit);
+
+    return found;
   }
 }

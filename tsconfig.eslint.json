@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "incremental": false,
+    "paths": {
+      "heryjs": ["./cli/module-contract.ts"],
+      "@heryjs/core/*": ["./src/technical/public/*"],
+      "#kernel/*": ["./src/technical/*"]
+    }
+  },
+  "include": ["**/*.ts"],
+  "exclude": [
+    "**/node_modules",
+    "**/dist",
+    "docs",
+    "admin",
+    "packages/core/src",
+    "packages/admin-astro/src/runtime",
+    "examples/hery-module-maintenance"
+  ]
+}
