@@ -13,6 +13,10 @@ category is called out here explicitly.
 
 First public release.
 
+### Modules run from their packages, and HeryModule.forRoot loads them by name
+
+Each module package exports its contract as `<package>/hery` and its runtime as `<package>/*`, and builds both. `HeryModule.forRoot(config)` loads every module `hery.config.ts` declares from its package by name; the list of contracts stays an optional second argument. This repository depends on its modules as workspace packages: `#modules/*` points at `@heryjs/*`, the runtime copies under `src/modules` are gone, and only the specs that boot the app stay there. A generated project still gets the runtime of its modules copied into `src/modules` and wired through `src/hery.modules.ts`, until the module packages are published.
+
 ### `@heryjs/cli` and `hery sync`
 
 The `hery lint` rules leave the CLI a project copies: they move to `packages/cli`, the private workspace package `@heryjs/cli`, which `hery new` installs next to `@heryjs/core` instead of copying (`kernel:migrate` adds it too). The new `hery sync` writes the schema the installed `@heryjs/core` ships to `prisma/schema/_hery/core.prisma`, keeping the back-relations and fields the project and its modules hang on the kernel's models; `hery migrate` runs it first, and `hery sync --check` fails on a schema left behind. `@heryjs/core` now publishes `prisma/` with `dist/`, and its schema declares `role`, `banned`, `banReason` and `banExpires` on `User`, which the kernel reads: the impersonation module no longer adds them.

@@ -18,6 +18,13 @@ import {
 } from '../lib/hery-config-patch';
 import { loadBlueprint } from '../lib/blueprint';
 import {
+  copyModuleRuntimes,
+  withCopiedModuleMapper,
+  withCopiedModuleRuntimes,
+  withListedHeryModules,
+  workspaceModules,
+} from '../lib/module-runtime-copies';
+import {
   withProjectConventionScripts,
   withProjectConventionStep,
 } from '../lib/convention-scripts';
@@ -396,8 +403,9 @@ export function projectManifest(
 ): ProjectManifest {
   // Cloned rather than spread: a shallow copy shares `scripts` and `jest` with
   // the manifest it was read from, so every edit below reached back into it.
-  const manifest = structuredClone(source) as unknown as ProjectManifest &
-    Record<string, unknown>;
+  const manifest = withCopiedModuleRuntimes(
+    structuredClone(source),
+  ) as unknown as ProjectManifest & Record<string, unknown>;
 
   FRAMEWORK_FIELDS.forEach((field) => delete manifest[field]);
 
@@ -595,6 +603,53 @@ function copyInto(destRoot: string): void {
   }
 }
 
+const MODULE_JEST_CONFIGS = [
+  'jest-e2e.json',
+  'jest-modules.json',
+  'jest-module-specs.json',
+];
+
+/**
+ * The modules this repository runs from their workspace packages land in the
+ * project as copies, wired through src/hery.modules.ts.
+ */
+function copyModuleRuntimesInto(destRoot: string): void {
+  const manifest = JSON.parse(
+    readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8'),
+  ) as { dependencies?: Record<string, string> };
+
+  copyModuleRuntimes(
+    REPO_ROOT,
+    destRoot,
+    workspaceModules(manifest.dependencies),
+  );
+
+  const appModule = path.join(destRoot, APP_MODULE);
+
+  writeFileSync(
+    appModule,
+    withListedHeryModules(readFileSync(appModule, 'utf8')),
+  );
+
+  for (const file of MODULE_JEST_CONFIGS) {
+    const config = path.join(destRoot, 'test', file);
+
+    if (!existsSync(config)) {
+      continue;
+    }
+
+    const parsed = JSON.parse(readFileSync(config, 'utf8')) as {
+      moduleNameMapper?: Record<string, string>;
+    };
+
+    if (parsed.moduleNameMapper) {
+      parsed.moduleNameMapper = withCopiedModuleMapper(parsed.moduleNameMapper);
+    }
+
+    writeFileSync(config, `${JSON.stringify(parsed, null, 2)}\n`);
+  }
+}
+
 export function registerNewCommand(program: Command): void {
   program
     .command('new <name>')
@@ -632,6 +687,7 @@ export function registerNewCommand(program: Command): void {
       copyInto(destRoot);
       rmSync(path.join(destRoot, KERNEL_PACKAGE_DIR), { recursive: true });
       rmSync(path.join(destRoot, CLI_PACKAGE_DIR), { recursive: true });
+      copyModuleRuntimesInto(destRoot);
       const removedModels = dropExampleModels(destRoot);
       const droppedSpecs = dropSpecsNamingRemovedModels(
         destRoot,

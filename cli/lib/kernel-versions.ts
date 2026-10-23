@@ -1839,6 +1839,12 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
     'src/technical/module-contract/hery-module.contract.ts': [
       '8071144a846f21407554b4375669fdca27f6c203b44439ac6378cf1ce260f382',
     ],
+    'src/technical/module-contract/load-hery-modules.spec.ts': [
+      'ffbf4b856d3ac0364f7667c2d046454d1f27509394b1a441f5cf15cf6ac2ee8b',
+    ],
+    'src/technical/module-contract/load-hery-modules.ts': [
+      '13d85170a7f7218261972daa82e91d0344d1b202cf05525917071b04d78b1147',
+    ],
     'src/technical/module-contract/resolve-hery-modules.spec.ts': [
       '94af48e946ec7701fbd4e04bcf1d536539747b83688f85c3920ba5a6a49b3af7',
     ],
@@ -2308,6 +2314,7 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
       '9a0f60d14d476ec30294325fde5b84491590cd3d8cef9e78b4cf53444557ed39',
     ],
     'src/technical/public/modules.ts': [
+      '863bd97e7e1f7f5aaa2f0e8cb39b02145ee8418928e9103ad262f8623e9dd75b',
       'b503063e18bc2c587a878d26a86d16dd3edfb9f2ae7a0c26f562ad36818ae054',
     ],
     'src/technical/public/notifications.ts': [

@@ -16,10 +16,10 @@ import { databaseOwnerClient } from '#devtools/testing/database-owner-client';
 import { PublicRoute } from '@heryjs/core/capabilities';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
 import type { TestUser } from '#devtools/testing/register-and-login';
-import { decryptSecret } from './secret-cipher';
-import { base32Decode, hotp, stepAt } from './totp';
-import { TwoFactorGuard } from './two-factor.guard';
-import { TwoFactorModule } from './two-factor.module';
+import { decryptSecret } from '#modules/two-factor/secret-cipher';
+import { base32Decode, hotp, stepAt } from '#modules/two-factor/totp';
+import { TwoFactorGuard } from '#modules/two-factor/two-factor.guard';
+import { TwoFactorModule } from '#modules/two-factor/two-factor.module';
 
 @Controller('two-factor-probe')
 @UseGuards(SessionGuard, TwoFactorGuard)

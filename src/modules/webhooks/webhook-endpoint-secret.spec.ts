@@ -6,8 +6,8 @@ import { App } from 'supertest/types';
 import { AppModule } from '#app.module';
 import type { AuthenticatedUser } from '@heryjs/core/auth';
 import { authPrismaClient } from '@heryjs/core/auth';
-import { WebhookEndpointSecretService } from './webhook-endpoint-secret.service';
-import { WebhooksService } from './webhooks.service';
+import { WebhookEndpointSecretService } from '#modules/webhooks/webhook-endpoint-secret.service';
+import { WebhooksService } from '#modules/webhooks/webhooks.service';
 
 function sign(secret: string, timestamp: string, body: string): string {
   return createHmac('sha256', secret)

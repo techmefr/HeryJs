@@ -5,10 +5,13 @@
     "rootDir": "src"
   },
   "include": [
-    "src/module.ts"
+    "src/module.ts",
+    "src/runtime/**/*.ts"
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "src/**/*.spec.ts",
+    "src/**/*.integration-spec.ts"
   ]
 }

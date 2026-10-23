@@ -55,7 +55,10 @@ import { TeamsModule, TenantMiddleware } from '../technical/public/tenancy';
 import { LocaleMiddleware } from '../technical/public/i18n';
 import { DomainExceptionFilter } from '../technical/public/errors';
 import type { HeryConfig } from '../technical/public/config';
-import { resolveHeryModules } from '../technical/public/modules';
+import {
+  loadHeryModules,
+  resolveHeryModules,
+} from '../technical/public/modules';
 import type { HeryModuleContract } from '../technical/public/modules';
 import {
   DevDashboardMiddleware,
@@ -98,14 +101,17 @@ function loggerModule(): DynamicModule {
 
 /**
  * The kernel, then every module hery.config.ts declares, with their options
- * validated. A project's AppModule imports this and its own business modules,
+ * validated. Each module is loaded from its package by name unless the
+ * installed contracts are passed in. A project's AppModule imports this and its own business modules,
  * nothing else.
  */
 @Module({})
 export class HeryModule implements NestModule {
   static forRoot(
     config: HeryConfig,
-    installed: readonly HeryModuleContract[],
+    installed: readonly HeryModuleContract[] = loadHeryModules(
+      config.modules ?? [],
+    ),
   ): DynamicModule {
     return {
       module: HeryModule,
