@@ -1,0 +1,32 @@
+name: Release
+
+# Manual only, and a dry run until the heryjs npm organisation exists: it
+# computes the next version (1.0.0 for the first release) and its notes from
+# the commits, and publishes nothing. @heryjs/core stays private meanwhile.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Compute the next release (dry run, nothing published)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx --yes semantic-release@24.2.3 --dry-run --no-ci

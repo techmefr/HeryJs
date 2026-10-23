@@ -1,0 +1,26 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "HeryJs preset for generated projects: extend github>techmefr/HeryJs//renovate/heryjs",
+  "packageRules": [
+    {
+      "matchPackageNames": ["@heryjs/**"],
+      "groupName": "heryjs",
+      "groupSlug": "heryjs"
+    },
+    {
+      "matchPackageNames": ["@heryjs/**"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
+    },
+    {
+      "matchPackageNames": ["@heryjs/**"],
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "dependencyDashboardApproval": true
+    }
+  ],
+  "postUpgradeTasks": {
+    "commands": ["pnpm install", "pnpm hery upgrade"],
+    "executionMode": "branch"
+  }
+}
