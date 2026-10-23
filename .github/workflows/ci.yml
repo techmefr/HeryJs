@@ -432,7 +432,7 @@ jobs:
           test "$(cat src/functional/project-owned.ts)" = "export const projectOwned = 'kept';"
           grep -q '"@heryjs/core": "file:' package.json
           psql postgresql://heryjs:heryjs@localhost:5432/heryjs -v ON_ERROR_STOP=1 -c 'CREATE DATABASE heryjs_old'
-          pnpm install
+          pnpm install --no-frozen-lockfile
           pnpm hery migrate --name init
           pnpm run typecheck
           pnpm run build
