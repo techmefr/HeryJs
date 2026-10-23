@@ -1,9 +1,5 @@
 import { TenantContextStorage } from './tenant-context';
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 describe('TenantContextStorage', () => {
   it('throws when read outside of any tenant context', () => {
     expect(() => TenantContextStorage.getTenantId()).toThrow(
@@ -18,16 +14,20 @@ describe('TenantContextStorage', () => {
   });
 
   it('never leaks one concurrent request tenant into another', async () => {
-    const runAsTenant = (tenantId: string, readDelayMs: number) =>
+    let releaseA = (): void => undefined;
+    const aMayRead = new Promise<void>((resolve) => {
+      releaseA = resolve;
+    });
+    const runAsTenant = (tenantId: string, beforeRead: Promise<void>) =>
       TenantContextStorage.run({ tenantId }, async () => {
-        await delay(readDelayMs);
+        await beforeRead;
         return TenantContextStorage.getTenantId();
       });
 
-    const [resultA, resultB] = await Promise.all([
-      runAsTenant('tenant-a', 20),
-      runAsTenant('tenant-b', 5),
-    ]);
+    const pendingA = runAsTenant('tenant-a', aMayRead);
+    const resultB = await runAsTenant('tenant-b', Promise.resolve());
+    releaseA();
+    const resultA = await pendingA;
 
     expect(resultA).toBe('tenant-a');
     expect(resultB).toBe('tenant-b');

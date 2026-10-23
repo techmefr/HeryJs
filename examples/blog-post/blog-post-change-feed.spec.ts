@@ -12,16 +12,17 @@ import type { ChangeFeedSession } from '#technical/change-feed/change-feed.hub';
 import type { ChangeFeedMessage } from '#technical/change-feed/change-feed.types';
 import { OutboxRelay } from '#technical/outbox/outbox.relay';
 import { registerAndLogin } from '#devtools/testing/register-and-login';
+import { waitFor } from '#devtools/testing/wait-for';
 
 const DELIVERY_TIMEOUT_MS = 3000;
 const POLL_MS = 25;
 
 async function until(condition: () => boolean): Promise<void> {
-  const deadline = Date.now() + DELIVERY_TIMEOUT_MS;
-
-  while (!condition() && Date.now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, POLL_MS));
-  }
+  await waitFor(condition, {
+    timeoutMs: DELIVERY_TIMEOUT_MS,
+    intervalMs: POLL_MS,
+    description: 'the change feed delivery',
+  });
 }
 
 describe('BlogPost change feed (real database, real outbox, real redis)', () => {

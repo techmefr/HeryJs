@@ -1,3 +1,4 @@
+import { waitFor } from '#devtools/testing/wait-for';
 import { RateLimitStore } from './rate-limit-store';
 
 describe('RateLimitStore', () => {
@@ -54,9 +55,15 @@ describe('RateLimitStore', () => {
     const blocked = await store.hit(key, 1, 1);
     expect(blocked.allowed).toBe(false);
 
-    await new Promise((resolve) => setTimeout(resolve, 1100));
+    const afterReset = await waitFor(
+      async () => {
+        const hit = await store.hit(key, 1, 1);
 
-    const afterReset = await store.hit(key, 1, 1);
+        return hit.allowed ? hit : null;
+      },
+      { intervalMs: 100, description: 'the one-second window to elapse' },
+    );
     expect(afterReset.allowed).toBe(true);
+    expect(afterReset.remaining).toBe(0);
   });
 });

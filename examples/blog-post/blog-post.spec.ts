@@ -18,6 +18,7 @@ import {
   createTestTenantId,
   purgeTenant,
   registerAndLogin,
+  waitFor,
 } from '#devtools/test-support';
 import type { Actor } from '#devtools/test-support';
 
@@ -1325,41 +1326,45 @@ describe('BlogPost resource', () => {
     // An erasure ends the sessions of the user it erased, so the outcome of
     // one is read from the request row; an export is collected over the API.
     async function settled(id: string) {
-      for (let attempt = 0; attempt < 90; attempt += 1) {
-        const row = await prisma.privacyRequest.findUniqueOrThrow({
-          where: { id },
-        });
+      return waitFor(
+        async () => {
+          const row = await prisma.privacyRequest.findUniqueOrThrow({
+            where: { id },
+          });
 
-        if (row.status === 'done' || row.status === 'failed') {
-          return row;
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, 150));
-      }
-
-      throw new Error('privacy request ' + id + ' did not settle');
+          return row.status === 'done' || row.status === 'failed' ? row : null;
+        },
+        {
+          timeoutMs: 13_500,
+          intervalMs: 150,
+          description: 'privacy request ' + id + ' to settle',
+        },
+      );
     }
 
     async function collect(actor: Actor, id: string) {
-      for (let attempt = 0; attempt < 90; attempt += 1) {
-        const response = await request(app.getHttpServer())
-          .get('/privacy/requests/' + id)
-          .set('Authorization', actor.authorization)
-          .expect(200);
-        const view = (
-          response.body as {
-            data: { status: string; error: string | null; result?: unknown };
-          }
-        ).data;
+      return waitFor(
+        async () => {
+          const response = await request(app.getHttpServer())
+            .get('/privacy/requests/' + id)
+            .set('Authorization', actor.authorization)
+            .expect(200);
+          const view = (
+            response.body as {
+              data: { status: string; error: string | null; result?: unknown };
+            }
+          ).data;
 
-        if (view.status === 'done' || view.status === 'failed') {
-          return view;
-        }
-
-        await new Promise((resolve) => setTimeout(resolve, 150));
-      }
-
-      throw new Error('privacy request ' + id + ' did not settle');
+          return view.status === 'done' || view.status === 'failed'
+            ? view
+            : null;
+        },
+        {
+          timeoutMs: 13_500,
+          intervalMs: 150,
+          description: 'privacy request ' + id + ' to settle',
+        },
+      );
     }
 
     it('exports the rows a user owns, opened, and none of anyone else', async () => {

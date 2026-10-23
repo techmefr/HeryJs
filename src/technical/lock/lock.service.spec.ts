@@ -1,3 +1,4 @@
+import { waitFor } from '#devtools/testing/wait-for';
 import { LockService } from './lock.service';
 
 function uniqueName(): string {
@@ -54,8 +55,9 @@ describe('LockService', () => {
     const stale = await locks.acquire(name, { ttlMs: 50 });
     stale?.stopRenewing();
 
-    await new Promise((resolve) => setTimeout(resolve, 80));
-    const fresh = await locks.acquire(name);
+    const fresh = await waitFor(() => locks.acquire(name), {
+      description: 'the stale lock to expire',
+    });
 
     expect(fresh).not.toBeNull();
 
@@ -73,9 +75,13 @@ describe('LockService', () => {
    */
   it('keeps a long-running holder locked past its original TTL', async () => {
     const name = uniqueName();
-    const lock = await locks.acquire(name, { ttlMs: 90 });
+    const ttlMs = 600;
+    const lock = await locks.acquire(name, { ttlMs });
+    const pastOriginalTtl = Date.now() + ttlMs * 2;
 
-    await new Promise((resolve) => setTimeout(resolve, 200));
+    await waitFor(() => Date.now() >= pastOriginalTtl, {
+      description: 'twice the original TTL to have elapsed',
+    });
 
     expect(await locks.acquire(name)).toBeNull();
 

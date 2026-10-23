@@ -1,14 +1,30 @@
 import { randomUUID } from 'node:crypto';
+import { waitFor } from '#devtools/testing/wait-for';
 import { RedisChangeFeedBackend } from './redis-change-feed.backend';
 import type {
   ChangeFeedEnvelope,
   ChangeFeedPresenceMember,
 } from './change-feed.types';
 
-const TICK_MS = 150;
+const sentinelTenant = `sentinel-${randomUUID()}`;
 
-function wait(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+/**
+ * Redis delivers the messages of one subscriber connection in publish order,
+ * so once a message published afterwards has arrived, anything that should
+ * have arrived before it already has.
+ */
+async function afterPublishesSettle(
+  publisher: RedisChangeFeedBackend,
+  subscriber: RedisChangeFeedBackend,
+): Promise<void> {
+  const seen: ChangeFeedEnvelope[] = [];
+  const stop = await subscriber.subscribe(sentinelTenant, (e) => seen.push(e));
+
+  await publisher.publish(envelope(sentinelTenant));
+  await waitFor(() => seen.length > 0, {
+    description: 'the sentinel envelope',
+  });
+  await stop();
 }
 
 function envelope(tenantId: string): ChangeFeedEnvelope {
@@ -48,7 +64,7 @@ describe('RedisChangeFeedBackend (real redis)', () => {
     const stop = await processB.subscribe(tenantA, (e) => seen.push(e));
 
     await processA.publish(envelope(tenantA));
-    await wait(TICK_MS);
+    await afterPublishesSettle(processA, processB);
     await stop();
 
     expect(seen).toHaveLength(1);
@@ -62,7 +78,7 @@ describe('RedisChangeFeedBackend (real redis)', () => {
     const stopB = await processB.subscribe(tenantB, (e) => seenByB.push(e));
 
     await processA.publish(envelope(tenantB));
-    await wait(TICK_MS);
+    await afterPublishesSettle(processA, processB);
     await stopA();
     await stopB();
 
@@ -76,7 +92,7 @@ describe('RedisChangeFeedBackend (real redis)', () => {
     await stop();
 
     await processA.publish(envelope(tenantA));
-    await wait(TICK_MS);
+    await afterPublishesSettle(processA, processB);
 
     expect(seen).toEqual([]);
   });
@@ -89,7 +105,7 @@ describe('RedisChangeFeedBackend (real redis)', () => {
 
     await stopFirst();
     await processA.publish(envelope(tenantA));
-    await wait(TICK_MS);
+    await afterPublishesSettle(processA, processB);
     await stopSecond();
 
     expect(first).toEqual([]);
@@ -119,9 +135,14 @@ describe('RedisChangeFeedBackend (real redis)', () => {
   it('drops a member whose heartbeat stopped, as a crashed process leaves it', async () => {
     await processA.joinPresence(tenantA, 'stale', member('ghost'), 50);
     await processA.joinPresence(tenantA, 'stale', member('alive'), 60_000);
-    await wait(TICK_MS);
+    const members = await waitFor(
+      async () => {
+        const listed = await processB.listPresence(tenantA, 'stale');
 
-    const members = await processB.listPresence(tenantA, 'stale');
+        return listed.length === 1 ? listed : null;
+      },
+      { description: 'the ghost member to expire' },
+    );
 
     expect(members.map((m) => m.connectionId)).toEqual(['alive']);
   });
@@ -140,7 +161,7 @@ describe('RedisChangeFeedBackend (real redis)', () => {
       `change-feed:${tenantA}`,
       JSON.stringify(envelope(tenantB)),
     );
-    await wait(TICK_MS);
+    await afterPublishesSettle(processA, processB);
     await stop();
 
     expect(seen).toEqual([]);
