@@ -1,5 +1,6 @@
 import type { FormField, FormValue, FormValues } from './form-schema';
 import { slugify } from './slug';
+import { failureMessages } from './resource';
 import { renderSafeHtml } from './safe-html';
 
 export interface FormHandle {
@@ -14,7 +15,7 @@ export interface FormOptions {
   fields: FormField[];
   initial: FormValues;
   submitLabel: string;
-  onSubmit: (values: FormValues) => void;
+  onSubmit: (values: FormValues) => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -293,12 +294,7 @@ export function buildForm(options: FormOptions): FormHandle {
       ]),
     );
 
-  element.addEventListener('submit', (event) => {
-    event.preventDefault();
-    options.onSubmit(values());
-  });
-
-  return {
+  const handle: FormHandle = {
     element,
     values,
     showErrors(found) {
@@ -326,4 +322,14 @@ export function buildForm(options: FormOptions): FormHandle {
       cancel.disabled = isBusy;
     },
   };
+
+  element.addEventListener('submit', (event) => {
+    event.preventDefault();
+    void Promise.resolve(options.onSubmit(values())).catch((error: unknown) => {
+      handle.setBusy(false);
+      handle.showFailure(failureMessages(error));
+    });
+  });
+
+  return handle;
 }

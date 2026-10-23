@@ -99,6 +99,24 @@ describe('bulk actions', () => {
     );
   });
 
+  it('announces a bulk request that never reached the api and lets it be retried', async () => {
+    server.handlers['/blog-posts/delete'] = () => {
+      throw new TypeError('Failed to fetch');
+    };
+    const root = await mount();
+
+    selectRows(root, ['a']);
+    root.querySelector<HTMLButtonElement>('[data-bulk="delete"]')!.click();
+    await settle();
+
+    expect(root.querySelector('[data-slot="notice"]')?.textContent).toBe(
+      '0 deleted, 1 refused (a: The request could not be sent)',
+    );
+    expect(
+      root.querySelector<HTMLButtonElement>('[data-bulk="delete"]')!.disabled,
+    ).toBe(false);
+  });
+
   it('sends permanent deletion as a hard delete', async () => {
     server.handlers['/blog-posts/delete'] = () =>
       envelope([{ index: 0, id: 'a', status: 'ok', data: null }]);
