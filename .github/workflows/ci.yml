@@ -289,8 +289,8 @@ jobs:
           npm pack --dry-run --json | node -e '
             const [pack] = JSON.parse(require("node:fs").readFileSync(0, "utf8"));
             const paths = pack.files.map((file) => file.path);
-            const outside = paths.filter((p) => p !== "package.json" && !p.startsWith("dist/"));
-            if (outside.length > 0 || !paths.includes("dist/technical/public/auth.js")) {
+            const outside = paths.filter((p) => p !== "package.json" && !p.startsWith("dist/") && p !== "prisma/core.prisma");
+            if (outside.length > 0 || !paths.includes("dist/technical/public/auth.js") || !paths.includes("prisma/core.prisma")) {
               console.error("unexpected tarball:", outside, paths.length);
               process.exit(1);
             }
@@ -313,14 +313,18 @@ jobs:
           test "$(ls src/modules | tr '\n' ' ')" = 'impersonation push two-factor '
           test ! -e src/technical
           test ! -e packages/core
+          test ! -e packages/cli
+          test ! -e cli/lib/lint
           test "$(ls src/devtools | tr '\n' ' ')" = 'test-support.ts testing '
           test -f src/devtools/testing/register-and-login.ts
           test ! -e prisma/schema.prisma
           test "$(cd prisma/schema && find . -name '*.prisma' | sort | tr '\n' ' ')" = './_hery/core.prisma ./push.prisma ./two-factor.prisma '
           grep -q "path: 'prisma/migrations'" prisma.config.ts
           grep -q '"@heryjs/core": "file:' package.json
+          grep -q '"@heryjs/cli": "file:' package.json
           cp .env.example .env
           pnpm install
+          pnpm hery sync --check
           node --conditions=development -p "require.resolve('@heryjs/core/tenancy')" |
             grep -q '/dist/technical/public/tenancy.js$'
           pnpm hery migrate --name init
@@ -387,6 +391,7 @@ jobs:
         working-directory: ${{ runner.temp }}/scaffold/my-app
         run: |
           pnpm hery install scim sso storage
+          pnpm hery sync --check
           test -f prisma/schema/scim.prisma
           test -f prisma/schema/sso.prisma
           grep -q "'@heryjs/sso'," hery.config.ts

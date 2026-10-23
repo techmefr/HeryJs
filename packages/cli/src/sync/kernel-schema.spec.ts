@@ -1,0 +1,104 @@
+import { mergeKernelSchema, schemasDiffer } from './kernel-schema';
+
+const PACKAGED = [
+  'generator client {',
+  '  provider = "prisma-client"',
+  '}',
+  '',
+  'model User {',
+  '  id    String @id',
+  '  email String @unique',
+  '  name  String?',
+  '',
+  '  sessions Session[]',
+  '',
+  '  @@index([email])',
+  '}',
+  '',
+  'model Session {',
+  '  id     String @id',
+  '  userId String',
+  '  user   User   @relation(fields: [userId], references: [id])',
+  '}',
+  '',
+].join('\n');
+
+const PROJECT = [
+  'generator client {',
+  '  provider = "prisma-client"',
+  '}',
+  '',
+  'model User {',
+  '  id    String @id',
+  '  email String',
+  '  sessions Session[]',
+  '  posts    Post[]',
+  '  pushTokens PushToken[]',
+  '}',
+  '',
+  'model Session {',
+  '  id     String @id',
+  '  userId String',
+  '  impersonatedBy String?',
+  '  user   User   @relation(fields: [userId], references: [id])',
+  '}',
+  '',
+  'model Retired {',
+  '  id String @id',
+  '}',
+  '',
+].join('\n');
+
+describe('mergeKernelSchema', () => {
+  const merged = mergeKernelSchema(PACKAGED, PROJECT);
+
+  it("keeps the relations and fields the project hangs on the kernel's models", () => {
+    expect(merged).toContain('  posts    Post[]');
+    expect(merged).toContain('  pushTokens PushToken[]');
+    expect(merged).toContain('  impersonatedBy String?');
+  });
+
+  it("takes the kernel's version of every field it ships, and its new ones", () => {
+    expect(merged).toContain('  email String @unique');
+    expect(merged).not.toMatch(/^ {2}email String$/m);
+    expect(merged).toContain('  name  String?');
+  });
+
+  it('places the kept fields before the model attributes', () => {
+    const user = merged.slice(
+      merged.indexOf('model User {'),
+      merged.indexOf('model Session {'),
+    );
+
+    expect(user.indexOf('pushTokens')).toBeLessThan(user.indexOf('@@index'));
+    expect(user.indexOf('sessions')).toBeLessThan(user.indexOf('posts'));
+  });
+
+  it('drops a model the kernel no longer ships', () => {
+    expect(merged).not.toContain('model Retired');
+  });
+
+  it('is stable once synced', () => {
+    expect(mergeKernelSchema(PACKAGED, merged)).toBe(merged);
+    expect(schemasDiffer(merged, mergeKernelSchema(PACKAGED, merged))).toBe(
+      false,
+    );
+  });
+});
+
+describe('schemasDiffer', () => {
+  it('ignores alignment and line order', () => {
+    expect(
+      schemasDiffer(
+        'model A {\n  a String\n  b Int\n}',
+        'model A {\n  b   Int\n  a String\n}',
+      ),
+    ).toBe(false);
+  });
+
+  it('sees a field that changed', () => {
+    expect(
+      schemasDiffer('model A {\n  a String\n}', 'model A {\n  a String?\n}'),
+    ).toBe(true);
+  });
+});

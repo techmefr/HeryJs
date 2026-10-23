@@ -8,12 +8,6 @@ export default {
   install(context) {
     context.copyRuntime();
 
-    context.addModelFields('User', [
-      '  role          String?',
-      '  banned        Boolean  @default(false)',
-      '  banReason     String?',
-      '  banExpires    DateTime?',
-    ]);
     context.addModelFields('Session', ['  impersonatedBy String?']);
 
     context.nextSteps([

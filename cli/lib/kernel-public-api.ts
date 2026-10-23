@@ -68,6 +68,8 @@ export const KERNEL_PUBLIC_DIR = path.join('src', 'technical', 'public');
 export const KERNEL_PACKAGE = '@heryjs/core';
 export const KERNEL_PACKAGE_SPECIFIER = `${KERNEL_PACKAGE}/`;
 export const KERNEL_PACKAGE_DIR = path.join('packages', 'core');
+export const CLI_PACKAGE = '@heryjs/cli';
+export const CLI_PACKAGE_DIR = path.join('packages', 'cli');
 
 /**
  * The export condition that points `@heryjs/core` at its TypeScript sources.

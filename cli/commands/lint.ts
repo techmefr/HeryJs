@@ -3,14 +3,14 @@ import * as path from 'node:path';
 import type { Command } from 'commander';
 import pc from 'picocolors';
 import {
+  LINT_RULES,
   baselineFrom,
   loadBaseline,
   partitionViolations,
+  scoreOf,
   writeBaseline,
-} from '../lib/lint/baseline';
-import { LINT_RULES } from '../lib/lint/rules';
-import { scoreOf } from '../lib/lint/score';
-import type { Violation } from '../lib/lint/types';
+} from '@heryjs/cli/lint';
+import type { Violation } from '@heryjs/cli/lint';
 
 export const DEFAULT_BASELINE_PATH = '.hery/lint-baseline.json';
 

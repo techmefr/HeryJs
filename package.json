@@ -98,7 +98,7 @@
   ],
   "scripts": {
     "db:generate": "prisma generate",
-    "build:core": "pnpm --filter @heryjs/core run build",
+    "build:core": "pnpm --filter @heryjs/core --filter @heryjs/cli run build",
     "build": "pnpm run build:core && nest build",
     "build:scaffold": "tsc -p tsconfig.scaffold.json",
     "build:modules": "pnpm run build:scaffold && pnpm --filter \"./packages/*\" run build",
@@ -210,6 +210,7 @@
     "@eslint/eslintrc": "^3.3.7",
     "@eslint/js": "^10.0.1",
     "@faker-js/faker": "^10.6.0",
+    "@heryjs/cli": "workspace:*",
     "@nestjs/cli": "^12.0.0",
     "@nestjs/schematics": "^12.0.0",
     "@nestjs/testing": "^12.0.1",
@@ -274,12 +275,15 @@
     "roots": [
       "<rootDir>/src",
       "<rootDir>/cli",
+      "<rootDir>/packages/cli",
       "<rootDir>/examples"
     ],
     "moduleNameMapper": {
       "^@heryjs/core/devtools$": "<rootDir>/src/devtools/public",
       "^@heryjs/core/conventions$": "<rootDir>/src/devtools/conventions/index",
       "^@heryjs/core/app$": "<rootDir>/src/hery/public",
+      "^@heryjs/core/technical/(.*)$": "<rootDir>/src/technical/$1",
+      "^@heryjs/cli/(.*)$": "<rootDir>/packages/cli/src/$1",
       "^@heryjs/core/(.*)$": "<rootDir>/src/technical/public/$1",
       "^#kernel/(.*)$": "<rootDir>/src/technical/$1",
       "^#technical/(.*)$": "<rootDir>/src/technical/$1",

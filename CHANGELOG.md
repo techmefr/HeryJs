@@ -13,6 +13,10 @@ category is called out here explicitly.
 
 First public release.
 
+### `@heryjs/cli` and `hery sync`
+
+The `hery lint` rules leave the CLI a project copies: they move to `packages/cli`, the private workspace package `@heryjs/cli`, which `hery new` installs next to `@heryjs/core` instead of copying (`kernel:migrate` adds it too). The new `hery sync` writes the schema the installed `@heryjs/core` ships to `prisma/schema/_hery/core.prisma`, keeping the back-relations and fields the project and its modules hang on the kernel's models; `hery migrate` runs it first, and `hery sync --check` fails on a schema left behind. `@heryjs/core` now publishes `prisma/` with `dist/`, and its schema declares `role`, `banned`, `banReason` and `banExpires` on `User`, which the kernel reads: the impersonation module no longer adds them.
+
 ### Release dry run, Renovate preset and hery upgrade
 
 semantic-release computes the next version from the commits: `.releaserc.json` releases from `main` with `v`-prefixed tags, and `.github/workflows/release.yml` runs it on a manual dispatch only, as a dry run. Nothing is published until the `heryjs` npm organisation exists, and `@heryjs/core` stays private; the first release is planned as 1.0.0. A generated project can extend the new Renovate preset, `github>techmefr/HeryJs//renovate/heryjs`: it groups every `@heryjs/*` bump under `heryjs`, automerges minors and patches, holds majors for approval, and runs `pnpm hery upgrade` after the bump. The new `hery upgrade` runs `hery kernel:migrate`, then `hery check`, and stops at the first that fails.

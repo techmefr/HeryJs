@@ -50,8 +50,9 @@ describe('the @heryjs/core manifest', () => {
     exports: Record<string, unknown>;
   }>(REPO_ROOT, 'packages', 'core', 'package.json');
 
-  it('publishes dist alone, not the symlinks into this repository', () => {
-    expect(core.files).toEqual(['dist']);
+  it('publishes dist and the kernel schema, not the symlinks into this repository', () => {
+    expect(core.files).toEqual(['dist', 'prisma']);
+    expect(core.files).not.toContain('src');
   });
 
   it('points at sources only under its own condition, never under development', () => {
