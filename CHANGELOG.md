@@ -15,7 +15,7 @@ First public release.
 
 ### Modules run from their packages, and HeryModule.forRoot loads them by name
 
-Each module package exports its contract as `<package>/hery` and its runtime as `<package>/*`, and builds both. `HeryModule.forRoot(config)` loads every module `hery.config.ts` declares from its package by name; the list of contracts stays an optional second argument. This repository depends on its modules as workspace packages: `#modules/*` points at `@heryjs/*`, the runtime copies under `src/modules` are gone, and only the specs that boot the app stay there. A generated project still gets the runtime of its modules copied into `src/modules` and wired through `src/hery.modules.ts`, until the module packages are published.
+Each module package exports its contract as `<package>/hery` and its runtime as `<package>/*`, and builds both. `HeryModule.forRoot(config)` loads every module `hery.config.ts` declares from its package by name; the list of contracts stays an optional second argument. This repository depends on its modules as workspace packages: `#modules/*` points at `@heryjs/*`, the runtime copies under `src/modules` are gone, and only the specs that boot the app stay there. AppModule keeps passing the contracts of , which now load from the packages, so that  still writes the same AppModule as this repository. A generated project still gets the runtime of its modules copied into `src/modules` and wired through `src/hery.modules.ts`, until the module packages are published.
 
 ### `@heryjs/cli` and `hery sync`
 

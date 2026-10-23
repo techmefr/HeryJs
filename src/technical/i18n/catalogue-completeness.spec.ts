@@ -5,6 +5,28 @@ import { CATALOGUE } from './catalogue';
 import { FALLBACK_LOCALE, resolveSupportedLocales } from './locale.config';
 
 const SRC = path.resolve(__dirname, '../..');
+const REPO_ROOT = path.resolve(SRC, '..');
+
+const MODULE_RUNTIMES = Object.entries(
+  (
+    JSON.parse(readFileSync(path.join(REPO_ROOT, 'package.json'), 'utf8')) as {
+      dependencies: Record<string, string>;
+    }
+  ).dependencies,
+)
+  .filter(
+    ([name, range]) =>
+      range.startsWith('workspace:') && /^@heryjs\/(?!core$|cli$)/.test(name),
+  )
+  .map(([name]) =>
+    path.join(
+      REPO_ROOT,
+      'packages',
+      name.slice('@heryjs/'.length),
+      'src',
+      'runtime',
+    ),
+  );
 
 const UNTRANSLATED: Record<string, string> = {
   'capability.forbidden':
@@ -108,7 +130,9 @@ function thrownKeysOf(file: string): ThrownKey[] {
 }
 
 function loadModuleCatalogues(): void {
-  for (const file of sourceFiles(path.join(SRC, 'modules'))) {
+  for (const file of [path.join(SRC, 'modules'), ...MODULE_RUNTIMES].flatMap(
+    sourceFiles,
+  )) {
     if (file.endsWith('.catalogue.ts')) {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       require(file);
@@ -117,8 +141,10 @@ function loadModuleCatalogues(): void {
 }
 
 describe('error catalogue completeness', () => {
-  const thrown = ['technical', 'modules', 'functional']
-    .map((dir) => path.join(SRC, dir))
+  const thrown = [
+    ...['technical', 'modules', 'functional'].map((dir) => path.join(SRC, dir)),
+    ...MODULE_RUNTIMES,
+  ]
     .flatMap((dir) => {
       try {
         return sourceFiles(dir);
