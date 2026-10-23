@@ -29,9 +29,10 @@ const ROUTE_FILE_SUFFIXES = ['.controller.ts', '.resolver.ts'];
 const RESOURCE_ROOTS = ['src', 'examples', 'packages'];
 const SKIPPED_DIRECTORIES = new Set(['node_modules', 'dist']);
 
-function resourceFilesIn(collect: (dir: string) => string[]): string[] {
-  const repoRoot = path.resolve(__dirname, '..');
-
+function resourceFilesIn(
+  repoRoot: string,
+  collect: (dir: string) => string[],
+): string[] {
   return RESOURCE_ROOTS.flatMap((relative) => {
     const dir = path.join(repoRoot, relative);
 
@@ -98,15 +99,15 @@ function checkFile(filePath: string): string[] {
   return violations;
 }
 
-export function checkCapabilityDecorator(): boolean {
-  const controllerFiles = resourceFilesIn(findControllerFiles);
+export function checkCapabilityDecorator(repoRoot: string): boolean {
+  const controllerFiles = resourceFilesIn(repoRoot, findControllerFiles);
 
   if (controllerFiles.length === 0) {
     // This repository always ships examples/, so an empty scan here means
     // something got silently emptied. A project scaffolded by `hery new` never
     // has examples/ at all and starts with zero resources on purpose — that is
     // not the regression this check exists to catch.
-    if (existsSync(path.resolve(__dirname, '..', 'examples'))) {
+    if (existsSync(path.join(repoRoot, 'examples'))) {
       console.error(
         `Found no resource controller under ${RESOURCE_ROOTS.join(' or ')}. This check reports
 success on an empty scan, so an empty scan has to be the failure instead.`,

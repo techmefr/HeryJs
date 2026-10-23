@@ -13,6 +13,10 @@ import type { Command } from 'commander';
 import pc from 'picocolors';
 import { APP_MODULE, unwireModule } from '../lib/app-module-patch';
 import { loadBlueprint } from '../lib/blueprint';
+import {
+  withProjectConventionScripts,
+  withProjectConventionStep,
+} from '../lib/convention-scripts';
 import { frameworkRoot } from '../lib/framework-root';
 import {
   applyKernelPackageRewrites,
@@ -44,7 +48,7 @@ const REPO_ROOT = frameworkRoot();
 export const COPY_ENTRIES = [
   'cli',
   'packages',
-  'scripts',
+  'scripts/postgres',
   'src/devtools/testing',
   'src/devtools/test-support.ts',
   'src/modules',
@@ -78,53 +82,6 @@ export const COPY_ENTRIES = [
   'package.json',
   'pnpm-workspace.yaml',
 ];
-
-/**
- * The two convention checks that do not survive the copy, because each one
- * asks a question only this repository can answer.
- *
- * `example-freshness` compares the demo against the generator that produced
- * it, and a fresh project ships no examples/ at all. `kernel-version` holds
- * package.json and cli/lib/kernel-version.ts to the same number, which is
- * true of a release and false of a project: the manifest carries the
- * project's own version, and the constant carries the kernel it came from.
- */
-const CHECKS_THIS_REPOSITORY_OWNS = [
-  {
-    name: 'example-freshness',
-    file: 'check-example-freshness',
-    symbol: 'checkExampleFreshness',
-    script: 'lint:example',
-  },
-  {
-    name: 'kernel-version',
-    file: 'check-kernel-version',
-    symbol: 'checkKernelVersion',
-    script: 'lint:kernel-version',
-  },
-];
-
-function dropChecksThisRepositoryOwns(destRoot: string): void {
-  const registry = path.join(destRoot, 'scripts/check-conventions.ts');
-  let source = readFileSync(registry, 'utf8');
-
-  for (const check of CHECKS_THIS_REPOSITORY_OWNS) {
-    rmSync(path.join(destRoot, 'scripts', `${check.file}.ts`));
-
-    const importLine = `import { ${check.symbol} } from './${check.file}';\n`;
-    const registration = `  { name: '${check.name}', run: ${check.symbol} },\n`;
-
-    if (!source.includes(importLine) || !source.includes(registration)) {
-      throw new Error(
-        `scripts/check-conventions.ts no longer registers ${check.name} the way "hery new" removes it.`,
-      );
-    }
-
-    source = source.replace(importLine, '').replace(registration, '');
-  }
-
-  writeFileSync(registry, source);
-}
 
 function specFilesUnder(dir: string): string[] {
   if (!existsSync(dir)) {
@@ -375,13 +332,18 @@ function rewriteWorkflows(destRoot: string): void {
 
   writeFileSync(
     file,
-    readFileSync(file, 'utf8')
-      .replace(
-        'pnpm install --frozen-lockfile',
-        'pnpm install --no-frozen-lockfile',
-      )
-      .replace('pnpm exec prisma migrate deploy', 'pnpm hery migrate --name ci')
-      .replace(DOC_EXAMPLES_STEP, ''),
+    withProjectConventionStep(
+      readFileSync(file, 'utf8')
+        .replace(
+          'pnpm install --frozen-lockfile',
+          'pnpm install --no-frozen-lockfile',
+        )
+        .replace(
+          'pnpm exec prisma migrate deploy',
+          'pnpm hery migrate --name ci',
+        )
+        .replace(DOC_EXAMPLES_STEP, ''),
+    ),
   );
 }
 
@@ -455,9 +417,7 @@ export function projectManifest(
   // it failed the install outright, before the scaffolder was ever reached.
   manifest.scripts.postinstall = 'prisma generate';
 
-  CHECKS_THIS_REPOSITORY_OWNS.forEach(({ script }) => {
-    delete manifest.scripts[script];
-  });
+  manifest.scripts = withProjectConventionScripts(manifest.scripts);
 
   manifest.jest.roots = ['<rootDir>/src'];
 
@@ -668,7 +628,6 @@ export function registerNewCommand(program: Command): void {
       mkdirSync(destRoot, { recursive: true });
       copyInto(destRoot);
       rmSync(path.join(destRoot, KERNEL_PACKAGE_DIR), { recursive: true });
-      dropChecksThisRepositoryOwns(destRoot);
       const removedModels = dropExampleModels(destRoot);
       const droppedSpecs = dropSpecsNamingRemovedModels(
         destRoot,

@@ -2,6 +2,7 @@ import '#technical/config/load-env';
 import { Command } from 'commander';
 import pc from 'picocolors';
 import { BlueprintError } from './lib/blueprint';
+import { registerCheckCommand } from './commands/check';
 import { registerConsoleCommand } from './commands/console';
 import { registerCreateBlueprintCommand } from './commands/create-blueprint';
 import { registerDbBackupCommands } from './commands/db-backup';
@@ -46,6 +47,7 @@ const program = new Command();
 
 program.name('hery').description('HeryJs conventions CLI');
 
+registerCheckCommand(program);
 registerConsoleCommand(program);
 registerCreateBlueprintCommand(program);
 registerDbBackupCommands(program);
