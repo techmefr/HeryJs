@@ -148,6 +148,8 @@
     "lint:tenant-isolation": "pnpm run lint:conventions tenant-isolation",
     "lint:kernel-version": "pnpm run lint:conventions kernel-version",
     "lint:kernel-boundary": "pnpm run lint:conventions kernel-boundary",
+    "lint:kernel-versions": "pnpm run lint:conventions kernel-versions",
+    "kernel:versions": "NODE_OPTIONS=\"--conditions=development --conditions=heryjs-source\" ts-node scripts/check-kernel-versions.ts --write",
     "lint:package-manifests": "pnpm run lint:conventions package-manifests",
     "lint:example": "pnpm run lint:conventions example-freshness",
     "lint:hery": "NODE_OPTIONS=\"--conditions=development --conditions=heryjs-source\" ts-node cli/hery.ts lint --min-score 100",

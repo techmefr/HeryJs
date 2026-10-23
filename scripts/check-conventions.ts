@@ -22,6 +22,7 @@ import {
 import { checkExampleFreshness } from './check-example-freshness';
 import { checkKernelBoundary } from './check-kernel-boundary';
 import { checkKernelVersion } from './check-kernel-version';
+import { checkKernelVersions } from './check-kernel-versions';
 import { checkLintCoverage } from './check-lint-coverage';
 import { checkModuleDestinations } from './check-module-destinations';
 import { checkModuleDrift } from './check-module-drift';
@@ -60,6 +61,7 @@ const CHECKS: ConventionCheck[] = [
   { name: 'tenant-isolation', run: checkTenantIsolation },
   { name: 'runtime-dependencies', run: checkRuntimeDependencies },
   { name: 'kernel-version', run: checkKernelVersion },
+  { name: 'kernel-versions', run: checkKernelVersions },
   { name: 'example-freshness', run: checkExampleFreshness },
 ];
 
