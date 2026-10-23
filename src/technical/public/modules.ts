@@ -12,3 +12,4 @@ export {
   HeryModuleConfigError,
   resolveHeryModules,
 } from '../module-contract/resolve-hery-modules';
+export { loadHeryModules } from '../module-contract/load-hery-modules';

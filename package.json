@@ -98,7 +98,7 @@
   ],
   "scripts": {
     "db:generate": "prisma generate",
-    "build:core": "pnpm --filter @heryjs/core --filter @heryjs/cli run build",
+    "build:core": "pnpm run build:modules",
     "build": "pnpm run build:core && nest build",
     "build:scaffold": "tsc -p tsconfig.scaffold.json",
     "build:modules": "pnpm run build:scaffold && pnpm --filter \"./packages/*\" run build",
@@ -162,7 +162,24 @@
     "@better-auth/passkey": "1.7.3",
     "@bull-board/api": "^9.8.0",
     "@bull-board/express": "^9.8.0",
+    "@heryjs/billing": "workspace:*",
     "@heryjs/core": "workspace:*",
+    "@heryjs/embeddings": "workspace:*",
+    "@heryjs/export": "workspace:*",
+    "@heryjs/impersonation": "workspace:*",
+    "@heryjs/live": "workspace:*",
+    "@heryjs/mail": "workspace:*",
+    "@heryjs/notifier": "workspace:*",
+    "@heryjs/oauth": "workspace:*",
+    "@heryjs/push": "workspace:*",
+    "@heryjs/scim": "workspace:*",
+    "@heryjs/sms": "workspace:*",
+    "@heryjs/sse": "workspace:*",
+    "@heryjs/sso": "workspace:*",
+    "@heryjs/storage": "workspace:*",
+    "@heryjs/stream": "workspace:*",
+    "@heryjs/two-factor": "workspace:*",
+    "@heryjs/webhooks": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@nestjs/bullmq": "^12.0.0",
     "@nestjs/common": "^12.0.1",
@@ -288,7 +305,9 @@
       "^#kernel/(.*)$": "<rootDir>/src/technical/$1",
       "^#technical/(.*)$": "<rootDir>/src/technical/$1",
       "^#devtools/(.*)$": "<rootDir>/src/devtools/$1",
-      "^#modules/(.*)$": "<rootDir>/src/modules/$1",
+      "^@heryjs/(?!core/|cli/)([^/]+)/hery$": "<rootDir>/packages/$1/src/runtime/$1.hery",
+      "^@heryjs/(?!core/|cli/)([^/]+)/(.*)$": "<rootDir>/packages/$1/src/runtime/$2",
+      "^#modules/([^/]+)/(.*)$": "<rootDir>/packages/$1/src/runtime/$2",
       "^#functional/(.*)$": "<rootDir>/src/functional/$1",
       "^#app\\.module$": "<rootDir>/src/app.module"
     }
@@ -304,11 +323,7 @@
       "development": "./src/devtools/*.ts",
       "default": "./dist/src/devtools/*.js"
     },
-    "#modules/*": {
-      "types": "./src/modules/*.ts",
-      "development": "./src/modules/*.ts",
-      "default": "./dist/src/modules/*.js"
-    },
+    "#modules/*": "@heryjs/*",
     "#functional/*": {
       "types": "./src/functional/*.ts",
       "development": "./src/functional/*.ts",

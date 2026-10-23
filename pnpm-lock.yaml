@@ -26,9 +26,60 @@ importers:
       '@bull-board/express':
         specifier: ^9.8.0
         version: 9.8.0(bullmq@6.3.4(ioredis@6.0.0)(pg@8.23.0))
+      '@heryjs/billing':
+        specifier: workspace:*
+        version: link:packages/billing
       '@heryjs/core':
         specifier: workspace:*
         version: link:packages/core
+      '@heryjs/embeddings':
+        specifier: workspace:*
+        version: link:packages/embeddings
+      '@heryjs/export':
+        specifier: workspace:*
+        version: link:packages/export
+      '@heryjs/impersonation':
+        specifier: workspace:*
+        version: link:packages/impersonation
+      '@heryjs/live':
+        specifier: workspace:*
+        version: link:packages/live
+      '@heryjs/mail':
+        specifier: workspace:*
+        version: link:packages/mail
+      '@heryjs/notifier':
+        specifier: workspace:*
+        version: link:packages/notifier
+      '@heryjs/oauth':
+        specifier: workspace:*
+        version: link:packages/oauth
+      '@heryjs/push':
+        specifier: workspace:*
+        version: link:packages/push
+      '@heryjs/scim':
+        specifier: workspace:*
+        version: link:packages/scim
+      '@heryjs/sms':
+        specifier: workspace:*
+        version: link:packages/sms
+      '@heryjs/sse':
+        specifier: workspace:*
+        version: link:packages/sse
+      '@heryjs/sso':
+        specifier: workspace:*
+        version: link:packages/sso
+      '@heryjs/storage':
+        specifier: workspace:*
+        version: link:packages/storage
+      '@heryjs/stream':
+        specifier: workspace:*
+        version: link:packages/stream
+      '@heryjs/two-factor':
+        specifier: workspace:*
+        version: link:packages/two-factor
+      '@heryjs/webhooks':
+        specifier: workspace:*
+        version: link:packages/webhooks
       '@modelcontextprotocol/sdk':
         specifier: ^1.30.0
         version: 1.30.0(zod@4.5.4)

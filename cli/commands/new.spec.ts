@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
+import { workspaceModules } from '../lib/module-runtime-copies';
 import {
   COPY_ENTRIES,
   DOC_EXAMPLES_STEP,
@@ -198,7 +199,15 @@ describe('the modules a fresh project keeps', () => {
     '%s is installed here and says why the kernel needs it',
     (name, reason) => {
       expect(
-        existsSync(path.join(__dirname, '..', '..', 'src', 'modules', name)),
+        workspaceModules(
+          (REPO_MANIFEST as { dependencies?: Record<string, string> })
+            .dependencies,
+        ),
+      ).toContain(name);
+      expect(
+        existsSync(
+          path.join(__dirname, '..', '..', 'packages', name, 'src', 'runtime'),
+        ),
       ).toBe(true);
       expect(reason.length).toBeGreaterThan(0);
     },

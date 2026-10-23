@@ -8,10 +8,10 @@ import { registerAndLogin } from '#devtools/testing/register-and-login';
 import type { TestUser } from '#devtools/testing/register-and-login';
 import type { MailMessage } from '@heryjs/core/drivers';
 import { setNotifierMailChannel } from '@heryjs/core/notifications';
-import type { Notification } from './notification';
-import { NotificationDigestService } from './notification-digest.service';
-import { NotifierModule } from './notifier.module';
-import { NotifierService } from './notifier.service';
+import type { Notification } from '#modules/notifier/notification';
+import { NotificationDigestService } from '#modules/notifier/notification-digest.service';
+import { NotifierModule } from '#modules/notifier/notifier.module';
+import { NotifierService } from '#modules/notifier/notifier.service';
 
 interface RulesResponse {
   data: {

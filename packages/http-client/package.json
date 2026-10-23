@@ -31,6 +31,16 @@
       "types": "./dist/module.d.ts",
       "default": "./dist/module.js"
     },
+    "./hery": {
+      "heryjs-source": "./src/runtime/http-client.hery.ts",
+      "types": "./dist/runtime/http-client.hery.d.ts",
+      "default": "./dist/runtime/http-client.hery.js"
+    },
+    "./*": {
+      "heryjs-source": "./src/runtime/*.ts",
+      "types": "./dist/runtime/*.d.ts",
+      "default": "./dist/runtime/*.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [
