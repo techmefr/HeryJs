@@ -1,6 +1,9 @@
 import { parseEnv } from './env';
 
-const BASE = { DATABASE_URL: 'postgresql://example/db' };
+const BASE = {
+  DATABASE_URL: 'postgresql://example/db',
+  NODE_ENV: 'development',
+};
 
 describe('passwordless flags', () => {
   it('leaves every method off unless its flag says true', () => {

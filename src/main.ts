@@ -2,7 +2,13 @@ import '#technical/config/load-env';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from '#app.module';
 import { createApp } from './create-app';
+import {
+  devEnvironmentsOf,
+  isDevEnvironment,
+  sharedDevEnvironmentWarning,
+} from '#technical/config/dev-environments';
 import { env } from '#technical/config/env';
+import { heryConfig } from '#technical/config/hery-config';
 import {
   loadCorsConfig,
   resolveCorsOptions,
@@ -18,6 +24,16 @@ async function bootstrap() {
 
   const logger = app.get(Logger);
   app.useLogger(logger);
+
+  const devEnvironments = devEnvironmentsOf(heryConfig);
+  const devWarning = sharedDevEnvironmentWarning(
+    process.env.NODE_ENV,
+    devEnvironments,
+  );
+
+  if (devWarning) {
+    logger.warn(devWarning);
+  }
 
   // Which browsers may call this API is declared in cors.config.ts, in every
   // environment, and CORS_ORIGINS overrides its origins per deployment: it used
@@ -37,7 +53,7 @@ async function bootstrap() {
     app.enableCors(cors);
   }
 
-  if (process.env.NODE_ENV !== 'production') {
+  if (isDevEnvironment(process.env.NODE_ENV, devEnvironments)) {
     mountBullBoard(app);
   }
 

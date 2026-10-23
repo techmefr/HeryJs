@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { parseSecretKeys } from '../secrets/keyring';
+import { DEFAULT_DEV_ENVIRONMENTS, isDevEnvironment } from './dev-environments';
 
 export const DEV_SECRETS_KEYS =
   'dev:ZGV2ZWxvcG1lbnQta2V5LW5vdC1hLXNlY3JldC0wMDA=';
@@ -29,15 +30,22 @@ function isOrigin(value: string): boolean {
  * exists at all (a fresh scaffold, CI lint-only jobs). Importing that here
  * would take the lint command down with it.
  */
-export function buildServerSchema(nodeEnv: string | undefined) {
+export function buildServerSchema(
+  nodeEnv: string | undefined,
+  devEnvironments: readonly string[] = DEFAULT_DEV_ENVIRONMENTS,
+) {
   const devOnlySecret = (devValue: string) =>
     z
       .string()
       .min(1)
       .default(devValue)
-      .refine((value) => value !== devValue || nodeEnv !== 'production', {
-        message: `is still the development default (${devValue}); set it to a real secret`,
-      });
+      .refine(
+        (value) =>
+          value !== devValue || isDevEnvironment(nodeEnv, devEnvironments),
+        {
+          message: `is still the development default (${devValue}); set it to a real secret`,
+        },
+      );
 
   return z.object({
     DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),

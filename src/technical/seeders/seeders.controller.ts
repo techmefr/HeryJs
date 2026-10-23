@@ -15,7 +15,7 @@ import type { RequestWithUser } from '#technical/auth/session.guard';
 import { CapabilitiesGuard } from '#technical/capabilities/capabilities.guard';
 import { Capability } from '#technical/capabilities/capability.decorator';
 import { DevOnlyGuard } from '#technical/dev-only/dev-only.guard';
-import { canUseDevtools } from '#technical/dev-only/dev-only.policy';
+import { canRunSeeders } from '#technical/dev-only/dev-only.policy';
 import { InvalidQueryException } from '#technical/errors/invalid-query.exception';
 import { ok } from '#technical/http/envelope';
 import { UnpaginatedRoute } from '#technical/http/unpaginated-route.decorator';
@@ -36,7 +36,7 @@ export class SeedersController {
   )
   @RateLimit('read')
   @Get()
-  @Capability(canUseDevtools)
+  @Capability(canRunSeeders)
   list() {
     return ok(
       this.seeders.map(({ name, description, defaultCount, maxCount }) => ({
@@ -50,7 +50,7 @@ export class SeedersController {
 
   @RateLimit('write')
   @Post(':name/run')
-  @Capability(canUseDevtools)
+  @Capability(canRunSeeders)
   async run(
     @Param('name') name: string,
     @Body(new ZodValidationPipe(runSeederSchema)) body: RunSeederDto,

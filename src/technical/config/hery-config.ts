@@ -1,4 +1,5 @@
 import * as path from 'node:path';
+import { devEnvironmentsIssues } from './dev-environments';
 import type { HeryConfig } from './hery-config.types';
 
 const CONFIG_FILENAME = 'hery.config.ts';
@@ -75,15 +76,18 @@ const CHOICES: Array<{
  * as whichever branch happens to come last.
  */
 export function assertHeryConfigChoices(config: HeryConfig): void {
-  const issues = CHOICES.flatMap(({ path: key, read, allowed }) => {
-    const value = read(config);
+  const issues = [
+    ...CHOICES.flatMap(({ path: key, read, allowed }) => {
+      const value = read(config);
 
-    return value === undefined || allowed.includes(value as string)
-      ? []
-      : [
-          `  ${key}: ${JSON.stringify(value)} is not one of ${allowed.join(', ')}`,
-        ];
-  });
+      return value === undefined || allowed.includes(value as string)
+        ? []
+        : [
+            `  ${key}: ${JSON.stringify(value)} is not one of ${allowed.join(', ')}`,
+          ];
+    }),
+    ...devEnvironmentsIssues(config),
+  ];
 
   if (issues.length > 0) {
     throw new Error(`Invalid ${CONFIG_FILENAME}:\n${issues.join('\n')}`);

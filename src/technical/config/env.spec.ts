@@ -8,7 +8,10 @@ const SECRETS = [
 ] as const;
 
 const NAMES = SECRETS.map(([name]) => name);
-const BASE = { DATABASE_URL: 'postgresql://example/db' };
+const BASE = {
+  DATABASE_URL: 'postgresql://example/db',
+  NODE_ENV: 'development',
+};
 
 describe('secrets that must not reach production', () => {
   it.each(SECRETS)(

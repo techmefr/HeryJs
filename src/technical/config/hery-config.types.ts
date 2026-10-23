@@ -118,6 +118,17 @@ export interface HeryConfigAdmin {
   studioAccess?: HeryConfigStudioAccess;
 }
 
+/**
+ * The NODE_ENV values that open the devtools routes (seeders included) and
+ * accept the development secrets; `['development', 'test']` when absent. Any
+ * other value, an unset NODE_ENV among them, runs as production. A shared
+ * environment such as `demo` may be listed: its seeders then stay behind an
+ * operator or an admin, and the boot logs a warning.
+ */
+export interface HeryConfigDevTools {
+  environments?: string[];
+}
+
 export interface HeryConfigDevDashboard {
   enabled?: boolean;
   retentionHours?: number;
@@ -147,6 +158,7 @@ export interface HeryConfig {
   rateLimit?: HeryConfigRateLimit;
   i18n?: HeryConfigI18n;
   logging?: HeryConfigLogging;
+  devTools?: HeryConfigDevTools;
   devDashboard?: HeryConfigDevDashboard;
   privacy?: HeryConfigPrivacy;
   sharing?: HeryConfigSharing;
