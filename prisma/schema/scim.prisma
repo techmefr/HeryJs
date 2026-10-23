@@ -1,0 +1,27 @@
+/// @hery.appEnforcedTenant Looked up by the hash of the bearer token a directory sends, which is how the tenant is learned in the first place: there is no ambient tenant to scope the lookup by, and each row carries the one it belongs to.
+model ScimToken {
+  id         String    @id @default(cuid())
+  tenantId   String    @unique
+  tokenHash  String    @unique
+  prefix     String
+  createdAt  DateTime  @default(now())
+  rotatedAt  DateTime?
+  lastUsedAt DateTime?
+}
+
+/// @hery.tenantScoped
+model ScimIdentity {
+  id         String   @id @default(cuid())
+  tenantId   String
+  kind       String
+  resourceId String
+  externalId String?
+  givenName  String?
+  familyName String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([tenantId, kind, resourceId])
+  @@unique([tenantId, kind, externalId])
+  @@index([tenantId])
+}

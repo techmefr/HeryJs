@@ -1,5 +1,9 @@
 import type { InstallContext, LoadedModule } from './module-definition';
-import { PRISMA_SCHEMA, modelNamesIn } from './schema-patch';
+import {
+  PRISMA_SCHEMA_FOLDER,
+  modelNamesIn,
+  moduleSchemaFile,
+} from './schema-patch';
 import { PACKAGE_MANIFEST, WORKSPACE_MANIFEST } from './project-patch';
 
 export interface PatchRecord {
@@ -37,7 +41,7 @@ export async function recordPatches(
     addPrismaModels: (models) => {
       records.push({
         module: module.name,
-        file: PRISMA_SCHEMA,
+        file: moduleSchemaFile(module.name),
         marks: modelNamesIn(models).map((name) => `model ${name} {`),
       });
     },
@@ -47,7 +51,7 @@ export async function recordPatches(
 
       records.push({
         module: module.name,
-        file: PRISMA_SCHEMA,
+        file: PRISMA_SCHEMA_FOLDER,
         model,
         marks: first === undefined ? [] : [fieldNameIn(first)],
       });
@@ -81,6 +85,38 @@ export async function recordPatches(
   await module.install(context);
 
   return records;
+}
+
+export interface ModelFieldsWrite {
+  model: string;
+  fields: string[];
+}
+
+/**
+ * The fields a module adds to models it does not own, as its install writes
+ * them, so uninstalling can take back exactly those.
+ */
+export async function recordModelFields(
+  module: LoadedModule,
+): Promise<ModelFieldsWrite[]> {
+  const writes: ModelFieldsWrite[] = [];
+  const ignore = () => undefined;
+
+  await module.install({
+    touched: [],
+    copyRuntime: ignore,
+    copyPackageFile: ignore,
+    nextSteps: ignore,
+    addPrismaModels: ignore,
+    addModelFields: (model, fields) => {
+      writes.push({ model, fields });
+    },
+    chainScript: ignore,
+    addWorkspace: ignore,
+    patchExactStrings: ignore,
+  });
+
+  return writes;
 }
 
 /**

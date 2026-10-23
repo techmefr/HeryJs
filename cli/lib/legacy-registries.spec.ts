@@ -5,6 +5,7 @@ import {
   annotatedModelsIn,
   registriesFrom,
 } from '#technical/prisma/model-annotations';
+import { readPrismaSchema } from '#technical/prisma/schema-files';
 import {
   annotateField,
   annotateModel,
@@ -16,7 +17,7 @@ import {
 import { withoutSetEntries } from './strip-example';
 
 const ROOT = path.join(__dirname, '..', '..');
-const SCHEMA = readFileSync(path.join(ROOT, 'prisma', 'schema.prisma'), 'utf8');
+const SCHEMA = readPrismaSchema(ROOT) ?? '';
 
 function withoutAnnotations(schema: string): string {
   return schema

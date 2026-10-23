@@ -251,8 +251,8 @@ describe('the install context', () => {
 
   describe('adding models to the Prisma schema', () => {
     function authorSchema(source: string): void {
-      mkdirSync('prisma', { recursive: true });
-      writeFileSync('prisma/schema.prisma', source);
+      mkdirSync('prisma/schema/_hery', { recursive: true });
+      writeFileSync('prisma/schema/_hery/core.prisma', source);
     }
 
     it('appends the block the module declares', () => {
@@ -261,10 +261,13 @@ describe('the install context', () => {
       const context = contextFor();
       context.addPrismaModels('\nmodel Probe {\n  id String @id\n}\n');
 
-      expect(readFileSync('prisma/schema.prisma', 'utf8')).toContain(
+      expect(readFileSync('prisma/schema/probe.prisma', 'utf8')).toContain(
         'model Probe {',
       );
-      expect(context.touched).toEqual(['prisma/schema.prisma']);
+      expect(readFileSync('prisma/schema/_hery/core.prisma', 'utf8')).toBe(
+        'model User {\n  id String @id\n}\n',
+      );
+      expect(context.touched).toEqual(['prisma/schema/probe.prisma']);
     });
 
     // Installing twice has to be a no-op, and the guard lives here rather than
@@ -296,10 +299,10 @@ describe('the install context', () => {
       const context = contextFor();
       context.addModelFields('User', ['  role String?']);
 
-      expect(readFileSync('prisma/schema.prisma', 'utf8')).toContain(
+      expect(readFileSync('prisma/schema/_hery/core.prisma', 'utf8')).toContain(
         'role String?',
       );
-      expect(context.touched).toEqual(['prisma/schema.prisma']);
+      expect(context.touched).toEqual(['prisma/schema/_hery/core.prisma']);
     });
 
     it('does nothing when the model already carries the field', () => {
@@ -310,6 +313,30 @@ describe('the install context', () => {
 
       expect(context.touched).toEqual([]);
       expect(logged.join('\n')).toContain('already has User patched, skipping');
+    });
+
+    it('adds the fields in whichever file of the folder declares the model', () => {
+      authorSchema('model User {\n  id String @id\n}\n');
+      writeFileSync(
+        'prisma/schema/app.prisma',
+        'model Post {\n  id String @id\n}\n',
+      );
+
+      const context = contextFor();
+      context.addModelFields('Post', ['  title String']);
+
+      expect(readFileSync('prisma/schema/app.prisma', 'utf8')).toContain(
+        'title String',
+      );
+      expect(context.touched).toEqual(['prisma/schema/app.prisma']);
+    });
+
+    it('refuses a model no file of the folder declares', () => {
+      authorSchema('model User {\n  id String @id\n}\n');
+
+      expect(() =>
+        contextFor().addModelFields('Missing', ['  title String']),
+      ).toThrow('Could not find "model Missing" in prisma/schema');
     });
   });
 
@@ -391,8 +418,11 @@ describe('the install context', () => {
   it('records every write in the order they happened', () => {
     authorRuntimeFile('probe.ts', 'export const PROBE = true;\n');
     writeFileSync(path.join(packageDir, 'compose.yml'), 'x: 1\n');
-    mkdirSync('prisma', { recursive: true });
-    writeFileSync('prisma/schema.prisma', 'model User {\n  id String @id\n}\n');
+    mkdirSync('prisma/schema/_hery', { recursive: true });
+    writeFileSync(
+      'prisma/schema/_hery/core.prisma',
+      'model User {\n  id String @id\n}\n',
+    );
 
     const context = contextFor();
     context.copyPackageFile('compose.yml');
@@ -402,7 +432,7 @@ describe('the install context', () => {
     expect(context.touched).toEqual([
       'compose.yml',
       'src/modules/probe/probe.ts',
-      'prisma/schema.prisma',
+      'prisma/schema/probe.prisma',
     ]);
   });
 });

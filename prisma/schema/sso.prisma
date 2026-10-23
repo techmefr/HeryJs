@@ -1,0 +1,55 @@
+/// @hery.appEnforcedTenant Started from a request or from a worker, so a tenant cannot be stamped from the ambient context; every call names the tenant it acts for.
+model SsoConnection {
+  id                   String   @id @default(cuid())
+  tenantId             String
+  name                 String
+  protocol             String   @default("oidc")
+  issuer               String
+  clientId             String
+  clientSecret         String?
+  samlEntryPoint       String?
+  samlCertificate      String?
+  samlAttributeMapping String?
+  linkPolicy           String   @default("refuse")
+  isEnabled            Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  domains    SsoDomain[]
+  identities SsoIdentity[]
+
+  @@index([tenantId])
+}
+
+/// @hery.appEnforcedTenant Started from a request or from a worker, so a tenant cannot be stamped from the ambient context; every call names the tenant it acts for.
+model SsoDomain {
+  id                String    @id @default(cuid())
+  tenantId          String
+  connectionId      String
+  domain            String
+  verificationToken String
+  verifiedAt        DateTime?
+  createdAt         DateTime  @default(now())
+
+  connection SsoConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, domain])
+  @@index([tenantId])
+  @@index([domain])
+}
+
+/// @hery.appEnforcedTenant Started from a request or from a worker, so a tenant cannot be stamped from the ambient context; every call names the tenant it acts for.
+model SsoIdentity {
+  id           String   @id @default(cuid())
+  tenantId     String
+  connectionId String
+  subject      String
+  userId       String
+  createdAt    DateTime @default(now())
+
+  connection SsoConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([connectionId, subject])
+  @@index([tenantId])
+  @@index([userId])
+}

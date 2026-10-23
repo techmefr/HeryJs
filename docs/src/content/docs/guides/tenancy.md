@@ -11,7 +11,7 @@ Tenancy in HeryJs is a boundary, not a scope you remember to add to every query.
 
 ## Enforcement: the tenant-scoped Prisma client
 
-`createTenantScopedPrismaClient()` wraps a plain `PrismaClient` in a Prisma `$extends` query extension. For every model annotated `/// @hery.tenantScoped` in `prisma/schema.prisma`:
+`createTenantScopedPrismaClient()` wraps a plain `PrismaClient` in a Prisma `$extends` query extension. For every model annotated `/// @hery.tenantScoped` in `prisma/schema/`:
 
 - on `create` / `createMany`, the current tenant id is injected into the data automatically;
 - on every read/update/delete operation, a `tenantId` filter is injected into the `where` clause automatically.

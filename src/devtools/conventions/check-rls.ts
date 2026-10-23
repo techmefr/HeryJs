@@ -1,4 +1,3 @@
-import { existsSync, readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import {
   annotatedModelsIn,
@@ -9,6 +8,10 @@ import {
   rlsEnabledTablesIn,
   tenantModelsIn,
 } from '../../technical/prisma/rls-schema';
+import {
+  PRISMA_SCHEMA_DIR,
+  readPrismaSchema,
+} from '../../technical/prisma/schema-files';
 
 /**
  * The tenant boundary is enforced twice on purpose -- once by the Prisma
@@ -21,15 +24,14 @@ import {
  * the reason it cannot be. Silence is the one thing this check does not allow.
  */
 export function checkRls(repoRoot: string): boolean {
-  const schemaFile = path.join(repoRoot, 'prisma', 'schema.prisma');
   const migrationsDir = path.join(repoRoot, 'prisma', 'migrations');
+  const schemaSource = readPrismaSchema(repoRoot);
 
-  if (!existsSync(schemaFile)) {
-    console.error(`Found no ${path.relative(repoRoot, schemaFile)} to check.`);
+  if (schemaSource === undefined) {
+    console.error(`Found no ${PRISMA_SCHEMA_DIR} to check.`);
     return false;
   }
 
-  const schemaSource = readFileSync(schemaFile, 'utf8');
   const registries = registriesFrom(annotatedModelsIn(schemaSource));
   const governed = registries.tenantScoped;
   const appEnforced = registries.appEnforcedTenant;
@@ -68,7 +70,7 @@ export function checkRls(repoRoot: string): boolean {
 
   if (governed.size === 0) {
     console.error(
-      'Found no /// @hery.tenantScoped model in prisma/schema.prisma. This check reports\nsuccess on an empty scan, so an empty scan has to be the failure instead.',
+      'Found no /// @hery.tenantScoped model in prisma/schema/. This check reports\nsuccess on an empty scan, so an empty scan has to be the failure instead.',
     );
     return false;
   }
@@ -79,7 +81,7 @@ export function checkRls(repoRoot: string): boolean {
 
     if (!isGoverned && !isAppEnforced) {
       problems.push(
-        `${model.name} carries a tenantId but is neither /// @hery.tenantScoped nor /// @hery.appEnforcedTenant <reason> — decide which, in prisma/schema.prisma`,
+        `${model.name} carries a tenantId but is neither /// @hery.tenantScoped nor /// @hery.appEnforcedTenant <reason> — decide which, in prisma/schema/`,
       );
       continue;
     }

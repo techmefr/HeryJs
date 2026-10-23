@@ -1,7 +1,12 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
-import { addModelFields, addPrismaModels, modelNamesIn } from './schema-patch';
+import {
+  addModelFields,
+  addPrismaModels,
+  modelNamesIn,
+  removeModelFields,
+} from './schema-patch';
 
 const SCHEMA = [
   'model User {',
@@ -113,5 +118,73 @@ describe('adding fields to a model a module does not own', () => {
 
   it('refuses being given no field at all', () => {
     expect(() => addModelFields(schema, 'User', [])).toThrow('no field lines');
+  });
+});
+
+describe("writing a module's models into a file of its own", () => {
+  let dir: string;
+
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(tmpdir(), 'hery-schema-folder-'));
+  });
+
+  it('creates the file on the first install', () => {
+    const file = path.join(dir, 'modules', 'probe.prisma');
+
+    expect(addPrismaModels(file, PROBE_MODELS)).toBe(true);
+    expect(readFileSync(file, 'utf8')).toBe(PROBE_MODELS.trimStart());
+  });
+
+  // The module's own file is new, so the guard has to look at the rest of the
+  // schema: a model the project already declares elsewhere would be declared
+  // twice, which Prisma refuses for the whole folder.
+  it('does nothing when another file of the schema already declares one of its models', () => {
+    const file = path.join(dir, 'probe.prisma');
+
+    expect(
+      addPrismaModels(
+        file,
+        PROBE_MODELS,
+        'model ProbeLog {\n  id String @id\n}\n',
+      ),
+    ).toBe(false);
+    expect(existsSync(file)).toBe(false);
+  });
+});
+
+describe('taking back the fields a module added', () => {
+  let schema: string;
+
+  beforeEach(() => {
+    schema = path.join(
+      mkdtempSync(path.join(tmpdir(), 'hery-schema-')),
+      'schema.prisma',
+    );
+    writeFileSync(schema, SCHEMA);
+  });
+
+  it('removes exactly the lines it wrote, however prisma format realigned them', () => {
+    addModelFields(schema, 'User', ['  role String?', '  banned Boolean']);
+    writeFileSync(
+      schema,
+      readFileSync(schema, 'utf8').replace(
+        '  role String?',
+        '  role      String?',
+      ),
+    );
+
+    expect(
+      removeModelFields(schema, 'User', ['  role String?', '  banned Boolean']),
+    ).toBe(true);
+    expect(readFileSync(schema, 'utf8')).toBe(SCHEMA);
+  });
+
+  it('leaves the other models alone, even with a field of the same name', () => {
+    expect(removeModelFields(schema, 'User', ['  title String'])).toBe(false);
+    expect(readFileSync(schema, 'utf8')).toBe(SCHEMA);
+  });
+
+  it('does nothing on a model the file does not declare', () => {
+    expect(removeModelFields(schema, 'Invoice', ['  total Int'])).toBe(false);
   });
 });

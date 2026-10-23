@@ -116,6 +116,6 @@ Each requires its module to be installed, and each re-checks the resource's own 
 
 ## What it also patches
 
-`prisma/schema.prisma` gains the model — `id`, `tenantId`, `ownerId`, your fields, timestamps and a nullable `deletedAt`, plus a `teamId` if any preset is `team`. The model is annotated `/// @hery.tenantScoped` and `/// @hery.audited`, and its fields `/// @hery.history` or `/// @hery.encrypted` when the blueprint asks for it. The kernel reads those annotations at startup, through the `hery` generator of the schema, so tenancy and the audit trail are automatic for the new resource rather than something to remember, and the generator never writes into a kernel file.
+`prisma/schema/` gains the model — `id`, `tenantId`, `ownerId`, your fields, timestamps and a nullable `deletedAt`, plus a `teamId` if any preset is `team`. The model is annotated `/// @hery.tenantScoped` and `/// @hery.audited`, and its fields `/// @hery.history` or `/// @hery.encrypted` when the blueprint asks for it. The kernel reads those annotations at startup, through the `hery` generator of the schema, so tenancy and the audit trail are automatic for the new resource rather than something to remember, and the generator never writes into a kernel file.
 
 The row-level policy behind the first annotation is not left to be remembered either: the `pnpm hery migrate` you run next reads the schema and emits the `ENABLE ROW LEVEL SECURITY` migration for the new table before applying it. See [Multi-tenancy](../guides/tenancy/).

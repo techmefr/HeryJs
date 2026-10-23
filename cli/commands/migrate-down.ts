@@ -131,7 +131,7 @@ export function registerMigrateDownCommand(program: Command): void {
           'execute',
           '--stdin',
           '--schema',
-          path.join('prisma', 'schema.prisma'),
+          path.join('prisma', 'schema'),
         ],
         {
           input: sql,

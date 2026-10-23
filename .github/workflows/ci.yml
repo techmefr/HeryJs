@@ -315,6 +315,9 @@ jobs:
           test ! -e packages/core
           test "$(ls src/devtools | tr '\n' ' ')" = 'test-support.ts testing '
           test -f src/devtools/testing/register-and-login.ts
+          test ! -e prisma/schema.prisma
+          test "$(cd prisma/schema && find . -name '*.prisma' | sort | tr '\n' ' ')" = './_hery/core.prisma ./push.prisma ./two-factor.prisma '
+          grep -q "path: 'prisma/migrations'" prisma.config.ts
           grep -q '"@heryjs/core": "file:' package.json
           cp .env.example .env
           pnpm install
@@ -371,6 +374,7 @@ jobs:
           pnpm hery create:blueprint Note -y
           sed -i 's/view: own/view: all/' blueprints/note.yaml
           pnpm hery generate Note
+          grep -q 'model Note {' prisma/schema/app.prisma
           sed -i "1i import { NoteModule } from '#functional/note/note.module';" src/app.module.ts
           sed -i 's/HeryModule.forRoot(heryConfig, heryModules)/&, NoteModule/' src/app.module.ts
           grep -q 'heryModules), NoteModule\]' src/app.module.ts
@@ -383,6 +387,8 @@ jobs:
         working-directory: ${{ runner.temp }}/scaffold/my-app
         run: |
           pnpm hery install scim sso storage
+          test -f prisma/schema/scim.prisma
+          test -f prisma/schema/sso.prisma
           grep -q "'@heryjs/sso'," hery.config.ts
           grep -q "from '#modules/sso/sso.hery';" src/hery.modules.ts
           pnpm exec prisma generate
@@ -391,6 +397,18 @@ jobs:
           test ! -e src/technical
           pnpm hery migrate --name modules
           pnpm hery check
+
+      # Its models go with it, and so do the fields it hung on User.
+      - name: Uninstall a module
+        working-directory: ${{ runner.temp }}/scaffold/my-app
+        run: |
+          pnpm hery uninstall two-factor
+          test ! -e prisma/schema/two-factor.prisma
+          ! grep -q 'TwoFactorEnrolment' prisma/schema/_hery/core.prisma
+          pnpm exec prisma validate
+          pnpm hery install two-factor
+          test -f prisma/schema/two-factor.prisma
+          pnpm exec prisma validate
 
       # A project generated before the kernel became a dependency: the last
       # commit whose "hery new" still copied src/technical writes it, and
@@ -459,6 +477,11 @@ jobs:
           grep -q 'HeryModule.forRoot(heryConfig, heryModules)' src/app.module.ts
           ! grep -q '#modules/' src/app.module.ts
           grep -q "'@heryjs/impersonation'," hery.config.ts
+          test ! -e prisma/schema.prisma
+          test -f prisma/schema/_hery/core.prisma
+          test -f prisma/schema/two-factor.prisma
+          grep -q "schema: 'prisma/schema'" prisma.config.ts
+          grep -q "path: 'prisma/migrations'" prisma.config.ts
           psql postgresql://heryjs:heryjs@localhost:5432/heryjs -v ON_ERROR_STOP=1 -c 'CREATE DATABASE heryjs_old'
           pnpm install --no-frozen-lockfile
           pnpm hery migrate --name init

@@ -1,8 +1,19 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import * as path from 'node:path';
+import {
+  readPrismaSchema,
+  schemaFileDeclaring,
+} from '#technical/prisma/schema-files';
 import type { ResourceContext } from './resource-context';
 import { prismaModelBlock } from './templates';
 
-export const PRISMA_SCHEMA = 'prisma/schema.prisma';
+export const PRISMA_SCHEMA_FOLDER = 'prisma/schema';
+export const KERNEL_SCHEMA = `${PRISMA_SCHEMA_FOLDER}/_hery/core.prisma`;
+export const APP_SCHEMA = `${PRISMA_SCHEMA_FOLDER}/app.prisma`;
+
+export function moduleSchemaFile(moduleName: string): string {
+  return `${PRISMA_SCHEMA_FOLDER}/${moduleName}.prisma`;
+}
 
 const MODEL_DECLARATION = /^model\s+(\w+)\s*\{/gm;
 
@@ -12,23 +23,71 @@ export function modelNamesIn(source: string): string[] {
 
 /**
  * Appends whole model blocks a module owns outright -- a MailLog, a
- * WebhookEndpoint -- to the end of the schema. Guarded on any of their names
- * already being declared, so a second install is a no-op.
+ * WebhookEndpoint -- to the end of its schema file, creating it on the first
+ * install. Guarded on any of their names already being declared, in that file
+ * or in the rest of the schema when it is given, so a second install is a
+ * no-op.
  */
-export function addPrismaModels(filePath: string, models: string): boolean {
+export function addPrismaModels(
+  filePath: string,
+  models: string,
+  schema?: string,
+): boolean {
   const names = modelNamesIn(models);
 
   if (names.length === 0) {
     throw new Error('addPrismaModels was given no model block');
   }
 
-  const source = readFileSync(filePath, 'utf8');
+  const source = existsSync(filePath) ? readFileSync(filePath, 'utf8') : '';
+  const declared = `${source}\n${schema ?? ''}`;
 
-  if (names.some((name) => source.includes(`model ${name} {`))) {
+  if (names.some((name) => declared.includes(`model ${name} {`))) {
     return false;
   }
 
-  writeFileSync(filePath, `${source.trimEnd()}\n${models}`);
+  mkdirSync(path.dirname(filePath), { recursive: true });
+  writeFileSync(
+    filePath,
+    source === '' ? models.trimStart() : `${source.trimEnd()}\n${models}`,
+  );
+  return true;
+}
+
+/**
+ * Takes back what addModelFields wrote: the lines of the model declaring each
+ * field name. prisma format realigns a block whenever it changes, so a field is
+ * found by its name, the one part of the line that survives being written.
+ */
+export function removeModelFields(
+  filePath: string,
+  modelName: string,
+  fieldLines: string[],
+): boolean {
+  const source = readFileSync(filePath, 'utf8');
+  const start = source.indexOf(`model ${modelName} {`);
+
+  if (start === -1) {
+    return false;
+  }
+
+  const close = source.indexOf('\n}', start);
+  const names = new Set(fieldLines.map((line) => line.trim().split(/\s+/)[0]));
+  const block = source.slice(start, close);
+  const kept = block
+    .split('\n')
+    .filter(
+      (line, index) => index === 0 || !names.has(line.trim().split(/\s+/)[0]),
+    );
+
+  if (kept.length === block.split('\n').length) {
+    return false;
+  }
+
+  writeFileSync(
+    filePath,
+    source.slice(0, start) + kept.join('\n') + source.slice(close),
+  );
   return true;
 }
 
@@ -134,24 +193,53 @@ function withBackRelation(
   return source.slice(0, end) + '\n' + relation + source.slice(end);
 }
 
+/**
+ * Writes a generated model into the project's own schema file, and its
+ * back-relations into whichever file declares User and Team -- the kernel's,
+ * since Prisma wants both ends of a relation declared. Returns the files it
+ * wrote, none when the model is already declared.
+ */
 export function patchPrismaSchema(
-  filePath: string,
+  root: string,
   ctx: ResourceContext,
-): boolean {
-  const source = readFileSync(filePath, 'utf8');
-
-  if (source.includes(`model ${ctx.pascalName} {`)) {
-    return false;
+): string[] {
+  if ((readPrismaSchema(root) ?? '').includes(`model ${ctx.pascalName} {`)) {
+    return [];
   }
-
-  let patched = withBackRelation(source, 'User', ctx, filePath);
 
   // A team-owned resource points at Team, and Prisma requires the other end of
   // that relation to be declared too.
-  if (Object.values(ctx.permissions).includes('team')) {
-    patched = withBackRelation(patched, 'Team', ctx, filePath);
+  const owners = Object.values(ctx.permissions).includes('team')
+    ? ['User', 'Team']
+    : ['User'];
+  const touched = new Set<string>();
+
+  for (const owner of owners) {
+    const file = schemaFileDeclaring(root, owner);
+
+    if (file === undefined) {
+      throw new Error(
+        `Could not find "model ${owner}" in ${PRISMA_SCHEMA_FOLDER}`,
+      );
+    }
+
+    writeFileSync(
+      file,
+      withBackRelation(readFileSync(file, 'utf8'), owner, ctx, file),
+    );
+    touched.add(file);
   }
 
-  writeFileSync(filePath, `${patched}\n${prismaModelBlock(ctx)}`);
-  return true;
+  const appSchema = path.join(root, APP_SCHEMA);
+  const current = existsSync(appSchema) ? readFileSync(appSchema, 'utf8') : '';
+
+  writeFileSync(
+    appSchema,
+    current === ''
+      ? prismaModelBlock(ctx).trimStart()
+      : `${current.trimEnd()}\n${prismaModelBlock(ctx)}`,
+  );
+  touched.add(appSchema);
+
+  return [...touched];
 }

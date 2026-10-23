@@ -74,7 +74,7 @@ Once the signature passes, a body that fails to parse as JSON gets Nest's ordina
 
 ## Installing
 
-The module adds `WebhookEndpoint` and `WebhookEvent` to `prisma/schema.prisma`, so a fresh install needs a migration:
+The module adds `WebhookEndpoint` and `WebhookEvent` to `prisma/schema/`, so a fresh install needs a migration:
 
 ```bash
 pnpm hery migrate --name add_webhooks

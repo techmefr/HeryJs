@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import {
   annotatedModelsIn,
@@ -9,11 +8,9 @@ import {
   validatedRegistries,
 } from './model-annotations';
 import type { AnnotatedModel, ModelRegistries } from './model-annotations';
+import { readPrismaSchema } from './schema-files';
 
-const SCHEMA = readFileSync(
-  path.join(__dirname, '..', '..', '..', 'prisma', 'schema.prisma'),
-  'utf8',
-);
+const SCHEMA = readPrismaSchema(path.join(__dirname, '..', '..', '..')) ?? '';
 
 /**
  * The registries exactly as the kernel hard-coded them before they became

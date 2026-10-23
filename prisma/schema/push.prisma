@@ -1,0 +1,19 @@
+// One row per device, not per user: a person has a laptop, a phone and a
+// tablet. lastSeenAt is what separates a token that went quiet from one that
+// died -- a provider only reports a dead token in answer to a send, so a
+// device nobody sends to needs a sweep of its own.
+/// @hery.tenantScoped
+model PushToken {
+  id         String   @id @default(cuid())
+  tenantId   String
+  userId     String
+  token      String   @unique
+  platform   String
+  lastSeenAt DateTime
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId])
+  @@index([lastSeenAt])
+}

@@ -15,7 +15,7 @@ The `hery` CLI is the only thing in this project that reads a blueprint. It is a
 | `migrate:down`               | Prints the SQL that reverts the last migration.                                         |
 | `migrate:fresh`              | Drops everything and replays the history. Refuses in production.                        |
 | `db:seed`                    | Runs `prisma/seed.ts`; `--fresh` resets first.                                          |
-| `db:diff`                    | Prints the SQL that would bring the database to `schema.prisma`.                        |
+| `db:diff`                    | Prints the SQL that would bring the database to `prisma/schema/`.                       |
 | `db:branch <action> [name]`  | Creates, drops or lists throwaway copies of the database.                               |
 | `db:backup`                  | Dumps the database with `pg_dump`, keeping the newest N dumps.                          |
 | `db:backups`                 | Lists the dumps of this database.                                                       |
@@ -132,7 +132,7 @@ pnpm hery generate Task
 pnpm hery generate examples/blog-post.yaml
 ```
 
-It also patches `prisma/schema.prisma` (the new model plus its inverse relation on `User`), `prisma.client.ts` (adding the model to the tenant-scoped set) and `audit-log.ts` (adding it to the audited set), then prints the two manual steps it deliberately does not take for you: importing the module into `src/app.module.ts`, and running the migration.
+It also patches `prisma/schema/` (the new model in `app.prisma`, its inverse relation on `User` in `_hery/core.prisma`), `prisma.client.ts` (adding the model to the tenant-scoped set) and `audit-log.ts` (adding it to the audited set), then prints the two manual steps it deliberately does not take for you: importing the module into `src/app.module.ts`, and running the migration.
 
 - `--force` overwrites an existing resource directory. Without it, `generate` refuses rather than clobbering code you own.
 - `--graphql`, `--mcp`, `--live`, `--stream` each add one more file, wiring the resource into the corresponding module. They require that module to be installed; the flag does not check.
@@ -227,7 +227,7 @@ There is deliberately no `module:add`: `hery install` already does that.
 pnpm hery migrate:status            # applied / pending / failed / missing, per migration
 pnpm hery migrate:fresh --seed      # drop everything, replay, seed
 pnpm hery db:seed --fresh           # the same reset, seeding always
-pnpm hery db:diff                   # SQL from the live database to schema.prisma
+pnpm hery db:diff                   # SQL from the live database to prisma/schema/
 pnpm hery db:branch create risky    # a copy of the database to try a migration on
 pnpm hery db:backup                 # a pg_dump in backups/, newest 7 kept
 pnpm hery db:restore latest         # refuses a database that already has data
@@ -367,7 +367,7 @@ Adds `heryjs.local` (or whatever `HERYJS_DOMAIN` is set to) to your system hosts
 Starts a read-only [MCP](https://modelcontextprotocol.io) server over stdio, for editors and agents that want to introspect what exists in the project. Two tools:
 
 - `list_resources` — the resources actually generated under `src/functional/`.
-- `describe_resource(name)` — that resource's routes (HTTP method, path, the capability guarding it) and its fields, read straight from the real `*.controller.ts` and `prisma/schema.prisma`.
+- `describe_resource(name)` — that resource's routes (HTTP method, path, the capability guarding it) and its fields, read straight from the real `*.controller.ts` and `prisma/schema/`.
 
 It never reads a blueprint file. A blueprint is a one-time input to `generate`, not a live source of truth — the generated code is.
 
