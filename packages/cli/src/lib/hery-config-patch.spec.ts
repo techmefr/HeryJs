@@ -144,4 +144,26 @@ describe('wireModule', () => {
   it('declares nothing for a module with no contract', () => {
     expect(wireModule(project(), sso)).toEqual([]);
   });
+
+  it('registers the contract of a module run from its installed package', () => {
+    const root = project();
+    const runtime = path.join(
+      root,
+      'node_modules',
+      '@heryjs',
+      'sso',
+      'src',
+      'runtime',
+    );
+    mkdirSync(runtime, { recursive: true });
+    writeFileSync(path.join(runtime, 'sso.hery.ts'), '');
+
+    expect(wireModule(root, { ...sso, contractDir: runtime })).toEqual([
+      'hery.config.ts',
+      path.join('src', 'hery.modules.ts'),
+    ]);
+    expect(
+      readFileSync(path.join(root, 'src', 'hery.modules.ts'), 'utf8'),
+    ).toContain("import ssoHeryModule from '#modules/sso/sso.hery';");
+  });
 });

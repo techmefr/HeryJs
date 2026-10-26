@@ -10,6 +10,7 @@ import {
   unwireDeclaredModule,
 } from '../lib/hery-config-patch';
 import { recordModelFields } from '../lib/module-patches';
+import { isInstalledPackage, moduleCopyState } from '../lib/module-packages';
 import { moduleSchemaFile, removeModelFields } from '../lib/schema-patch';
 import { schemaFileDeclaring } from '@heryjs/core/technical/prisma/schema-files';
 
@@ -35,6 +36,14 @@ function packageName(spec: string): string {
  * applied: dropping a table is a migration the developer writes, not a side
  * effect of this command.
  */
+function projectDependsOn(name: string): boolean {
+  const manifest = JSON.parse(
+    readFileSync(path.resolve(process.cwd(), 'package.json'), 'utf8'),
+  ) as { dependencies?: Record<string, string> };
+
+  return manifest.dependencies?.[name] !== undefined;
+}
+
 export function registerUninstallCommand(program: Command): void {
   program
     .command('uninstall <module>')
@@ -53,6 +62,27 @@ export function registerUninstallCommand(program: Command): void {
         process.exitCode = 1;
         return;
       }
+
+      const copy = moduleCopyState(
+        process.cwd(),
+        module.dest,
+        path.join(module.packageDir, 'src', 'runtime'),
+      );
+
+      if (copy.copied && copy.modified.length > 0) {
+        console.log(
+          pc.red(
+            `✖ ${module.dest} is not the copy hery install made of ${module.name}, nothing was uninstalled. Revert or move these files first:`,
+          ),
+        );
+        copy.modified.forEach((file) => console.log(`  ${file}`));
+        process.exitCode = 1;
+        return;
+      }
+
+      const ownPackage = projectDependsOn(`@heryjs/${module.name}`)
+        ? `@heryjs/${module.name}`
+        : undefined;
 
       console.log(pc.cyan(`uninstalling ${module.name}...`));
 
@@ -88,6 +118,13 @@ export function registerUninstallCommand(program: Command): void {
         );
       }
 
+      if (copy.copied) {
+        rmSync(path.resolve(process.cwd(), module.dest), { recursive: true });
+        console.log(
+          pc.green(`✔ removed ${module.dest}, unchanged since hery install`),
+        );
+      }
+
       const schemaFile = moduleSchemaFile(module.name);
 
       if (existsSync(schemaFile)) {
@@ -110,10 +147,15 @@ export function registerUninstallCommand(program: Command): void {
         }
       }
 
+      if (ownPackage && isInstalledPackage(module.packageDir)) {
+        execSync(`pnpm remove -w ${ownPackage}`, { stdio: 'inherit' });
+        console.log(pc.green(`✔ removed ${ownPackage}`));
+      }
+
       console.log('');
       console.log(pc.cyan('Left for you to do by hand:'));
       console.log(
-        `  1. Remove the files hery install copied into ${module.dest} and review the kernel files it patched for this module -- they are yours now, revert whatever no longer applies`,
+        `  1. Review the kernel files hery install patched for ${module.name} -- they are yours now, revert whatever no longer applies`,
       );
       console.log(
         `  2. Run "pnpm hery migrate --name remove_${module.name.replaceAll('-', '_')}" to write the migration that drops the tables and columns taken out of the schema -- the migrations already applied stay as they are`,
