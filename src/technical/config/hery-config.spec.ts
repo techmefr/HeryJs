@@ -1,3 +1,6 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import * as path from 'node:path';
 import { assertHeryConfigChoices, loadHeryConfig } from './hery-config';
 import type { HeryConfig } from './hery-config.types';
 
@@ -7,6 +10,38 @@ describe('loadHeryConfig', () => {
 
     expect(config.search?.default).toBe('prisma');
     expect(config.search?.engines.prisma).toEqual({ driver: 'prisma' });
+  });
+
+  describe('in production', () => {
+    let root: string;
+    const nodeEnv = process.env.NODE_ENV;
+
+    beforeEach(() => {
+      root = mkdtempSync(path.join(tmpdir(), 'hery-config-'));
+      mkdirSync(path.join(root, 'dist'));
+      jest.spyOn(process, 'cwd').mockReturnValue(root);
+      process.env.NODE_ENV = 'production';
+    });
+
+    afterEach(() => {
+      process.env.NODE_ENV = nodeEnv;
+      jest.restoreAllMocks();
+      rmSync(root, { recursive: true, force: true });
+    });
+
+    it('reads the config the build compiled, never the TypeScript source', () => {
+      writeFileSync(
+        path.join(root, 'dist', 'hery.config.js'),
+        "exports.default = { modules: ['@heryjs/compiled'] };\n",
+      );
+      writeFileSync(path.join(root, 'hery.config.ts'), 'not TypeScript at all');
+
+      expect(loadHeryConfig().modules).toEqual(['@heryjs/compiled']);
+    });
+
+    it('says the build did not compile it when it is missing', () => {
+      expect(() => loadHeryConfig()).toThrow(/dist\/hery\.config\.js/);
+    });
   });
 });
 

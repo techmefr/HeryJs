@@ -1,7 +1,9 @@
-import { existsSync } from 'node:fs';
-import * as path from 'node:path';
 import type { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
 import type { CorsConfig } from './cors.types';
+import {
+  projectConfigPath,
+  requireProjectConfig,
+} from '#technical/config/project-config-file';
 
 const CONFIG_FILENAME = 'cors.config.ts';
 const ANY_ORIGIN = '*';
@@ -23,42 +25,15 @@ export const DEFAULT_CORS_ALLOWED_HEADERS = ['Authorization', 'Content-Type'];
 
 const DEFAULT_MAX_AGE_SECONDS = 24 * 60 * 60;
 
-let tsNodeRegistered = false;
-
-function ensureTsNodeRegistered(): void {
-  if (tsNodeRegistered) {
-    return;
-  }
-
-  // Registering a require hook is a CommonJS-only operation, the same reason
-  // hery-config.ts does this: the file lives at the project root, outside src/,
-  // so nothing else has transpiled it by the time it is asked for.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  require('ts-node/register/transpile-only');
-  tsNodeRegistered = true;
-}
-
 /**
  * Absent file means no cross-origin access, which is the safe reading of "no
  * declaration" -- and the caller says so out loud rather than starting with CORS
- * quietly off.
+ * quietly off. Production reads the dist/cors.config.js the build compiled.
  */
 export function loadCorsConfig(): CorsConfig | null {
-  const configPath = path.resolve(process.cwd(), CONFIG_FILENAME);
-
-  if (!existsSync(configPath)) {
-    return null;
-  }
-
-  ensureTsNodeRegistered();
-  delete require.cache[configPath];
-
-  // The path is only known at runtime (process.cwd()), so this cannot be a
-  // static import.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const loaded = require(configPath) as { default?: CorsConfig } & CorsConfig;
-
-  return loaded.default ?? loaded;
+  return (
+    requireProjectConfig<CorsConfig>(projectConfigPath('cors.config')) ?? null
+  );
 }
 
 /**

@@ -1,3 +1,6 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import * as path from 'node:path';
 import {
   DEFAULT_CORS_ALLOWED_HEADERS,
   loadCorsConfig,
@@ -75,5 +78,41 @@ describe('cors configuration', () => {
     expect(resolveCorsOptions(withOriginsFromEnv(null, []), 'production')).toBe(
       false,
     );
+  });
+
+  describe('in production', () => {
+    let root: string;
+    const nodeEnv = process.env.NODE_ENV;
+
+    beforeEach(() => {
+      root = mkdtempSync(path.join(tmpdir(), 'cors-config-'));
+      jest.spyOn(process, 'cwd').mockReturnValue(root);
+      process.env.NODE_ENV = 'production';
+    });
+
+    afterEach(() => {
+      process.env.NODE_ENV = nodeEnv;
+      jest.restoreAllMocks();
+      rmSync(root, { recursive: true, force: true });
+    });
+
+    it('reads the file the build compiled, never the TypeScript source', () => {
+      mkdirSync(path.join(root, 'dist'));
+      writeFileSync(
+        path.join(root, 'dist', 'cors.config.js'),
+        "exports.default = { origins: ['https://compiled.example.com'] };\n",
+      );
+      writeFileSync(path.join(root, 'cors.config.ts'), 'not TypeScript at all');
+
+      expect(loadCorsConfig()?.origins).toEqual([
+        'https://compiled.example.com',
+      ]);
+    });
+
+    it('reads no declaration when the build compiled none', () => {
+      writeFileSync(path.join(root, 'cors.config.ts'), 'not TypeScript at all');
+
+      expect(loadCorsConfig()).toBeNull();
+    });
   });
 });

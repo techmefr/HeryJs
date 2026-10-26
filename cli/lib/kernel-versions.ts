@@ -785,11 +785,13 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
       'c49e66a9556d80d44c4969156be239224fdb11ea031bd1a1621fde6b4896fb5c',
     ],
     'src/technical/config/hery-config.spec.ts': [
+      '400050d9f185f98df6b34945e57d429ee026ef370eb149d62b950d9735a115ed',
       '886db61856feeb83396fc2771391abeacfd421d3027834d812c90e8a12dd5fd4',
       'd7bdd7dc0deedff37fe06f25b41a9cb7ba95190519b92a14d2d8a37e54e51088',
     ],
     'src/technical/config/hery-config.ts': [
       '52bece50711b9d204acda47b75ce4b686cf5a3fde1105bdd556e486456f23c35',
+      '5fd9b2f90576656492765eb4a9ccbac5c54f206b9f39160f95dc9038b7909139',
       '70d986f9183bfa33cdc27e38337dbf8e05afe8383352ad7dcc315fd8612901d8',
       '822a83b690e09c5e5eabb115240e6cf679546abe335bfc823e7a7456dc3fba11',
       'ac3bfd652ac294bafed25b1582aa20d39f7f998ed84c71ff40e75619193612fa',
@@ -830,6 +832,9 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
       'bd0a07a88db04bd501a2bf23f3851fa80f253f1dd1d48143c92e308918fa322a',
       'd23e465119b968a57b66cdd94cbe8cc8bc26395acbb880d39f5d3de54a2b119f',
       'e40b32c21f733e39cdbf61df53d5986afb0e8c32eded8fd7df274d6eb40aa6c7',
+    ],
+    'src/technical/config/project-config-file.ts': [
+      '2686553f274c26cd217a896ff714ca630b2f93427ed9038f53a4189f96d51f3f',
     ],
     'src/technical/describe/describe.controller.ts': [
       '8752249a8d4fdc9c800516c86e0d3d433c61a3e6b1ad445ead29b63fee118917',
@@ -1294,8 +1299,10 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
     'src/technical/http/cors.spec.ts': [
       '1a9de9ec12154ae0627ab3d2fdd14e7bb7dde6b7492611f2a102812362af43ab',
       '320c147b24f4fdd1cdb2909e04c9c6cb2f8ca63011cfa1c1093c2fbeab996eec',
+      'd9c94b7997526b5559c9963a636e2d3748e9362c9a70f87e0e446a96f0bb2339',
     ],
     'src/technical/http/cors.ts': [
+      '8780d4d22de7e7be9e86a784b9d532b43f60ba671b8e093e1af4ba48270c0ba1',
       'b60ec2e33fc2cfd0bcbc4cef6947ea9ed449788fe1897b6966f8f303072b33aa',
       'df845ae1549250876b61f2a8bff0cc632a16022f28dfbc46885bf5cd2dec3233',
     ],
@@ -1785,9 +1792,11 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
     ],
     'src/technical/logging/stdout-log.driver.spec.ts': [
       '026d60aa61adee7a0a12011c30bc4cbf42cab95ad7359035cf28a061b73241ea',
+      'be6821d76e90e7df6416f4142a61453874ada204250cc86c076178ad9acddfa8',
     ],
     'src/technical/logging/stdout-log.driver.ts': [
       '97164002f267c6b7b3ac86846b02f3573a8bdf0695804fbf109e1ed96c2ecfbf',
+      'cedbb1d5082d146f8b5f073aa67dcd01ff39168cf049c54acb58d9f747e7558d',
     ],
     'src/technical/logging/tenant-log-mixin.ts': [
       'c74baa6351b645a2e46c964e76f6a2e3dd54697de8fb08ae16106bab6a0a9549',

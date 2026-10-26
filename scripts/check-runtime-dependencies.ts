@@ -52,6 +52,20 @@ function workspaceDependencies(file: string): Set<string> {
 }
 
 /**
+ * What the kernel loads only outside production, as its optional peers: a
+ * project installs them as dev dependencies, which its image prunes.
+ */
+function optionalKernelPeers(): string[] {
+  const kernel = JSON.parse(
+    readFileSync(path.join(root, 'packages', 'core', 'package.json'), 'utf8'),
+  ) as { peerDependenciesMeta?: Record<string, { optional?: boolean }> };
+
+  return Object.entries(kernel.peerDependenciesMeta ?? {})
+    .filter(([, meta]) => meta.optional === true)
+    .map(([name]) => name);
+}
+
+/**
  * pnpm only links what a manifest declares, so a package that resolves here
  * because something else pulls it in is missing from a project's build: the
  * framework itself never noticed `express` was undeclared until a scaffolded
@@ -64,8 +78,16 @@ function workspaceDependencies(file: string): Set<string> {
 export function checkRuntimeDependencies(): boolean {
   const manifest = JSON.parse(
     readFileSync(path.join(root, 'package.json'), 'utf8'),
-  ) as { dependencies?: Record<string, string> };
-  const declared = new Set(Object.keys(manifest.dependencies ?? {}));
+  ) as {
+    dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+  };
+  const declared = new Set([
+    ...Object.keys(manifest.dependencies ?? {}),
+    ...optionalKernelPeers().filter(
+      (name) => manifest.devDependencies?.[name] !== undefined,
+    ),
+  ]);
 
   const scopes: Array<{ files: string[]; allowed: Set<string> }> = [
     { files: sourceFiles(path.join(root, 'src')), allowed: declared },
