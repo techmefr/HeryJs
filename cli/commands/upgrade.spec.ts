@@ -12,7 +12,7 @@ describe('hery upgrade', () => {
     jest.restoreAllMocks();
   });
 
-  it('runs kernel:migrate then check', () => {
+  it('runs kernel:migrate, sync, then check', () => {
     const calls: string[] = [];
 
     const status = runUpgrade((args) => {
@@ -21,7 +21,22 @@ describe('hery upgrade', () => {
     });
 
     expect(status).toBe(0);
-    expect(calls).toEqual(['kernel:migrate', 'check']);
+    expect(calls).toEqual(['kernel:migrate', 'sync', 'check']);
+  });
+
+  it("syncs the installed kernel's schema before checking the project", () => {
+    const calls: string[] = [];
+
+    runUpgrade((args) => {
+      calls.push(args.join(' '));
+      return 0;
+    });
+
+    expect(calls).toContain('sync');
+    expect(calls.indexOf('sync')).toBeGreaterThan(
+      calls.indexOf('kernel:migrate'),
+    );
+    expect(calls.indexOf('sync')).toBeLessThan(calls.indexOf('check'));
   });
 
   it('stops at the first failing step and returns its status', () => {

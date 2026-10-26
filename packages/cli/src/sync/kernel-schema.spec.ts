@@ -86,6 +86,35 @@ describe('mergeKernelSchema', () => {
   });
 });
 
+describe('mergeKernelSchema with annotated project fields', () => {
+  const annotated = [
+    'model User {',
+    '  id    String @id',
+    '  email String',
+    '  sessions Session[]',
+    '  /// @hery.encrypted',
+    '  taxNumber String?',
+    '',
+    '  @@index([taxNumber])',
+    '}',
+    '',
+  ].join('\n');
+  const merged = mergeKernelSchema(PACKAGED, annotated);
+
+  it('keeps the annotation above a field the project hangs on a kernel model', () => {
+    expect(merged).toContain('  /// @hery.encrypted\n  taxNumber String?');
+  });
+
+  it('keeps a model attribute the project adds to a kernel model', () => {
+    expect(merged).toContain('  @@index([taxNumber])');
+    expect(merged).toContain('  @@index([email])');
+  });
+
+  it('is stable once synced', () => {
+    expect(mergeKernelSchema(PACKAGED, merged)).toBe(merged);
+  });
+});
+
 describe('schemasDiffer', () => {
   it('ignores alignment and line order', () => {
     expect(

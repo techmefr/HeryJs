@@ -340,20 +340,21 @@ function rewriteWorkflows(destRoot: string): void {
     return;
   }
 
-  writeFileSync(
-    file,
-    withProjectConventionStep(
-      readFileSync(file, 'utf8')
-        .replace(
-          'pnpm install --frozen-lockfile',
-          'pnpm install --no-frozen-lockfile',
-        )
-        .replace(
-          'pnpm exec prisma migrate deploy',
-          'pnpm hery migrate --name ci',
-        )
-        .replace(DOC_EXAMPLES_STEP, ''),
-    ),
+  writeFileSync(file, projectWorkflow(readFileSync(file, 'utf8')));
+}
+
+export function projectWorkflow(source: string): string {
+  return withProjectConventionStep(
+    source
+      .replace(
+        'pnpm install --frozen-lockfile',
+        'pnpm install --no-frozen-lockfile',
+      )
+      .replace(
+        'pnpm exec prisma migrate deploy',
+        'pnpm hery sync --check && pnpm hery migrate --name ci',
+      )
+      .replace(DOC_EXAMPLES_STEP, ''),
   );
 }
 
