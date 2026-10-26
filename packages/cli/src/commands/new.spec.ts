@@ -296,7 +296,7 @@ describe('the modules a fresh project keeps', () => {
 });
 
 describe('the production build of a generated project', () => {
-  const REPO_ROOT = path.join(__dirname, '..', '..');
+  const REPO_ROOT = path.join(__dirname, '..', '..', '..', '..');
   const BUILD_ONLY = ['ts-node', 'typescript', 'pino-pretty'];
 
   function readJson<T>(...segments: string[]): T {
