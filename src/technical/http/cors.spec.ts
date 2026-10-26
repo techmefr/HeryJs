@@ -109,9 +109,7 @@ describe('cors configuration', () => {
       ]);
     });
 
-    it('reads no declaration when the build compiled none', () => {
-      writeFileSync(path.join(root, 'cors.config.ts'), 'not TypeScript at all');
-
+    it('reads no declaration when there is none', () => {
       expect(loadCorsConfig()).toBeNull();
     });
   });

@@ -16,14 +16,16 @@ function ensureTsNodeRegistered(): void {
 /**
  * Where a config file of the project root is read from: the TypeScript source
  * while developing, transpiled on the fly, and in production the JavaScript
- * the build compiled next to the application, so the image needs neither
- * ts-node nor typescript.
+ * the build compiled next to the application when there is one, so the image
+ * needs neither ts-node nor typescript.
  */
 export function projectConfigPath(name: string): string {
   const root = process.cwd();
 
-  if (process.env.NODE_ENV === 'production') {
-    return path.resolve(root, 'dist', `${name}.js`);
+  const compiled = path.resolve(root, 'dist', `${name}.js`);
+
+  if (process.env.NODE_ENV === 'production' && existsSync(compiled)) {
+    return compiled;
   }
 
   return path.resolve(root, `${name}.ts`);
