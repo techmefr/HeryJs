@@ -1,7 +1,7 @@
 import { existsSync, readdirSync } from 'node:fs';
 import * as path from 'node:path';
 import { checkTenantIsolation as checkModules } from '@heryjs/core/conventions';
-import { loadOfficialModules } from '../cli/lib/module-discovery';
+import { loadOfficialModules } from '../packages/cli/src/lib/module-discovery';
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 

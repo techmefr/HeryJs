@@ -1,6 +1,8 @@
 {
   "extends": "./tsconfig.build.json",
   "compilerOptions": {
+    "customConditions": ["heryjs-source"],
+    "rootDir": "../..",
     "noEmit": true,
     "types": ["jest", "node"]
   },

@@ -37,9 +37,9 @@ export function checkSubjectConstruction(
     }
   }
 
-  const scanned = ['src', 'cli'].flatMap((directory) =>
-    sourceFiles(path.join(root, directory)),
-  );
+  const scanned = ['src', 'cli', path.join('packages', 'cli', 'src')]
+    .filter((directory) => existsSync(path.join(root, directory)))
+    .flatMap((directory) => sourceFiles(path.join(root, directory)));
 
   const violations = scanned.filter((filePath) => {
     const relativePath = path

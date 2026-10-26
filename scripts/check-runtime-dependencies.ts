@@ -1,9 +1,12 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import * as path from 'node:path';
 import pc from 'picocolors';
-import { KERNEL_PACKAGE } from '../cli/lib/kernel-public-api';
-import { loadOfficialModules } from '../cli/lib/module-discovery';
-import { bareName, runtimeImports } from '../cli/lib/runtime-imports';
+import { KERNEL_PACKAGE } from '../packages/cli/src/lib/kernel-public-api';
+import { loadOfficialModules } from '../packages/cli/src/lib/module-discovery';
+import {
+  bareName,
+  runtimeImports,
+} from '../packages/cli/src/lib/runtime-imports';
 
 const root = path.resolve(__dirname, '..');
 

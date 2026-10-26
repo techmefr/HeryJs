@@ -4,7 +4,7 @@
     "noEmit": true,
     "incremental": false,
     "paths": {
-      "heryjs": ["./cli/module-contract.ts"],
+      "heryjs": ["./packages/cli/src/module-contract.ts"],
       "@heryjs/core/*": ["./src/technical/public/*"],
       "#kernel/*": ["./src/technical/*"]
     }

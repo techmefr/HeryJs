@@ -11,9 +11,9 @@
 import { existsSync, readdirSync, writeFileSync } from 'node:fs';
 import * as path from 'node:path';
 import { format, resolveConfig } from 'prettier';
-import { loadBlueprint } from '../cli/lib/blueprint';
-import { buildResourceContext } from '../cli/lib/resource-context';
-import type { ResourceContext } from '../cli/lib/resource-context';
+import { loadBlueprint } from '../packages/cli/src/lib/blueprint';
+import { buildResourceContext } from '../packages/cli/src/lib/resource-context';
+import type { ResourceContext } from '../packages/cli/src/lib/resource-context';
 import {
   changeFeedFile,
   controllerFile,
@@ -27,7 +27,7 @@ import {
   serviceFile,
   specFile,
   viewFile,
-} from '../cli/lib/templates';
+} from '../packages/cli/src/lib/templates';
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const EXAMPLES_DIR = path.join(REPO_ROOT, 'examples');

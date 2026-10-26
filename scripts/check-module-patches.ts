@@ -1,11 +1,14 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import * as path from 'node:path';
 import pc from 'picocolors';
-import { loadOfficialModules } from '../cli/lib/module-discovery';
-import { missingMarks, recordPatches } from '../cli/lib/module-patches';
-import type { PatchRecord } from '../cli/lib/module-patches';
-import type { LoadedModule } from '../cli/lib/module-definition';
-import { PRISMA_SCHEMA_FOLDER } from '../cli/lib/schema-patch';
+import { loadOfficialModules } from '../packages/cli/src/lib/module-discovery';
+import {
+  missingMarks,
+  recordPatches,
+} from '../packages/cli/src/lib/module-patches';
+import type { PatchRecord } from '../packages/cli/src/lib/module-patches';
+import type { LoadedModule } from '../packages/cli/src/lib/module-definition';
+import { PRISMA_SCHEMA_FOLDER } from '../packages/cli/src/lib/schema-patch';
 import { readPrismaSchema } from '#technical/prisma/schema-files';
 
 const REPO_ROOT = path.resolve(__dirname, '..');

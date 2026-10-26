@@ -19,7 +19,7 @@ const ALLOWED = new Map([
 
 export function checkNoFixedSleeps(): boolean {
   return checkSpecs(REPO_ROOT, {
-    roots: ['src', 'cli', 'packages', 'examples', 'test'],
+    roots: ['src', 'packages', 'examples', 'test'],
     allowed: ALLOWED,
     allowlistFile: 'scripts/check-no-fixed-sleeps.ts',
   });

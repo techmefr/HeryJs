@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import * as path from 'node:path';
-import { rewriteKernelSpecifiers } from '../cli/lib/runtime-copy';
-import { loadOfficialModules } from '../cli/lib/module-discovery';
+import { rewriteKernelSpecifiers } from '../packages/cli/src/lib/runtime-copy';
+import { loadOfficialModules } from '../packages/cli/src/lib/module-discovery';
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 

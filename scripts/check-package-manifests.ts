@@ -14,9 +14,12 @@ import {
   KERNEL_SOURCE_CONDITION,
   isTestSupport,
   kernelEntryFile,
-} from '../cli/lib/kernel-public-api';
-import { loadOfficialModules } from '../cli/lib/module-discovery';
-import { runtimeImports } from '../cli/lib/runtime-imports';
+} from '../packages/cli/src/lib/kernel-public-api';
+import { loadOfficialModules } from '../packages/cli/src/lib/module-discovery';
+import {
+  packageNameOf,
+  runtimeImports,
+} from '../packages/cli/src/lib/runtime-imports';
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const WORKSPACE_RANGE = /^workspace:/;
@@ -78,6 +81,48 @@ export function requiredPeers(packageDir: string): string[] {
   );
 
   return [...names].sort();
+}
+
+/**
+ * The packages a file imports, read from its syntax tree rather than its text:
+ * the CLI's templates hold the imports of the code it generates, which are the
+ * generated project's dependencies, not its own.
+ */
+function parsedImports(file: string): string[] {
+  const names: string[] = [];
+  const visit = (node: ts.Node): void => {
+    const specifier =
+      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
+      node.moduleSpecifier !== undefined &&
+      ts.isStringLiteral(node.moduleSpecifier)
+        ? node.moduleSpecifier.text
+        : ts.isCallExpression(node) &&
+            (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
+              (ts.isIdentifier(node.expression) &&
+                node.expression.text === 'require')) &&
+            node.arguments[0] !== undefined &&
+            ts.isStringLiteral(node.arguments[0])
+          ? node.arguments[0].text
+          : undefined;
+    const name = specifier === undefined ? undefined : packageNameOf(specifier);
+
+    if (name !== undefined) {
+      names.push(name);
+    }
+
+    ts.forEachChild(node, visit);
+  };
+
+  visit(
+    ts.createSourceFile(
+      file,
+      readFileSync(file, 'utf8'),
+      ts.ScriptTarget.Latest,
+      true,
+    ),
+  );
+
+  return names;
 }
 
 function exportsProblems(name: string, manifest: PackageManifest): string[] {
@@ -278,24 +323,38 @@ function cliPackageProblems(): string[] {
     problems.push(`${name} is not private, and nothing is published yet`);
   }
 
-  if (JSON.stringify(manifest.files) !== JSON.stringify(['dist'])) {
+  if (JSON.stringify(manifest.files) !== JSON.stringify(['bin', 'dist'])) {
     problems.push(
-      `${name} publishes ${JSON.stringify(manifest.files)}, not dist alone`,
+      `${name} publishes ${JSON.stringify(manifest.files)}, not bin and dist alone`,
     );
   }
 
-  const required = requiredPeers(packageDir);
-  const declared = Object.keys(manifest.peerDependencies ?? {}).sort();
+  const required = [
+    ...new Set(
+      [
+        ...shippedSources(path.join(packageDir, 'src')),
+        ...readdirSync(path.join(packageDir, 'bin')).map((file) =>
+          path.join(packageDir, 'bin', file),
+        ),
+      ].flatMap(parsedImports),
+    ),
+  ]
+    .filter((dependency) => dependency !== CLI_PACKAGE)
+    .sort();
+  const declared = Object.keys({
+    ...manifest.dependencies,
+    ...manifest.peerDependencies,
+  }).sort();
 
   if (JSON.stringify(required) !== JSON.stringify(declared)) {
     problems.push(
-      `${name} declares the peers ${JSON.stringify(declared)}, but its sources import ${JSON.stringify(required)}`,
+      `${name} declares ${JSON.stringify(declared)} as dependencies and peers, but its sources import ${JSON.stringify(required)}`,
     );
   }
 
-  if (existsSync(path.join(REPO_ROOT, 'cli', 'lib', 'lint'))) {
+  if (existsSync(path.join(REPO_ROOT, 'cli'))) {
     problems.push(
-      `cli/lib/lint is back: the hery lint rules live in ${CLI_PACKAGE}, which projects install instead of copying`,
+      `cli/ is back: the CLI lives in ${CLI_PACKAGE}, which projects install instead of copying`,
     );
   }
 

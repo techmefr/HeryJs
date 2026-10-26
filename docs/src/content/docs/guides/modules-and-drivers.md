@@ -261,8 +261,8 @@ driver, never reads config, and never talks to a vendor SDK — that is the
 registry's job, and keeping it out is what lets the same `WelcomeMail` work
 unchanged when the transport changes.
 
-Commands register in `cli/hery.ts` by hand; there is no auto-discovery. Put
-the file in `cli/commands/`, naming it after the command with `:` replaced by
+Commands register in `packages/cli/src/hery.ts` by hand; there is no auto-discovery. Put
+the file in `packages/cli/src/commands/`, naming it after the command with `:` replaced by
 `-`, and export the pure builder function separately from the
 `register*Command` wrapper so tests can call it without going through
 commander.
