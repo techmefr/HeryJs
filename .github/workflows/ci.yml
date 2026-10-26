@@ -732,7 +732,9 @@ jobs:
             fs.writeFileSync("package.json", `${JSON.stringify(manifest, null, 2)}\n`);
           ' "$RUNNER_TEMP/n"
           cp .env.example .env
-          pnpm install --no-frozen-lockfile
+          # Until a release ships it, main's modules peer on an unpublished
+          # heryjs that only their types read.
+          pnpm install --no-frozen-lockfile --config.auto-install-peers=false
           pnpm hery migrate --name init
           pnpm run build
 
