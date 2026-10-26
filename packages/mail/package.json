@@ -4,6 +4,7 @@
   "description": "Add outgoing mail: a MailLog resource, string templates, and a BullMQ job that actually sends. Ships with a console-logging provider by default -- swap MAIL_PROVIDER for a real one.",
   "author": "Gaetan Compigni",
   "license": "MIT",
+  "type": "commonjs",
   "publishConfig": {
     "access": "public"
   },
@@ -52,11 +53,11 @@
     "prepack": "pnpm --filter heryjs run build:scaffold && pnpm run build"
   },
   "peerDependencies": {
-    "@heryjs/core": "workspace:^",
+    "@heryjs/core": "workspace:*",
     "@nestjs/bullmq": "^12.0.0",
     "@nestjs/common": "^12.0.0",
     "bullmq": "^6.0.0",
-    "heryjs": "workspace:^",
+    "heryjs": "workspace:*",
     "zod": "^4.0.0"
   },
   "devDependencies": {
@@ -67,5 +68,10 @@
     "heryjs": "workspace:*",
     "picocolors": "^1.1.1",
     "typescript": "^6.0.3"
+  },
+  "peerDependenciesMeta": {
+    "heryjs": {
+      "optional": true
+    }
   }
 }

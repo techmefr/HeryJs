@@ -4,6 +4,7 @@
   "description": "Send SMS behind one contract, with the per-country rules that decide whether a message is legal before a provider silently drops it",
   "author": "Gaetan Compigni",
   "license": "MIT",
+  "type": "commonjs",
   "publishConfig": {
     "access": "public"
   },
@@ -52,10 +53,10 @@
     "prepack": "pnpm --filter heryjs run build:scaffold && pnpm run build"
   },
   "peerDependencies": {
-    "@heryjs/core": "workspace:^",
+    "@heryjs/core": "workspace:*",
     "@nestjs/common": "^12.0.0",
     "@prisma/client": "^7.0.0",
-    "heryjs": "workspace:^"
+    "heryjs": "workspace:*"
   },
   "devDependencies": {
     "@heryjs/core": "workspace:*",
@@ -63,5 +64,10 @@
     "heryjs": "workspace:*",
     "picocolors": "^1.1.1",
     "typescript": "^6.0.3"
+  },
+  "peerDependenciesMeta": {
+    "heryjs": {
+      "optional": true
+    }
   }
 }

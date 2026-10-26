@@ -30,6 +30,7 @@ import { checkModulePatches } from './check-module-patches';
 import { checkModuleValidity } from './check-module-validity';
 import { checkNoFixedSleeps } from './check-no-fixed-sleeps';
 import { checkPackageManifests } from './check-package-manifests';
+import { checkReleaseRules } from './check-release-rules';
 import { checkPagination } from './check-pagination';
 import { checkRateLimitDecorator } from './check-rate-limit-decorator';
 import { checkRuntimeDependencies } from './check-runtime-dependencies';
@@ -52,6 +53,7 @@ const CHECKS: ConventionCheck[] = [
   { name: 'module-destinations', run: checkModuleDestinations },
   { name: 'kernel-boundary', run: checkKernelBoundary },
   { name: 'package-manifests', run: checkPackageManifests },
+  { name: 'release-rules', run: checkReleaseRules },
   { name: 'coverage', run: checkLintCoverage },
   { name: 'dev-guard', run: () => checkNoInlineDevGuard(REPO_ROOT) },
   { name: 'no-fixed-sleeps', run: checkNoFixedSleeps },

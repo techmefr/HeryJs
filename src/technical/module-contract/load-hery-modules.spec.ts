@@ -1,4 +1,5 @@
-import { loadHeryModules } from './load-hery-modules';
+import * as path from 'node:path';
+import { applicationEntry, loadHeryModules } from './load-hery-modules';
 import { resolveHeryModules } from './resolve-hery-modules';
 
 describe('loadHeryModules', () => {
@@ -9,6 +10,18 @@ describe('loadHeryModules', () => {
       '@heryjs/sse',
       '@heryjs/storage',
     ]);
+  });
+
+  it('resolves them from the application entry, not the working directory', () => {
+    expect(
+      applicationEntry({ filename: '/app/dist/src/main.js' }, '/elsewhere'),
+    ).toBe('/app/dist/src/main.js');
+  });
+
+  it('falls back to the working directory when node started no entry', () => {
+    expect(applicationEntry(undefined, '/app')).toBe(
+      path.join('/app', 'package.json'),
+    );
   });
 
   it('leaves out a module that is not installed, for the resolver to name', () => {

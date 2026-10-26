@@ -1851,10 +1851,12 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
       '8071144a846f21407554b4375669fdca27f6c203b44439ac6378cf1ce260f382',
     ],
     'src/technical/module-contract/load-hery-modules.spec.ts': [
+      '988cb6c85025afc0c8350d99ccd2922a4b70933ade29243076ddd95d8a54400f',
       'ffbf4b856d3ac0364f7667c2d046454d1f27509394b1a441f5cf15cf6ac2ee8b',
     ],
     'src/technical/module-contract/load-hery-modules.ts': [
       '13d85170a7f7218261972daa82e91d0344d1b202cf05525917071b04d78b1147',
+      '43cfd8bdac306b29eef26b8577bdde6c56a279d6722261b757ea8acb38718041',
     ],
     'src/technical/module-contract/resolve-hery-modules.spec.ts': [
       '94af48e946ec7701fbd4e04bcf1d536539747b83688f85c3920ba5a6a49b3af7',

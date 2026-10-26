@@ -4,6 +4,7 @@
   "description": "Time-based one-time passwords for HeryJs: enrolment confirmed by a first code, a second-factor check on the session, hashed single-use recovery codes, and a per-role requirement",
   "author": "Gaetan Compigni",
   "license": "MIT",
+  "type": "commonjs",
   "publishConfig": {
     "access": "public"
   },
@@ -52,10 +53,10 @@
     "prepack": "pnpm --filter heryjs run build:scaffold && pnpm run build"
   },
   "peerDependencies": {
-    "@heryjs/core": "workspace:^",
+    "@heryjs/core": "workspace:*",
     "@nestjs/common": "^12.0.0",
     "express": "^5.0.0",
-    "heryjs": "workspace:^",
+    "heryjs": "workspace:*",
     "zod": "^4.0.0"
   },
   "devDependencies": {
@@ -64,5 +65,10 @@
     "heryjs": "workspace:*",
     "picocolors": "^1.1.1",
     "typescript": "^6.0.3"
+  },
+  "peerDependenciesMeta": {
+    "heryjs": {
+      "optional": true
+    }
   }
 }

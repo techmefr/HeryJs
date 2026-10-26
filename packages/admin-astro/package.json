@@ -4,6 +4,7 @@
   "description": "Add an admin panel built with Astro. Sections are discovered from GET /introspect, so any module that ships a listable route appears without touching the admin.",
   "author": "Gaetan Compigni",
   "license": "MIT",
+  "type": "commonjs",
   "publishConfig": {
     "access": "public"
   },
@@ -42,12 +43,17 @@
     "prepack": "pnpm --filter heryjs run build:scaffold && pnpm run build"
   },
   "peerDependencies": {
-    "heryjs": "workspace:^"
+    "heryjs": "workspace:*"
   },
   "devDependencies": {
     "astro": "^7.3.1",
     "heryjs": "workspace:*",
     "lucide": "^1.41.0",
     "typescript": "^6.0.3"
+  },
+  "peerDependenciesMeta": {
+    "heryjs": {
+      "optional": true
+    }
   }
 }
