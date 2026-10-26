@@ -18,28 +18,23 @@ import {
 } from '../lib/hery-config-patch';
 import { loadBlueprint } from '../lib/blueprint';
 import {
-  copyModuleRuntimes,
-  withCopiedModuleMapper,
-  withCopiedModuleRuntimes,
   withListedHeryModules,
   workspaceModules,
 } from '../lib/module-runtime-copies';
+import {
+  heryPackageDependency,
+  heryPackageDir,
+  withModulePackages,
+  withPackagedModuleMapper,
+} from '../lib/module-packages';
 import {
   withProjectConventionScripts,
   withProjectConventionStep,
 } from '../lib/convention-scripts';
 import { adoptCliPackage, withCliBin } from '../lib/cli-package';
 import { frameworkRoot } from '../lib/framework-root';
-import {
-  applyKernelPackageRewrites,
-  kernelDependency,
-  kernelIsBuilt,
-} from '../lib/kernel-dependency';
-import {
-  CLI_PACKAGE_DIR,
-  KERNEL_PACKAGE,
-  KERNEL_PACKAGE_DIR,
-} from '../lib/kernel-public-api';
+import { applyKernelPackageRewrites } from '../lib/kernel-dependency';
+import { KERNEL_PACKAGE } from '../lib/kernel-public-api';
 import { pascalCase } from '../lib/naming';
 import { bareName, runtimeImports } from '../lib/runtime-imports';
 import { stripModelsFromSchemaFolder } from '../lib/strip-example';
@@ -64,11 +59,9 @@ function payloadRoot(): string {
  * own build/dev state (node_modules, dist, the lockfile, .git, .env).
  */
 export const COPY_ENTRIES = [
-  'packages',
   'scripts/postgres',
   'src/devtools/testing',
   'src/devtools/test-support.ts',
-  'src/modules',
   'src/functional',
   'src/app.controller.ts',
   'src/app.controller.spec.ts',
@@ -239,29 +232,31 @@ function packagesImportedUnder(dirs: string[]): Set<string> {
  * it. All of it comes back with `hery install <name>`.
  */
 function dropOptionalModules(destRoot: string): string[] {
-  const modulesDir = path.join(destRoot, 'src', 'modules');
-  const removable = readdirSync(modulesDir, { withFileTypes: true })
-    .filter(
-      (entry) =>
-        entry.isDirectory() &&
-        !(entry.name in MODULES_THE_KERNEL_NEEDS) &&
-        existsSync(path.join(destRoot, 'packages', entry.name, 'src')),
-    )
-    .map((entry) => entry.name);
+  const manifestFile = path.join(destRoot, 'package.json');
+  const removable = workspaceModules(
+    (
+      JSON.parse(readFileSync(manifestFile, 'utf8')) as {
+        dependencies?: Record<string, string>;
+      }
+    ).dependencies,
+  ).filter((name) => !(name in MODULES_THE_KERNEL_NEEDS));
 
   if (removable.length === 0) {
     return [];
   }
 
-  const removedDirs = removable.map((name) => path.join(modulesDir, name));
-  const installedByRemoved = new Set<string>();
+  const installedByRemoved = new Set<string>(
+    removable.map((name) => `@heryjs/${name}`),
+  );
   const models = new Set<string>();
   const appModuleFile = path.join(destRoot, APP_MODULE);
   let appModule = readFileSync(appModuleFile, 'utf8');
 
   for (const name of removable) {
+    const packageDir = heryPackageDir(payloadRoot(), name);
+    const source = path.join(packageDir, 'src', 'module.ts');
     const definition = readFileSync(
-      path.join(destRoot, 'packages', name, 'src', 'module.ts'),
+      existsSync(source) ? source : path.join(packageDir, 'dist', 'module.js'),
       'utf8',
     );
 
@@ -269,20 +264,18 @@ function dropOptionalModules(destRoot: string): string[] {
       models.add(match[1]!);
     }
 
-    const dependencies = /^ {2}dependencies: \[([^\]]*)\]/m.exec(definition);
+    const dependencies = /^ +dependencies: \[([^\]]*)\]/m.exec(definition);
 
-    for (const spec of dependencies?.[1]?.matchAll(/'([^']+)'/g) ?? []) {
+    for (const spec of dependencies?.[1]?.matchAll(/['"]([^'"]+)['"]/g) ?? []) {
       installedByRemoved.add(bareName(spec[1]!));
     }
 
     appModule = unwireModule(appModule, name)?.source ?? appModule;
     unwireDeclaredModule(destRoot, {
-      name: modulePackageName(path.join(destRoot, 'packages', name), name),
+      name: modulePackageName(packageDir, name),
       moduleName: name,
       dest: path.join('src', 'modules', name),
     });
-
-    const packageDir = path.join(destRoot, 'packages', name);
 
     for (const file of readdirSync(packageDir)) {
       if (/^docker-compose\..+\.ya?ml$/.test(file)) {
@@ -292,7 +285,6 @@ function dropOptionalModules(destRoot: string): string[] {
   }
 
   writeFileSync(appModuleFile, appModule);
-  removedDirs.forEach((dir) => rmSync(dir, { recursive: true }));
 
   stripModelsFromSchemaFolder(destRoot, models);
 
@@ -306,7 +298,6 @@ function dropOptionalModules(destRoot: string): string[] {
   const stillImported = packagesImportedUnder(
     PROJECT_SOURCE_DIRS.map((dir) => path.join(destRoot, dir)),
   );
-  const manifestFile = path.join(destRoot, 'package.json');
   const manifest = JSON.parse(readFileSync(manifestFile, 'utf8')) as {
     dependencies: Record<string, string>;
   };
@@ -406,9 +397,16 @@ export function projectManifest(
 ): ProjectManifest {
   // Cloned rather than spread: a shallow copy shares `scripts` and `jest` with
   // the manifest it was read from, so every edit below reached back into it.
-  const manifest = withCopiedModuleRuntimes(
-    structuredClone(source),
-  ) as unknown as ProjectManifest & Record<string, unknown>;
+  const manifest = structuredClone(source) as unknown as ProjectManifest &
+    Record<string, unknown> & {
+      jest: { moduleNameMapper?: Record<string, string> };
+    };
+
+  if (manifest.jest.moduleNameMapper) {
+    manifest.jest.moduleNameMapper = withPackagedModuleMapper(
+      manifest.jest.moduleNameMapper,
+    );
+  }
 
   FRAMEWORK_FIELDS.forEach((field) => delete manifest[field]);
 
@@ -616,21 +614,7 @@ const MODULE_JEST_CONFIGS = [
   'jest-module-specs.json',
 ];
 
-/**
- * The modules this repository runs from their workspace packages land in the
- * project as copies, wired through src/hery.modules.ts.
- */
-function copyModuleRuntimesInto(destRoot: string): void {
-  const manifest = JSON.parse(
-    readFileSync(path.join(payloadRoot(), 'package.json'), 'utf8'),
-  ) as { dependencies?: Record<string, string> };
-
-  copyModuleRuntimes(
-    payloadRoot(),
-    destRoot,
-    workspaceModules(manifest.dependencies),
-  );
-
+function wireModulePackagesInto(destRoot: string): void {
   const appModule = path.join(destRoot, APP_MODULE);
 
   writeFileSync(
@@ -650,11 +634,42 @@ function copyModuleRuntimesInto(destRoot: string): void {
     };
 
     if (parsed.moduleNameMapper) {
-      parsed.moduleNameMapper = withCopiedModuleMapper(parsed.moduleNameMapper);
+      parsed.moduleNameMapper = withPackagedModuleMapper(
+        parsed.moduleNameMapper,
+      );
     }
 
-    writeFileSync(config, `${JSON.stringify(parsed, null, 2)}\n`);
+    writeFileSync(
+      config,
+      `${JSON.stringify(parsed, null, 2)}
+`,
+    );
   }
+}
+
+function installModulePackages(destRoot: string): void {
+  const file = path.join(destRoot, 'package.json');
+  const manifest = JSON.parse(readFileSync(file, 'utf8')) as {
+    dependencies?: Record<string, string>;
+  };
+
+  writeFileSync(
+    file,
+    `${JSON.stringify(
+      withModulePackages(manifest, (name) =>
+        heryPackageDependency(payloadRoot(), name),
+      ),
+      null,
+      2,
+    )}
+`,
+  );
+}
+
+function payloadPackagesAreBuilt(): boolean {
+  return ['core', 'cli'].every((name) =>
+    existsSync(path.join(heryPackageDir(payloadRoot(), name), 'dist')),
+  );
 }
 
 export function registerNewCommand(program: Command): void {
@@ -680,7 +695,7 @@ export function registerNewCommand(program: Command): void {
         return;
       }
 
-      if (!kernelIsBuilt(payloadRoot())) {
+      if (!payloadPackagesAreBuilt()) {
         console.error(
           pc.red(
             `${KERNEL_PACKAGE} is not built in ${payloadRoot()}: run "pnpm run build:core" there first, the project installs it and @heryjs/cli from there.`,
@@ -692,9 +707,7 @@ export function registerNewCommand(program: Command): void {
 
       mkdirSync(destRoot, { recursive: true });
       copyInto(destRoot);
-      rmSync(path.join(destRoot, KERNEL_PACKAGE_DIR), { recursive: true });
-      rmSync(path.join(destRoot, CLI_PACKAGE_DIR), { recursive: true });
-      copyModuleRuntimesInto(destRoot);
+      wireModulePackagesInto(destRoot);
       const removedModels = dropExampleModels(destRoot);
       const droppedSpecs = dropSpecsNamingRemovedModels(
         destRoot,
@@ -703,13 +716,18 @@ export function registerNewCommand(program: Command): void {
       rewriteWorkflows(destRoot);
       rewritePackageJson(destRoot, name);
       const removedModules = dropOptionalModules(destRoot);
+      installModulePackages(destRoot);
       rewriteWorkspaceFile(destRoot);
       writeReadme(destRoot, name);
       writeGitignore(destRoot);
       writeContainerFiles(destRoot);
-      applyKernelPackageRewrites(destRoot, kernelDependency(payloadRoot()), {
-        write: true,
-      });
+      applyKernelPackageRewrites(
+        destRoot,
+        heryPackageDependency(payloadRoot(), 'core'),
+        {
+          write: true,
+        },
+      );
       adoptCliPackage(
         destRoot,
         { identical: [], modified: [] },
