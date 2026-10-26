@@ -1,9 +1,13 @@
 {
   "name": "heryjs",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "The batteries-included framework for NestJS: generate secured, multi-tenant resources from a blueprint, then own every line. Auth, RBAC, Postgres RLS, jobs, real time, vector search, OpenAPI.",
   "author": "Gaetan Compigni",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "homepage": "https://techmefr.github.io/HeryJs/",
   "repository": {
     "type": "git",

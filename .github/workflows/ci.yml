@@ -732,18 +732,6 @@ jobs:
             fs.writeFileSync("package.json", `${JSON.stringify(manifest, null, 2)}\n`);
           ' "$RUNNER_TEMP/n"
           cp .env.example .env
-          # Until a release ships it, main's modules peer on an unpublished
-          # heryjs that only their types read.
-          cat > .pnpmfile.cjs <<'PNPMFILE'
-          module.exports = {
-            hooks: {
-              readPackage(pkg) {
-                if (pkg.name?.startsWith('@heryjs/')) delete pkg.peerDependencies?.heryjs;
-                return pkg;
-              },
-            },
-          };
-          PNPMFILE
           pnpm install --no-frozen-lockfile
           pnpm hery migrate --name init
           pnpm run build
@@ -773,7 +761,6 @@ jobs:
             }
             fs.writeFileSync("package.json", `${JSON.stringify(manifest, null, 2)}\n`);
           ' "$RUNNER_TEMP/n1"
-          rm .pnpmfile.cjs
           pnpm install --no-frozen-lockfile
           pnpm hery upgrade
           pnpm hery migrate --name upgrade

@@ -1,12 +1,13 @@
 {
   "name": "@heryjs/two-factor",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Time-based one-time passwords for HeryJs: enrolment confirmed by a first code, a second-factor check on the session, hashed single-use recovery codes, and a per-role requirement",
   "author": "Gaetan Compigni",
   "license": "MIT",
   "type": "commonjs",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "homepage": "https://techmefr.github.io/HeryJs/",
   "repository": {
@@ -22,6 +23,9 @@
     "heryjs-module",
     "nestjs"
   ],
+  "engines": {
+    "node": ">=24.20"
+  },
   "heryjs": {
     "module": true
   },

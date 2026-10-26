@@ -1,12 +1,13 @@
 {
   "name": "@heryjs/notifier",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Notify a recipient by whatever channel they have agreed to, one notification class rendered once per channel over the existing mail, sms and push modules",
   "author": "Gaetan Compigni",
   "license": "MIT",
   "type": "commonjs",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "homepage": "https://techmefr.github.io/HeryJs/",
   "repository": {
@@ -22,6 +23,9 @@
     "heryjs-module",
     "nestjs"
   ],
+  "engines": {
+    "node": ">=24.20"
+  },
   "heryjs": {
     "module": true
   },

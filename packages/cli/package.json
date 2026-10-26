@@ -1,11 +1,14 @@
 {
   "name": "@heryjs/cli",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0",
   "description": "The HeryJs project tooling: the hery lint rules and the kernel schema sync a project runs against its own code.",
   "author": "Gaetan Compigni",
   "license": "MIT",
   "type": "commonjs",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "homepage": "https://techmefr.github.io/HeryJs/",
   "repository": {
     "type": "git",

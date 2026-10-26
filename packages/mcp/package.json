@@ -1,12 +1,13 @@
 {
   "name": "@heryjs/mcp",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Add an authenticated MCP gateway (Streamable HTTP, stateless) exposing generated resources as tools. Use \"hery generate <Name> --mcp\" to add write tools to a resource.",
   "author": "Gaetan Compigni",
   "license": "MIT",
   "type": "commonjs",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "homepage": "https://techmefr.github.io/HeryJs/",
   "repository": {
@@ -22,6 +23,9 @@
     "heryjs-module",
     "nestjs"
   ],
+  "engines": {
+    "node": ">=24.20"
+  },
   "heryjs": {
     "module": true
   },
