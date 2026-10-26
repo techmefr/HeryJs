@@ -1,7 +1,10 @@
 import pc from 'picocolors';
-import { loadOfficialModules } from '../cli/lib/module-discovery';
-import { KERNEL_DIR, kernelWritesOf } from '../cli/lib/module-destinations';
-import { recordPatches } from '../cli/lib/module-patches';
+import { loadOfficialModules } from '../packages/cli/src/lib/module-discovery';
+import {
+  KERNEL_DIR,
+  kernelWritesOf,
+} from '../packages/cli/src/lib/module-destinations';
+import { recordPatches } from '../packages/cli/src/lib/module-patches';
 
 /**
  * No module installs into the kernel or edits one of its files. A project

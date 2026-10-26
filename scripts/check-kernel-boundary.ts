@@ -8,8 +8,8 @@ import {
   internalKernelImportProblem,
   isOwnKernelFile,
   isPublicKernelSpecifier,
-} from '../cli/lib/kernel-public-api';
-import { loadOfficialModules } from '../cli/lib/module-discovery';
+} from '../packages/cli/src/lib/kernel-public-api';
+import { loadOfficialModules } from '../packages/cli/src/lib/module-discovery';
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const SKIPPED_DIRECTORIES = new Set(['node_modules', 'dist', '.astro']);
@@ -79,7 +79,7 @@ export function checkKernelBoundary(): boolean {
     .filter((entry) => !declared.has(entry))
     .forEach((entry) =>
       problems.push(
-        `${KERNEL_PUBLIC_DIR}/${entry}.ts is not listed in KERNEL_PUBLIC_ENTRIES (cli/lib/kernel-public-api.ts)`,
+        `${KERNEL_PUBLIC_DIR}/${entry}.ts is not listed in KERNEL_PUBLIC_ENTRIES (packages/cli/src/lib/kernel-public-api.ts)`,
       ),
     );
   [...declared]
@@ -117,7 +117,7 @@ export function checkKernelBoundary(): boolean {
   if (problems.length > 0) {
     problems.forEach((problem) => console.error(pc.red(`✖ ${problem}`)));
     console.error(
-      '\nExport what the module needs from the matching entry under src/technical/public,\nthen import it from there. The snapshot in cli/lib/kernel-public-api.spec.ts records the change.',
+      '\nExport what the module needs from the matching entry under src/technical/public,\nthen import it from there. The snapshot in packages/cli/src/lib/kernel-public-api.spec.ts records the change.',
     );
 
     return false;

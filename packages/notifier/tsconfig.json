@@ -10,7 +10,7 @@
         "../../src/modules/*"
       ],
       "heryjs": [
-        "../../cli/module-contract.ts"
+        "../cli/src/module-contract.ts"
       ]
     },
     "noEmit": true

@@ -7,10 +7,16 @@ import {
   KERNEL_COPY_DIRS,
   copiedKernelFiles,
   isAppSideKernelFile,
-} from '../cli/lib/kernel-dependency';
+} from '../packages/cli/src/lib/kernel-dependency';
 
 const REPO_ROOT = path.resolve(__dirname, '..');
-const MANIFEST = path.join('cli', 'lib', 'kernel-versions.ts');
+const MANIFEST = path.join(
+  'packages',
+  'cli',
+  'src',
+  'lib',
+  'kernel-versions.ts',
+);
 const HISTORY_REF = 'origin/main';
 
 function git(args: string[], input?: string): Buffer {

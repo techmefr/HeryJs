@@ -22,7 +22,16 @@
     "node": ">=24.20"
   },
   "sideEffects": false,
+  "bin": {
+    "hery": "./bin/hery.js",
+    "hery-prisma-registry": "./bin/prisma-registry-generator.js"
+  },
   "exports": {
+    "./module-contract": {
+      "heryjs-source": "./src/module-contract.ts",
+      "types": "./dist/module-contract.d.ts",
+      "default": "./dist/module-contract.js"
+    },
     "./lint": {
       "heryjs-source": "./src/lint/index.ts",
       "types": "./dist/lint/index.d.ts",
@@ -36,17 +45,47 @@
     "./package.json": "./package.json"
   },
   "files": [
+    "bin",
     "dist"
   ],
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json"
   },
+  "dependencies": {
+    "commander": "^15.0.0",
+    "js-yaml": "^5.4.1",
+    "picocolors": "^1.1.1",
+    "prompts": "^2.4.2",
+    "semver": "^7.8.5",
+    "zod": "^4.5.4"
+  },
   "peerDependencies": {
     "@heryjs/core": "^0.1.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@nestjs/common": "^12.0.1",
+    "@nestjs/core": "^12.0.1",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "pg": "^8.23.0",
+    "ts-node": "^10.9.2",
     "typescript": "^6.0.3"
+  },
+  "peerDependenciesMeta": {
+    "@modelcontextprotocol/sdk": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@heryjs/core": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@nestjs/common": "^12.0.1",
+    "@nestjs/core": "^12.0.1",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "@types/prompts": "^2.4.9",
+    "@types/semver": "^7.8.0",
+    "pg": "^8.23.0",
+    "ts-node": "^10.9.2",
     "typescript": "^6.0.3"
   }
 }
