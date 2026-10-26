@@ -28,6 +28,7 @@ interface PackageManifest {
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
+  peerDependenciesMeta?: Record<string, { optional?: boolean }>;
 }
 
 function readManifest(file: string): PackageManifest {
@@ -237,7 +238,10 @@ function kernelPackageProblems(root: PackageManifest): string[] {
     );
 
   Object.entries(declared).forEach(([peer, range]) => {
-    const installed = root.dependencies?.[peer];
+    const installed =
+      manifest.peerDependenciesMeta?.[peer]?.optional === true
+        ? (root.dependencies?.[peer] ?? root.devDependencies?.[peer])
+        : root.dependencies?.[peer];
 
     if (!required.includes(peer)) {
       problems.push(

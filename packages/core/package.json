@@ -195,6 +195,17 @@
     "typescript": "^6.0.3",
     "zod": "^4.5.4"
   },
+  "peerDependenciesMeta": {
+    "pino-pretty": {
+      "optional": true
+    },
+    "ts-node": {
+      "optional": true
+    },
+    "typescript": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "typescript": "^6.0.3"
   }

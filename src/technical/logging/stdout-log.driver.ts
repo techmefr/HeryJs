@@ -1,5 +1,14 @@
-import { prettyFactory } from 'pino-pretty';
+import type * as PinoPretty from 'pino-pretty';
 import type { LogDriver, LogEntry } from './log-driver';
+
+// pino-pretty is a development dependency: production writes JSON lines and
+// never loads it.
+function prettyFactory(
+  options: Parameters<typeof PinoPretty.prettyFactory>[0],
+): (line: string) => string {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return (require('pino-pretty') as typeof PinoPretty).prettyFactory(options);
+}
 
 export interface StdoutLogOptions {
   isPretty: boolean;

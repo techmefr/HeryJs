@@ -240,3 +240,54 @@ describe('the modules a fresh project keeps', () => {
     },
   );
 });
+
+describe('the production build of a generated project', () => {
+  const REPO_ROOT = path.join(__dirname, '..', '..');
+  const BUILD_ONLY = ['ts-node', 'typescript', 'pino-pretty'];
+
+  function readJson<T>(...segments: string[]): T {
+    return JSON.parse(
+      readFileSync(path.join(REPO_ROOT, ...segments), 'utf8'),
+    ) as T;
+  }
+
+  it('compiles hery.config.ts and cors.config.ts with the application', () => {
+    const { include } = readJson<{ include: string[] }>('tsconfig.build.json');
+
+    expect(include).toEqual(
+      expect.arrayContaining(['hery.config.ts', 'cors.config.ts']),
+    );
+  });
+
+  it.each(BUILD_ONLY)('keeps %s out of the production dependencies', (name) => {
+    const manifest = projectManifest(REPO_MANIFEST, 'my-app') as {
+      dependencies?: Record<string, string>;
+      devDependencies?: Record<string, string>;
+    };
+
+    expect(manifest.dependencies?.[name]).toBeUndefined();
+    expect(manifest.devDependencies?.[name]).toBeDefined();
+  });
+
+  it.each(BUILD_ONLY)('does not require %s as a peer of the kernel', (name) => {
+    const core = readJson<{
+      peerDependenciesMeta?: Record<string, { optional?: boolean }>;
+    }>('packages', 'core', 'package.json');
+
+    expect(core.peerDependenciesMeta?.[name]?.optional).toBe(true);
+  });
+
+  it('ships an image without the dev dependencies or the TypeScript config', () => {
+    const dockerfile = readFileSync(
+      path.join(REPO_ROOT, 'templates', 'Dockerfile'),
+      'utf8',
+    );
+    const runtime = dockerfile.slice(dockerfile.indexOf('AS runtime'));
+
+    expect(dockerfile).toContain('pnpm prune --prod');
+    expect(runtime).not.toMatch(/\.config\.ts|tsconfig\.json/);
+    expect(runtime).not.toContain(
+      '--from=build --chown=node:node /app/node_modules',
+    );
+  });
+});

@@ -20,9 +20,10 @@ docker build -t my-app .
 - `runtime` (the default) is multi-stage, runs as the non-root `node` user, installs with `pnpm install --frozen-lockfile`, generates the Prisma client and runs `nest build`. It starts `node dist/src/main` and declares a `HEALTHCHECK` on `/health/live`.
 - `migrate` is a one-shot job that runs `prisma migrate deploy` and exits.
 
-`node_modules` is copied into the runtime image whole, dev dependencies
-included. `hery.config.ts` and `cors.config.ts` are TypeScript read at boot
-through `ts-node`, so pruning it stops the process before it listens.
+The runtime image carries the production dependencies only. `nest build`
+compiles `hery.config.ts` and `cors.config.ts` to `dist/hery.config.js` and
+`dist/cors.config.js`, which is what the process reads under
+`NODE_ENV=production`: neither `ts-node` nor `typescript` is needed at boot.
 
 The build needs a `pnpm-lock.yaml` and `prisma/migrations/`, both committed:
 run `pnpm install` and `pnpm hery migrate --name init` once, locally, and commit
@@ -51,17 +52,17 @@ every variable below is set to a real value. A development default is rejected
 by name, so a missing one fails at startup with the variable named rather than
 degrading silently.
 
-| Variable | What it is |
-| --- | --- |
-| `DATABASE_URL` | Postgres connection string (pgvector image, see the vector guide) |
-| `REDIS_URL` | Redis, for cache, queues, locks and realtime |
-| `BETTER_AUTH_URL` | The public URL of the API, used in auth links |
-| `BETTER_AUTH_SECRET` | Better Auth's signing secret, `openssl rand -base64 32` |
-| `SIGNAL_TOKEN_SECRET`, `SSE_TOKEN_SECRET`, `OAUTH_STATE_SECRET`, `STORAGE_URL_SECRET` | Four independent secrets, so a leak of one forges none of the others |
-| `SECRETS_KEYS` | `<id>:<base64 key>` list for column encryption, `pnpm hery secrets:key` |
-| `SSO_STATE_SECRET`, `SSO_SECRET_KEY` | The sso module's state secret and 32-byte key |
-| `SSO_REDIRECT_BASE_URL`, `OAUTH_REDIRECT_BASE_URL` | The public URL the sso and oauth callbacks are built on |
-| `STORAGE_S3_ACCESS_KEY`, `STORAGE_S3_SECRET_KEY` | Required even on the local storage driver while the storage module is installed: the boot check does not know which driver you use |
+| Variable                                                                              | What it is                                                                                                                         |
+| ------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                                                        | Postgres connection string (pgvector image, see the vector guide)                                                                  |
+| `REDIS_URL`                                                                           | Redis, for cache, queues, locks and realtime                                                                                       |
+| `BETTER_AUTH_URL`                                                                     | The public URL of the API, used in auth links                                                                                      |
+| `BETTER_AUTH_SECRET`                                                                  | Better Auth's signing secret, `openssl rand -base64 32`                                                                            |
+| `SIGNAL_TOKEN_SECRET`, `SSE_TOKEN_SECRET`, `OAUTH_STATE_SECRET`, `STORAGE_URL_SECRET` | Four independent secrets, so a leak of one forges none of the others                                                               |
+| `SECRETS_KEYS`                                                                        | `<id>:<base64 key>` list for column encryption, `pnpm hery secrets:key`                                                            |
+| `SSO_STATE_SECRET`, `SSO_SECRET_KEY`                                                  | The sso module's state secret and 32-byte key                                                                                      |
+| `SSO_REDIRECT_BASE_URL`, `OAUTH_REDIRECT_BASE_URL`                                    | The public URL the sso and oauth callbacks are built on                                                                            |
+| `STORAGE_S3_ACCESS_KEY`, `STORAGE_S3_SECRET_KEY`                                      | Required even on the local storage driver while the storage module is installed: the boot check does not know which driver you use |
 
 Optional and defaulted: `PORT` (3000), `SECRETS_ACTIVE_KEY_ID`,
 `DATABASE_MIGRATION_URL`, `OUTBOX_RELAY_ENABLED`, `OTEL_*`, and the `AUTH_*` and `OAUTH_*`
@@ -78,10 +79,10 @@ CORS header at all, before building the image.
 
 ## Probes
 
-| Route | Use it for |
-| --- | --- |
-| `GET /health/live` | the liveness probe, and the image's `HEALTHCHECK` |
-| `GET /health/ready` | the readiness probe: database, cache and queue |
+| Route               | Use it for                                        |
+| ------------------- | ------------------------------------------------- |
+| `GET /health/live`  | the liveness probe, and the image's `HEALTHCHECK` |
+| `GET /health/ready` | the readiness probe: database, cache and queue    |
 
 ```yaml
 livenessProbe:
