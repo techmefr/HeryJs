@@ -4,6 +4,7 @@
   "description": "Swap free-text search from Prisma contains() to Elasticsearch (docker service, driver, DI wiring)",
   "author": "Gaetan Compigni",
   "license": "MIT",
+  "type": "commonjs",
   "publishConfig": {
     "access": "public"
   },
@@ -54,7 +55,7 @@
   },
   "peerDependencies": {
     "@elastic/elasticsearch": "^9.0.0",
-    "@heryjs/core": "workspace:^",
+    "@heryjs/core": "workspace:*",
     "@nestjs/common": "^12.0.0",
     "heryjs": "workspace:^"
   },

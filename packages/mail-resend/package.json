@@ -4,6 +4,7 @@
   "description": "Send mail through Resend instead of logging it (driver, env, DI wiring)",
   "author": "Gaetan Compigni",
   "license": "MIT",
+  "type": "commonjs",
   "publishConfig": {
     "access": "public"
   },
@@ -52,7 +53,7 @@
     "prepack": "pnpm --filter heryjs run build:scaffold && pnpm run build"
   },
   "peerDependencies": {
-    "@heryjs/core": "workspace:^",
+    "@heryjs/core": "workspace:*",
     "@nestjs/common": "^12.0.0",
     "heryjs": "workspace:^",
     "zod": "^4.0.0"

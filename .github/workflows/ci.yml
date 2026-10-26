@@ -650,3 +650,121 @@ jobs:
           exit 1
 
       - run: pnpm run test:modules
+
+  # A project on the release main ships, upgraded to this commit the way a
+  # project upgrades from the registry: every @heryjs package installed from
+  # its pnpm pack tarball, then hery upgrade, a migration, a build, and no
+  # schema change left that the migrations do not carry.
+  upgrade:
+    runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: postgresql://heryjs_app:heryjs_app@localhost:5432/heryjs_upgrade
+      DATABASE_MIGRATION_URL: postgresql://heryjs:heryjs@localhost:5432/heryjs_upgrade
+      SHADOW_DATABASE_URL: postgresql://heryjs:heryjs@localhost:5432/heryjs_shadow
+      REDIS_URL: redis://localhost:6479
+      BETTER_AUTH_URL: http://localhost:3000
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: heryjs
+          POSTGRES_PASSWORD: heryjs
+          POSTGRES_DB: heryjs
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: pnpm
+
+      - name: Create the databases and the application role
+        run: |
+          psql postgresql://heryjs:heryjs@localhost:5432/heryjs -v ON_ERROR_STOP=1 \
+            -c 'CREATE DATABASE heryjs_upgrade' -c 'CREATE DATABASE heryjs_shadow'
+          psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f scripts/postgres/app-role.sql
+
+      - name: Pack the release main ships
+        run: |
+          git worktree add "$RUNNER_TEMP/base" origin/main
+          cd "$RUNNER_TEMP/base"
+          pnpm install --frozen-lockfile
+          pnpm run db:generate
+          pnpm run build:core
+          for dir in packages/*/; do
+            (cd "$dir" && pnpm pack --pack-destination "$RUNNER_TEMP/n" > /dev/null)
+          done
+
+      - name: Scaffold a project on it
+        run: |
+          mkdir -p "$RUNNER_TEMP/project"
+          cd "$RUNNER_TEMP/project"
+          NODE_OPTIONS="--conditions=development --conditions=heryjs-source" \
+            "$RUNNER_TEMP/base/node_modules/.bin/ts-node" \
+            -P "$RUNNER_TEMP/base/tsconfig.json" \
+            "$RUNNER_TEMP/base/packages/cli/src/heryjs.ts" new my-app
+          cd my-app
+          node -e '
+            const fs = require("node:fs");
+            const dir = process.argv[1];
+            const manifest = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            const tarballs = fs.readdirSync(dir);
+            for (const name of Object.keys(manifest.dependencies)) {
+              if (!name.startsWith("@heryjs/")) continue;
+              const tarball = tarballs.find((file) => new RegExp("^heryjs-" + name.slice(8) + "-[0-9]").test(file));
+              if (!tarball) throw new Error(`no tarball for ${name}`);
+              manifest.dependencies[name] = `file:${dir}/${tarball}`;
+            }
+            fs.writeFileSync("package.json", `${JSON.stringify(manifest, null, 2)}\n`);
+          ' "$RUNNER_TEMP/n"
+          cp .env.example .env
+          pnpm install --no-frozen-lockfile
+          pnpm hery migrate --name init
+          pnpm run build
+
+      - name: Pack this commit
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run db:generate
+          pnpm run build:core
+          for dir in packages/*/; do
+            (cd "$dir" && pnpm pack --pack-destination "$RUNNER_TEMP/n1" > /dev/null)
+          done
+
+      - name: Upgrade the project to it
+        working-directory: ${{ runner.temp }}/project/my-app
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            const dir = process.argv[1];
+            const manifest = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            const tarballs = fs.readdirSync(dir);
+            for (const name of Object.keys(manifest.dependencies)) {
+              if (!name.startsWith("@heryjs/")) continue;
+              const tarball = tarballs.find((file) => new RegExp("^heryjs-" + name.slice(8) + "-[0-9]").test(file));
+              if (!tarball) throw new Error(`no tarball for ${name}`);
+              manifest.dependencies[name] = `file:${dir}/${tarball}`;
+            }
+            fs.writeFileSync("package.json", `${JSON.stringify(manifest, null, 2)}\n`);
+          ' "$RUNNER_TEMP/n1"
+          pnpm install --no-frozen-lockfile
+          pnpm hery upgrade
+          pnpm hery migrate --name upgrade
+          pnpm run typecheck
+          pnpm run build
+          pnpm exec prisma migrate diff --from-migrations prisma/migrations \
+            --to-schema prisma/schema --exit-code

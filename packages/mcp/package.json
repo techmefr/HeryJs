@@ -4,6 +4,7 @@
   "description": "Add an authenticated MCP gateway (Streamable HTTP, stateless) exposing generated resources as tools. Use \"hery generate <Name> --mcp\" to add write tools to a resource.",
   "author": "Gaetan Compigni",
   "license": "MIT",
+  "type": "commonjs",
   "publishConfig": {
     "access": "public"
   },
@@ -52,7 +53,7 @@
     "prepack": "pnpm --filter heryjs run build:scaffold && pnpm run build"
   },
   "peerDependencies": {
-    "@heryjs/core": "workspace:^",
+    "@heryjs/core": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "@nestjs/common": "^12.0.0",
     "express": "^5.0.0",

@@ -4,6 +4,7 @@
   "description": "Export to a real spreadsheet through exceljs, as an export driver",
   "author": "Gaetan Compigni",
   "license": "MIT",
+  "type": "commonjs",
   "publishConfig": {
     "access": "public"
   },
@@ -52,7 +53,7 @@
     "prepack": "pnpm --filter heryjs run build:scaffold && pnpm run build"
   },
   "peerDependencies": {
-    "@heryjs/core": "workspace:^",
+    "@heryjs/core": "workspace:*",
     "@nestjs/common": "^12.0.0",
     "exceljs": "^4.0.0",
     "heryjs": "workspace:^"

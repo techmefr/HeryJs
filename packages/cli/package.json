@@ -5,6 +5,7 @@
   "description": "The HeryJs project tooling: the hery lint rules and the kernel schema sync a project runs against its own code.",
   "author": "Gaetan Compigni",
   "license": "MIT",
+  "type": "commonjs",
   "homepage": "https://techmefr.github.io/HeryJs/",
   "repository": {
     "type": "git",
@@ -60,7 +61,7 @@
     "zod": "^4.5.4"
   },
   "peerDependencies": {
-    "@heryjs/core": "^0.1.0",
+    "@heryjs/core": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.30.0",
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",

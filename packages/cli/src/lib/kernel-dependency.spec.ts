@@ -152,7 +152,7 @@ describe('a module manifest once the kernel is a dependency', () => {
       'package.json',
     );
 
-    expect(mail.peerDependencies?.['@heryjs/core']).toBe('workspace:^');
+    expect(mail.peerDependencies?.['@heryjs/core']).toBe('workspace:*');
 
     const rewritten = withoutKernelDependency(mail) as Record<
       string,

@@ -16,13 +16,24 @@ function isMissing(error: unknown, specifier: string): boolean {
 }
 
 /**
+ * The file the application's dependencies resolve from: the entry node
+ * started, so a process launched from another directory still finds them.
+ */
+export function applicationEntry(
+  main: { filename: string } | undefined,
+  cwd: string = process.cwd(),
+): string {
+  return main?.filename ?? path.join(cwd, 'package.json');
+}
+
+/**
  * The contract each module of hery.config.ts exports as `<package>/hery`,
  * loaded by its name from the application's own dependencies. A module that
  * is not installed is left out, so resolveHeryModules names it with the rest.
  */
 export function loadHeryModules(
   entries: readonly HeryConfigModuleEntry[],
-  load: Loader = createRequire(path.join(process.cwd(), 'package.json')),
+  load: Loader = createRequire(applicationEntry(require.main)),
 ): HeryModuleContract[] {
   return entries.flatMap((entry) => {
     const name = typeof entry === 'string' ? entry : entry[0];

@@ -532,11 +532,14 @@ The blueprint is only read once, at generation time. From then on the generated 
 
 The kernel is the \`@heryjs/core\` package, not a folder of this project. Until
 it is published, \`package.json\` installs the one a local HeryJs checkout
-builds, with a \`file:\` path. To move to the registry, change that one line to
-a version range and install again:
+builds, with a \`file:\` path, and so are \`@heryjs/cli\` and the modules. Every
+HeryJs package ships at one version: to move to the registry, set each
+\`@heryjs/*\` line to that same published version and install again, for
+example:
 
 \`\`\`json
-"@heryjs/core": "^0.1.0"
+"@heryjs/core": "1.0.0",
+"@heryjs/cli": "1.0.0"
 \`\`\`
 
 \`src/devtools/testing\` and \`src/devtools/test-support.ts\` stay here: they

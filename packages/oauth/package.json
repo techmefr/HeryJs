@@ -4,6 +4,7 @@
   "description": "Social sign-in over a provider contract (Google, GitHub, Microsoft) with a declared account-linking policy: what happens when the provider's email already belongs to a local account is a setting, never an accident.",
   "author": "Gaetan Compigni",
   "license": "MIT",
+  "type": "commonjs",
   "publishConfig": {
     "access": "public"
   },
@@ -52,7 +53,7 @@
     "prepack": "pnpm --filter heryjs run build:scaffold && pnpm run build"
   },
   "peerDependencies": {
-    "@heryjs/core": "workspace:^",
+    "@heryjs/core": "workspace:*",
     "@nestjs/common": "^12.0.0",
     "@prisma/client": "^7.0.0",
     "express": "^5.0.0",
