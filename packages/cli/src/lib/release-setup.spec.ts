@@ -10,7 +10,8 @@ function readJson<T>(...segments: string[]): T {
 
 interface Workflow {
   on: Record<string, unknown>;
-  jobs: Record<string, { steps: { run?: string }[] }>;
+  permissions: Record<string, string>;
+  jobs: Record<string, { if?: string; steps: { run?: string }[] }>;
 }
 
 describe('release setup', () => {
@@ -25,36 +26,53 @@ describe('release setup', () => {
     expect(Object.keys(workflow.on)).toEqual(['workflow_dispatch']);
   });
 
-  it('only dry-runs semantic-release and never publishes', () => {
-    const commands = Object.values(workflow.jobs)
-      .flatMap((job) => job.steps)
-      .map((step) => step.run ?? '')
-      .filter((run) => run.length > 0);
+  const commands = Object.values(workflow.jobs)
+    .flatMap((job) => job.steps)
+    .map((step) => step.run ?? '')
+    .filter((run) => run.length > 0);
 
-    expect(commands.some((run) => run.includes('semantic-release'))).toBe(true);
-    commands
-      .filter((run) => run.includes('semantic-release'))
-      .forEach((run) => expect(run).toContain('--dry-run'));
-    commands.forEach((run) => expect(run).not.toMatch(/\bpublish\b/));
+  it('publishes every package for real, without a dry run', () => {
+    const publishing = commands.filter((run) => /\bpublish\b/.test(run));
+
+    expect(publishing).toEqual([
+      'pnpm -r publish --access public --no-git-checks',
+    ]);
   });
 
-  it('keeps @heryjs/core private', () => {
+  it('authenticates to npm through OIDC trusted publishing', () => {
+    expect(workflow.permissions['id-token']).toBe('write');
+  });
+
+  it('reads no npm token from the secrets', () => {
+    const text = readFileSync(
+      path.join(ROOT, '.github', 'workflows', 'release.yml'),
+      'utf8',
+    );
+
+    expect(text).not.toMatch(/NPM_TOKEN|NODE_AUTH_TOKEN|secrets\./);
+  });
+
+  it('releases from main only', () => {
     expect(
-      readJson<{ private?: boolean }>('packages', 'core', 'package.json')
-        .private,
+      Object.values(workflow.jobs).every(
+        (job) => job.if === "github.ref == 'refs/heads/main'",
+      ),
     ).toBe(true);
   });
 
-  it('releases from main with v-prefixed tags and no publishing plugin', () => {
-    const config = readJson<{
-      branches: string[];
-      tagFormat: string;
-      plugins: string[];
-    }>('.releaserc.json');
+  it('publishes @heryjs/core and @heryjs/cli publicly with provenance', () => {
+    ['core', 'cli'].forEach((dir) => {
+      const manifest = readJson<{
+        private?: boolean;
+        publishConfig?: { access?: string; provenance?: boolean };
+      }>('packages', dir, 'package.json');
 
-    expect(config.branches).toEqual(['main']);
-    expect(config.tagFormat).toBe('v${version}');
-    expect(config.plugins).not.toContain('@semantic-release/npm');
+      expect(manifest.private).toBeUndefined();
+      expect(manifest.publishConfig).toEqual({
+        access: 'public',
+        provenance: true,
+      });
+    });
   });
 });
 

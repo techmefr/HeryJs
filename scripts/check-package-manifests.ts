@@ -32,10 +32,35 @@ interface PackageManifest {
   devDependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
   peerDependenciesMeta?: Record<string, { optional?: boolean }>;
+  private?: boolean;
+  publishConfig?: { access?: string; provenance?: boolean };
 }
 
 function readManifest(file: string): PackageManifest {
   return JSON.parse(readFileSync(file, 'utf8')) as PackageManifest;
+}
+
+/**
+ * Every HeryJs package is published publicly under the heryjs organisation,
+ * with a provenance statement the release workflow signs.
+ */
+function publishProblems(name: string, manifest: PackageManifest): string[] {
+  const problems: string[] = [];
+
+  if (manifest.private === true) {
+    problems.push(`${name} is private, so it would never be published`);
+  }
+
+  if (
+    manifest.publishConfig?.access !== 'public' ||
+    manifest.publishConfig.provenance !== true
+  ) {
+    problems.push(
+      `${name} publishes with ${JSON.stringify(manifest.publishConfig)}, not { access: "public", provenance: true }`,
+    );
+  }
+
+  return problems;
 }
 
 function isTestOnly(file: string): boolean {
@@ -186,7 +211,7 @@ function hasTopLevelEffect(file: string): boolean {
  * @heryjs/core is built from src/technical, so its manifest answers to that
  * folder: one subpath per public entry and no other, exactly the peers the
  * kernel's shipped code imports, and the files that run on load listed as
- * side effects. It stays private until it is published.
+ * side effects.
  */
 function kernelPackageProblems(root: PackageManifest): string[] {
   const name = KERNEL_PACKAGE_DIR;
@@ -207,9 +232,7 @@ function kernelPackageProblems(root: PackageManifest): string[] {
     problems.push(`${name} is named ${manifest.name}, not ${KERNEL_PACKAGE}`);
   }
 
-  if (manifest.private !== true) {
-    problems.push(`${name} is not private, and nothing is published yet`);
-  }
+  problems.push(...publishProblems(name, manifest));
 
   if (JSON.stringify(manifest.files) !== JSON.stringify(['dist', 'prisma'])) {
     problems.push(
@@ -304,8 +327,7 @@ function kernelPackageProblems(root: PackageManifest): string[] {
 
 /**
  * @heryjs/cli holds the tooling a project runs against its own code, so the
- * project installs it rather than carrying it: private until it is published,
- * dist alone, and exactly the peers its sources import.
+ * project installs it rather than carrying it: published, bin and dist alone, and exactly the peers its sources import.
  */
 function cliPackageProblems(): string[] {
   const name = CLI_PACKAGE_DIR;
@@ -319,9 +341,7 @@ function cliPackageProblems(): string[] {
     problems.push(`${name} is named ${manifest.name}, not ${CLI_PACKAGE}`);
   }
 
-  if (manifest.private !== true) {
-    problems.push(`${name} is not private, and nothing is published yet`);
-  }
+  problems.push(...publishProblems(name, manifest));
 
   if (JSON.stringify(manifest.files) !== JSON.stringify(['bin', 'dist'])) {
     problems.push(
@@ -379,6 +399,7 @@ export function checkPackageManifests(): boolean {
     const required = requiredPeers(module.packageDir);
 
     problems.push(...exportsProblems(name, manifest));
+    problems.push(...publishProblems(name, manifest));
 
     required
       .filter((peer) => declared[peer] === undefined)

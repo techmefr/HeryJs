@@ -1,11 +1,14 @@
 {
   "name": "@heryjs/core",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0",
   "description": "The HeryJs kernel: auth, RBAC, Postgres row-level security, jobs, real time and the rest of src/technical, as the public entries modules import.",
   "author": "Gaetan Compigni",
   "license": "MIT",
   "type": "commonjs",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "homepage": "https://techmefr.github.io/HeryJs/",
   "repository": {
     "type": "git",

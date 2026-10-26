@@ -1,13 +1,11 @@
 name: Release
 
-# Manual only, and a dry run until the heryjs npm organisation exists: it
-# computes the next version (1.0.0 for the first release) and its notes from
-# the commits, and publishes nothing. @heryjs/core stays private meanwhile.
 on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+  id-token: write
 
 concurrency:
   group: release
@@ -16,17 +14,44 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
+      - uses: pnpm/action-setup@v6
 
-      - name: Compute the next release (dry run, nothing published)
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          registry-url: 'https://registry.npmjs.org'
+          cache: pnpm
+
+      - name: Refuse a version already released
+        id: version
+        run: |
+          version="$(node -p 'require("./package.json").version')"
+          if git rev-parse --verify --quiet "refs/tags/v$version" > /dev/null; then
+            echo "v$version is already tagged: bump every package before releasing." >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run db:generate
+
+      - run: pnpm run build:core
+
+      - run: pnpm run lint:conventions
+
+      - name: Publish every package through npm trusted publishing
+        run: pnpm -r publish --access public --no-git-checks
+
+      - name: Tag the release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx --yes semantic-release@24.2.3 --dry-run --no-ci
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: gh release create "v$VERSION" --target "$GITHUB_SHA" --generate-notes

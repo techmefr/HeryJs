@@ -9,6 +9,14 @@ changes for a **new** project. A change to a generated file reaches an existing
 project only when its developer applies it by hand, so anything in that
 category is called out here explicitly.
 
+## 1.0.0 — unreleased
+
+First public release on npm: `heryjs`, `@heryjs/core`, `@heryjs/cli` and every module package ship at 1.0.0, publicly and with provenance.
+
+### Every package is published from the heryjs npm organisation
+
+`@heryjs/core` and `@heryjs/cli` are no longer private, and every package declares `publishConfig: { access: "public", provenance: true }` and its `engines`; `lint:conventions` keeps it that way. `scripts/publish-first-release.sh` publishes the first release from a maintainer's machine after `npm login`: it checks that the tree is clean and on `origin/main`, builds, and runs `pnpm -r publish` in dependency order, as a dry run unless it is given `--yes`. The release workflow, still started by hand only, now publishes every package with `pnpm -r publish` through npm trusted publishing (OIDC, no npm token) and tags the release, for every version after 1.0.0; semantic-release and `.releaserc.json` are gone. The `upgrade` job no longer installs a `.pnpmfile.cjs` hook. **Migration guide:** none needed.
+
 ## 0.1.0 — unreleased
 
 First public release.

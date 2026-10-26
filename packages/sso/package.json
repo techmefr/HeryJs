@@ -1,12 +1,13 @@
 {
   "name": "@heryjs/sso",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Enterprise SSO per tenant: OIDC and SAML 2.0 connections owned by a tenant, DNS-verified domain routing and just-in-time provisioning.",
   "author": "Gaetan Compigni",
   "license": "MIT",
   "type": "commonjs",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "homepage": "https://techmefr.github.io/HeryJs/",
   "repository": {
@@ -22,6 +23,9 @@
     "heryjs-module",
     "nestjs"
   ],
+  "engines": {
+    "node": ">=24.20"
+  },
   "heryjs": {
     "module": true
   },

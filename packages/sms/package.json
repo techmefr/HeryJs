@@ -1,12 +1,13 @@
 {
   "name": "@heryjs/sms",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Send SMS behind one contract, with the per-country rules that decide whether a message is legal before a provider silently drops it",
   "author": "Gaetan Compigni",
   "license": "MIT",
   "type": "commonjs",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "homepage": "https://techmefr.github.io/HeryJs/",
   "repository": {
@@ -22,6 +23,9 @@
     "heryjs-module",
     "nestjs"
   ],
+  "engines": {
+    "node": ">=24.20"
+  },
   "heryjs": {
     "module": true
   },

@@ -1,12 +1,13 @@
 {
   "name": "@heryjs/billing-stripe",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Verify and parse Stripe webhooks with node:crypto only, no SDK dependency",
   "author": "Gaetan Compigni",
   "license": "MIT",
   "type": "commonjs",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "homepage": "https://techmefr.github.io/HeryJs/",
   "repository": {
@@ -22,6 +23,9 @@
     "heryjs-module",
     "nestjs"
   ],
+  "engines": {
+    "node": ">=24.20"
+  },
   "heryjs": {
     "module": true
   },

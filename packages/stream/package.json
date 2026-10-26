@@ -1,12 +1,13 @@
 {
   "name": "@heryjs/stream",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Add one-to-many audio/video streaming via LiveKit (SFU). Use \"hery generate <Name> --stream\" to add publish/viewer token endpoints to a resource.",
   "author": "Gaetan Compigni",
   "license": "MIT",
   "type": "commonjs",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "homepage": "https://techmefr.github.io/HeryJs/",
   "repository": {
@@ -22,6 +23,9 @@
     "heryjs-module",
     "nestjs"
   ],
+  "engines": {
+    "node": ">=24.20"
+  },
   "heryjs": {
     "module": true
   },
