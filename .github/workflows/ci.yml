@@ -723,18 +723,27 @@ jobs:
             const dir = process.argv[1];
             const manifest = JSON.parse(fs.readFileSync("package.json", "utf8"));
             const tarballs = fs.readdirSync(dir);
-            for (const name of Object.keys(manifest.dependencies)) {
+            for (const deps of [manifest.dependencies, manifest.devDependencies ?? {}]) for (const name of Object.keys(deps)) {
               if (!name.startsWith("@heryjs/")) continue;
               const tarball = tarballs.find((file) => new RegExp("^heryjs-" + name.slice(8) + "-[0-9]").test(file));
               if (!tarball) throw new Error(`no tarball for ${name}`);
-              manifest.dependencies[name] = `file:${dir}/${tarball}`;
+              deps[name] = `file:${dir}/${tarball}`;
             }
             fs.writeFileSync("package.json", `${JSON.stringify(manifest, null, 2)}\n`);
           ' "$RUNNER_TEMP/n"
           cp .env.example .env
           # Until a release ships it, main's modules peer on an unpublished
           # heryjs that only their types read.
-          echo 'autoInstallPeers: false' >> pnpm-workspace.yaml
+          cat > .pnpmfile.cjs <<'PNPMFILE'
+          module.exports = {
+            hooks: {
+              readPackage(pkg) {
+                if (pkg.name?.startsWith('@heryjs/')) delete pkg.peerDependencies?.heryjs;
+                return pkg;
+              },
+            },
+          };
+          PNPMFILE
           pnpm install --no-frozen-lockfile
           pnpm hery migrate --name init
           pnpm run build
@@ -756,15 +765,15 @@ jobs:
             const dir = process.argv[1];
             const manifest = JSON.parse(fs.readFileSync("package.json", "utf8"));
             const tarballs = fs.readdirSync(dir);
-            for (const name of Object.keys(manifest.dependencies)) {
+            for (const deps of [manifest.dependencies, manifest.devDependencies ?? {}]) for (const name of Object.keys(deps)) {
               if (!name.startsWith("@heryjs/")) continue;
               const tarball = tarballs.find((file) => new RegExp("^heryjs-" + name.slice(8) + "-[0-9]").test(file));
               if (!tarball) throw new Error(`no tarball for ${name}`);
-              manifest.dependencies[name] = `file:${dir}/${tarball}`;
+              deps[name] = `file:${dir}/${tarball}`;
             }
             fs.writeFileSync("package.json", `${JSON.stringify(manifest, null, 2)}\n`);
           ' "$RUNNER_TEMP/n1"
-          sed -i '/^autoInstallPeers: false$/d' pnpm-workspace.yaml
+          rm .pnpmfile.cjs
           pnpm install --no-frozen-lockfile
           pnpm hery upgrade
           pnpm hery migrate --name upgrade
