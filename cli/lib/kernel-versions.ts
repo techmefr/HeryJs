@@ -834,7 +834,7 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
       'e40b32c21f733e39cdbf61df53d5986afb0e8c32eded8fd7df274d6eb40aa6c7',
     ],
     'src/technical/config/project-config-file.ts': [
-      '2686553f274c26cd217a896ff714ca630b2f93427ed9038f53a4189f96d51f3f',
+      'e142fdf16bd739ac98f9769430b53502862bbe0662054b60cae79b00b2cc3e20',
     ],
     'src/technical/describe/describe.controller.ts': [
       '8752249a8d4fdc9c800516c86e0d3d433c61a3e6b1ad445ead29b63fee118917',
@@ -1299,7 +1299,7 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
     'src/technical/http/cors.spec.ts': [
       '1a9de9ec12154ae0627ab3d2fdd14e7bb7dde6b7492611f2a102812362af43ab',
       '320c147b24f4fdd1cdb2909e04c9c6cb2f8ca63011cfa1c1093c2fbeab996eec',
-      'd9c94b7997526b5559c9963a636e2d3748e9362c9a70f87e0e446a96f0bb2339',
+      'efbe798beae2704ad911b543c034428f4f8f1ca4ea1a9594f9f363501bf76950',
     ],
     'src/technical/http/cors.ts': [
       '8780d4d22de7e7be9e86a784b9d532b43f60ba671b8e093e1af4ba48270c0ba1',
