@@ -44,18 +44,17 @@
     "node": ">=24.20"
   },
   "bin": {
-    "heryjs": "dist/scaffold/cli/heryjs.js"
+    "heryjs": "dist/scaffold/packages/cli/src/heryjs.js"
   },
-  "types": "dist/scaffold/cli/module-contract.d.ts",
+  "types": "dist/scaffold/packages/cli/src/module-contract.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/scaffold/cli/module-contract.d.ts"
+      "types": "./dist/scaffold/packages/cli/src/module-contract.d.ts"
     },
     "./package.json": "./package.json"
   },
   "files": [
     "dist/scaffold",
-    "cli",
     "packages",
     "scripts",
     "src/technical",
@@ -103,17 +102,17 @@
     "build:scaffold": "tsc -p tsconfig.scaffold.json",
     "build:modules": "pnpm run build:scaffold && pnpm --filter \"./packages/*\" run build",
     "prepack": "pnpm run build:scaffold",
-    "format": "prettier --write \"{src,apps,libs,test,cli,scripts,prisma,examples,packages}/**/*.ts\" \"prisma.config.ts\" \"hery.config.ts\" \"cors.config.ts\"",
-    "format:check": "prettier --check \"{src,apps,libs,test,cli,scripts,prisma,examples,packages}/**/*.ts\" \"prisma.config.ts\" \"hery.config.ts\" \"cors.config.ts\"",
+    "format": "prettier --write \"{src,apps,libs,test,scripts,prisma,examples,packages}/**/*.ts\" \"prisma.config.ts\" \"hery.config.ts\" \"cors.config.ts\"",
+    "format:check": "prettier --check \"{src,apps,libs,test,scripts,prisma,examples,packages}/**/*.ts\" \"prisma.config.ts\" \"hery.config.ts\" \"cors.config.ts\"",
     "start": "pnpm run build:core && nest start -b swc",
     "start:dev": "pnpm run build:core && nest start -b swc --watch",
     "dev:core": "tsc -p packages/core/tsconfig.build.json --watch --preserveWatchOutput",
     "start:debug": "pnpm run build:core && nest start -b swc --debug --watch",
     "start:prod": "node dist/src/main",
-    "lint": "NODE_OPTIONS=--max-old-space-size=6144 eslint \"{src,apps,libs,test,cli,scripts,prisma,examples,packages}/**/*.ts\" \"prisma.config.ts\" \"hery.config.ts\" \"cors.config.ts\" --ignore-pattern \"packages/admin-astro/src/runtime/**\" --max-warnings 0 && pnpm --filter admin lint",
-    "lint:fix": "NODE_OPTIONS=--max-old-space-size=6144 eslint \"{src,apps,libs,test,cli,scripts,prisma,examples,packages}/**/*.ts\" \"prisma.config.ts\" \"hery.config.ts\" \"cors.config.ts\" --ignore-pattern \"packages/admin-astro/src/runtime/**\" --fix && pnpm --filter admin lint:fix",
-    "lint:fast": "oxlint -c .oxlintrc.json --deny-warnings src apps libs test cli scripts prisma prisma.config.ts hery.config.ts cors.config.ts",
-    "lint:types": "oxlint -c .oxlintrc.json --type-aware --deny-warnings src apps libs test cli scripts prisma prisma.config.ts hery.config.ts cors.config.ts",
+    "lint": "NODE_OPTIONS=--max-old-space-size=6144 eslint \"{src,apps,libs,test,scripts,prisma,examples,packages}/**/*.ts\" \"prisma.config.ts\" \"hery.config.ts\" \"cors.config.ts\" --ignore-pattern \"packages/admin-astro/src/runtime/**\" --max-warnings 0 && pnpm --filter admin lint",
+    "lint:fix": "NODE_OPTIONS=--max-old-space-size=6144 eslint \"{src,apps,libs,test,scripts,prisma,examples,packages}/**/*.ts\" \"prisma.config.ts\" \"hery.config.ts\" \"cors.config.ts\" --ignore-pattern \"packages/admin-astro/src/runtime/**\" --fix && pnpm --filter admin lint:fix",
+    "lint:fast": "oxlint -c .oxlintrc.json --deny-warnings src apps libs test scripts prisma prisma.config.ts hery.config.ts cors.config.ts",
+    "lint:types": "oxlint -c .oxlintrc.json --type-aware --deny-warnings src apps libs test scripts prisma prisma.config.ts hery.config.ts cors.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "typecheck:packages": "for d in packages/*/ examples/hery-module-*/; do if [ -f \"$d/tsconfig.json\" ]; then echo \"$d\"; tsc --noEmit -p \"$d/tsconfig.json\" || exit 1; fi; done",
     "test": "pnpm run test:app && pnpm run test:module-specs && pnpm --filter admin test",
@@ -152,8 +151,8 @@
     "kernel:versions": "NODE_OPTIONS=\"--conditions=development --conditions=heryjs-source\" ts-node scripts/check-kernel-versions.ts --write",
     "lint:package-manifests": "pnpm run lint:conventions package-manifests",
     "lint:example": "pnpm run lint:conventions example-freshness",
-    "lint:hery": "NODE_OPTIONS=\"--conditions=development --conditions=heryjs-source\" ts-node cli/hery.ts lint --min-score 100",
-    "hery": "NODE_OPTIONS=\"--conditions=development --conditions=heryjs-source\" ts-node cli/hery.ts",
+    "lint:hery": "NODE_OPTIONS=\"--conditions=development --conditions=heryjs-source\" ts-node packages/cli/src/hery.ts lint --min-score 100",
+    "hery": "NODE_OPTIONS=\"--conditions=development --conditions=heryjs-source\" ts-node packages/cli/src/hery.ts",
     "codemod:kernel": "pnpm hery kernel:migrate packages examples --peer workspace:^"
   },
   "dependencies": {
@@ -291,7 +290,6 @@
     "forceExit": true,
     "roots": [
       "<rootDir>/src",
-      "<rootDir>/cli",
       "<rootDir>/packages/cli",
       "<rootDir>/examples"
     ],

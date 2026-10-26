@@ -311,7 +311,7 @@ jobs:
           NODE_OPTIONS="--conditions=development --conditions=heryjs-source" \
             "$GITHUB_WORKSPACE/node_modules/.bin/ts-node" \
             -P "$GITHUB_WORKSPACE/tsconfig.json" \
-            "$GITHUB_WORKSPACE/cli/heryjs.ts" new my-app
+            "$GITHUB_WORKSPACE/packages/cli/src/heryjs.ts" new my-app
 
       # The kernel is a dependency, not a copy, and the project resolves it to
       # dist even with the development condition on.
@@ -322,7 +322,7 @@ jobs:
           test ! -e src/technical
           test ! -e packages/core
           test ! -e packages/cli
-          test ! -e cli/lib/lint
+          test ! -e cli
           test "$(ls src/devtools | tr '\n' ' ')" = 'test-support.ts testing '
           test -f src/devtools/testing/register-and-login.ts
           test ! -e prisma/schema.prisma
@@ -348,6 +348,15 @@ jobs:
           test "$(ls scripts | tr '\n' ' ')" = 'postgres '
           ! grep -q 'lint:conventions' package.json .github/workflows/ci.yml
           pnpm hery check
+
+      # The CLI is the installed @heryjs/cli, so the upgrade runs from the
+      # project itself, the way Renovate's postUpgradeTasks run it.
+      - name: Upgrade it with its own CLI
+        working-directory: ${{ runner.temp }}/scaffold/my-app
+        run: |
+          node -e 'const { scripts } = require("./package.json"); if (!/(^| )hery$/.test(scripts.hery)) { console.error(scripts.hery); process.exit(1); }'
+          test -x node_modules/.bin/hery
+          pnpm hery upgrade
 
       # What production runs is the build, with production's environment: a
       # dependency that resolves only while developing, or a variable the
@@ -457,7 +466,7 @@ jobs:
           if NODE_OPTIONS="--conditions=development --conditions=heryjs-source" \
             "$GITHUB_WORKSPACE/node_modules/.bin/ts-node" \
             -P "$GITHUB_WORKSPACE/tsconfig.json" \
-            "$GITHUB_WORKSPACE/cli/hery.ts" kernel:migrate 2> refusal.log; then
+            "$GITHUB_WORKSPACE/packages/cli/src/hery.ts" kernel:migrate 2> refusal.log; then
             echo 'kernel:migrate accepted a modified kernel'
             exit 1
           fi
@@ -478,7 +487,7 @@ jobs:
           NODE_OPTIONS="--conditions=development --conditions=heryjs-source" \
             "$GITHUB_WORKSPACE/node_modules/.bin/ts-node" \
             -P "$GITHUB_WORKSPACE/tsconfig.json" \
-            "$GITHUB_WORKSPACE/cli/hery.ts" kernel:migrate
+            "$GITHUB_WORKSPACE/packages/cli/src/hery.ts" kernel:migrate
           test ! -e src/technical
           test ! -e packages/core
           test "$(ls src/devtools | tr '\n' ' ')" = 'test-support.ts testing '
@@ -487,6 +496,8 @@ jobs:
           test ! -e scripts/check-conventions.ts
           test "$(ls scripts | tr '\n' ' ')" = 'postgres '
           grep -q '"check": "pnpm hery check"' package.json
+          test ! -e cli
+          node -e 'const { scripts } = require("./package.json"); if (!/(^| )hery$/.test(scripts.hery)) { console.error(scripts.hery); process.exit(1); }'
           grep -q 'HeryModule.forRoot(heryConfig, heryModules)' src/app.module.ts
           ! grep -q '#modules/' src/app.module.ts
           grep -q "'@heryjs/impersonation'," hery.config.ts
@@ -500,6 +511,17 @@ jobs:
           pnpm hery migrate --name init
           pnpm run typecheck
           pnpm run build
+
+      # Migrated, the project runs the commands its copied CLI never had.
+      - name: Check, sync and upgrade the migrated project with its own CLI
+        working-directory: ${{ runner.temp }}/old/old-app
+        env:
+          DATABASE_URL: postgresql://heryjs_app:heryjs_app@localhost:5432/heryjs_old
+          DATABASE_MIGRATION_URL: postgresql://heryjs:heryjs@localhost:5432/heryjs_old
+        run: |
+          pnpm hery sync --check
+          pnpm hery check
+          pnpm hery upgrade
 
       - name: Boot the migrated build in production
         working-directory: ${{ runner.temp }}/old/old-app

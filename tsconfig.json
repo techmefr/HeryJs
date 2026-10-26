@@ -3,7 +3,7 @@
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "paths": {
-      "heryjs": ["./cli/module-contract.ts"]
+      "heryjs": ["./packages/cli/src/module-contract.ts"]
     },
     "resolvePackageJsonExports": true,
     "customConditions": ["heryjs-source"],

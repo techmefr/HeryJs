@@ -105,7 +105,7 @@ $ pnpm hery install some-module
 
 `--force` installs it anyway and prints the same line as a warning. The refusal is a default, not a wall: the files land, and you own them.
 
-The version it is compared against is not your project's — that one is yours to number as you like — but the kernel yours was generated from, declared in `cli/lib/kernel-version.ts`. A range nobody can parse is reported as the malformed field it is rather than as a version mismatch.
+The version it is compared against is not your project's — that one is yours to number as you like — but the kernel yours was generated from, declared in `@heryjs/cli` (`packages/cli/src/lib/kernel-version.ts`). A range nobody can parse is reported as the malformed field it is rather than as a version mismatch.
 
 There is no `channel` field. The loader stamps it from where it found the module, so nothing can claim to be official.
 

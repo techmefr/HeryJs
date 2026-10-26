@@ -1,10 +1,10 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import * as path from 'node:path';
-import { blueprintSchema } from '../cli/lib/blueprint';
-import type { Blueprint } from '../cli/lib/blueprint';
-import { buildResourceContext } from '../cli/lib/resource-context';
-import type { ResourceContext } from '../cli/lib/resource-context';
-import * as templates from '../cli/lib/templates';
+import { blueprintSchema } from '../packages/cli/src/lib/blueprint';
+import type { Blueprint } from '../packages/cli/src/lib/blueprint';
+import { buildResourceContext } from '../packages/cli/src/lib/resource-context';
+import type { ResourceContext } from '../packages/cli/src/lib/resource-context';
+import * as templates from '../packages/cli/src/lib/templates';
 
 const root = path.resolve(__dirname, '..');
 

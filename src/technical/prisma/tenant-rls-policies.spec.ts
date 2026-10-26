@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
-import { tenantScopedModelsIn } from '../../../cli/lib/rls';
+import { tenantScopedModelsIn } from '../../../packages/cli/src/lib/rls';
 import { readPrismaSchema } from './schema-files';
 
 /**

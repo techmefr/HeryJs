@@ -1,10 +1,10 @@
 import pc from 'picocolors';
 import * as path from 'node:path';
-import { loadOfficialModules } from '../cli/lib/module-discovery';
+import { loadOfficialModules } from '../packages/cli/src/lib/module-discovery';
 import {
   unloadablePackages,
   validateModule,
-} from '../cli/lib/module-validation';
+} from '../packages/cli/src/lib/module-validation';
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 

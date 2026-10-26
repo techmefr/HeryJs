@@ -8,6 +8,6 @@
     "removeComments": false,
     "types": ["node"]
   },
-  "include": ["cli/heryjs.ts", "cli/module-contract.ts"],
+  "include": ["packages/cli/src/heryjs.ts", "packages/cli/src/module-contract.ts"],
   "exclude": ["node_modules", "dist"]
 }
