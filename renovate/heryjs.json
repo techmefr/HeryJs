@@ -13,6 +13,11 @@
       "automerge": true
     },
     {
+      "description": "A kernel bump may change its schema, and the project's migration for it is written by hand",
+      "matchPackageNames": ["@heryjs/core"],
+      "automerge": false
+    },
+    {
       "matchPackageNames": ["@heryjs/**"],
       "matchUpdateTypes": ["major"],
       "automerge": false,

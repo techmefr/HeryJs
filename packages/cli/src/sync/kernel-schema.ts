@@ -77,26 +77,37 @@ function normalised(line: string): string {
  * own copy hangs on the kernel's models kept: the back-relations of its
  * resources and the fields its modules add, each with the annotations above
  * it, and the model attributes it adds. The kernel's version of a field wins,
- * and a model the kernel no longer ships goes.
+ * and a model the kernel no longer ships goes. Given the kernel's schema as
+ * last synced, a field or attribute it shipped then and no longer does goes
+ * too, where without it the project would keep it as its own.
  */
-export function mergeKernelSchema(packaged: string, current: string): string {
+export function mergeKernelSchema(
+  packaged: string,
+  current: string,
+  base = '',
+): string {
   const project = modelBodies(current);
   const kernel = modelBodies(packaged);
+  const previous = modelBodies(base);
   const output: string[] = [];
   let model: string | undefined;
   let pending: string[] = [];
 
   const extraFields = (): string[] => {
     const kernelFields = kernel.get(model!)!.fields;
+    const previousFields = previous.get(model!)?.fields ?? new Map();
 
     return [...(project.get(model!)?.fields ?? new Map<string, string[]>())]
-      .filter(([name]) => !kernelFields.has(name))
+      .filter(([name]) => !kernelFields.has(name) && !previousFields.has(name))
       .flatMap(([, lines]) => lines);
   };
 
   const extraAttributes = (): string[] => {
     const kernelAttributes = new Set(
-      kernel.get(model!)!.attributes.map(normalised),
+      [
+        ...kernel.get(model!)!.attributes,
+        ...(previous.get(model!)?.attributes ?? []),
+      ].map(normalised),
     );
 
     return (project.get(model!)?.attributes ?? []).filter(
