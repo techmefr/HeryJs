@@ -31,6 +31,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://heryjs_app:heryjs_app@localhost:5432/heryjs
       DATABASE_MIGRATION_URL: postgresql://heryjs:heryjs@localhost:5432/heryjs
+      SHADOW_DATABASE_URL: postgresql://heryjs:heryjs@localhost:5432/heryjs_shadow
       REDIS_URL: redis://localhost:6479
       BETTER_AUTH_URL: http://localhost:3000
 
@@ -99,6 +100,13 @@ jobs:
         run: psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -f scripts/postgres/app-role.sql
 
       - run: pnpm exec prisma migrate deploy
+
+      # A schema change, the kernel's included, ships with its migration: the
+      # migrations replayed on a shadow database must give the schema.
+      - name: Check the migrations carry the whole schema
+        run: |
+          psql "$DATABASE_MIGRATION_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE heryjs_shadow'
+          pnpm exec prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema --exit-code
 
       - run: pnpm run lint
 
