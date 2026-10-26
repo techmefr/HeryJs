@@ -6,8 +6,25 @@ import {
   DOC_EXAMPLES_STEP,
   MODULES_THE_KERNEL_NEEDS,
   projectManifest,
+  projectWorkflow,
   withoutKernelDependency,
 } from './new';
+
+describe('the CI workflow a generated project starts from', () => {
+  const workflow = projectWorkflow(
+    readFileSync(
+      path.join(__dirname, '..', '..', '.github', 'workflows', 'ci.yml'),
+      'utf8',
+    ),
+  );
+
+  it('fails on a kernel schema left behind before the migration step rewrites it', () => {
+    const check = workflow.indexOf('pnpm hery sync --check');
+
+    expect(check).toBeGreaterThan(-1);
+    expect(check).toBeLessThan(workflow.indexOf('pnpm hery migrate --name ci'));
+  });
+});
 
 const REPO_MANIFEST = JSON.parse(
   readFileSync(path.join(__dirname, '..', '..', 'package.json'), 'utf8'),

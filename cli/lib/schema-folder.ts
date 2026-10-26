@@ -209,6 +209,13 @@ export function withMigrationsPath(config: string): string {
   );
 }
 
+export function hasLegacySchema(root: string): boolean {
+  return (
+    existsSync(path.join(root, LEGACY_SCHEMA)) &&
+    !existsSync(path.join(root, PRISMA_SCHEMA_FOLDER))
+  );
+}
+
 export function migrateSchemaFolder(
   root: string,
   owners: SchemaOwners,
@@ -216,10 +223,7 @@ export function migrateSchemaFolder(
 ): string[] {
   const legacy = path.join(root, LEGACY_SCHEMA);
 
-  if (
-    !existsSync(legacy) ||
-    existsSync(path.join(root, PRISMA_SCHEMA_FOLDER))
-  ) {
+  if (!hasLegacySchema(root)) {
     return [];
   }
 
