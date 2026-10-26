@@ -1,5 +1,10 @@
 const MODEL_START = /^model\s+(\w+)\s*\{/;
 
+interface ModelBody {
+  fields: Map<string, string[]>;
+  attributes: string[];
+}
+
 function fieldName(line: string): string | undefined {
   const trimmed = line.trim();
 
@@ -10,16 +15,26 @@ function fieldName(line: string): string | undefined {
   return trimmed.split(/\s+/)[0];
 }
 
-function modelFields(schema: string): Map<string, string[]> {
-  const models = new Map<string, string[]>();
-  let current: string | undefined;
+function isAttribute(line: string): boolean {
+  return line.trim().startsWith('@@');
+}
+
+function isDocComment(line: string): boolean {
+  return line.trim().startsWith('///');
+}
+
+function modelBodies(schema: string): Map<string, ModelBody> {
+  const models = new Map<string, ModelBody>();
+  let current: ModelBody | undefined;
+  let docs: string[] = [];
 
   for (const line of schema.split('\n')) {
     const start = MODEL_START.exec(line);
 
     if (start) {
-      current = start[1]!;
-      models.set(current, []);
+      current = { fields: new Map(), attributes: [] };
+      models.set(start[1]!, current);
+      docs = [];
       continue;
     }
 
@@ -28,42 +43,72 @@ function modelFields(schema: string): Map<string, string[]> {
       continue;
     }
 
-    if (current !== undefined && fieldName(line) !== undefined) {
-      models.get(current)!.push(line);
+    if (current === undefined) {
+      continue;
     }
+
+    if (isDocComment(line)) {
+      docs.push(line);
+      continue;
+    }
+
+    if (isAttribute(line)) {
+      current.attributes.push(line);
+    } else {
+      const name = fieldName(line);
+
+      if (name !== undefined) {
+        current.fields.set(name, [...docs, line]);
+      }
+    }
+
+    docs = [];
   }
 
   return models;
 }
 
+function normalised(line: string): string {
+  return line.trim().replace(/\s+/g, ' ');
+}
+
 /**
  * The kernel's schema as @heryjs/core ships it, with the fields the project's
  * own copy hangs on the kernel's models kept: the back-relations of its
- * resources and the fields its modules add. The kernel's version of a field
- * wins, and a model the kernel no longer ships goes.
+ * resources and the fields its modules add, each with the annotations above
+ * it, and the model attributes it adds. The kernel's version of a field wins,
+ * and a model the kernel no longer ships goes.
  */
 export function mergeKernelSchema(packaged: string, current: string): string {
-  const projectFields = modelFields(current);
+  const project = modelBodies(current);
+  const kernel = modelBodies(packaged);
   const output: string[] = [];
   let model: string | undefined;
-  let kernelFields = new Set<string>();
   let pending: string[] = [];
 
-  const extras = (): string[] =>
-    (projectFields.get(model!) ?? []).filter(
-      (line) => !kernelFields.has(fieldName(line)!),
+  const extraFields = (): string[] => {
+    const kernelFields = kernel.get(model!)!.fields;
+
+    return [...(project.get(model!)?.fields ?? new Map<string, string[]>())]
+      .filter(([name]) => !kernelFields.has(name))
+      .flatMap(([, lines]) => lines);
+  };
+
+  const extraAttributes = (): string[] => {
+    const kernelAttributes = new Set(
+      kernel.get(model!)!.attributes.map(normalised),
     );
+
+    return (project.get(model!)?.attributes ?? []).filter(
+      (line) => !kernelAttributes.has(normalised(line)),
+    );
+  };
 
   for (const line of packaged.split('\n')) {
     const start = MODEL_START.exec(line);
 
     if (start) {
       model = start[1]!;
-      kernelFields = new Set(
-        (modelFields(packaged).get(model) ?? []).map((field) =>
-          fieldName(field)!,
-        ),
-      );
       pending = [];
       output.push(line);
       continue;
@@ -75,19 +120,20 @@ export function mergeKernelSchema(packaged: string, current: string): string {
     }
 
     if (line.startsWith('}')) {
-      const attributes = pending.findIndex((pendingLine) =>
-        pendingLine.trim().startsWith('@@'),
-      );
+      const attributes = pending.findIndex(isAttribute);
       const split = attributes === -1 ? pending.length : attributes;
       const before = pending.slice(0, split);
       const trailingBlank =
         before.length > 0 && before[before.length - 1]!.trim() === '' ? 1 : 0;
+      const addedAttributes = extraAttributes();
 
       output.push(
         ...before.slice(0, before.length - trailingBlank),
-        ...extras(),
+        ...extraFields(),
         ...before.slice(before.length - trailingBlank),
+        ...(attributes === -1 && addedAttributes.length > 0 ? [''] : []),
         ...pending.slice(split),
+        ...addedAttributes,
         line,
       );
       model = undefined;
@@ -103,7 +149,7 @@ export function mergeKernelSchema(packaged: string, current: string): string {
 function normalisedLines(schema: string): string[] {
   return schema
     .split('\n')
-    .map((line) => line.trim().replace(/\s+/g, ' '))
+    .map(normalised)
     .filter((line) => line !== '')
     .sort();
 }

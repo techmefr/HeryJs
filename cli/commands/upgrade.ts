@@ -4,6 +4,7 @@ import pc from 'picocolors';
 
 export const UPGRADE_STEPS: readonly (readonly string[])[] = [
   ['kernel:migrate'],
+  ['sync'],
   ['check'],
 ];
 
@@ -34,7 +35,7 @@ export function registerUpgradeCommand(
   program
     .command('upgrade')
     .description(
-      'After bumping @heryjs/* (by hand or through the HeryJs Renovate preset): run "hery kernel:migrate", then "hery check", and stop at the first that fails.',
+      'After bumping @heryjs/* (by hand or through the HeryJs Renovate preset): run "hery kernel:migrate", "hery sync", then "hery check", and stop at the first that fails.',
     )
     .action(() => {
       const status = runUpgrade(run);

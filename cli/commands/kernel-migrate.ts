@@ -17,7 +17,11 @@ import { KERNEL_PACKAGE } from '../lib/kernel-public-api';
 import { APP_MODULE } from '../lib/app-module-patch';
 import { migrateAppModuleWiring } from '../lib/app-module-migration';
 import { loadModules } from '../lib/module-discovery';
-import { migrateSchemaFolder, schemaOwners } from '../lib/schema-folder';
+import {
+  hasLegacySchema,
+  migrateSchemaFolder,
+  schemaOwners,
+} from '../lib/schema-folder';
 
 export function registerKernelMigrateCommand(program: Command): void {
   program
@@ -85,11 +89,13 @@ export function registerKernelMigrateCommand(program: Command): void {
         const registries = migrateLegacyRegistries(root, { write }).map(
           (annotation) => `prisma/schema.prisma: ${annotation}`,
         );
-        const schemaFolder = migrateSchemaFolder(
-          root,
-          await schemaOwners(reference, loadModules()),
-          { write },
-        );
+        const schemaFolder = hasLegacySchema(root)
+          ? migrateSchemaFolder(
+              root,
+              await schemaOwners(reference, loadModules()),
+              { write },
+            )
+          : [];
 
         const changed = new Set([
           ...removeCopiedConventionScripts(root, conventionScripts, { write }),
