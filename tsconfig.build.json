@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "hery.config.ts", "cors.config.ts"],
   "exclude": ["node_modules", "dist", "**/*spec.ts"]
 }

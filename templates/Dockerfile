@@ -18,18 +18,20 @@ FROM build AS migrate
 ENV NODE_ENV=production
 CMD ["pnpm", "exec", "prisma", "migrate", "deploy"]
 
+# The build compiled hery.config.ts and cors.config.ts into dist, so the
+# runtime needs no TypeScript tooling: only the production dependencies stay.
+FROM build AS production-dependencies
+RUN CI=true pnpm prune --prod --ignore-scripts
+
 FROM node:24-slim AS runtime
 WORKDIR /app
 RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production
 ENV PORT=3000
-# node_modules is copied whole, dev dependencies included: hery.config.ts and
-# cors.config.ts are TypeScript read at boot through ts-node, and pruning
-# either one away stops the process before it listens.
-COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY --from=production-dependencies --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
-COPY --from=build --chown=node:node /app/package.json /app/tsconfig.json /app/hery.config.ts /app/cors.config.ts ./
+COPY --from=build --chown=node:node /app/package.json ./
 USER node
 EXPOSE 3000
 # Liveness only: a dependency outage must not restart a healthy process.

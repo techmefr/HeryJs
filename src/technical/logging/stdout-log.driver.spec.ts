@@ -27,6 +27,26 @@ describe('StdoutLogDriver', () => {
     expect(written[0]).toContain('hello');
     expect(written[0]).not.toContain('"msg"');
   });
+
+  it('loads pino-pretty only to pretty-print, so production runs without it', () => {
+    jest.isolateModules(() => {
+      jest.doMock('pino-pretty', () => {
+        throw new Error('pino-pretty is not installed');
+      });
+      const isolated = jest.requireActual<typeof import('./stdout-log.driver')>(
+        './stdout-log.driver',
+      );
+      const written: string[] = [];
+
+      new isolated.StdoutLogDriver({
+        isPretty: false,
+        write: (text) => written.push(text),
+      }).write(parseLogLine(RAW));
+
+      expect(written).toEqual([`${RAW}\n`]);
+    });
+    jest.dontMock('pino-pretty');
+  });
 });
 
 describe('shouldPrettyPrint', () => {
