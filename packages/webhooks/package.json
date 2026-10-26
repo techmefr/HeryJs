@@ -60,7 +60,7 @@
     "@prisma/client": "^7.0.0",
     "bullmq": "^6.0.0",
     "express": "^5.0.0",
-    "heryjs": "workspace:^",
+    "heryjs": "workspace:*",
     "zod": "^4.0.0"
   },
   "devDependencies": {
@@ -73,5 +73,10 @@
     "picocolors": "^1.1.1",
     "typescript": "^6.0.3",
     "zod": "^4.5.4"
+  },
+  "peerDependenciesMeta": {
+    "heryjs": {
+      "optional": true
+    }
   }
 }

@@ -57,7 +57,7 @@
     "@elastic/elasticsearch": "^9.0.0",
     "@heryjs/core": "workspace:*",
     "@nestjs/common": "^12.0.0",
-    "heryjs": "workspace:^"
+    "heryjs": "workspace:*"
   },
   "devDependencies": {
     "@elastic/elasticsearch": "^9.5.1",
@@ -66,5 +66,10 @@
     "heryjs": "workspace:*",
     "picocolors": "^1.1.1",
     "typescript": "^6.0.3"
+  },
+  "peerDependenciesMeta": {
+    "heryjs": {
+      "optional": true
+    }
   }
 }

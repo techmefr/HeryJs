@@ -58,7 +58,7 @@
     "@nestjs/common": "^12.0.0",
     "@nestjs/graphql": "^14.0.0",
     "express": "^5.0.0",
-    "heryjs": "workspace:^"
+    "heryjs": "workspace:*"
   },
   "devDependencies": {
     "@apollo/server": "^5.5.1",
@@ -75,5 +75,10 @@
     "picocolors": "^1.1.1",
     "reflect-metadata": "^0.2.2",
     "typescript": "^6.0.3"
+  },
+  "peerDependenciesMeta": {
+    "heryjs": {
+      "optional": true
+    }
   }
 }

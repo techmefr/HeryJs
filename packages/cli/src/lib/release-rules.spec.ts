@@ -34,6 +34,14 @@ describe('the peers between HeryJs packages', () => {
     ).toEqual([]);
   });
 
+  it('holds the peer on the heryjs payload to the same version', () => {
+    expect(
+      peerRangeProblems('packages/sso', { heryjs: 'workspace:^' }),
+    ).toEqual([
+      'packages/sso peers on heryjs@workspace:^, not workspace:* (the same version)',
+    ]);
+  });
+
   it('refuses a range that lets another release of the kernel in', () => {
     expect(
       peerRangeProblems('packages/sso', { '@heryjs/core': 'workspace:^' }),

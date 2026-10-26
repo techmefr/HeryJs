@@ -59,7 +59,7 @@
     "@prisma/client": "^7.0.0",
     "@xmldom/xmldom": "^0.8.0",
     "express": "^5.0.0",
-    "heryjs": "workspace:^",
+    "heryjs": "workspace:*",
     "xpath": "^0.0.34",
     "zod": "^4.0.0"
   },
@@ -73,5 +73,10 @@
     "typescript": "^6.0.3",
     "xml-crypto": "^6.4.0",
     "xpath": "^0.0.34"
+  },
+  "peerDependenciesMeta": {
+    "heryjs": {
+      "optional": true
+    }
   }
 }

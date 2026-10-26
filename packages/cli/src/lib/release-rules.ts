@@ -38,7 +38,8 @@ export function peerRangeProblems(
   return Object.entries(peers)
     .filter(
       ([peer, range]) =>
-        peer.startsWith(HERYJS_SCOPE) && range !== SAME_VERSION,
+        (peer === 'heryjs' || peer.startsWith(HERYJS_SCOPE)) &&
+        range !== SAME_VERSION,
     )
     .map(
       ([peer, range]) =>
