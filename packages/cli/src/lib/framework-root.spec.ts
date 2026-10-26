@@ -35,6 +35,16 @@ describe('finding the payload a project is scaffolded from', () => {
     expect(frameworkRoot(compiled)).toBe(root);
   });
 
+  it('finds the published payload, which carries the compiled CLI and no packages/', () => {
+    const published = mkdtempSync(path.join(tmpdir(), 'hery-published-'));
+    const compiled = path.join(published, 'dist', 'scaffold', CLI_SOURCE);
+    mkdirSync(path.join(compiled, 'lib'), { recursive: true });
+    mkdirSync(path.join(published, 'templates'), { recursive: true });
+    writeFileSync(path.join(compiled, 'heryjs.js'), '');
+
+    expect(frameworkRoot(path.join(compiled, 'lib'))).toBe(published);
+  });
+
   it('stops at the nearest payload rather than the outermost', () => {
     const inner = path.join(root, 'nested');
     payloadAt(inner);

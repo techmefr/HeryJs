@@ -1,7 +1,10 @@
 import { existsSync } from 'node:fs';
 import * as path from 'node:path';
 
-const MARKERS = [['packages', 'cli', 'src', 'hery.ts'], ['templates']];
+const PAYLOAD_LAYOUTS = [
+  [['packages', 'cli', 'src', 'hery.ts'], ['templates']],
+  [['dist', 'scaffold', 'packages', 'cli', 'src', 'heryjs.js'], ['templates']],
+];
 
 /**
  * The directory holding everything `hery new` copies into a fresh project.
@@ -9,8 +12,8 @@ const MARKERS = [['packages', 'cli', 'src', 'hery.ts'], ['templates']];
  * It cannot be a fixed number of levels above `__dirname`: from source the
  * caller sits at `packages/cli/src/commands/`, and from the published package
  * the compiled scaffolder sits deeper under `dist/`. So it is found by walking
- * up to the markers instead -- the CLI's sources next to `templates/`, both of
- * which travel in the published payload. A generated project has neither: its
+ * up to the markers instead -- the CLI's sources, or in the published payload
+ * its compiled scaffolder, next to `templates/`. A generated project has neither: its
  * CLI is the installed `@heryjs/cli`, and it is not a payload.
  */
 export function findFrameworkRoot(
@@ -20,7 +23,9 @@ export function findFrameworkRoot(
 
   for (;;) {
     if (
-      MARKERS.every((marker) => existsSync(path.join(directory, ...marker)))
+      PAYLOAD_LAYOUTS.some((markers) =>
+        markers.every((marker) => existsSync(path.join(directory, ...marker))),
+      )
     ) {
       return directory;
     }
