@@ -55,12 +55,9 @@
   },
   "files": [
     "dist/scaffold",
-    "packages",
     "scripts",
-    "src/technical",
     "src/devtools",
     "src/hery",
-    "src/modules",
     "src/functional",
     "src/app.controller.ts",
     "src/app.controller.spec.ts",

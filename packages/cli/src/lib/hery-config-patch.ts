@@ -158,6 +158,7 @@ export interface ModuleWiring {
   name: string;
   moduleName: string;
   dest: string;
+  contractDir?: string;
 }
 
 /**
@@ -165,9 +166,9 @@ export interface ModuleWiring {
  * when its runtime ships one. Returns the files written.
  */
 export function wireModule(root: string, wiring: ModuleWiring): string[] {
-  if (
-    !existsSync(path.join(root, wiring.dest, `${wiring.moduleName}.hery.ts`))
-  ) {
+  const contractDir = wiring.contractDir ?? path.join(root, wiring.dest);
+
+  if (!existsSync(path.join(contractDir, `${wiring.moduleName}.hery.ts`))) {
     return [];
   }
 

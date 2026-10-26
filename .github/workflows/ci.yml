@@ -318,10 +318,9 @@ jobs:
       - name: Install, migrate, typecheck and build it
         working-directory: ${{ runner.temp }}/scaffold/my-app
         run: |
-          test "$(ls src/modules | tr '\n' ' ')" = 'impersonation push two-factor '
+          test ! -e src/modules
           test ! -e src/technical
-          test ! -e packages/core
-          test ! -e packages/cli
+          test ! -e packages
           test ! -e cli
           test "$(ls src/devtools | tr '\n' ' ')" = 'test-support.ts testing '
           test -f src/devtools/testing/register-and-login.ts
@@ -330,6 +329,7 @@ jobs:
           grep -q "path: 'prisma/migrations'" prisma.config.ts
           grep -q '"@heryjs/core": "file:' package.json
           grep -q '"@heryjs/cli": "file:' package.json
+          grep -q '"@heryjs/two-factor": "file:' package.json
           cp .env.example .env
           pnpm install
           pnpm hery sync --check
@@ -420,14 +420,19 @@ jobs:
           pnpm hery migrate --name modules
           pnpm hery check
 
-      # Its models go with it, and so do the fields it hung on User.
+      # Its package, its models and the fields it hung on User go with it, and
+      # what is left still builds.
       - name: Uninstall a module
         working-directory: ${{ runner.temp }}/scaffold/my-app
         run: |
           pnpm hery uninstall two-factor
+          ! grep -q '"@heryjs/two-factor"' package.json
           test ! -e prisma/schema/two-factor.prisma
           ! grep -q 'TwoFactorEnrolment' prisma/schema/_hery/core.prisma
           pnpm exec prisma validate
+          pnpm exec prisma generate
+          pnpm run typecheck
+          pnpm run build
           pnpm hery install two-factor
           test -f prisma/schema/two-factor.prisma
           pnpm exec prisma validate

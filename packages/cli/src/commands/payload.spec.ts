@@ -76,6 +76,25 @@ describe('the payload the published package has to carry', () => {
    * would pass every check here and still arrive missing. The project's is
    * written from a template instead; nothing may go back to copying it.
    */
+  /**
+   * The kernel is @heryjs/core, each module its own package and the CLI
+   * @heryjs/cli: the published heryjs carries none of their sources, and a
+   * project copies none of them.
+   */
+  it.each(['packages', 'src/technical', 'cli'])(
+    'does not ship %s, which comes as a package',
+    (entry) => {
+      expect(MANIFEST.files).not.toContain(entry);
+    },
+  );
+
+  it.each(['packages', 'src/modules'])(
+    'does not copy %s into a project',
+    (entry) => {
+      expect(COPY_ENTRIES).not.toContain(entry);
+    },
+  );
+
   it('copies no file npm refuses to publish', () => {
     expect(COPY_ENTRIES).not.toContain('.gitignore');
     expect(MANIFEST.files).not.toContain('.gitignore');

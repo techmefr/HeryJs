@@ -20,6 +20,7 @@ import {
   addWorkspace,
   chainScript,
 } from './project-patch';
+import { isInstalledPackage } from './module-packages';
 import { copyRuntime } from './runtime-copy';
 import { printNextSteps } from './next-steps';
 
@@ -49,6 +50,15 @@ export function createInstallContext(module: LoadedModule): InstallContext {
     touched,
 
     copyRuntime(): void {
+      if (isInstalledPackage(module.packageDir)) {
+        console.log(
+          pc.dim(
+            `  ${module.name} runs from its installed package, nothing to copy`,
+          ),
+        );
+        return;
+      }
+
       const runtimeDir = path.join(module.packageDir, 'src', 'runtime');
 
       for (const file of copyRuntime(runtimeDir, module.dest)) {
