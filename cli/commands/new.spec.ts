@@ -22,7 +22,17 @@ describe('the CI workflow a generated project starts from', () => {
     const check = workflow.indexOf('pnpm hery sync --check');
 
     expect(check).toBeGreaterThan(-1);
-    expect(check).toBeLessThan(workflow.indexOf('pnpm hery migrate --name ci'));
+    expect(check).toBeLessThan(
+      workflow.indexOf('pnpm exec prisma migrate deploy'),
+    );
+  });
+
+  it('fails on a schema change the committed migrations do not carry', () => {
+    expect(workflow).not.toContain('hery migrate --name ci');
+    expect(workflow).toContain(
+      'pnpm exec prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema --exit-code',
+    );
+    expect(workflow).toContain('SHADOW_DATABASE_URL:');
   });
 });
 

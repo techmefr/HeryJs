@@ -8,7 +8,11 @@ import {
 import { tmpdir } from 'node:os';
 import * as path from 'node:path';
 import { cliDependency, withKernelPackage } from './kernel-dependency';
-import { installedKernelSchema, syncKernelSchema } from './kernel-sync';
+import {
+  installedKernelSchema,
+  KERNEL_SCHEMA_BASE,
+  syncKernelSchema,
+} from './kernel-sync';
 import { KERNEL_SCHEMA } from './schema-patch';
 
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -56,6 +60,26 @@ describe('hery sync', () => {
       expect(written).toContain('  role String?');
       expect(written).toContain('  notes Note[]');
       expect(syncKernelSchema(root, packaged, { write: false })).toBe(false);
+    });
+
+    it('drops a field the kernel removed since the last sync and keeps the project ones', () => {
+      writeFileSync(
+        path.join(root, KERNEL_SCHEMA),
+        'model User {\n  id    String @id\n  notes Note[]\n}\n',
+      );
+      syncKernelSchema(root, packaged, { write: true });
+
+      expect(readFileSync(path.join(root, KERNEL_SCHEMA_BASE), 'utf8')).toBe(
+        packaged,
+      );
+
+      syncKernelSchema(root, 'model User {\n  id String @id\n}\n', {
+        write: true,
+      });
+      const written = readFileSync(path.join(root, KERNEL_SCHEMA), 'utf8');
+
+      expect(written).not.toContain('role');
+      expect(written).toContain('  notes Note[]');
     });
 
     it('only reports a schema that is behind when asked to check', () => {

@@ -87,6 +87,20 @@ describe('Renovate preset for generated projects', () => {
     expect(rule('major')?.automerge).toBe(false);
   });
 
+  it('never automerges a bump of @heryjs/core, which may need a migration', () => {
+    const automerging = preset.packageRules.findIndex(
+      (r) => r.automerge === true,
+    );
+    const core = preset.packageRules.findIndex(
+      (r) =>
+        r.matchPackageNames.includes('@heryjs/core') &&
+        r.matchUpdateTypes === undefined,
+    );
+
+    expect(core).toBeGreaterThan(automerging);
+    expect(preset.packageRules[core]?.automerge).toBe(false);
+  });
+
   it('runs hery upgrade after the bump', () => {
     expect(preset.postUpgradeTasks.commands).toContain('pnpm hery upgrade');
   });

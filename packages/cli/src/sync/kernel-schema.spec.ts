@@ -115,6 +115,52 @@ describe('mergeKernelSchema with annotated project fields', () => {
   });
 });
 
+describe('mergeKernelSchema against the kernel last synced', () => {
+  const base = [
+    'model User {',
+    '  id     String @id',
+    '  email  String @unique',
+    '  legacy String?',
+    '',
+    '  @@index([legacy])',
+    '}',
+    '',
+  ].join('\n');
+  const packaged = [
+    'model User {',
+    '  id    String @id',
+    '  email String @unique',
+    '}',
+    '',
+  ].join('\n');
+  const project = [
+    'model User {',
+    '  id     String @id',
+    '  email  String @unique',
+    '  legacy String?',
+    '  posts  Post[]',
+    '',
+    '  @@index([legacy])',
+    '  @@index([email, id])',
+    '}',
+    '',
+  ].join('\n');
+  const merged = mergeKernelSchema(packaged, project, base);
+
+  it('drops a field the kernel removed since the last sync', () => {
+    expect(merged).not.toContain('legacy');
+  });
+
+  it('keeps what the project added', () => {
+    expect(merged).toContain('  posts  Post[]');
+    expect(merged).toContain('  @@index([email, id])');
+  });
+
+  it('keeps every project field without a recorded base', () => {
+    expect(mergeKernelSchema(packaged, project)).toContain('  legacy String?');
+  });
+});
+
 describe('schemasDiffer', () => {
   it('ignores alignment and line order', () => {
     expect(
