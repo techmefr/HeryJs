@@ -50,6 +50,16 @@ export type {
   CircuitSnapshot,
   HttpResilienceSettings,
 } from '../http-client/http-resilience';
+export {
+  ERROR_REPORTER_MODULE,
+  errorReporterDriverToken,
+} from '../error-reporter/error-reporter-driver';
+export type {
+  ErrorReportContext,
+  ErrorReportRequest,
+  ErrorReportUser,
+  ErrorReporterDriver,
+} from '../error-reporter/error-reporter-driver';
 export { IMPORT_MODULE, importableToken } from '../import/import-driver';
 export type {
   ImportDriver,

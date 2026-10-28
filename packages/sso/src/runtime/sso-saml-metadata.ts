@@ -36,12 +36,12 @@ export function parseIdpMetadata(xml: string): SamlIdpMetadata | null {
 
   try {
     const document = new DOMParser({
-      errorHandler: { warning: () => undefined, error: () => undefined },
-    }).parseFromString(xml, 'text/xml');
+      onError: () => undefined,
+    }).parseFromString(xml, 'text/xml') as unknown as Node;
     const entities = select(
       '//md:EntityDescriptor[md:IDPSSODescriptor]',
       document,
-    ) as Element[];
+    ) as unknown as Element[];
     const entity = entities[0];
 
     if (!entity) {

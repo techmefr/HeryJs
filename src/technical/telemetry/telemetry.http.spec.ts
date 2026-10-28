@@ -18,10 +18,10 @@ import {
   PeriodicExportingMetricReader,
 } from '@opentelemetry/sdk-metrics';
 import {
-  BasicTracerProvider,
+  TracerProvider,
   InMemorySpanExporter,
   SimpleSpanProcessor,
-} from '@opentelemetry/sdk-trace-base';
+} from '@opentelemetry/sdk-trace';
 import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -80,8 +80,8 @@ describe('Telemetry over a real HTTP round trip', () => {
     context.setGlobalContextManager(contextManager);
     propagation.setGlobalPropagator(new W3CTraceContextPropagator());
     trace.setGlobalTracerProvider(
-      new BasicTracerProvider({
-        spanProcessors: [new SimpleSpanProcessor(spans)],
+      new TracerProvider({
+        spanProcessors: [new SimpleSpanProcessor({ exporter: spans })],
       }),
     );
     metrics.setGlobalMeterProvider(new MeterProvider({ readers: [reader] }));

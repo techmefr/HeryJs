@@ -24,26 +24,27 @@ Running `pnpm hery install` with no arguments prints `nothing to install` and ex
 
 ## What is available
 
-| Id                     | What it adds                                                                                                                          |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `search-elasticsearch` | Swaps free-text search onto Elasticsearch — docker service, driver, DI wiring.                                                        |
-| `search-meilisearch`   | The same, onto Meilisearch.                                                                                                           |
-| `graphql`              | A GraphQL endpoint (Apollo driver) with a session guard mirroring the REST auth flow.                                                 |
-| `mcp`                  | An authenticated MCP gateway over Streamable HTTP, exposing resources as tools.                                                       |
-| `live`                 | Bidirectional WebSocket support (Socket.IO).                                                                                          |
-| `stream`               | One-to-many audio/video over LiveKit.                                                                                                 |
-| `mail`                 | Outgoing mail: a `MailLog` model, a driver registry, and a BullMQ job that sends.                                                     |
-| `mail-resend`          | A `MailDriver` sending over Resend, landing inside `mail`.                                                                            |
-| `mail-smtp`            | A `MailDriver` sending over SMTP, landing inside `mail`.                                                                              |
-| `storage`              | File storage behind a driver registry — local disk with signed local URLs by default.                                                 |
-| `export`               | Turn records into a downloadable file: an `Exportable`, a CSV driver, and a queued path.                                              |
-| `export-xlsx`          | An `ExportDriver` writing real spreadsheets through exceljs, landing inside `export`.                                                 |
-| `export-pdf`           | An `ExportDriver` writing paginated PDF tables through pdfkit, landing inside `export`.                                               |
-| `import`               | Turn an uploaded file back into records, with a per-row report of what was rejected.                                                  |
-| `http-client`          | Call other people's APIs behind one contract, with a fake driver that cannot reach the network.                                       |
-| `admin-astro`          | An admin panel built with Astro, discovering its sections from `GET /introspect`.                                                     |
-| `impersonation`        | Let an admin act as another user, tenant-bounded and audit-logged, via a bearer token for the target.                                 |
-| `webhooks`             | Receive inbound webhooks with HMAC-SHA256 signature verification and run each one through Event, Job, Notification, Audit and Signal. |
+| Id                      | What it adds                                                                                                                          |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `search-elasticsearch`  | Swaps free-text search onto Elasticsearch — docker service, driver, DI wiring.                                                        |
+| `search-meilisearch`    | The same, onto Meilisearch.                                                                                                           |
+| `graphql`               | A GraphQL endpoint (Apollo driver) with a session guard mirroring the REST auth flow.                                                 |
+| `mcp`                   | An authenticated MCP gateway over Streamable HTTP, exposing resources as tools.                                                       |
+| `live`                  | Bidirectional WebSocket support (Socket.IO).                                                                                          |
+| `stream`                | One-to-many audio/video over LiveKit.                                                                                                 |
+| `mail`                  | Outgoing mail: a `MailLog` model, a driver registry, and a BullMQ job that sends.                                                     |
+| `mail-resend`           | A `MailDriver` sending over Resend, landing inside `mail`.                                                                            |
+| `error-reporter-sentry` | An `ErrorReporterDriver` sending unexpected errors to Sentry over its envelope API, with no SDK.                                      |
+| `mail-smtp`             | A `MailDriver` sending over SMTP, landing inside `mail`.                                                                              |
+| `storage`               | File storage behind a driver registry — local disk with signed local URLs by default.                                                 |
+| `export`                | Turn records into a downloadable file: an `Exportable`, a CSV driver, and a queued path.                                              |
+| `export-xlsx`           | An `ExportDriver` writing real spreadsheets through exceljs, landing inside `export`.                                                 |
+| `export-pdf`            | An `ExportDriver` writing paginated PDF tables through pdfkit, landing inside `export`.                                               |
+| `import`                | Turn an uploaded file back into records, with a per-row report of what was rejected.                                                  |
+| `http-client`           | Call other people's APIs behind one contract, with a fake driver that cannot reach the network.                                       |
+| `admin-astro`           | An admin panel built with Astro, discovering its sections from `GET /introspect`.                                                     |
+| `impersonation`         | Let an admin act as another user, tenant-bounded and audit-logged, via a bearer token for the target.                                 |
+| `webhooks`              | Receive inbound webhooks with HMAC-SHA256 signature verification and run each one through Event, Job, Notification, Audit and Signal. |
 
 Eight of them are modules of their own under `src/modules/`: `live`, `stream`, `mail`, `storage`, `export`, `import`, `http-client`, `webhooks`. Four are **drivers** rather than modules, and land inside the module they extend — `mail-resend` and `mail-smtp` into `src/modules/mail`, `export-xlsx` and `export-pdf` into `src/modules/export` — because a module may not import another module, so a driver living in a folder of its own could never reach the contract it implements. No module lands in `src/technical` or edits a file there (`lint:module-destinations` refuses it): the search drivers, `graphql`, `mcp` and `impersonation` land in `src/modules/<name>` and reach the kernel through `@heryjs/core` — the search drivers register under `searchDriverToken`, the contract the kernel already owns.
 
@@ -158,7 +159,7 @@ Everything it asks for is checked from the package alone, so a third-party autho
 | `src/runtime/` exists, and holds more than specs                   | a module ships real files, never runtime code in string constants                                                                                                                 |
 | something under `src/runtime/` is a spec                           | `copyRuntime` copies it in with the code, so the installer has something to run                                                                                                   |
 | the only subpath import is `#kernel/`                              | it is the one specifier rewritten on the way in; any other arrives pointing at nothing                                                                                            |
-| a kernel import names a public entry, `@heryjs/core/<entry>` | everything else under `src/technical` is internal and may move; a file the module installs into a kernel folder itself stays reachable                                            |
+| a kernel import names a public entry, `@heryjs/core/<entry>`       | everything else under `src/technical` is internal and may move; a file the module installs into a kernel folder itself stays reachable                                            |
 | no relative import climbs out of the package                       | nothing above `src/runtime` is copied                                                                                                                                             |
 | a `tsconfig.json` that is present maps `#kernel/*`                 | otherwise the author's own `tsc` typechecks against no kernel at all — and a published package ships none, so this one applies where the module is authored                       |
 | a `test/` directory that is present is in the tsconfig's `include` | left out, it is outside the project: every typed lint rule reports every file in it as "not found by the project service", which names neither the tsconfig nor the missing entry |
@@ -216,7 +217,7 @@ A module never imports `node:fs`. Every write goes through the context it is han
 | --------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | `copyRuntime()`                         | copies `src/runtime/` to `dest`, rewriting `#kernel/` on the way, skipping any file already there |
 | `copyPackageFile(name)`                 | copies a file from the package root into the project, skipping one already there                  |
-| `addPrismaModels(models)`               | writes the models it owns to `prisma/schema/<module>.prisma`                                        |
+| `addPrismaModels(models)`               | writes the models it owns to `prisma/schema/<module>.prisma`                                      |
 | `addModelFields(model, fields)`         | adds columns to a Prisma model the module does not own                                            |
 | `chainScript(script, command)`          | appends a command to one of the root `package.json` scripts                                       |
 | `addWorkspace(directory)`               | declares a directory in `pnpm-workspace.yaml`                                                     |
@@ -302,6 +303,7 @@ Every variable below has a working development default, and none of them are wri
 | `stream`                                                                                                          | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`                                                                                             |
 | `storage`                                                                                                         | `STORAGE_URL_SECRET`, `STORAGE_DRIVER`, `STORAGE_MAX_UPLOAD_BYTES`, `STORAGE_ALLOWED_CONTENT_TYPES`, `STORAGE_S3_*`                                |
 | `mail-resend`                                                                                                     | `RESEND_API_KEY`, `RESEND_FROM` — no defaults, and read lazily on first send                                                                       |
+| `error-reporter-sentry`                                                                                           | `SENTRY_DSN`, with `SENTRY_ENVIRONMENT` and `SENTRY_RELEASE` optional, read lazily on first report                                                 |
 | `mail-smtp`                                                                                                       | `MAIL_SMTP_HOST`, `MAIL_SMTP_FROM`; `MAIL_SMTP_PORT`, `MAIL_SMTP_TLS`, `MAIL_SMTP_USER`, `MAIL_SMTP_PASSWORD` optional — read lazily on first send |
 | `admin-astro`                                                                                                     | `PUBLIC_API_URL`                                                                                                                                   |
 | `webhooks`                                                                                                        | `WEBHOOK_SIGNATURE_TOLERANCE_SECONDS`                                                                                                              |

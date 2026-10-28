@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.module.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  "include": ["src/module.ts", "src/runtime/**/*.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/**/*.spec.ts",
+    "src/**/*.integration-spec.ts"
+  ]
+}

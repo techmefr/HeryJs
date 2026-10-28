@@ -169,16 +169,16 @@
     "build": "rm -rf dist && tsc -p tsconfig.build.json"
   },
   "peerDependencies": {
-    "@better-auth/passkey": "1.7.3",
+    "@better-auth/passkey": "1.7.14",
     "@bull-board/api": "^9.8.0",
     "@bull-board/express": "^9.8.0",
     "@nestjs/bullmq": "^12.0.0",
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",
     "@nestjs/schedule": "^12.0.1",
-    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/api": "^1.10.0",
     "@opentelemetry/api-logs": "^0.223.0",
-    "@opentelemetry/sdk-node": "^0.223.0",
+    "@opentelemetry/sdk-node": "^0.300.0",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "@prometheus-io/client": "^0.16.1",
@@ -197,7 +197,7 @@
     "socket.io": "^4.8.3",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
-    "zod": "^4.5.4"
+    "zod": "^4.6.7"
   },
   "peerDependenciesMeta": {
     "pino-pretty": {
