@@ -9,6 +9,7 @@ import { buildSentryEvent } from './sentry-event';
 
 const SENTRY_CLIENT = 'heryjs-error-reporter-sentry/1.0.0';
 const SENTRY_PROTOCOL_VERSION = 7;
+const REQUEST_TIMEOUT_MS = 10_000;
 
 @Injectable()
 export class SentryErrorReporterDriver implements ErrorReporterDriver {
@@ -61,6 +62,7 @@ export class SentryErrorReporterDriver implements ErrorReporterDriver {
         'x-sentry-auth': `Sentry sentry_version=${SENTRY_PROTOCOL_VERSION}, sentry_key=${dsn.publicKey}, sentry_client=${SENTRY_CLIENT}`,
       },
       body,
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
     });
 
     if (!response.ok) {

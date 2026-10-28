@@ -45,4 +45,10 @@ describe('observeSettings', () => {
 
     expect(() => observeSettings()).toThrow();
   });
+
+  it('refuses a collector endpoint that is not https', () => {
+    process.env.OBSERVE_ENDPOINT = 'http://collector.example.com';
+
+    expect(() => observeSettings()).toThrow();
+  });
 });

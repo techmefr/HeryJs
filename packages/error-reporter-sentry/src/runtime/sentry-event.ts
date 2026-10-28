@@ -36,8 +36,44 @@ export interface SentryEvent {
   extra: Record<string, unknown>;
 }
 
+const SECRET_KEY = /authorization|cookie|token|password|secret|api[-_]?key/i;
+const MAX_DEPTH = 4;
+const REDACTED = '[redacted]';
+
 export function scrubCredentials(message: string): string {
-  return message.replace(CREDENTIALS_IN_URL, '$1[redacted]@');
+  return message.replace(CREDENTIALS_IN_URL, `$1${REDACTED}@`);
+}
+
+function scrubValue(value: unknown, depth: number): unknown {
+  if (typeof value === 'string') {
+    return scrubCredentials(value);
+  }
+
+  if (depth >= MAX_DEPTH || typeof value !== 'object' || value === null) {
+    return typeof value === 'object' && value !== null ? REDACTED : value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => scrubValue(item, depth + 1));
+  }
+
+  return scrubRecord(value as Record<string, unknown>, depth + 1);
+}
+
+function scrubRecord(
+  record: Record<string, unknown>,
+  depth: number,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(record).map(([key, value]) => [
+      key,
+      SECRET_KEY.test(key) ? REDACTED : scrubValue(value, depth),
+    ]),
+  );
+}
+
+function pathWithoutQuery(path: string): string {
+  return path.split('?')[0] ?? path;
 }
 
 function framesOf(stack: string | undefined): SentryFrame[] {
@@ -70,7 +106,7 @@ export function buildSentryEvent(
   now: Date = new Date(),
 ): SentryEvent {
   const tags: Record<string, string> = {
-    ...context.tags,
+    ...(scrubRecord(context.tags, 0) as Record<string, string>),
     errorId: context.errorId,
     tenantId: context.tenantId ?? 'none',
   };
@@ -94,7 +130,7 @@ export function buildSentryEvent(
       ],
     },
     tags,
-    extra: context.extra,
+    extra: scrubRecord(context.extra, 0),
   };
 
   if (settings.environment) {
@@ -112,7 +148,7 @@ export function buildSentryEvent(
   if (context.request) {
     event.request = {
       method: context.request.method,
-      url: context.request.path,
+      url: pathWithoutQuery(context.request.path),
     };
   }
 

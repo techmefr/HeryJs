@@ -2737,7 +2737,7 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
       'a32a81af1e75e9fbc2bdae49430fc97bbfe34e3f6f486be51964056c4c33d389',
     ],
     'src/technical/telemetry/telemetry.http.spec.ts': [
-      'c23963cb2d31d17a5b824ab33fca38839066bc26b169e6acd63182b72b9d2a4f',
+      '4688216d8d1038832d0178c34155492377099bbfa80656a864f0fa0810ce1758',
       'dd8c052481ddf27cc4f87cd9bb68181c28e90533654337567480ccebe3135ed8',
     ],
     'src/technical/telemetry/telemetry.middleware.ts': [

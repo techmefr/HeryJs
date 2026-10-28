@@ -10,6 +10,11 @@ const context: ErrorReportContext = {
   extra: {},
 };
 
+interface SentEvent {
+  event_id: string;
+  exception: { values: { value: string }[] };
+}
+
 function stubFetch(response: Response): jest.SpyInstance {
   return jest.spyOn(globalThis, 'fetch').mockResolvedValue(response);
 }
@@ -38,8 +43,11 @@ describe('SentryErrorReporterDriver', () => {
     expect(url).toBe('https://o1.ingest.sentry.io/api/42/envelope/');
     expect(init.headers['x-sentry-auth']).toContain('sentry_key=abc123');
     expect(JSON.parse(item)).toEqual({ type: 'event' });
-    expect(JSON.parse(payload).event_id).toBe(JSON.parse(header).event_id);
-    expect(JSON.parse(payload).exception.values[0].value).toBe('boom');
+    const sent = JSON.parse(payload) as SentEvent;
+    const envelope = JSON.parse(header) as { event_id: string };
+
+    expect(sent.event_id).toBe(envelope.event_id);
+    expect(sent.exception.values[0]?.value).toBe('boom');
   });
 
   it('rejects on a refusal so the reporter can log it', async () => {

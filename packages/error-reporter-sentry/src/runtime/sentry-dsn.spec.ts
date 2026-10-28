@@ -15,6 +15,15 @@ describe('parseSentryDsn', () => {
     });
   });
 
+  it('refuses a clear-text dsn except on the local machine', () => {
+    expect(() => parseSentryDsn('http://k@errors.example.com/7')).toThrow(
+      /https/,
+    );
+    expect(parseSentryDsn('http://k@localhost:9000/7').envelopeUrl).toBe(
+      'http://localhost:9000/api/7/envelope/',
+    );
+  });
+
   it('refuses a dsn without a key or a project', () => {
     expect(() => parseSentryDsn('https://o1.ingest.sentry.io/42')).toThrow(
       /must look like/,

@@ -12,6 +12,12 @@ export function parseSentryDsn(dsn: string): SentryDsn {
     throw new Error('SENTRY_DSN is not a valid URL.');
   }
 
+  const isLocal = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+
+  if (url.protocol !== 'https:' && !isLocal) {
+    throw new Error('SENTRY_DSN must use https.');
+  }
+
   const segments = url.pathname.split('/').filter(Boolean);
   const projectId = segments.pop();
 
