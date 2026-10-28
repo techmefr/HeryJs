@@ -67,7 +67,7 @@
     "@heryjs/core": "workspace:*",
     "@nestjs/common": "^12.3.2",
     "heryjs": "workspace:*",
-    "livekit-server-sdk": "^2.18.0",
+    "livekit-server-sdk": "^2.19.2",
     "picocolors": "^1.1.1",
     "typescript": "^6.0.3"
   },

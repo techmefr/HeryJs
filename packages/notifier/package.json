@@ -70,7 +70,7 @@
     "heryjs": "workspace:*",
     "picocolors": "^1.1.1",
     "typescript": "^6.0.3",
-    "zod": "^4.5.4"
+    "zod": "^4.6.7"
   },
   "peerDependenciesMeta": {
     "heryjs": {

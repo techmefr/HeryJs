@@ -57,11 +57,11 @@
   },
   "dependencies": {
     "commander": "^15.0.0",
-    "js-yaml": "^5.4.1",
+    "js-yaml": "^5.5.0",
     "picocolors": "^1.1.1",
     "prompts": "^2.4.2",
     "semver": "^7.8.5",
-    "zod": "^4.5.4"
+    "zod": "^4.6.7"
   },
   "peerDependencies": {
     "@heryjs/core": "workspace:*",
@@ -81,14 +81,14 @@
   },
   "devDependencies": {
     "@heryjs/core": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@nestjs/common": "^12.3.2",
     "@nestjs/core": "^12.3.2",
-    "@prisma/adapter-pg": "^7.10.0",
-    "@prisma/client": "^7.10.0",
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
     "@types/prompts": "^2.4.9",
     "@types/semver": "^7.8.0",
-    "pg": "^8.23.0",
+    "pg": "^8.23.1",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3"
   }

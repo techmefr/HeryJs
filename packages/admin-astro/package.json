@@ -50,9 +50,9 @@
     "heryjs": "workspace:*"
   },
   "devDependencies": {
-    "astro": "^7.3.1",
+    "astro": "^7.4.2",
     "heryjs": "workspace:*",
-    "lucide": "^1.41.0",
+    "lucide": "^1.62.0",
     "typescript": "^6.0.3"
   },
   "peerDependenciesMeta": {

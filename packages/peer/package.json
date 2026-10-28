@@ -70,7 +70,7 @@
     "@nestjs/websockets": "^12.3.2",
     "heryjs": "workspace:*",
     "picocolors": "^1.1.1",
-    "socket.io": "^4.8.1",
+    "socket.io": "^4.8.4",
     "typescript": "^6.0.3"
   },
   "peerDependenciesMeta": {

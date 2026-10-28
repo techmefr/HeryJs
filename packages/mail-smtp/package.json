@@ -68,7 +68,7 @@
     "@nestjs/common": "^12.3.2",
     "@types/nodemailer": "^8.0.2",
     "heryjs": "workspace:*",
-    "nodemailer": "^10.1.7",
+    "nodemailer": "^10.2.1",
     "picocolors": "^1.1.1",
     "typescript": "^6.0.3"
   },
