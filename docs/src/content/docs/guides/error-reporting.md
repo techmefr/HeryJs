@@ -1,6 +1,6 @@
 ---
 title: Error reporting
-description: "Hand every unexpected error to Sentry, Bugsnag or Rollbar behind one contract, with the request and the caller already attached."
+description: 'Hand every unexpected error to Sentry, Bugsnag or Rollbar behind one contract, with the request and the caller already attached.'
 ---
 
 A 500 used to leave a stack in the log and an id on the response. That is
@@ -21,13 +21,13 @@ event.
 
 The driver receives, for each error:
 
-| Field | What it carries |
-| --- | --- |
-| `errorId` | the id of the response and of the log line |
-| `tenantId` | the caller's tenant, `null` when unauthenticated |
-| `user` | the caller's id and who is impersonating them, never an email or a name |
-| `request` | method and path, with no query string, no headers and no body |
-| `tags`, `extra` | whatever application code attached |
+| Field           | What it carries                                                         |
+| --------------- | ----------------------------------------------------------------------- |
+| `errorId`       | the id of the response and of the log line                              |
+| `tenantId`      | the caller's tenant, `null` when unauthenticated                        |
+| `user`          | the caller's id and who is impersonating them, never an email or a name |
+| `request`       | method and path, with no query string, no headers and no body           |
+| `tags`, `extra` | whatever application code attached                                      |
 
 Nothing from the request is sent that could carry a credential or a person's
 data. An error's own message can, though (a driver error quoting a connection
@@ -48,6 +48,16 @@ errorReporter: {
   },
 },
 ```
+
+Sentry ships as an official driver package:
+
+```bash
+pnpm hery install error-reporter-sentry
+```
+
+It reads `SENTRY_DSN` (and optionally `SENTRY_ENVIRONMENT` and `SENTRY_RELEASE`) on the
+first report, posts to the project's envelope endpoint with `fetch`, and has no SDK to
+install. Any error message that quotes credentials in a URL is scrubbed before it leaves.
 
 A declared driver that is not installed stops the boot, with the install
 command in the message, rather than quietly reporting nowhere.
@@ -84,7 +94,7 @@ import type { ErrorReporterDriver } from '#technical/error-reporter/error-report
 @Injectable()
 export class SentryErrorReporterDriver implements ErrorReporterDriver {
   async capture(error: Error, context: ErrorReportContext): Promise<void> {
-    Sentry.withScope(scope => {
+    Sentry.withScope((scope) => {
       scope.setTag('errorId', context.errorId);
       scope.setTag('tenantId', context.tenantId ?? 'none');
       scope.setUser(context.user === null ? null : { id: context.user.id });

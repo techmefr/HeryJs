@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@heryjs/core/*": ["../../src/technical/public/*"],
+      "#kernel/*": ["../../src/technical/*"],
+      "heryjs": ["../cli/src/module-contract.ts"]
+    },
+    "noEmit": true
+  },
+  "include": ["src", "test"],
+  "exclude": ["node_modules"]
+}

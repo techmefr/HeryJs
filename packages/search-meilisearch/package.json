@@ -61,7 +61,7 @@
     "@heryjs/core": "workspace:*",
     "@nestjs/common": "^12.0.0",
     "heryjs": "workspace:*",
-    "meilisearch": "^0.60.0"
+    "meilisearch": "^0.62.0"
   },
   "devDependencies": {
     "@heryjs/core": "workspace:*",

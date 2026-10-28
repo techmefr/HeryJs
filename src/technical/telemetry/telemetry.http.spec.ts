@@ -21,7 +21,7 @@ import {
   BasicTracerProvider,
   InMemorySpanExporter,
   SimpleSpanProcessor,
-} from '@opentelemetry/sdk-trace-base';
+} from '@opentelemetry/sdk-trace';
 import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import request from 'supertest';
 import { App } from 'supertest/types';

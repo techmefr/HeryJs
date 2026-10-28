@@ -1,3 +1,8 @@
+export {
+  registerAppInstrument,
+  registeredAppInstrument,
+} from '../app-instrument/app-instrument';
+export type { AppInstrument } from '../app-instrument/app-instrument';
 export { HealthRegistry } from '../health/health-registry';
 export { metricsRegistry } from '../monitoring/metrics.registry';
 export { TelemetryBus } from '../tracing/telemetry-bus';

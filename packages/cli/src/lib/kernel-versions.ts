@@ -235,6 +235,12 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
     'src/technical/admin/tenant-access.service.ts': [
       'f06f60a1869becea28588fed1a1e63fa337927242359e451b8b3e30bf2bf26a0',
     ],
+    'src/technical/app-instrument/app-instrument.spec.ts': [
+      'f1041c794343bd2d9afbf55598eb9c2d5ff1628ef8f83e6533a2038d4280199d',
+    ],
+    'src/technical/app-instrument/app-instrument.ts': [
+      '4e4fc9d00367cb65320ca4511f88b8e3b5a77eba940f9826d8d334ff63dd4a62',
+    ],
     'src/technical/audit/audit-export.http.spec.ts': [
       '26069237e410ca7c50b809f22320895b1b0b0ee687b00fa5190dab373421cb40',
     ],
@@ -2304,6 +2310,7 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
     'src/technical/public/drivers.ts': [
       '2618c6b7d330781ddade40797df7b886da4e7ae47f3f239bbf7c2a89578dcf4c',
       '4fcecd0a51832553d46c387b651708d5bcf3d2614c9b103db284b4a193fa78fa',
+      'f5db20130e82f1097ec389d0595a5134cded1219c5dfb01672bca6ae9a090df7',
     ],
     'src/technical/public/env.ts': [
       '26f9f464d0b4cfbc199e68a30c0a5bda3b8480cfae1fbcac520ad6d0bc394bc5',
@@ -2338,6 +2345,7 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
     ],
     'src/technical/public/observability.ts': [
       '01275d9d3a8dc7805893e101c48df571071e494fef230979043822d60487a6d7',
+      '29727aa8067e596afce13f5fca1ff86ca92a5d5b78a09fdd0f3da734eda5624f',
       'c0a66b41da06939d4d820c2159edccd498bb9091d8295900e4274df4acd35637',
     ],
     'src/technical/public/platform.ts': [
@@ -2729,6 +2737,7 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
       'a32a81af1e75e9fbc2bdae49430fc97bbfe34e3f6f486be51964056c4c33d389',
     ],
     'src/technical/telemetry/telemetry.http.spec.ts': [
+      'c23963cb2d31d17a5b824ab33fca38839066bc26b169e6acd63182b72b9d2a4f',
       'dd8c052481ddf27cc4f87cd9bb68181c28e90533654337567480ccebe3135ed8',
     ],
     'src/technical/telemetry/telemetry.middleware.ts': [
