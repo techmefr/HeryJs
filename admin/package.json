@@ -12,7 +12,7 @@
     "test": "vitest run --environment jsdom"
   },
   "dependencies": {
-    "astro": "^7.3.1",
+    "astro": "^7.4.7",
     "lucide": "^1.41.0"
   },
   "devDependencies": {
