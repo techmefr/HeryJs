@@ -1104,6 +1104,7 @@ export const KERNEL_FILE_VERSIONS: Readonly<Record<string, readonly string[]>> =
       '0785de889c5cdc1065dd159bbdb06942d9c0ebdd5f9beec24bc37e5d641c658d',
     ],
     'src/technical/exposition/exposition-registrar.service.ts': [
+      '3047f4be79d2fdbcef018f9bfd4c45eecb7833a674facf259e9954b7f78e21df',
       'a9f60fa4d1faff86e7ee26551365bc7d7f81fa65064c9f18a2aaa3368e10a306',
     ],
     'src/technical/exposition/exposition-runner.service.ts': [
