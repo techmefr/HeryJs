@@ -69,14 +69,14 @@
   },
   "devDependencies": {
     "@heryjs/core": "workspace:*",
-    "@nestjs/bullmq": "^12.0.0",
-    "@nestjs/common": "^12.0.1",
-    "@types/express": "^5.0.0",
-    "bullmq": "^6.3.4",
+    "@nestjs/bullmq": "^12.0.2",
+    "@nestjs/common": "^12.6.2",
+    "@types/express": "^5.0.6",
+    "bullmq": "^6.7.10",
     "heryjs": "workspace:*",
     "picocolors": "^1.1.1",
     "typescript": "^6.0.3",
-    "zod": "^4.5.4"
+    "zod": "^4.6.7"
   },
   "peerDependenciesMeta": {
     "heryjs": {

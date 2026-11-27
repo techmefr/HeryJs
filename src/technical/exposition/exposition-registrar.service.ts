@@ -41,9 +41,9 @@ export class ExpositionRegistrar implements OnModuleInit {
           ...action,
           params,
           invoke: (args: unknown[]) =>
-            (instance[handler] as (...values: unknown[]) => unknown).apply(
+            (instance[handler] as (...values: unknown[]) => unknown).call(
               instance,
-              args,
+              ...args,
             ),
         });
       }
